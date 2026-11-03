@@ -3,7 +3,8 @@ import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, MessageSquare, Receipt } from "lucide-react";
+import { Clock, Loader2, MessageSquare, Receipt } from "lucide-react";
+import { LogTimeDialog } from "./LogTimeDialog";
 import { SendSiteTextDialog } from "@/components/project-hub/SendSiteTextDialog";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useProject } from "@/integrations/supabase/hooks/useProjects";
@@ -28,6 +29,8 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
 
   const activated = rows.filter((r) => r.status === "activated");
   const standby = rows.filter((r) => r.status === "standby");
+  const mobilizing = rows.filter((r) => r.status === "mobilizing");
+  const [logFor, setLogFor] = useState<RosterRow | null>(null);
 
   const totals = useMemo(() => {
     const hours = activated.reduce((a, r) => a + r.hours, 0);
@@ -52,8 +55,9 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
           {r.status === "activated" && <> · {r.hours.toFixed(1)}h{showCosts && <> · {r.laborCost != null ? money(r.laborCost) : "no rate"}</>}</>}
         </div>
       </div>
-      <PersonnelStatusButton personnelId={r.personnel_id} />
+      <PersonnelStatusButton personnelId={r.personnel_id} projectId={projectId} projectName={(project as any)?.name} />
       <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Send site text" onClick={() => setTextFor(r.personnel_id)}><MessageSquare className="h-4 w-4" /></Button>
+      {showCosts && <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Log time" onClick={() => setLogFor(r)}><Clock className="h-4 w-4" /></Button>}
       <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Add expense" onClick={() => setExpFor(r.personnel_id)}><Receipt className="h-4 w-4" /></Button>
     </div>
   );
@@ -73,13 +77,9 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
       </CardHeader>
       <CardContent className="space-y-3">
         {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No one is currently activated or on standby for this project.</p>
+          <p className="text-sm text-muted-foreground">No one is currently on standby, mobilizing, or activated for this project.</p>
         ) : (
           <>
-            <section>
-              <h4 className="text-xs font-semibold text-success mb-1">ACTIVATED ({activated.length})</h4>
-              {activated.map((r) => <Row key={r.personnel_id} r={r} />)}
-            </section>
             <section>
               <div className="flex items-center justify-between mb-1">
                 <h4 className="text-xs font-semibold text-warning">STANDBY ({standby.length})</h4>
@@ -87,11 +87,21 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
               </div>
               {standby.map((r) => <Row key={r.personnel_id} r={r} />)}
             </section>
+            <section>
+              <h4 className="text-xs font-semibold text-info mb-1">MOBILIZING ({mobilizing.length})</h4>
+              {mobilizing.map((r) => <Row key={r.personnel_id} r={r} />)}
+            </section>
+            <section>
+              <h4 className="text-xs font-semibold text-success mb-1">ACTIVATED ({activated.length})</h4>
+              {activated.map((r) => <Row key={r.personnel_id} r={r} />)}
+            </section>
           </>
         )}
       </CardContent>
       <StatusProjectDialog open={activateOpen} onOpenChange={(o) => { setActivateOpen(o); if (!o) setSel([]); }}
-        personnelIds={sel} status="activated" defaultProjectId={projectId} lockProject />
+        personnelIds={sel} status="activated" defaultProjectId={projectId} lockProject fixedProjectName={(project as any)?.name} />
+      <LogTimeDialog open={!!logFor} onOpenChange={(o) => !o && setLogFor(null)} projectId={projectId}
+        personnelId={logFor?.personnel_id} personName={logFor ? nm(logFor) : undefined} />
       <AddExpenseDialog open={!!expFor} onOpenChange={(o) => !o && setExpFor(null)} personnelId={expFor ?? undefined} projectId={projectId} lockProject />
     </Card>
   );

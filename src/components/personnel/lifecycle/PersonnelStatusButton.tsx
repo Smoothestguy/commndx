@@ -9,10 +9,11 @@ import { Label } from "@/components/ui/label";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/useUserRole";
-import { LifecycleStatus, useCurrentStatus, useSetStatus, useStatusProjects } from "@/integrations/supabase/hooks/usePersonnelStatus";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { LifecycleStatus, useCurrentStatus, useOnSiteMap, useSetStatus, useStatusProjects } from "@/integrations/supabase/hooks/usePersonnelStatus";
 
 export const STATUS_LABEL: Record<LifecycleStatus, string> = {
-  available: "Available", unavailable: "Unavailable", standby: "Standby", activated: "Activated", demobilized: "Demobilized",
+  available: "Available", unavailable: "Unavailable", standby: "Standby", mobilizing: "Mobilizing", activated: "Activated", demobilized: "Demobilized",
 };
 
 export function statusBadgeClass(s: LifecycleStatus) {
@@ -20,26 +21,30 @@ export function statusBadgeClass(s: LifecycleStatus) {
     case "available": return "border-success/60 text-success bg-transparent";
     case "unavailable": return "border-muted-foreground/30 text-muted-foreground bg-muted";
     case "standby": return "border-warning/50 bg-warning/15 text-warning";
+    case "mobilizing": return "border-info/50 bg-info/15 text-info";
     case "activated": return "border-success bg-success text-success-foreground";
     case "demobilized": return "border-border bg-secondary text-secondary-foreground";
   }
 }
 
 export function StatusBadge({ status, projectName, className }: { status: LifecycleStatus; projectName?: string | null; className?: string }) {
-  const showProj = (status === "standby" || status === "activated") && projectName;
+  const loud = status === "standby" || status === "mobilizing" || status === "activated";
+  const showProj = loud && projectName;
   return (
     <Badge variant="outline" className={cn("whitespace-nowrap max-w-[220px] truncate", statusBadgeClass(status), className)}>
-      {status === "standby" || status === "activated" ? STATUS_LABEL[status].toUpperCase() : STATUS_LABEL[status]}
+      {loud ? STATUS_LABEL[status].toUpperCase() : STATUS_LABEL[status]}
       {showProj && <span className="ml-1 font-normal truncate">· {projectName}</span>}
     </Badge>
   );
 }
 
-export function StatusProjectDialog({ open, onOpenChange, personnelIds, status, defaultProjectId, lockProject }: {
-  open: boolean; onOpenChange: (o: boolean) => void; personnelIds: string[]; status: "standby" | "activated" | "demobilized";
-  defaultProjectId?: string | null; lockProject?: boolean;
+type DlgStatus = "standby" | "mobilizing" | "activated" | "demobilized";
+
+export function StatusProjectDialog({ open, onOpenChange, personnelIds, status, defaultProjectId, lockProject, fixedProjectName }: {
+  open: boolean; onOpenChange: (o: boolean) => void; personnelIds: string[]; status: DlgStatus;
+  defaultProjectId?: string | null; lockProject?: boolean; fixedProjectName?: string | null;
 }) {
-  const { data: projects = [] } = useStatusProjects(open && status !== "demobilized");
+  const { data: projects = [] } = useStatusProjects(open && status !== "demobilized" && !lockProject);
   const set = useSetStatus();
   const [projectId, setProjectId] = useState<string>("");
   const [note, setNote] = useState("");
@@ -47,13 +52,16 @@ export function StatusProjectDialog({ open, onOpenChange, personnelIds, status, 
   if (open !== lastOpen) { setLastOpen(open); if (open) { setProjectId(defaultProjectId ?? ""); setNote(""); } }
 
   const needsProject = status !== "demobilized";
-  const title = status === "standby" ? "Put on standby" : status === "activated" ? "Activate" : "Demobilize";
+  const title = status === "standby" ? "Put on standby" : status === "mobilizing" ? "Mobilize" : status === "activated" ? "Activate" : "Demobilize";
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm" onClick={(e) => e.stopPropagation()}>
         <DialogHeader><DialogTitle>{title}{personnelIds.length > 1 ? ` (${personnelIds.length})` : ""}</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          {needsProject && (
+          {needsProject && lockProject && (
+            <div><Label>Project</Label><p className="text-sm font-medium py-1">{fixedProjectName || projects.find((p) => p.id === defaultProjectId)?.name || "This project"}</p></div>
+          )}
+          {needsProject && !lockProject && (
             <div><Label>Project</Label>
               <Select value={projectId} onValueChange={setProjectId} disabled={lockProject}>
                 <SelectTrigger className="h-11"><SelectValue placeholder="Select project" /></SelectTrigger>
@@ -78,15 +86,34 @@ export function StatusProjectDialog({ open, onOpenChange, personnelIds, status, 
   );
 }
 
-/** Badge + dropdown status machine. Reads from the shared cached status map, so it's safe in long lists. */
-export function PersonnelStatusButton({ personnelId, className }: { personnelId: string; className?: string }) {
+function useOnSiteBadge(personnelId: string, status: LifecycleStatus, projectName: string | null | undefined, className?: string) {
+  const { data: onSite } = useOnSiteMap();
+  const os = onSite?.[personnelId];
+  if (!os) return null;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge variant="outline" className={cn("whitespace-nowrap max-w-[220px] truncate border-success bg-success/15 text-success animate-pulse", className)}>
+          ON SITE<span className="ml-1 font-normal truncate">· {os.location_name ?? "site"}</span>
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent>Status: {STATUS_LABEL[status]}{projectName ? ` · ${projectName}` : ""}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** Badge + dropdown status machine. Reads from shared cached maps (status + on-site), so it's safe in long lists.
+ *  When `projectId` is given, project-scoped actions skip the project picker and use that project. */
+export function PersonnelStatusButton({ personnelId, className, projectId, projectName }: { personnelId: string; className?: string; projectId?: string | null; projectName?: string | null }) {
   const { status, row } = useCurrentStatus(personnelId);
   const { isAdmin, isManager } = useUserRole();
   const canEdit = isAdmin || isManager;
   const set = useSetStatus();
-  const [dlg, setDlg] = useState<null | "standby" | "activated" | "demobilized">(null);
-  const badge = <StatusBadge status={status} projectName={row?.project_name} className={className} />;
+  const [dlg, setDlg] = useState<null | DlgStatus>(null);
+  const onSiteBadge = useOnSiteBadge(personnelId, status, row?.project_name, className);
+  const badge = onSiteBadge ?? <StatusBadge status={status} projectName={row?.project_name} className={className} />;
   if (!canEdit) return badge;
+  const locked = !!projectId && dlg !== "demobilized";
   return (
     <span onClick={(e) => e.stopPropagation()} className="inline-flex">
       <DropdownMenu>
@@ -100,12 +127,14 @@ export function PersonnelStatusButton({ personnelId, className }: { personnelId:
           <DropdownMenuItem disabled={status === "unavailable"} onClick={() => set.mutate({ personnelIds: [personnelId], status: "unavailable" })}>Set Unavailable</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setDlg("standby")}>Put on Standby…</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setDlg("mobilizing")}>Mobilize…</DropdownMenuItem>
           <DropdownMenuItem onClick={() => setDlg("activated")}>Activate…</DropdownMenuItem>
           <DropdownMenuItem onClick={() => setDlg("demobilized")}>Demobilize</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       <StatusProjectDialog open={!!dlg} onOpenChange={(o) => !o && setDlg(null)} personnelIds={[personnelId]}
-        status={dlg ?? "standby"} defaultProjectId={row?.project_id ?? null} />
+        status={dlg ?? "standby"} defaultProjectId={locked ? projectId : row?.project_id ?? null}
+        lockProject={locked} fixedProjectName={locked ? projectName : null} />
     </span>
   );
 }

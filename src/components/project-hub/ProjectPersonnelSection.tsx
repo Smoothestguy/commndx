@@ -730,7 +730,7 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                               Bill: {formatCurrency(person.billRate)}/hr
                             </span>
                           )}
-                          {person.personnelId && <PersonnelStatusButton personnelId={person.personnelId} />}
+                          {person.personnelId && <PersonnelStatusButton personnelId={person.personnelId} projectId={projectId} projectName={projectName} />}
                           {(() => {
                             const rating = getRating(person.assignmentId, person.personnelId);
                             if (!rating) return null;
@@ -855,7 +855,7 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                                           Onboarded
                                         </Badge>
                                       )}
-                                      {person.personnelId && <PersonnelStatusButton personnelId={person.personnelId} />}
+                                      {person.personnelId && <PersonnelStatusButton personnelId={person.personnelId} projectId={projectId} projectName={projectName} />}
                                       {(() => {
                                         const rating = getRating(person.assignmentId, person.personnelId);
                                         if (!rating) return null;
