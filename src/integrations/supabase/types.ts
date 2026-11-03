@@ -1001,9 +1001,12 @@ export type Database = {
           asset_id: string
           assigned_by: string | null
           assigned_to_personnel_id: string | null
+          billable: boolean
           created_at: string | null
+          day_rate: number | null
           end_at: string | null
           id: string
+          location_id: string | null
           notes: string | null
           project_id: string
           start_at: string
@@ -1018,9 +1021,12 @@ export type Database = {
           asset_id: string
           assigned_by?: string | null
           assigned_to_personnel_id?: string | null
+          billable?: boolean
           created_at?: string | null
+          day_rate?: number | null
           end_at?: string | null
           id?: string
+          location_id?: string | null
           notes?: string | null
           project_id: string
           start_at?: string
@@ -1035,9 +1041,12 @@ export type Database = {
           asset_id?: string
           assigned_by?: string | null
           assigned_to_personnel_id?: string | null
+          billable?: boolean
           created_at?: string | null
+          day_rate?: number | null
           end_at?: string | null
           id?: string
+          location_id?: string | null
           notes?: string | null
           project_id?: string
           start_at?: string
@@ -1071,6 +1080,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "asset_assignments_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "asset_assignments_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
@@ -1085,6 +1101,7 @@ export type Database = {
           address: string | null
           created_at: string | null
           created_by: string | null
+          default_day_rate: number | null
           deleted_at: string | null
           description: string | null
           gate_code: string | null
@@ -1103,6 +1120,7 @@ export type Database = {
           address?: string | null
           created_at?: string | null
           created_by?: string | null
+          default_day_rate?: number | null
           deleted_at?: string | null
           description?: string | null
           gate_code?: string | null
@@ -1121,6 +1139,7 @@ export type Database = {
           address?: string | null
           created_at?: string | null
           created_by?: string | null
+          default_day_rate?: number | null
           deleted_at?: string | null
           description?: string | null
           gate_code?: string | null
