@@ -160,6 +160,8 @@ function useInv(projectId: string | undefined) {
   return (locationId?: string) => {
     qc.invalidateQueries({ queryKey: ["today-visits", projectId] });
     qc.invalidateQueries({ queryKey: ["visits-window"] });
+    qc.invalidateQueries({ queryKey: ["personnel-current-status"] });
+    qc.invalidateQueries({ queryKey: ["project-roster"] });
     qc.invalidateQueries({ queryKey: ["today-receipts"] });
     qc.invalidateQueries({ queryKey: ["on-site-now", projectId] });
     qc.invalidateQueries({ queryKey: ["personnel-trail", projectId] });
