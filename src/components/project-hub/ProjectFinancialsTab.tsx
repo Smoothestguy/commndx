@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { FileText, Briefcase, Receipt, Plus } from "lucide-react";
 import { ProjectFinancialSummary } from "./ProjectFinancialSummary";
 import { ProjectUnbilledLabor } from "./ProjectUnbilledLabor";
+import { ProjectEquipmentCharges } from "./ProjectEquipmentCharges";
 import { ProjectLaborAllocation } from "./ProjectLaborAllocation";
 import { ProjectRateBracketsSection } from "./ProjectRateBracketsSection";
 import { ProjectVendorBillsList } from "./ProjectVendorBillsList";
@@ -204,6 +205,7 @@ export function ProjectFinancialsTab({ projectId, project, customer }: Props) {
       <ProjectFinancialSummary data={financialData} />
       <PersonnelExpensesCard projectId={projectId} />
       <ProjectUnbilledLabor projectId={projectId} totalInvoiced={financialData.totalInvoiced} />
+      <ProjectEquipmentCharges projectId={projectId} />
       <ProjectLaborAllocation projectId={projectId} />
       <ProjectRateBracketsSection projectId={projectId} />
 

@@ -54,6 +54,7 @@ const newAssetSchema = z.object({
   type: z.string().min(1, "Please select a type"),
   label: z.string().min(1, "Label is required"),
   serialNumber: z.string().optional(),
+  dayRate: z.string().optional().refine((v) => !v || (Number.isFinite(Number(v)) && Number(v) >= 0), "Enter a valid rate"),
   address: z.string().optional(),
   instructions: z.string().optional(),
 });
@@ -107,6 +108,7 @@ export function AssignAssetDialog({
       type: "",
       label: "",
       serialNumber: "",
+      dayRate: "",
       address: "",
       instructions: "",
     },
@@ -117,6 +119,7 @@ export function AssignAssetDialog({
       type: values.type,
       label: values.label,
       serial_number: values.serialNumber || null,
+      default_day_rate: values.dayRate ? Number(values.dayRate) : null,
       address: values.address || null,
       instructions: values.instructions || null,
       status: "available",
@@ -403,6 +406,20 @@ export function AssignAssetDialog({
                       <FormLabel>Serial Number (Optional)</FormLabel>
                       <FormControl>
                         <Input placeholder="Serial number or ID" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={newAssetForm.control}
+                  name="dayRate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Day rate ($/day) (Optional)</FormLabel>
+                      <FormControl>
+                        <Input type="number" inputMode="decimal" min={0} step="0.01" placeholder="e.g., 450" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
