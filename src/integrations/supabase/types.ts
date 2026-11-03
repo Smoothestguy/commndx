@@ -9685,6 +9685,9 @@ export type Database = {
       }
       visit_personnel: {
         Row: {
+          checked_in_at: string | null
+          checked_in_by: string | null
+          checked_out_at: string | null
           id: string
           personnel_id: string
           signature_url: string | null
@@ -9692,6 +9695,9 @@ export type Database = {
           visit_id: string
         }
         Insert: {
+          checked_in_at?: string | null
+          checked_in_by?: string | null
+          checked_out_at?: string | null
           id?: string
           personnel_id: string
           signature_url?: string | null
@@ -9699,6 +9705,9 @@ export type Database = {
           visit_id: string
         }
         Update: {
+          checked_in_at?: string | null
+          checked_in_by?: string | null
+          checked_out_at?: string | null
           id?: string
           personnel_id?: string
           signature_url?: string | null
@@ -9726,6 +9735,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "location_visits"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visit_personnel_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_location_trail"
+            referencedColumns: ["visit_id"]
           },
         ]
       }
@@ -9768,6 +9784,13 @@ export type Database = {
             referencedRelation: "location_visits"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "visit_photos_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_location_trail"
+            referencedColumns: ["visit_id"]
+          },
         ]
       }
       visit_purchases: {
@@ -9808,6 +9831,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "location_visits"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visit_purchases_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_location_trail"
+            referencedColumns: ["visit_id"]
           },
         ]
       }
@@ -10156,6 +10186,61 @@ export type Database = {
           status?: Database["public"]["Enums"]["personnel_status"] | null
         }
         Relationships: []
+      }
+      personnel_location_trail: {
+        Row: {
+          checked_in_by: string | null
+          crew_id: string | null
+          first_name: string | null
+          hours: number | null
+          in_at: string | null
+          last_name: string | null
+          location_id: string | null
+          location_name: string | null
+          out_at: string | null
+          personnel_id: string | null
+          project_id: string | null
+          signature_url: string | null
+          visit_id: string | null
+          visit_personnel_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_visits_crew_id_fkey"
+            columns: ["crew_id"]
+            isOneToOne: false
+            referencedRelation: "crews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_visits_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_locations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visit_personnel_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visit_personnel_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       public_task_order_positions: {
         Row: {
