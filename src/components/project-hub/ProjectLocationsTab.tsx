@@ -1,6 +1,8 @@
+import { useMemo } from "react";
 import { useEffect, useState } from "react";
 import { LayoutGrid, Rows3 } from "lucide-react";
 import { LocationsGrid } from "./LocationsGrid";
+import { LocationAssets } from "./LocationAssets";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -63,6 +65,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
   const { isAdmin, isManager } = useUserRole();
   const canWrite = isAdmin || isManager;
   const { data: locations = [], isLoading } = useProjectLocations(projectId);
+  const locationNames = useMemo(() => Object.fromEntries(locations.map((l) => [l.id, l.name])), [locations]);
   const add = useAddProjectLocation();
   const update = useUpdateProjectLocation();
   const del = useDeleteProjectLocation();
@@ -220,6 +223,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
                 )}
                 {l.scope && <ScopeText text={l.scope} />}
                 <LocationStaffing locationId={l.id} summary={staffing?.[l.id]} canWrite={canWrite} projectId={l.project_id} locationName={l.name} />
+                <LocationAssets projectId={l.project_id} locationId={l.id} locationName={l.name} canWrite={canWrite} locationNames={locationNames} />
                 <LocationLodging projectId={projectId} locationId={l.id} housingBy={l.housing_provided_by} canWrite={canWrite} />
               </CardContent>
             </Card>
