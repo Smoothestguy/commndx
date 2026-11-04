@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { addDays, chicagoParts, classifyShift, Shift } from "@/lib/shifts";
+import { addDays, chicagoParts, chicagoMidnight, classifyShift, resolveShiftStarts, splitAtMidnight, Shift, LocationShiftMap } from "@/lib/shifts";
 
 const db = supabase as any;
 
@@ -32,17 +32,18 @@ export function sourceFromNotes(notes: string | null | undefined): EntrySource {
 }
 
 /** One query for the week's trail + visit notes; returns classified entries. */
-export function useWeekTimesheet(projectId: string | undefined, weekStartDate: string, dayStart?: string | null, nightStart?: string | null) {
+export function useWeekTimesheet(projectId: string | undefined, weekStartDate: string, dayStart?: string | null, nightStart?: string | null, locationShifts: LocationShiftMap = {}) {
   const q = useQuery({
     queryKey: ["week-timesheet", projectId, weekStartDate],
     enabled: !!projectId,
     queryFn: async () => {
-      // Pad by a day each side in UTC, then filter by Chicago date client-side.
+      // Include stays starting before the week whose checkout overlaps it.
+      const from = chicagoMidnight(weekStartDate);
       const { data, error } = await db.from("personnel_location_trail")
         .select("visit_personnel_id, personnel_id, first_name, last_name, visit_id, location_id, location_name, in_at, out_at, hours")
         .eq("project_id", projectId)
-        .gte("in_at", `${addDays(weekStartDate, -1)}T00:00:00Z`)
-        .lt("in_at", `${addDays(weekStartDate, 8)}T00:00:00Z`)
+        .or(`out_at.is.null,out_at.gte.${from}`)
+        .lt("in_at", chicagoMidnight(addDays(weekStartDate, 7)))
         .order("in_at").limit(5000);
       if (error) throw error;
       const rows = (data ?? []) as any[];
@@ -62,11 +63,13 @@ export function useWeekTimesheet(projectId: string | undefined, weekStartDate: s
     const end = addDays(weekStartDate, 6);
     const out: TimesheetEntry[] = [];
     for (const r of q.data.rows) {
-      const date = chicagoParts(r.in_at).date;
-      if (date < weekStartDate || date > end) continue;
       const open = !r.out_at;
-      out.push({
-        id: r.visit_personnel_id,
+      const starts = resolveShiftStarts(locationShifts[r.location_id], { day_shift_start: dayStart, night_shift_start: nightStart });
+      const segments = open ? [{ date: chicagoParts(r.in_at).date, hours: 0 }] : splitAtMidnight(r.in_at, r.out_at);
+      for (const segment of segments) {
+        if (segment.date < weekStartDate || segment.date > end) continue;
+        out.push({
+        id: `${r.visit_personnel_id}:${segment.date}`,
         personnel_id: r.personnel_id,
         name: [r.first_name, r.last_name].filter(Boolean).join(" ") || "Unknown",
         location_id: r.location_id,
@@ -74,15 +77,16 @@ export function useWeekTimesheet(projectId: string | undefined, weekStartDate: s
         visit_id: r.visit_id,
         in_at: r.in_at,
         out_at: r.out_at,
-        date,
-        shift: classifyShift(r.in_at, dayStart ?? "06:00", nightStart ?? "18:00"),
-        hours: open ? 0 : Math.round((Number(r.hours) || 0) * 100) / 100,
+        date: segment.date,
+        shift: classifyShift(r.in_at, starts.day, starts.night),
+        hours: segment.hours,
         open,
         source: sourceFromNotes(q.data.notes[r.visit_id]),
       });
+      }
     }
     return out;
-  }, [q.data, weekStartDate, dayStart, nightStart]);
+  }, [q.data, weekStartDate, dayStart, nightStart, locationShifts]);
 
   return { ...q, entries };
 }
