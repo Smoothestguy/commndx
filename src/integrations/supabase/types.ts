@@ -10926,7 +10926,7 @@ export type Database = {
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       site_punch: {
-        Args: { p_lat?: number; p_lng?: number; p_token: string }
+        Args: { p_at?: string; p_lat?: number; p_lng?: number; p_token: string }
         Returns: Json
       }
       update_applicant_geo: {

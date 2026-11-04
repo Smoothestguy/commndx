@@ -20,6 +20,10 @@ export interface VisitRow {
   check_out_at: string | null;
   notes: string | null;
   created_by: string | null;
+  check_in_lat?: number | null;
+  check_in_lng?: number | null;
+  check_out_lat?: number | null;
+  check_out_lng?: number | null;
 }
 
 export interface VisitPerson {
@@ -92,7 +96,7 @@ interface VisitBundle {
 async function fetchVisitBundle(locationIds: string[], fromIso: string, toIso: string): Promise<VisitBundle> {
   if (!locationIds.length) return { visits: [], people: [], purchases: [], photos: [] };
   const { data: visits, error } = await db.from("location_visits")
-    .select("id, location_id, crew_id, check_in_at, check_out_at, notes, created_by")
+    .select("id, location_id, crew_id, check_in_at, check_out_at, notes, created_by, check_in_lat, check_in_lng, check_out_lat, check_out_lng")
     .in("location_id", locationIds)
     .gte("check_in_at", fromIso).lte("check_in_at", toIso)
     .order("check_in_at", { ascending: false });
@@ -219,6 +223,7 @@ export function useCheckIn(projectId: string | undefined, locationIds: string[])
     mutationFn: async ({ location_id, crew_id, memberIds, lat, lng }: {
       location_id: string; crew_id: string | null; memberIds: string[]; lat: number | null; lng: number | null;
     }) => {
+      if (!navigator.onLine) throw new Error("No signal — try again in coverage");
       const { data: { user } } = await supabase.auth.getUser();
       const { data: visit, error } = await db.from("location_visits")
         .insert({ location_id, crew_id, check_in_lat: lat, check_in_lng: lng, created_by: user?.id ?? null })
@@ -322,6 +327,7 @@ export function useCheckOut(projectId: string | undefined) {
     mutationFn: async ({ visit, lat, lng, endedAt }: {
       visit: VisitRow; lat: number | null; lng: number | null; endedAt?: string;
     }) => {
+      if (!navigator.onLine) throw new Error("No signal — try again in coverage");
       const { error } = await db.from("location_visits")
         .update({ check_out_at: endedAt ?? new Date().toISOString(), check_out_lat: lat, check_out_lng: lng })
         .eq("id", visit.id);
@@ -509,6 +515,7 @@ export function useCheckOutPerson(projectId: string | undefined) {
   const inv = useInv(projectId);
   return useMutation({
     mutationFn: async ({ visit, personnel_id }: { visit: VisitRow; personnel_id: string }) => {
+      if (!navigator.onLine) throw new Error("No signal — try again in coverage");
       const { error } = await db.from("visit_personnel")
         .update({ checked_out_at: new Date().toISOString() })
         .eq("visit_id", visit.id).eq("personnel_id", personnel_id);
