@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -48,7 +48,7 @@ export const LODGING_TYPES = [
 ];
 import { usePersonnelByProject } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
 import { useCreateHotelAssignment } from "@/integrations/supabase/hooks/useHotelAssignments";
-import { useActivePersonnelLite, useActiveProjectAssignmentMap } from "@/integrations/supabase/hooks/useLocationStaffing";
+import { useActivePersonnelLite, useActiveProjectAssignmentMap, useLocationAssignments } from "@/integrations/supabase/hooks/useLocationStaffing";
 
 const hotelSchema = z.object({
   personnelIds: z.array(z.string()).min(1, "Select at least one person"),
@@ -82,7 +82,8 @@ interface AssignHotelDialogProps {
 export function AssignHotelDialog({ open, onOpenChange, projectId, locationId, onCreated }: AssignHotelDialogProps) {
   const { data: personnel = [] } = usePersonnelByProject(projectId);
   const createMutation = useCreateHotelAssignment();
-  const [mode, setMode] = useState<"project" | "all">("project");
+  const [mode, setMode] = useState<"location" | "project" | "all">(locationId ? "location" : "project");
+  const { data: locationPersonnel = [] } = useLocationAssignments(open && locationId ? locationId : undefined);
   const [search, setSearch] = useState("");
   const { data: allPersonnel = [] } = useActivePersonnelLite(mode === "all");
   const { data: assignmentMap = {} } = useActiveProjectAssignmentMap(mode === "all");
@@ -107,6 +108,14 @@ export function AssignHotelDialog({ open, onOpenChange, projectId, locationId, o
       notes: "",
     },
   });
+
+  useEffect(() => {
+    if (open) {
+      setMode(locationId ? "location" : "project");
+      setSearch("");
+      form.setValue("personnelIds", []);
+    }
+  }, [open, locationId, form]);
 
   const onSubmit = async (values: HotelFormValues) => {
     const ids = await createMutation.mutateAsync({
@@ -135,7 +144,7 @@ export function AssignHotelDialog({ open, onOpenChange, projectId, locationId, o
     onCreated?.(ids);
   };
 
-  const activePersonnel = personnel.filter(
+  const activePersonnel = (mode === "location" ? locationPersonnel : personnel).filter(
     (p) => p.personnel
   );
 
@@ -169,10 +178,10 @@ export function AssignHotelDialog({ open, onOpenChange, projectId, locationId, o
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Personnel * <span className="text-xs text-muted-foreground font-normal">(select everyone sharing this lodging)</span></FormLabel>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <div className="flex rounded-md border overflow-hidden text-xs shrink-0">
-                        {(["project", "all"] as const).map((m) => (
-                          <button
+                        {(locationId ? ["location", "project", "all"] as const : ["project", "all"] as const).map((m) => (
+                          <Button
                             key={m}
                             type="button"
                             onClick={() => setMode(m)}
@@ -181,8 +190,8 @@ export function AssignHotelDialog({ open, onOpenChange, projectId, locationId, o
                               mode === m ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground hover:bg-muted"
                             )}
                           >
-                            {m === "project" ? "This project" : "All personnel"}
-                          </button>
+                            {m === "location" ? "This location" : m === "project" ? "This project" : "All personnel"}
+                          </Button>
                         ))}
                       </div>
                       <div className="relative flex-1">
@@ -196,9 +205,9 @@ export function AssignHotelDialog({ open, onOpenChange, projectId, locationId, o
                       </div>
                     </div>
                     <div className="max-h-44 overflow-y-auto rounded-md border divide-y">
-                      {mode === "project" ? (
+                      {mode !== "all" ? (
                         <>
-                          {activePersonnel.length === 0 && <p className="p-3 text-sm text-muted-foreground">No crew on this project.</p>}
+                          {activePersonnel.length === 0 && <p className="p-3 text-sm text-muted-foreground">{mode === "location" ? "No active assignments at this location." : "No crew on this project."}</p>}
                           {activePersonnel
                             .filter((a) => {
                               if (!q) return true;

@@ -30,6 +30,7 @@ import { LocationStaffing, RolePicker } from "./LocationStaffing";
 import { LocationLodging } from "./LocationLodging";
 import { useLastServiced } from "@/integrations/supabase/hooks/useDeployment";
 import { formatLocalDate } from "@/lib/dateUtils";
+import { useProject } from "@/integrations/supabase/hooks/useProjects";
 
 type ReqRow = { key: string; id?: string; role_label: string; headcount: string; rate: string };
 let rowSeq = 0;
@@ -42,6 +43,7 @@ const EMPTY = {
   name: "", project_number: "", scope: "", address: "", city: "", state: "", zip: "",
   poc_name: "", poc_phone: "", poc_email: "", status: "active", sort_order: "",
   housing_provided_by: "none", meals_provided: false as boolean, meals_notes: "", mobe_date: "", demobe_date: "",
+  day_shift_start: "", night_shift_start: "",
 };
 type FormState = typeof EMPTY;
 
@@ -63,6 +65,7 @@ function ScopeText({ text }: { text: string }) {
 export function ProjectLocationsTab({ projectId, projectName, deploymentMode = false }: { projectId: string; projectName?: string; deploymentMode?: boolean }) {
   const { isAdmin, isManager } = useUserRole();
   const canWrite = isAdmin || isManager;
+  const { data: project } = useProject(projectId);
   const { data: locations = [], isLoading } = useProjectLocations(projectId);
   const locationNames = useMemo(() => Object.fromEntries(locations.map((l) => [l.id, l.name])), [locations]);
   const add = useAddProjectLocation();
@@ -109,6 +112,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
       sort_order: l.sort_order != null ? String(l.sort_order) : "",
       housing_provided_by: l.housing_provided_by || "none", meals_provided: !!l.meals_provided, meals_notes: l.meals_notes ?? "",
       mobe_date: l.mobe_date ?? "", demobe_date: l.demobe_date ?? "",
+      day_shift_start: l.day_shift_start?.slice(0, 5) ?? "", night_shift_start: l.night_shift_start?.slice(0, 5) ?? "",
     });
     setRows([]); setSeeded(false);
     setOpen(true);
@@ -124,6 +128,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
       status: form.status, sort_order: form.sort_order.trim() ? Number(form.sort_order) : 0,
       housing_provided_by: form.housing_provided_by, meals_provided: form.meals_provided,
       meals_notes: form.meals_provided ? n(form.meals_notes) : null,
+      day_shift_start: n(form.day_shift_start), night_shift_start: n(form.night_shift_start),
       ...(deploymentMode ? { mobe_date: form.mobe_date || null, demobe_date: form.demobe_date || null } : {}),
     };
     let locationId: string;
@@ -258,6 +263,10 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
             {deploymentMode && <div><Label>Mobe date</Label><Input type="date" {...f("mobe_date")} /></div>}
             {deploymentMode && <div><Label>Demobe date</Label><Input type="date" {...f("demobe_date")} /></div>}
             <div><Label>Sort order</Label><Input type="number" {...f("sort_order")} /></div>
+            <div className="col-span-2 grid grid-cols-2 gap-3">
+              <div><Label htmlFor="location-day-shift">Day shift starts</Label><Input id="location-day-shift" type="time" {...f("day_shift_start")} placeholder={project?.day_shift_start?.slice(0, 5) ?? "06:00"} /><p className="text-xs text-muted-foreground mt-1">Inherit: {project?.day_shift_start?.slice(0, 5) ?? "06:00"}</p></div>
+              <div><Label htmlFor="location-night-shift">Night shift starts</Label><Input id="location-night-shift" type="time" {...f("night_shift_start")} placeholder={project?.night_shift_start?.slice(0, 5) ?? "18:00"} /><p className="text-xs text-muted-foreground mt-1">Inherit: {project?.night_shift_start?.slice(0, 5) ?? "18:00"}</p></div>
+            </div>
             <div className="col-span-2"><Label>Scope</Label><Textarea rows={4} {...f("scope")} /></div>
             <div className="col-span-2 space-y-2 border-t pt-3">
               <div className="flex items-center justify-between">

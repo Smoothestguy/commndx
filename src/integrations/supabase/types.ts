@@ -6481,6 +6481,7 @@ export type Database = {
           address: string | null
           city: string | null
           created_at: string
+          day_shift_start: string | null
           demobe_date: string | null
           housing_provided_by: string
           id: string
@@ -6488,6 +6489,7 @@ export type Database = {
           meals_provided: boolean
           mobe_date: string | null
           name: string
+          night_shift_start: string | null
           poc_email: string | null
           poc_name: string | null
           poc_phone: string | null
@@ -6504,6 +6506,7 @@ export type Database = {
           address?: string | null
           city?: string | null
           created_at?: string
+          day_shift_start?: string | null
           demobe_date?: string | null
           housing_provided_by?: string
           id?: string
@@ -6511,6 +6514,7 @@ export type Database = {
           meals_provided?: boolean
           mobe_date?: string | null
           name: string
+          night_shift_start?: string | null
           poc_email?: string | null
           poc_name?: string | null
           poc_phone?: string | null
@@ -6527,6 +6531,7 @@ export type Database = {
           address?: string | null
           city?: string | null
           created_at?: string
+          day_shift_start?: string | null
           demobe_date?: string | null
           housing_provided_by?: string
           id?: string
@@ -6534,6 +6539,7 @@ export type Database = {
           meals_provided?: boolean
           mobe_date?: string | null
           name?: string
+          night_shift_start?: string | null
           poc_email?: string | null
           poc_name?: string | null
           poc_phone?: string | null

@@ -30,6 +30,8 @@ export interface Project {
   default_shift_hours?: number;
   mileage_rate?: number | null;
   standby_rate?: number | null;
+  day_shift_start?: string | null;
+  night_shift_start?: string | null;
   created_at: string;
   updated_at: string;
 }

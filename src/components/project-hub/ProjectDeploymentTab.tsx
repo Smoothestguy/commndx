@@ -1,7 +1,7 @@
 import { RoleSelect } from "./RoleSelect";
 import { useProjectAssetBilling } from "@/integrations/supabase/hooks/useAssetAssignments";
 import { TimesheetView } from "./TimesheetView";
-import { addDays as addDaysStr, chicagoParts, classifyShift, currentWeekStart } from "@/lib/shifts";
+import { addDays as addDaysStr, currentWeekStart, timesheetSegments } from "@/lib/shifts";
 import { sourceFromNotes, type TimesheetEntry } from "@/integrations/supabase/hooks/useTimekeeping";
 import { exportPersonTimesheet } from "@/utils/timesheetExport";
 import { ProjectRosterCard } from "@/components/personnel/lifecycle/ProjectRosterCard";
@@ -1204,13 +1204,16 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
               setBusy(true);
               try {
                 const p = project as any;
-                const entries: TimesheetEntry[] = rows.map((r) => ({
-                  id: r.visit_personnel_id, personnel_id: r.personnel_id, name: trailName(r), location_id: r.location_id,
+                const entries: TimesheetEntry[] = rows.flatMap((r) => {
+                  const segments = timesheetSegments(r.in_at, r.out_at, locations.find((l) => l.id === r.location_id), p);
+                  return segments.filter((s) => s.date >= from && s.date <= to).map((s) => ({
+                  id: `${r.visit_personnel_id}:${s.date}`, personnel_id: r.personnel_id, name: trailName(r), location_id: r.location_id,
                   location_name: r.location_name ?? "—", visit_id: r.visit_id, in_at: r.in_at, out_at: r.out_at,
-                  date: chicagoParts(r.in_at).date, shift: classifyShift(r.in_at, p?.day_shift_start ?? "06:00", p?.night_shift_start ?? "18:00"),
-                  hours: r.out_at ? Math.round((Number(r.hours) || 0) * 100) / 100 : 0, open: !r.out_at,
+                  date: s.date, shift: s.shift,
+                  hours: s.hours, open: !r.out_at,
                   source: sourceFromNotes(visitNotes[r.visit_id]),
                 }));
+                });
                 await exportPersonTimesheet(personName, projectName, `${from}_${to}`, entries);
               } finally { setBusy(false); }
             }}>XLSX</Button>

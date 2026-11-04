@@ -6,19 +6,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useProject } from "@/integrations/supabase/hooks/useProjects";
 import { pivotTimesheet, useWeekTimesheet } from "@/integrations/supabase/hooks/useTimekeeping";
-import { addDays, dayLabel, monthDay, weekDays } from "@/lib/shifts";
+import { addDays, dayLabel, monthDay, weekDays, type ShiftStarts } from "@/lib/shifts";
 import { exportWeekTimesheet } from "@/utils/timesheetExport";
 import { toast } from "sonner";
 
 const fmtH = (n: number) => (Math.round(n * 100) / 100).toFixed(2).replace(/\.00$/, "");
 
 export function TimesheetView({ projectId, projectName, locations, week, setWeek, onPerson }: {
-  projectId: string; projectName: string; locations: { id: string; name: string }[];
+  projectId: string; projectName: string; locations: ({ id: string; name: string } & ShiftStarts)[];
   week: string; setWeek: (w: string) => void; onPerson: (personnelId: string, weekStart: string) => void;
 }) {
   const { data: project } = useProject(projectId);
   const p = project as any;
-  const { entries, isLoading } = useWeekTimesheet(projectId, week, p?.day_shift_start, p?.night_shift_start);
+  const locationShifts = useMemo(() => Object.fromEntries(locations.map((l) => [l.id, l])), [locations]);
+  const { entries, isLoading } = useWeekTimesheet(projectId, week, p?.day_shift_start, p?.night_shift_start, locationShifts);
   const [shift, setShift] = useState<"all" | "day" | "night">("all");
   const [locId, setLocId] = useState("");
   const [q, setQ] = useState("");
@@ -88,7 +89,7 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
                         <td key={d} className="text-right px-1 whitespace-nowrap">
                           {h > 0 && (both ? (
                             <Tooltip><TooltipTrigger asChild><span className="underline decoration-dotted">{fmtH(h)}</span></TooltipTrigger>
-                              <TooltipContent>D {fmtH(c!.day)} / N {fmtH(c!.night)}</TooltipContent></Tooltip>
+                              <TooltipContent>D {fmtH(c.day)} / N {fmtH(c.night)}</TooltipContent></Tooltip>
                           ) : fmtH(h))}
                           {c?.open ? <Timer className="inline h-3 w-3 ml-0.5 text-warning" aria-label="Open punch" /> : null}
                         </td>

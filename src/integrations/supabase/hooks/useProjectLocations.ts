@@ -22,6 +22,8 @@ export interface ProjectLocation {
   meals_notes: string | null;
   mobe_date: string | null;
   demobe_date: string | null;
+  day_shift_start: string | null;
+  night_shift_start: string | null;
   created_at: string;
   updated_at: string;
 }
