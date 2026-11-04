@@ -4,6 +4,13 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
+// These callbacks are serialized into the generated worker, not executed by Node.
+declare const self: { location: { origin: string } };
+declare const caches: {
+  keys(): Promise<string[]>;
+  open(name: string): Promise<{ match(url: string, options: { ignoreSearch: boolean }): Promise<Response | undefined> }>;
+};
+
 // Build version: v3 - Force cache invalidation
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({

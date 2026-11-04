@@ -68,6 +68,11 @@ export default function SitePunch() {
           if (current?.valid && ((intent.action === "in" && current.on_site_since && Date.parse(current.on_site_since) >= Date.parse(intent.at) - 1000) || (intent.action === "out" && !current.on_site_since))) {
             confirm(intent, intent.action); return;
           }
+          if (!current?.valid || (intent.action === "in" && current.on_site_since) || (intent.action === "out" && current.on_site_since && Date.parse(current.on_site_since) > Date.parse(intent.at))) {
+            blocked.current = true;
+            setError("Your site status changed. Call the office before retrying. / Tu estado cambió. Llama a la oficina antes de reintentar.");
+            return;
+          }
         }
         const attempt = { ...intent, tries: intent.tries + 1 };
         savePunch(attempt); setPending(attempt);
@@ -119,6 +124,7 @@ export default function SitePunch() {
     const at = new Date().toISOString(); // Tap time, before GPS wait or any network work.
     try {
       const pos = await getPos();
+      if (readPunch(token)) { setPending(readPunch(token)); return; }
       const intent: PunchIntent = { token, lat: pos?.lat ?? null, lng: pos?.lng ?? null, at, tries: 0, action: info?.on_site_since ? "out" : "in" };
       savePunch(intent); setPending(intent); // Write ahead: reloads cannot lose an in-flight punch.
       await flush();
