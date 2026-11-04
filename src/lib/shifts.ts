@@ -72,6 +72,14 @@ export function splitAtMidnight(inAt: string, outAt: string): { date: string; in
   return segments;
 }
 
+/** Keep original punch times for detail displays and one original shift for every dated segment. */
+export function timesheetSegments(inAt: string, outAt: string | null, location?: ShiftStarts, project?: ShiftStarts) {
+  const starts = resolveShiftStarts(location, project);
+  const shift = classifyShift(inAt, starts.day, starts.night);
+  const dated = outAt ? splitAtMidnight(inAt, outAt) : [{ date: chicagoParts(inAt).date, hours: 0 }];
+  return dated.map((s) => ({ date: s.date, hours: s.hours, shift, in_at: inAt, out_at: outAt, open: !outAt }));
+}
+
 /** Monday of the week containing the given Chicago date (YYYY-MM-DD). */
 export function weekStart(date: string): string {
   const [y, m, d] = date.split("-").map(Number);

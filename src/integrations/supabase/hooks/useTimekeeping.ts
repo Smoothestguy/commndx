@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { addDays, chicagoParts, chicagoMidnight, classifyShift, resolveShiftStarts, splitAtMidnight, Shift, LocationShiftMap } from "@/lib/shifts";
+import { addDays, chicagoMidnight, timesheetSegments, Shift, LocationShiftMap } from "@/lib/shifts";
 
 const db = supabase as any;
 
@@ -63,9 +63,7 @@ export function useWeekTimesheet(projectId: string | undefined, weekStartDate: s
     const end = addDays(weekStartDate, 6);
     const out: TimesheetEntry[] = [];
     for (const r of q.data.rows) {
-      const open = !r.out_at;
-      const starts = resolveShiftStarts(locationShifts[r.location_id], { day_shift_start: dayStart, night_shift_start: nightStart });
-      const segments = open ? [{ date: chicagoParts(r.in_at).date, hours: 0 }] : splitAtMidnight(r.in_at, r.out_at);
+      const segments = timesheetSegments(r.in_at, r.out_at, locationShifts[r.location_id], { day_shift_start: dayStart, night_shift_start: nightStart });
       for (const segment of segments) {
         if (segment.date < weekStartDate || segment.date > end) continue;
         out.push({
@@ -78,9 +76,9 @@ export function useWeekTimesheet(projectId: string | undefined, weekStartDate: s
         in_at: r.in_at,
         out_at: r.out_at,
         date: segment.date,
-        shift: classifyShift(r.in_at, starts.day, starts.night),
+        shift: segment.shift,
         hours: segment.hours,
-        open,
+        open: segment.open,
         source: sourceFromNotes(q.data.notes[r.visit_id]),
       });
       }

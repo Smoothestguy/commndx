@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { splitAtMidnight, resolveShiftStarts, classifyShift, chicagoMidnight } from "./shifts";
+import { splitAtMidnight, resolveShiftStarts, chicagoMidnight, timesheetSegments } from "./shifts";
 
 describe("location shifts and Chicago midnight hours", () => {
   it("location overrides win, then project values, then 06:00 / 18:00", () => {
@@ -14,9 +14,19 @@ describe("location shifts and Chicago midnight hours", () => {
   });
   it("retains the original night shift even when a later segment starts during day shift", () => {
     const inAt = "2026-11-04T20:00:00-06:00";
-    const segments = splitAtMidnight(inAt, "2026-11-06T08:00:00-06:00");
-    expect(segments.map(() => classifyShift(inAt))).toEqual(["night", "night", "night"]);
+    const segments = timesheetSegments(inAt, "2026-11-06T08:00:00-06:00");
+    expect(segments.map((s) => s.shift)).toEqual(["night", "night", "night"]);
     expect(segments.map((s) => s.hours)).toEqual([4, 24, 8]);
+  });
+  it("classifies entries using their location and keeps original in/out for detail export", () => {
+    const start = "2026-11-04T07:00:00-06:00";
+    const end = "2026-11-05T04:00:00-06:00";
+    const segments = timesheetSegments(start, end, { day_shift_start: "08:00" }, { day_shift_start: "06:00" });
+    expect(segments.map((s) => s.shift)).toEqual(["night", "night"]);
+    expect(segments.map((s) => [s.in_at, s.out_at])).toEqual([[start, end], [start, end]]);
+  });
+  it("keeps open punches marked and excluded from credited hours", () => {
+    expect(timesheetSegments("2026-11-04T20:00:00-06:00", null)[0]).toMatchObject({ date: "2026-11-04", shift: "night", open: true, hours: 0 });
   });
   it("midnight checkout does not add an empty date", () => {
     expect(splitAtMidnight("2026-11-04T20:00:00-06:00", "2026-11-05T00:00:00-06:00").map((s) => [s.date, s.hours])).toEqual([["2026-11-04", 4]]);
