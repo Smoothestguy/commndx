@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { insertStatusRows } from "./usePersonnelStatus";
-import { addDays as addCalendarDays, chicagoParts, chicagoMidnight, splitAtMidnight } from "@/lib/shifts";
+import { addDays as addCalendarDays, chicagoMidnight, splitAtMidnight } from "@/lib/shifts";
 
 const db = supabase as any;
 const BUCKET = "field-captures";
@@ -447,7 +447,8 @@ export function useTrail(projectId: string | undefined, f: { personnelId?: strin
     enabled: !!projectId,
     queryFn: async () => {
       let q = db.from("personnel_location_trail").select(TRAIL_COLS)
-        .eq("project_id", projectId).gte("in_at", dayStart(f.from)).lte("in_at", dayEnd(f.to));
+        .eq("project_id", projectId).lt("in_at", chicagoMidnight(addCalendarDays(f.to, 1)))
+        .or(`out_at.is.null,out_at.gte.${chicagoMidnight(f.from)}`);
       if (f.personnelId) q = q.eq("personnel_id", f.personnelId);
       if (f.locationId) q = q.eq("location_id", f.locationId);
       const { data, error } = await q.order("in_at", { ascending: false }).limit(2000);
