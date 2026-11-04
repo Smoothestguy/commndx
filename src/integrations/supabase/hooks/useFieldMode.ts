@@ -277,7 +277,7 @@ async function visitAttendanceDates(visitId: string): Promise<string[]> {
 async function recomputeAttendanceFromVisits(locationId: string, touchedDates: string[]) {
   const dates = [...new Set(touchedDates)].sort();
   const first = dates[0];
-  const last = dates.at(-1);
+  const last = dates[dates.length - 1];
   if (!first || !last) return;
   const start = chicagoMidnight(first);
   const end = chicagoMidnight(addCalendarDays(last, 1));
