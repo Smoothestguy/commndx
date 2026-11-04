@@ -1,6 +1,15 @@
 /** Shift classification + Monday-start week helpers, all in America/Chicago local time. */
 export const SHIFT_TZ = "America/Chicago";
 export type Shift = "day" | "night";
+export type ShiftStarts = { day_shift_start?: string | null; night_shift_start?: string | null };
+export type LocationShiftMap = Record<string, ShiftStarts>;
+
+export function resolveShiftStarts(location?: ShiftStarts, project?: ShiftStarts) {
+  return {
+    day: location?.day_shift_start ?? project?.day_shift_start ?? "06:00",
+    night: location?.night_shift_start ?? project?.night_shift_start ?? "18:00",
+  };
+}
 
 const fmt = new Intl.DateTimeFormat("en-CA", {
   timeZone: SHIFT_TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
@@ -32,6 +41,35 @@ export function addDays(date: string, n: number): string {
   const [y, m, d] = date.split("-").map(Number);
   const t = new Date(Date.UTC(y, m - 1, d + n));
   return t.toISOString().slice(0, 10);
+}
+
+/** UTC instant of a Chicago calendar midnight, including DST transitions. */
+export function chicagoMidnight(date: string): string {
+  const [y, m, d] = date.split("-").map(Number);
+  const target = Date.UTC(y, m - 1, d);
+  let instant = target;
+  for (let i = 0; i < 4; i++) {
+    const local = chicagoParts(new Date(instant));
+    const [ly, lm, ld] = local.date.split("-").map(Number);
+    const represented = Date.UTC(ly, lm - 1, ld) + local.minutes * 60_000;
+    instant += target - represented;
+  }
+  return new Date(instant).toISOString();
+}
+
+/** Exact elapsed hours credited to each Chicago calendar date; no zero-length final segment. */
+export function splitAtMidnight(inAt: string, outAt: string): { date: string; inAt: string; outAt: string; hours: number }[] {
+  let start = new Date(inAt).getTime();
+  const end = new Date(outAt).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return [];
+  const segments = [];
+  while (start < end) {
+    const date = chicagoParts(new Date(start)).date;
+    const stop = Math.min(end, new Date(chicagoMidnight(addDays(date, 1))).getTime());
+    segments.push({ date, inAt: new Date(start).toISOString(), outAt: new Date(stop).toISOString(), hours: (stop - start) / 3_600_000 });
+    start = stop;
+  }
+  return segments;
 }
 
 /** Monday of the week containing the given Chicago date (YYYY-MM-DD). */
