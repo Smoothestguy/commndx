@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { insertStatusRows } from "./usePersonnelStatus";
+import { addDays as addCalendarDays, chicagoParts, chicagoMidnight, splitAtMidnight } from "@/lib/shifts";
 
 const db = supabase as any;
 const BUCKET = "field-captures";
@@ -165,6 +166,8 @@ function useInv(projectId: string | undefined) {
     qc.invalidateQueries({ queryKey: ["today-receipts"] });
     qc.invalidateQueries({ queryKey: ["on-site-now", projectId] });
     qc.invalidateQueries({ queryKey: ["personnel-trail", projectId] });
+    qc.invalidateQueries({ queryKey: ["week-timesheet", projectId] });
+    qc.invalidateQueries({ queryKey: ["location-attendance-batch"] });
     if (locationId) {
       qc.invalidateQueries({ queryKey: ["location-attendance", locationId] });
       qc.invalidateQueries({ queryKey: ["location-attendance-batch"] });
@@ -261,31 +264,52 @@ export function useSaveSignature(projectId: string | undefined) {
 }
 
 /**
- * Recompute one day's attendance at a location from personnel_location_trail —
- * each person's real individual in/out times (their own or inherited from the visit), rounded to 0.1h.
+ * Recompute all touched Chicago dates, including stays that began on an earlier date.
+ * Round only after summing each person's segments for the date.
  */
-async function recomputeAttendanceFromVisits(locationId: string, day: string) {
+async function visitAttendanceDates(visitId: string): Promise<string[]> {
+  const { data, error } = await db.from("personnel_location_trail").select("in_at, out_at").eq("visit_id", visitId);
+  if (error) throw error;
+  return [...new Set<string>((data ?? []).flatMap((r: { in_at: string; out_at: string | null }) =>
+    splitAtMidnight(r.in_at, r.out_at ?? new Date().toISOString()).map((s) => s.date)))];
+}
+
+async function recomputeAttendanceFromVisits(locationId: string, touchedDates: string[]) {
+  const dates = [...new Set(touchedDates)].sort();
+  const first = dates[0];
+  const last = dates.at(-1);
+  if (!first || !last) return;
+  const start = chicagoMidnight(first);
+  const end = chicagoMidnight(addCalendarDays(last, 1));
   const { data, error } = await db.from("personnel_location_trail")
     .select("personnel_id, crew_id, in_at, out_at, hours")
-    .eq("location_id", locationId).gte("in_at", dayStart(day)).lte("in_at", dayEnd(day));
+    .eq("location_id", locationId).lt("in_at", end).or(`out_at.is.null,out_at.gte.${start}`);
   if (error) throw error;
-  if (!data?.length) return;
-  const hoursByPerson: Record<string, number> = {};
-  const crewByPerson: Record<string, string | null> = {};
-  for (const r of data as TrailRow[]) {
-    const h = r.hours != null ? Number(r.hours)
-      : Math.max(0, (Date.now() - new Date(r.in_at).getTime()) / 3_600_000);
-    hoursByPerson[r.personnel_id] = (hoursByPerson[r.personnel_id] ?? 0) + h;
-    crewByPerson[r.personnel_id] = r.crew_id ?? null;
+  const totals = new Map<string, { personnel_id: string; att_date: string; hours: number; crew_id: string | null }>();
+  // Existing worked totals must become zero if an edit/delete removed their last segment.
+  const { data: prior, error: priorError } = await db.from("location_attendance")
+    .select("personnel_id, att_date, crew_id").eq("location_id", locationId).in("att_date", dates).eq("status", "worked");
+  if (priorError) throw priorError;
+  for (const r of prior ?? []) totals.set(`${r.personnel_id}:${r.att_date}`, { ...r, hours: 0 });
+  const included = new Set(dates);
+  const now = new Date().toISOString();
+  for (const r of (data ?? []) as TrailRow[]) {
+    for (const s of splitAtMidnight(r.in_at, r.out_at ?? now)) {
+      if (!included.has(s.date)) continue;
+      const key = `${r.personnel_id}:${s.date}`;
+      const total = totals.get(key) ?? { personnel_id: r.personnel_id, att_date: s.date, hours: 0, crew_id: r.crew_id ?? null };
+      total.hours += s.hours;
+      total.crew_id = r.crew_id ?? null;
+      totals.set(key, total);
+    }
   }
+  if (!totals.size) return;
   const { data: { user } } = await supabase.auth.getUser();
-  const rows = Object.entries(hoursByPerson).map(([pid, h]) => ({
+  const rows = [...totals.values()].map((r) => ({
+    ...r,
     location_id: locationId,
-    personnel_id: pid,
-    att_date: day,
     status: "worked",
-    hours: Math.round(h * 10) / 10,
-    crew_id: crewByPerson[pid],
+    hours: Math.round(r.hours * 10) / 10,
     marked_by: user?.id ?? null,
   }));
   const { error: uErr } = await db.from("location_attendance").upsert(rows, { onConflict: "location_id,personnel_id,att_date" });
@@ -303,7 +327,7 @@ export function useCheckOut(projectId: string | undefined) {
         .eq("id", visit.id);
       if (error) throw error;
       // Attendance grid fills itself from real times.
-      await recomputeAttendanceFromVisits(visit.location_id, format(new Date(visit.check_in_at), "yyyy-MM-dd"));
+      await recomputeAttendanceFromVisits(visit.location_id, await visitAttendanceDates(visit.id));
       return visit.location_id;
     },
     onSuccess: (locationId) => { inv(locationId); toast.success("Checked out"); },
@@ -354,9 +378,10 @@ export function useUpdateVisit(projectId: string | undefined) {
     mutationFn: async ({ id, check_in_at, check_out_at, location_id }: {
       id: string; check_in_at: string; check_out_at: string | null; location_id: string;
     }) => {
+      const oldDates = await visitAttendanceDates(id);
       const { error } = await db.from("location_visits").update({ check_in_at, check_out_at }).eq("id", id);
       if (error) throw error;
-      await recomputeAttendanceFromVisits(location_id, format(new Date(check_in_at), "yyyy-MM-dd"));
+      await recomputeAttendanceFromVisits(location_id, [...oldDates, ...await visitAttendanceDates(id)]);
       return location_id;
     },
     onSuccess: (lid) => { inv(lid); toast.success("Visit updated"); },
@@ -368,9 +393,10 @@ export function useDeleteVisit(projectId: string | undefined) {
   const inv = useInv(projectId);
   return useMutation({
     mutationFn: async ({ id, location_id }: { id: string; location_id: string }) => {
+      const oldDates = await visitAttendanceDates(id);
       const { error } = await db.from("location_visits").delete().eq("id", id);
       if (error) throw error;
-      await recomputeAttendanceFromVisits(location_id, todayYmd());
+      await recomputeAttendanceFromVisits(location_id, oldDates);
       return location_id;
     },
     onSuccess: (lid) => { inv(lid); toast.success("Visit deleted"); },
@@ -465,7 +491,7 @@ export function useLogManualTime(projectId: string | undefined) {
         visit_id: v.id, personnel_id: i.personnel_id, checked_in_at: i.in_at, checked_out_at: i.out_at, checked_in_by: user?.id ?? null,
       });
       if (pErr) throw pErr;
-      await recomputeAttendanceFromVisits(i.location_id, i.day);
+      await recomputeAttendanceFromVisits(i.location_id, splitAtMidnight(i.in_at, i.out_at).map((s) => s.date));
     },
     onSuccess: () => {
       inv();
@@ -486,7 +512,7 @@ export function useCheckOutPerson(projectId: string | undefined) {
         .update({ checked_out_at: new Date().toISOString() })
         .eq("visit_id", visit.id).eq("personnel_id", personnel_id);
       if (error) throw error;
-      await recomputeAttendanceFromVisits(visit.location_id, format(new Date(visit.check_in_at), "yyyy-MM-dd"));
+      await recomputeAttendanceFromVisits(visit.location_id, await visitAttendanceDates(visit.id));
       return visit.location_id;
     },
     onSuccess: (lid) => { inv(lid); toast.success("Checked out"); },
