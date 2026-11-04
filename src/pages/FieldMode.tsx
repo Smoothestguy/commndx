@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { useProject } from "@/integrations/supabase/hooks/useProjects";
 import { useProjectLocations, ProjectLocation } from "@/integrations/supabase/hooks/useProjectLocations";
 import { useCrews, usePersonnelDirectory, fullName, Crew } from "@/integrations/supabase/hooks/useCrews";
@@ -158,6 +159,7 @@ function CheckInSheet({ location, crew, projectId, locationIds, onClose }: {
   }, [directory, search, selected]);
 
   const doCheckIn = async () => {
+    if (!navigator.onLine) { toast.error("No signal — try again in coverage"); return; }
     const { lat, lng } = await getCoords(); // never blocks
     checkIn.mutate(
       { location_id: location.id, crew_id: crew?.id ?? null, memberIds: [...selected], lat, lng },
@@ -330,6 +332,7 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, peopl
   const defaultEnd = new Date(new Date(visit.check_in_at).getTime() + defaultShiftHours * 3_600_000);
 
   const doCheckOut = async (endedAt?: string) => {
+    if (!navigator.onLine) { toast.error("No signal — try again in coverage"); return; }
     const { lat, lng } = await getCoords();
     checkOut.mutate({ visit, lat, lng, endedAt }, { onSuccess: onClose });
   };

@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { PDF_COLORS, PDF_MARGIN, setColor } from "./pdfHelpers";
 import type { VisitRow, VisitPerson } from "@/integrations/supabase/hooks/useFieldMode";
 import { fullName } from "@/integrations/supabase/hooks/useCrews";
+import { geoCoordinates } from "@/lib/geoTag";
 
 export interface SignInSheetSite {
   id: string;
@@ -94,6 +95,11 @@ export async function generateSignInSheetPDF(data: SignInSheetData) {
     const addr = [site.address, site.city, site.state].filter(Boolean).join(", ");
     if (addr) doc.text(addr, margin + 60, y);
     y += 6;
+
+    const geoLines = [...new Set(siteVisits.flatMap((v) => [geoCoordinates(v.check_in_lat, v.check_in_lng), geoCoordinates(v.check_out_lat, v.check_out_lng)].filter((g): g is string => !!g)))];
+    for (const geo of geoLines) {
+      checkPage(6); doc.setFontSize(9); doc.text(`Geo: ${geo}`, margin + 5, y); y += 5;
+    }
 
     for (const v of siteVisits) {
       checkPage(8);

@@ -1,4 +1,6 @@
 import { RoleSelect } from "./RoleSelect";
+import { GeoTag } from "./GeoTag";
+import { geoCoordinates } from "@/lib/geoTag";
 import { useProjectAssetBilling } from "@/integrations/supabase/hooks/useAssetAssignments";
 import { TimesheetView } from "./TimesheetView";
 import { addDays as addDaysStr, currentWeekStart, timesheetSegments } from "@/lib/shifts";
@@ -971,15 +973,14 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
             const isOpen = expanded === v.id;
             return (
               <div key={v.id} className="border rounded-md">
-                <button
-                  type="button"
+                <div
                   className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/50"
-                  onClick={() => setExpanded(isOpen ? null : v.id)}
                 >
-                  <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", !isOpen && "-rotate-90")} />
+                  <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label={`${isOpen ? "Collapse" : "Expand"} visit at ${locName[v.location_id] ?? "Site"}`} onClick={() => setExpanded(isOpen ? null : v.id)}><ChevronDown className={cn("h-4 w-4 transition-transform", !isOpen && "-rotate-90")} /></Button>
                   <div className="flex-1 min-w-0">
-                    <span className="font-medium text-sm">{locName[v.location_id] ?? "Site"}</span>
+                    <Button variant="link" className="h-auto p-0 font-medium text-sm text-foreground whitespace-normal text-left" onClick={() => setExpanded(isOpen ? null : v.id)}>{locName[v.location_id] ?? "Site"}</Button>
                     {/self check-in/i.test((v as any).notes ?? "") && <Phone className="inline h-3 w-3 ml-1 text-muted-foreground" aria-label="Self check-in via text" />}
+                    <GeoTag lat={v.check_in_lat} lng={v.check_in_lng} />
                     {v.crew_id && <Badge variant="outline" className="ml-2 text-[10px]">{crewName[v.crew_id] ?? "Crew"}</Badge>}
                     <span className="block text-[11px] text-muted-foreground">
                       {formatLocalDate(v.check_in_at, "M/d")} · {format(new Date(v.check_in_at), "HH:mm")} – {v.check_out_at ? format(new Date(v.check_out_at), "HH:mm") : "on site"}
@@ -999,9 +1000,11 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
                       </Button>
                     </span>
                   )}
-                </button>
+                </div>
                 {isOpen && (
                   <div className="border-t px-3 py-2 space-y-2 text-sm">
+                    {geoCoordinates(v.check_in_lat, v.check_in_lng) && <p className="text-xs flex items-center gap-1"><GeoTag lat={v.check_in_lat} lng={v.check_in_lng} />Check-in · {geoCoordinates(v.check_in_lat, v.check_in_lng)}</p>}
+                    {geoCoordinates(v.check_out_lat, v.check_out_lng) && <p className="text-xs flex items-center gap-1"><GeoTag lat={v.check_out_lat} lng={v.check_out_lng} label="Geo-tagged check-out" />Check-out · {geoCoordinates(v.check_out_lat, v.check_out_lng)}</p>}
                     <div>
                       <p className="text-[10px] uppercase text-muted-foreground mb-1">People</p>
                       <div className="flex flex-wrap gap-2">
