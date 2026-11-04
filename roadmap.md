@@ -11,7 +11,7 @@
 - [x] Verify authenticated location dialogs/timesheet/XLSX and requested TypeScript check; no migrations. Live attendance writes not exercised.
 
 # Offline punching and geo tags
-- [ ] Regenerate live types and update punch calls with original timestamp.
-- [ ] Add route-scoped offline shell, durable punch queue, retry guards, and bilingual saved state.
-- [ ] Add Field Mode offline warnings and Visits/PDF/confirmation GPS tags.
-- [ ] Test queue behavior and UI, check TypeScript; no migrations.
+- [x] Regenerate live types and update punch calls with original timestamp.
+- [x] Add route-scoped offline shell, durable punch queue, retry guards, and bilingual saved state.
+- [x] Add Field Mode offline warnings and Visits/PDF/confirmation GPS tags.
+- [x] Test queue/reconnect/reload using intercepted RPCs, generated worker offline reload, authenticated GPS links/PDF display, and TypeScript; no migrations. Real punch writes and published deployment not exercised.

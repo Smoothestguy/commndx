@@ -981,6 +981,7 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
                     <Button variant="link" className="h-auto p-0 font-medium text-sm text-foreground whitespace-normal text-left" onClick={() => setExpanded(isOpen ? null : v.id)}>{locName[v.location_id] ?? "Site"}</Button>
                     {/self check-in/i.test((v as any).notes ?? "") && <Phone className="inline h-3 w-3 ml-1 text-muted-foreground" aria-label="Self check-in via text" />}
                     <GeoTag lat={v.check_in_lat} lng={v.check_in_lng} />
+                    {!geoCoordinates(v.check_in_lat, v.check_in_lng) && <GeoTag lat={v.check_out_lat} lng={v.check_out_lng} label="Geo-tagged check-out" />}
                     {v.crew_id && <Badge variant="outline" className="ml-2 text-[10px]">{crewName[v.crew_id] ?? "Crew"}</Badge>}
                     <span className="block text-[11px] text-muted-foreground">
                       {formatLocalDate(v.check_in_at, "M/d")} · {format(new Date(v.check_in_at), "HH:mm")} – {v.check_out_at ? format(new Date(v.check_out_at), "HH:mm") : "on site"}
