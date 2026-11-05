@@ -20,6 +20,9 @@ export interface TimeEntry {
   description?: string | null;
   billable: boolean;
   status?: string;
+  entry_source?: string | null;
+  visit_personnel_id?: string | null;
+  location_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -509,6 +512,7 @@ export const useAllTimeEntries = (
 ) => {
   return useQuery({
     queryKey: ["all-time-entries", projectFilter, personnelFilter],
+    refetchInterval: 60000,
     queryFn: async () => {
       let query = supabase
         .from("time_entries")
@@ -532,10 +536,8 @@ export const useAllTimeEntries = (
         query = query.eq("user_id", personnelFilter);
       }
 
-      const { data, error } = await query;
-
-      if (error) throw error;
-      return data as TimeEntryWithDetails[];
+      const rows:TimeEntryWithDetails[]=[];
+      for(let offset=0;;offset+=500){const {data,error}=await query.range(offset,offset+499);if(error)throw error;rows.push(...(data as TimeEntryWithDetails[]??[]));if((data?.length??0)<500)return rows;}
     },
     enabled: options?.enabled ?? true,
     staleTime: 0, // Always fetch fresh data to ensure rate changes reflect immediately
