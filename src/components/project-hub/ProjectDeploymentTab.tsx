@@ -686,7 +686,7 @@ function MileageCard({ crews, from, to, mileageRate, canEdit }: {
         )}
         <div className="text-xs text-muted-foreground">
           Window total: <span className="font-medium text-foreground">{totalMiles.toLocaleString()} mi</span>
-          {billable != null && <> · ≈ <span className="font-medium text-foreground">${billable.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span> billable</>}
+          {canEdit && billable != null && <> · ≈ <span className="font-medium text-foreground">${billable.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span> billable</>}
         </div>
       </CardContent>
 
@@ -765,8 +765,8 @@ function useRoleLabels(locationIds: string[], crews: Crew[]) {
   });
 }
 
-function SummaryStrip({ locations, crews, from, to, mileageRate }: {
-  locations: ProjectLocation[]; crews: Crew[]; from: string; to: string; mileageRate: number | null;
+function SummaryStrip({ locations, crews, from, to, mileageRate, canEdit }: {
+  locations: ProjectLocation[]; crews: Crew[]; from: string; to: string; mileageRate: number | null; canEdit: boolean;
 }) {
   const locIds = locations.map((l) => l.id);
   const { data: att = [] } = useLocationAttendanceBatch(locIds, from, to);
@@ -806,12 +806,12 @@ function SummaryStrip({ locations, crews, from, to, mileageRate }: {
         <Item label="Person-days" value={String(s.personDays)} />
         <Item label="Hours" value={s.hours.toLocaleString()} />
         <Item label="Miles" value={s.totalMiles.toLocaleString()} />
-        <Item label="Receipts today" value={`$${receiptsToday.toLocaleString(undefined, { maximumFractionDigits: 2 })}`} />
-        <Item label="Est. billable" value={`$${s.billable.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
-        {equipment.billable.length > 0 && <Item label="Equipment" value={`$${equipment.equipmentTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}${equipment.missingRate ? "*" : ""}`} />}
+        {canEdit && <Item label="Receipts today" value={`$${receiptsToday.toLocaleString(undefined, { maximumFractionDigits: 2 })}`} />}
+        {canEdit && <Item label="Est. billable" value={`$${s.billable.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />}
+        {canEdit && equipment.billable.length > 0 && <Item label="Equipment" value={`$${equipment.equipmentTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}${equipment.missingRate ? "*" : ""}`} />}
       </div>
-      {equipment.missingRate > 0 && <p className="text-[11px] text-warning">* {equipment.missingRate} billable asset{equipment.missingRate === 1 ? "" : "s"} with no day rate.</p>}
-      {s.missingRate > 0 && (
+      {canEdit && equipment.missingRate > 0 && <p className="text-[11px] text-warning">* {equipment.missingRate} billable asset{equipment.missingRate === 1 ? "" : "s"} with no day rate.</p>}
+      {canEdit && s.missingRate > 0 && (
         <p className="text-[11px] text-warning">{s.missingRate} row{s.missingRate === 1 ? "" : "s"} missing a bill rate — hours counted but not billed.</p>
       )}
     </div>
@@ -986,7 +986,7 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
                     <span className="block text-[11px] text-muted-foreground">
                       {formatLocalDate(v.check_in_at, "M/d")} · {format(new Date(v.check_in_at), "HH:mm")} – {v.check_out_at ? format(new Date(v.check_out_at), "HH:mm") : "on site"}
                       {hrs != null && ` · ${hrs}h`} · {vPeople.length} {vPeople.length === 1 ? "person" : "people"}
-                      {vPurch.length > 0 && ` · ${vPurch.length} receipt${vPurch.length === 1 ? "" : "s"} $${purchTotal.toLocaleString()}`}
+                      {vPurch.length > 0 && ` · ${vPurch.length} receipt${vPurch.length === 1 ? "" : "s"}${canEdit ? ` $${purchTotal.toLocaleString()}` : ""}`}
                       {vPhotos.length > 0 && ` · ${vPhotos.length} photo${vPhotos.length === 1 ? "" : "s"}`}
                     </span>
                   </div>
@@ -1041,12 +1041,12 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
                         <div className="space-y-1">
                           {vPurch.map((p) => (
                             <div key={p.id} className="flex items-center gap-2 text-xs">
-                              {p.receipt_url && (
+                              {canEdit && p.receipt_url && (
                                 <a href={p.receipt_url} target="_blank" rel="noopener noreferrer">
                                   <img src={p.receipt_url} alt="Receipt" className="h-8 w-8 object-cover rounded border" loading="lazy" />
                                 </a>
                               )}
-                              <span className="font-medium">${Number(p.amount ?? 0).toLocaleString()}</span>
+                              {canEdit && <span className="font-medium">${Number(p.amount ?? 0).toLocaleString()}</span>}
                               <span className="text-muted-foreground">{p.vendor ?? ""}{p.note ? ` — ${p.note}` : ""}</span>
                             </div>
                           ))}
@@ -1298,7 +1298,7 @@ export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <SummaryStrip locations={locations} crews={crews} from={r.from} to={r.to} mileageRate={mileageRate} />
+        <SummaryStrip locations={locations} crews={crews} from={r.from} to={r.to} mileageRate={mileageRate} canEdit={canEdit} />
         <div className="flex items-center gap-2">
           <Button size="sm" className="gap-1" asChild>
             <Link to={`/field/${projectId}`}><Smartphone className="h-4 w-4" />Field Mode</Link>
