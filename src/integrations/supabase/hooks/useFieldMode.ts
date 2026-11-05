@@ -354,6 +354,7 @@ export function useCheckOut(projectId: string | undefined) {
       visit: VisitRow; lat: number | null; lng: number | null; endedAt?: string;
     }) => {
       if (!navigator.onLine) throw new Error("No signal — try again in coverage");
+      await guardVisitDates(visit.location_id, visit.check_in_at, endedAt ?? new Date().toISOString());
       const { error } = await db.from("location_visits")
         .update({ check_out_at: endedAt ?? new Date().toISOString(), check_out_lat: lat, check_out_lng: lng })
         .eq("id", visit.id);

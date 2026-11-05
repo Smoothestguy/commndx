@@ -12,9 +12,12 @@ Deno.serve(async req=>{
   const {data:token,error:te}=await db.from('kiosk_tokens').select('location_id,expires_at').eq('id',v.token).maybeSingle();if(te)throw te;if(!token||Date.parse(token.expires_at)<=Date.now())return json({error:'Kiosk link expired',valid:false},403);
   const {data:info,error:ie}=await db.rpc('get_kiosk_info',{p_kiosk:v.token});if(ie)throw ie;
   const {data:loc,error:le}=await db.from('project_locations').select('timezone').eq('id',token.location_id).single();if(le)throw le;
+  const zone=loc.timezone||'America/Chicago';const localDate=(at:string)=>new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(at));
+  const {data:openStays,error:openError}=await db.from('personnel_location_trail').select('personnel_id,in_at').eq('location_id',token.location_id).is('out_at',null);if(openError)throw openError;
+  const sameDay=openStays?.filter(s=>localDate(s.in_at)===localDate(new Date().toISOString()))||[];
+  info.roster=(info.roster||[]).map((p:{personnel_id:string})=>({...p,on_site:sameDay.some(s=>s.personnel_id===p.personnel_id)}));
   if(v.action==='info'){
-   const {data:stays,error:se}=await db.from('personnel_location_trail').select('personnel_id,in_at').eq('location_id',token.location_id).is('out_at',null);if(se)throw se;
-   return json({...info,timezone:loc.timezone||'America/Chicago',roster:(info.roster||[]).map((p:{personnel_id:string})=>({...p,since:stays?.find(s=>s.personnel_id===p.personnel_id)?.in_at||null}))});
+   return json({...info,timezone:zone,roster:info.roster.map((p:{personnel_id:string})=>({...p,since:sameDay.find(s=>s.personnel_id===p.personnel_id)?.in_at||null}))});
   }
   if(!v.personnel_id||!info.roster?.some((p:{personnel_id:string})=>p.personnel_id===v.personnel_id))return json({error:'Person is not on this roster'},403);
   const now=new Date().toISOString();

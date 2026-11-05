@@ -557,6 +557,10 @@ export const useBulkAddTimeEntries = () => {
     mutationFn: async (entries: TimeEntryInsert[]) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
+      for (const entry of entries) {
+        const { data, error } = await supabase.from('time_entries').select('id').eq('project_id', entry.project_id).eq('user_id', user.id).eq('entry_date', entry.entry_date);
+        if (error) throw error; await guardTimeEntries((data || []).map(r => r.id));
+      }
 
       // Filter out entries with 0 or no hours - overtime calculated at weekly aggregation
       const validEntries = entries
@@ -615,6 +619,10 @@ export const useBulkAddPersonnelTimeEntries = () => {
     mutationFn: async (entries: PersonnelTimeEntryInsert[]) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
+      for (const entry of entries) {
+        const { data, error } = await supabase.from('time_entries').select('id').eq('project_id', entry.project_id).eq('personnel_id', entry.personnel_id).eq('entry_date', entry.entry_date);
+        if (error) throw error; await guardTimeEntries((data || []).map(r => r.id));
+      }
 
       // Filter out entries with 0 or no hours - overtime calculated at weekly aggregation
       const validEntries = entries
