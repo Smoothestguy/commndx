@@ -1,5 +1,10 @@
 # Applicant locations
 
+# Signature field placement and stamping
+- [ ] Regenerate live types; add manager PDF field placement and saved normalized fields without migrations.
+- [ ] Stamp original pages per signer, retain certificates, add multi-signer ZIP and token-page placement note.
+- [ ] Test geometry and certificate-only compatibility; verify signed-in placement/download and rendered stamp alignment; run requested TypeScript check.
+
 # Document upload regression
 - [x] Replace automatic upload with explicit file selection and submission; isolate busy state and make phone dialog scrollable.
 - [x] Verify live PDF/image storage, metadata inserts and list refresh, private file readback, denied anonymous reads, failure/reopen behavior, 390px/short-height scrolling, six rule tests and `bunx tsgo --noEmit`; fixtures removed. Admin session verified; no manager account exists, so manager end-to-end and actual iPhone Safari remain unverified. Minimal document policy hardening applied for discovered anonymous access; upload INSERT policy unchanged.
