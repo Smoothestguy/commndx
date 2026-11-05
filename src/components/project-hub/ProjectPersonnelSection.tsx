@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePersonnelWithAssets } from "@/integrations/supabase/hooks/usePersonnelWithAssets";
-import { UNASSIGNMENT_REASONS } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
+import { UNASSIGNMENT_REASONS, useAssignmentCountsByProject } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
 import { PersonnelAssignmentDialog } from "@/components/time-tracking/PersonnelAssignmentDialog";
 import { BulkSMSDialog } from "@/components/messaging/BulkSMSDialog";
 import { UnassignPersonnelDialog } from "@/components/project-hub/UnassignPersonnelDialog";
@@ -80,6 +80,7 @@ interface ProjectPersonnelSectionProps {
 }
 
 export function ProjectPersonnelSection({ projectId, projectName = "this project" }: ProjectPersonnelSectionProps) {
+  const {data:assignmentCounts}=useAssignmentCountsByProject([projectId]);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
@@ -345,7 +346,7 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
   const unassignedPersonnel = sortedPersonnel.filter(p => p.status !== "active");
   
   // For counts, use full data
-  const totalActivePersonnel = personnelData.filter(p => p.status === "active").length;
+  const totalActivePersonnel = assignmentCounts?.[projectId] ?? 0;
 
   const allActiveSelected = activePersonnel.length > 0 && 
     activePersonnel.every(p => selectedIds.has(p.assignmentId));

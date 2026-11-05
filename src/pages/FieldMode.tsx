@@ -51,10 +51,8 @@ function CheckInSheet({ location, crew, projectId, locationIds, onClose }: {
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [sigQueue, setSigQueue] = useState<string[]>([]);
-  const [sigVisitId, setSigVisitId] = useState<string | null>(null);
   const { data: directory = [] } = usePersonnelDirectory(showSearch);
   const checkIn = useCheckIn(projectId, locationIds);
-  const saveSig = useSaveSignature(projectId);
   const {data:allCrews=[]}=useCrews(projectId);
   const [drawn,setDrawn]=useState<Record<string,Blob>>({});
   const [preparing,setPreparing]=useState(false);
@@ -86,25 +84,20 @@ function CheckInSheet({ location, crew, projectId, locationIds, onClose }: {
     setPreparing(true);try{const signed=await fetchTodaySignatures(locationIds,[...selected],location.id);const missing=[...selected].filter(id=>!signed[id]);if(missing.length)setSigQueue(missing);else await finishCheckIn({});}catch(e){toast.error(e instanceof Error?e.message:'Check-in unavailable');}finally{setPreparing(false);}
   };
 
-  // When the signature queue empties after a check-in, close the sheet (effect, not render).
-  useEffect(() => {
-    if (sigVisitId && sigQueue.length === 0) onClose();
-  }, [sigVisitId, sigQueue, onClose]);
 
   if(crewPrompt)return <SaveCrewPrompt projectId={projectId} ids={[...selected]} visitId={crewPrompt} onDone={onClose}/>;
   if (sigQueue.length) {
     const pid = sigQueue[0];
     return (
       <SignaturePad
-        name={nameOf(pid)}
+        key={pid} name={nameOf(pid)}
         required
         saving={checkIn.isPending}
-        onSkip={() => setSigQueue((q) => q.slice(1))}
+        onSkip={()=>{}}
         onSave={blob=>{const next={...drawn,[pid]:blob};setDrawn(next);if(sigQueue.length>1)setSigQueue(q=>q.slice(1));else void finishCheckIn(next);}}
       />
     );
   }
-  if (sigVisitId) return null;
 
   return (
     <div className="flex flex-col h-full">
@@ -598,9 +591,9 @@ export default function FieldMode() {
               <ActiveVisitSheet
                 visit={sheet.visit}
                 location={sheet.location}
-                projectId={projectId!}
+                projectId={projectId || ''}
                 defaultShiftHours={defaultShiftHours}
-                people={(bundle?.people ?? []).filter((p) => p.visit_id === sheet.visit!.id)}
+                people={(bundle?.people ?? []).filter((p) => p.visit_id === sheet.visit?.id)}
                 locationIds={locationIds}
                 onClose={() => setSheet(null)}
               />
@@ -608,7 +601,7 @@ export default function FieldMode() {
               <CheckInSheet
                 location={sheet.location}
                 crew={crew}
-                projectId={projectId!}
+                projectId={projectId || ''}
                 locationIds={locationIds}
                 onClose={() => setSheet(null)}
               />
