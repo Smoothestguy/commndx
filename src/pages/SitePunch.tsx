@@ -86,6 +86,12 @@ export default function SitePunch() {
             return;
           }
         }
+        if(intent.action==='in'&&!intent.signatureBase64){
+          const {data:preflight,error:preflightError}=await supabase.functions.invoke('punch-signature',{body:{action:'prepare',token:intent.token,at:intent.at,lat:intent.lat,lng:intent.lng,override_reason:intent.overrideReason}});
+          if(preflightError){setError('Could not verify the saved signature. Keep this page open to retry.');return;}
+          if(!preflight?.ok){blocked.current=true;setRejection(preflight);return;}
+          if(!preflight.has_signature){setSigning(intent);return;}
+        }
         const attempt = { ...intent, tries: intent.tries + 1 };
         savePunch(attempt); setPending(attempt);
         const { data, error } = await supabase.rpc("site_punch", {
