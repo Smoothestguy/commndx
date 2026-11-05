@@ -1,8 +1,8 @@
 # Kiosk privacy, badges and agency sign-up
-- [ ] Add search-default, roster/selfie and badge kiosk modes with URL-selected mode, private token-scoped media and existing punch safeguards.
-- [ ] Add manager badge issuance/revocation, individual/bulk PDFs and authenticated Field Mode scanning.
-- [ ] Add vendor hiring links, server-validated agency attribution, applicant tags and personnel conversion carry-forward.
-- [ ] Verify central flows, focused rules, phone/tablet views and requested TypeScript check; no migrations or cron activation.
+- [x] Search-default, explicit roster/selfie and badge modes with URL mode, bounded live search, selected short-lived profile photos, private token-scoped media, server-enforced selfie prerequisite and shift/geofence safeguards. Private project-documents stores evidence because field-captures is public.
+- [x] Manager badge issue/replacement/revoke, individual and selected/all roster PDFs and Field Mode scanner through authenticated signature-aware punch flow. Live individual issue/PDF (3.5×2.25 in), kiosk badge and Field Mode same-day copy-forward verified. Bulk PDF and physical-camera QR capture not exercised.
+- [x] Vendor detail hiring links, server-owned agency submit/QuickApply, cached applicant chips and conversion carry-forward without overwriting agency with personal QB vendor. Existing applicant attribution retained; contact-only existing applicants are not retagged. No general application page exists. Live new agency submission/readback and carry-forward fixture verified; full public form→approval UI and QuickApply invite path not exercised.
+- [x] Live search→selfie/signature→punch→private evidence readback and induced media failure→retry with one punch/two media attempts passed. Phone roster/search and desktop success inspected; TypeScript and 34 focused tests passed. No migrations, cron changes, SMS or onboarding messages. Test records archived, test kiosks expired/badges revoked, historical evidence retained. Actual iPhone Safari and physical cameras remain unverified.
 
 # Shift discipline
 - [x] Update public, kiosk and Field Mode early-arrival reason flows; durable intents retain server effective timestamps. Public extension requests show current token-scoped status and fifteen-minute choices capped at six hours.
