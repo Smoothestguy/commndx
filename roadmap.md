@@ -1,10 +1,11 @@
 # Applicant locations
 
 # Phase 3 sign-in sheets
-- [ ] Manager reconciliation, reasoned acknowledgments/manual edits, blocked week close and all-source locks.
-- [ ] Deduplicated roster SMS alerts, supervisor no-show banner and late-sync trail chips.
-- [ ] Yesterday's locked PDF email delivery, optional Drive copy, Chicago daily schedule and POC email.
-- [ ] Browser verification, focused rule tests and requested TypeScript check; no schema migrations.
+- [x] Manager reconciliation, reasoned acknowledgments/manual edits, blocked week close and all-source locks; live isolated project verified and archived, time entries retained. Atomic cross-write closure is unavailable in the live schema.
+- [x] Deduplicated roster SMS function, supervisor no-show banner and late-sync trail chips; opt-outs preserved, service dry-run and anonymous rejection verified. No real messages sent.
+- [x] Yesterday's locked private PDF email function, optional Drive implementation and validated POC email; service dry-run verified. Actual delivery not exercised because no eligible locked sheets; Drive needs GOOGLE_SERVICE_ACCOUNT_JSON and a writable service-account destination.
+- [ ] Activate ten-minute roster and 07:00 Chicago delivery schedules: jobs registered but paused because existing cron credentials are anonymous and the secure sandbox connection cannot write cron. Requires private scheduler credential provisioning outside available no-migration access.
+- [x] Live browser blocked-close → edit → acknowledge → close/readback, phone-width display, 30 tests and bunx tsgo --noEmit passed; no schema migrations. Separate manager/iPhone Safari unverified. Existing checkout blocker remains below.
 
 # Phase 2 customer sign-in sheets
 - [x] Customer countersign with nonblocking recorded GPS, immutable private PDF/hash, historical downloads and reason-required reopening across attendance/time mutations; live version 1 → reopen → version 2 and locked attendance edit verified. Dedicated approval page avoids covering arbitrary template rows.
