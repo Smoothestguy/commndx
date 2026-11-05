@@ -1,11 +1,11 @@
 # Applicant locations
 
 # Phase 1 location customer sign-in sheets
-- [ ] Live types; location coordinates, timezone and geocoding with manager-only authorization; no migrations.
-- [ ] Binding/scope/resizable row-band editor, template upload/location links and reusable template copy.
-- [ ] New punch RPC arguments, geofence rejection/override UX and durable offline retries.
-- [ ] Location/day PDF and ZIP generation with local times, overflow and staff-only off-site badges; convert existing blank template without altering signatures.
-- [ ] Rule tests, browser verification and requested TypeScript check.
+- [x] Live types; location coordinates, timezone and geocoding with manager-only authorization; no migrations. Numeric-coordinate fallback used instead of a map preview; live address lookup and coordinate save/readback verified.
+- [x] Binding/scope/resizable row-band editor, template upload/location links and reusable template copy. Live upload, tablet resize/save and shared-file copy verified.
+- [x] New punch RPC arguments, geofence rejection/override UX and durable offline retries. Phone UI tested with intercepted responses for out-of-range/no-GPS/already-signed/local times/offline original-time replay; live punch writes and actual iPhone Safari not exercised.
+- [x] Location/day PDF and ZIP generation with local times, overflow and staff-only off-site badges; existing blank template converted without altering signatures. Populated real-stay PDF and day ZIP downloaded and PDF text/placement inspected; sheet entrypoints available in Docs and Deployment.
+- [x] Eighteen focused rule tests and requested `bunx tsgo --noEmit` passed; preview build OK; temporary documents/shared file/location removed. Signed-in admin tested; no separate manager account available. Legacy Mapbox token endpoint now refuses secret tokens; credential rotation remains an owner action if it previously exposed a secret token.
 
 # Signature field placement and stamping
 - [x] Regenerate live types; add manager PDF field placement and saved normalized fields without migrations.
