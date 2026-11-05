@@ -1,5 +1,8 @@
 import { useProjectAgencies } from "@/hooks/useProjectAgencies";
 import { AgencyChip } from "@/components/personnel/AgencyChip";
+import { PersonnelBadgeActions } from '@/components/personnel/PersonnelBadgeActions';
+import { printBadges } from '@/lib/personnelBadges';
+import { toast } from 'sonner';
 import { useProjectAssetBilling } from "@/integrations/supabase/hooks/useAssetAssignments";
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
@@ -28,6 +31,8 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
   const { data: expenses = [] } = useProjectPersonnelExpenses(projectId);
   const equipment = useProjectAssetBilling(projectId);
   const [sel, setSel] = useState<string[]>([]);
+  const [badgeSelection, setBadgeSelection] = useState<string[]>([]);
+  const [printing, setPrinting] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
   const [expFor, setExpFor] = useState<string | null>(null);
   const [textFor, setTextFor] = useState<string | null>(null);
@@ -51,6 +56,7 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
 
   const Row = ({ r }: { r: RosterRow }) => (
     <div className="flex items-center gap-1 sm:gap-2 py-2 border-b last:border-0">
+      {showCosts && <Checkbox aria-label={`Select badge for ${nm(r)}`} checked={badgeSelection.includes(r.personnel_id)} onCheckedChange={checked => setBadgeSelection(ids => checked ? [...ids, r.personnel_id] : ids.filter(id => id !== r.personnel_id))} />}
       {showCosts && r.status === "standby" && <Checkbox checked={sel.includes(r.personnel_id)} onCheckedChange={() => toggle(r.personnel_id)} aria-label="Select" />}
       <div className="min-w-0 flex-1">
         <div className="font-medium text-sm truncate">{nm(r)} <AgencyChip name={agencyName(r.personnel_id)} /></div>

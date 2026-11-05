@@ -1,4 +1,5 @@
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
+import { PersonnelBadgeActions } from '@/components/personnel/PersonnelBadgeActions';
 import { useUserRole } from "@/hooks/useUserRole";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
@@ -362,6 +363,7 @@ const PersonnelDetail = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
+                  <PersonnelBadgeActions personnelId={personnel.id} />
                   {getStatusBadge()}
                   {getEVerifyBadge()}
                   {personnel.onboarding_status === "pending" && (
