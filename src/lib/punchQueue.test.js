@@ -6,7 +6,7 @@ const items = new Map();
 globalThis.localStorage = { getItem: (k) => items.get(k) ?? null, setItem: (k, v) => items.set(k, v), removeItem: (k) => items.delete(k) };
 describe("durable site punch", () => {
   it("retains original timestamp and GPS across readback and clears only the matching token", () => {
-    const intent = { token: "one", lat: 28.5383, lng: -81.3792, accuracy: 12, overrideReason: 'Working beside the entrance', at: "2026-11-04T21:47:00-06:00", tries: 0, action: "in" };
+    const intent = { token: "one", lat: 28.5383, lng: -81.3792, accuracy: 12, signatureBase64: 'c2lnbmF0dXJl', committed: true, overrideReason: 'Working beside the entrance', at: "2026-11-04T21:47:00-06:00", tries: 0, action: "in" };
     savePunch(intent);
     expect(readPunch("one")).toEqual(intent);
     expect(readPunch("two")).toBeNull();
