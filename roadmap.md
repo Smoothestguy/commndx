@@ -1,3 +1,9 @@
+# Kiosk privacy, badges and agency sign-up
+- [ ] Add search-default, roster/selfie and badge kiosk modes with URL-selected mode, private token-scoped media and existing punch safeguards.
+- [ ] Add manager badge issuance/revocation, individual/bulk PDFs and authenticated Field Mode scanning.
+- [ ] Add vendor hiring links, server-validated agency attribution, applicant tags and personnel conversion carry-forward.
+- [ ] Verify central flows, focused rules, phone/tablet views and requested TypeScript check; no migrations or cron activation.
+
 # Shift discipline
 - [x] Update public, kiosk and Field Mode early-arrival reason flows; durable intents retain server effective timestamps. Public extension requests show current token-scoped status and fifteen-minute choices capped at six hours.
 - [x] Add manager-only review function, banners in Deployment/Visits and early badges; preserve reasons with approval markers. Extensions support approve/deny; early arrivals support approve only because the live schema has no independent denial marker. Preshift day/night and extension-aware nags deployed; cron untouched.

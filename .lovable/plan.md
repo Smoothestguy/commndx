@@ -1,44 +1,24 @@
-# Fix: Home ZIP (and Phone) "Required" not reflected on form
+# Kiosk privacy, badges and agency hiring
 
-## Problem
+## Build
+- Default kiosk links and QR posters to **Search**, with manager-selectable Search / Roster / Badge modes encoded in the URL. Search reveals only limited matching names; a profile photo appears only after selection.
+- Require a selfie and signature for Search/Roster check-in, preserve checkout confirmation, early-arrival reasons, geofence overrides, retry safety, and automatic return. Badge mode provides a camera scanner with the same punch safeguards.
+- Add manager-only badge issuance, replacement/revocation, individual card PDFs and project bulk printing. Add supervisor badge scanning in Field Mode.
+- Add vendor hiring links using existing public postings and agency tokens, server-side applicant attribution, applicant agency chips, and agency carry-forward during personnel conversion.
 
-In the Form Template builder, the Core Fields card lists Phone and Home ZIP Code with `canBeRequired: true`, but the UI only ever renders a "Required" sub-toggle for **Profile Picture** (`src/components/form-builder/CoreFieldsCard.tsx:81`, hard-coded `field.key === "profilePicture"`).
+## Security and assumptions
+- **No migrations**, no anonymous table access, and no cron activation.
+- Selfie verification means captured evidence for supervisor review, **not automated facial recognition**.
+- Store selfie/signature evidence privately. The existing `field-captures` bucket has previously been public; use private `project-documents` paths unless its privacy can be safely confirmed without affecting existing media.
+- Field Mode scanning retains authenticated server punch enforcement rather than direct inserts that bypass geofences, shift rules, signatures, or sheet locks.
+- Agency attribution must be bound to a validated submission, not an unauthenticated arbitrary applicant-ID update. Preserve existing duplicate-linking behavior.
 
-As a result:
-- There's no way to mark Home ZIP or Phone as required from the builder.
-- The public form (`src/pages/PublicApplicationForm.tsx:1263-1286`) renders Home ZIP with a plain `<FormLabel>Home ZIP Code</FormLabel>` (no asterisk, no zod requirement).
-- The Live Preview (`src/components/form-builder/FormPreview.tsx:428-433`) also shows no asterisk.
-
-The user's "toggle on" only enables the field — it does not mark it required — so the discrepancy they see is by design but not by expectation.
-
-## Fix (scope: form builder + preview + public form)
-
-1. **Settings shape** — extend `FormSettings` in `src/integrations/supabase/hooks/useApplicationFormTemplates.ts` with two optional flags:
-   - `requirePhone?: boolean` (default false)
-   - `requireHomeZip?: boolean` (default false)
-
-2. **Builder UI** — in `src/components/form-builder/CoreFieldsCard.tsx`:
-   - Generalize `showRequiredToggle` so it renders for any `canBeRequired` core field that is enabled (Profile Picture, Phone, Home ZIP), not just Profile Picture.
-   - Extend `handleRequiredToggle` and `isFieldRequired` to read/write `settings.requirePhone` and `settings.requireHomeZip`.
-   - Keep Profile Picture's existing default-to-required-on-enable behavior; Phone and Home ZIP default to NOT required on enable (backward compatible).
-
-3. **Live Preview** — in `src/components/form-builder/FormPreview.tsx`:
-   - Accept `settings` (or just the two new flags) via props.
-   - Show `Phone *` / `Phone` and `Home ZIP Code *` / `Home ZIP Code` based on the flags.
-   - Pass the settings through from `LiveFormPreview.tsx` and any full-preview caller.
-
-4. **Public form** — in `src/pages/PublicApplicationForm.tsx`:
-   - Update the zod schema builder so `phone` and `home_zip` become required strings when `formSettings.requirePhone` / `requireHomeZip` is true (currently phone is already required via existing logic — verify and keep; home_zip becomes conditionally required with a "Home ZIP Code is required" message and a 5-digit format check when required).
-   - Update the rendered labels to append ` *` when required.
-
-5. **Settings persistence** — no DB migration needed; `settings` is JSONB and already round-trips through `useUpdateApplicationFormTemplate`.
-
-## Out of scope
-- No changes to routing, RPCs, or the applications table.
-- No changes to headcount enforcement or other Core fields.
-- No visual redesign — reuses the exact Profile Picture "Required" toggle pattern shown in the screenshot.
+## Technical details
+- Regenerate live types; dynamically import a proven QR scanner and the existing PDF/QR libraries.
+- Extend token-validated edge functions for limited kiosk search, selected profile photo, badge punching and the requested `document-sign` `kiosk_media` action; use existing live RPCs and active-roster validation.
+- Reuse the existing signature pad and manager permission checks; keep immutable evidence and signature/media-only retries separate from accepted punches.
 
 ## Verification
-- Build passes (tsgo).
-- Toggle Home ZIP → Required in the builder → asterisk appears in Live Preview and on the public form; submitting without a ZIP shows a validation error.
-- Existing templates with no `requireHomeZip`/`requirePhone` continue to render Home ZIP as optional (no behavior change).
+- Test URL-mode defaults, badge payload parsing, search limits, manager access, active/expired tokens, private-media roster scoping, and agency attribution rules.
+- Exercise kiosk selection → selfie/signature → punch → evidence readback, badge printing/scanning, and an agency application through conversion with isolated fixtures where available.
+- Check phone/tablet layouts and run `bunx tsgo --noEmit` plus focused tests. Report actual-device or live-server limitations explicitly.

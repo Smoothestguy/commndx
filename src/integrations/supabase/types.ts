@@ -534,6 +534,7 @@ export type Database = {
           state: string | null
           status: Database["public"]["Enums"]["applicant_status"]
           updated_at: string
+          vendor_id: string | null
         }
         Insert: {
           address?: string | null
@@ -565,6 +566,7 @@ export type Database = {
           state?: string | null
           status?: Database["public"]["Enums"]["applicant_status"]
           updated_at?: string
+          vendor_id?: string | null
         }
         Update: {
           address?: string | null
@@ -596,8 +598,17 @@ export type Database = {
           state?: string | null
           status?: Database["public"]["Enums"]["applicant_status"]
           updated_at?: string
+          vendor_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "applicants_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       application_attempts: {
         Row: {
@@ -3958,6 +3969,7 @@ export type Database = {
           id: string
           label: string | null
           location_id: string
+          mode: string
         }
         Insert: {
           created_at?: string
@@ -3966,6 +3978,7 @@ export type Database = {
           id?: string
           label?: string | null
           location_id: string
+          mode?: string
         }
         Update: {
           created_at?: string
@@ -3974,6 +3987,7 @@ export type Database = {
           id?: string
           label?: string | null
           location_id?: string
+          mode?: string
         }
         Relationships: [
           {
@@ -4860,6 +4874,48 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personnel_badges: {
+        Row: {
+          active: boolean
+          id: string
+          issued_at: string
+          issued_by: string | null
+          personnel_id: string
+          revoked_at: string | null
+        }
+        Insert: {
+          active?: boolean
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          personnel_id: string
+          revoked_at?: string | null
+        }
+        Update: {
+          active?: boolean
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          personnel_id?: string
+          revoked_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_badges_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_badges_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -10269,6 +10325,7 @@ export type Database = {
           payment_terms: string | null
           phone: string | null
           rating: number | null
+          signup_token: string
           specialty: string | null
           state: string | null
           status: Database["public"]["Enums"]["vendor_status"]
@@ -10323,6 +10380,7 @@ export type Database = {
           payment_terms?: string | null
           phone?: string | null
           rating?: number | null
+          signup_token?: string
           specialty?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["vendor_status"]
@@ -10377,6 +10435,7 @@ export type Database = {
           payment_terms?: string | null
           phone?: string | null
           rating?: number | null
+          signup_token?: string
           specialty?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["vendor_status"]
@@ -10426,6 +10485,7 @@ export type Database = {
           offsite_approved_by: string | null
           offsite_reason: string | null
           personnel_id: string
+          selfie_url: string | null
           signature_url: string | null
           signed_at: string | null
           synced_late: boolean
@@ -10445,6 +10505,7 @@ export type Database = {
           offsite_approved_by?: string | null
           offsite_reason?: string | null
           personnel_id: string
+          selfie_url?: string | null
           signature_url?: string | null
           signed_at?: string | null
           synced_late?: boolean
@@ -10464,6 +10525,7 @@ export type Database = {
           offsite_approved_by?: string | null
           offsite_reason?: string | null
           personnel_id?: string
+          selfie_url?: string | null
           signature_url?: string | null
           signed_at?: string | null
           synced_late?: boolean
@@ -11461,6 +11523,22 @@ export type Database = {
       }
       is_personnel: { Args: { _user_id: string }; Returns: boolean }
       is_vendor: { Args: { _user_id: string }; Returns: boolean }
+      kiosk_badge_punch: {
+        Args: {
+          p_accuracy?: number
+          p_badge: string
+          p_early_reason?: string
+          p_kiosk: string
+          p_lat?: number
+          p_lng?: number
+          p_override_reason?: string
+        }
+        Returns: Json
+      }
+      kiosk_find_person: {
+        Args: { p_kiosk: string; p_query: string }
+        Returns: Json
+      }
       kiosk_punch: {
         Args: {
           p_accuracy?: number
