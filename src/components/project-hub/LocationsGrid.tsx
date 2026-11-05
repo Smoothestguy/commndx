@@ -281,7 +281,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
               ))}
               {isOpen && !search && open.map(([role, v]) => (
                 <div key={`open-${role}`} className="border-t px-2 py-1.5 pl-6 flex items-center gap-2 text-muted-foreground">
-                  <span className="italic truncate flex-1 min-w-0">{role} — {v.needed - v.assigned} open{fmtRate(v.rate)}</span>
+                  <span className="italic truncate flex-1 min-w-0">{role} — {v.needed - v.assigned} open{canWrite && fmtRate(v.rate)}</span>
                   {canWrite && <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => setAssignFor({ locationId: l.id, role })}>Assign</Button>}
                 </div>
               ))}
@@ -405,7 +405,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                   ))}
                   {isOpen && !search && open.map(([role, v]) => (
                     <tr key={`open-${role}`} className="border-t text-muted-foreground">
-                      <td colSpan={cols - 1} className="px-2 py-1 pl-7 italic">{role} — {v.needed - v.assigned} open{fmtRate(v.rate)}</td>
+                      <td colSpan={cols - 1} className="px-2 py-1 pl-7 italic">{role} — {v.needed - v.assigned} open{canWrite && fmtRate(v.rate)}</td>
                       <td className="px-1 py-1 text-right">
                         {canWrite && (
                           <Button size="sm" variant="outline" className="h-6 px-1.5 text-[11px]" onClick={() => setAssignFor({ locationId: l.id, role })}>Assign</Button>

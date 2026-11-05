@@ -53,7 +53,7 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
         <div className="font-medium text-sm truncate">{nm(r)}</div>
         <div className="text-xs text-muted-foreground">
           since {r.effective_at ? format(new Date(r.effective_at), "MMM d") : "—"} · {r.days}d
-          {r.status === "standby" && (standbyRate != null ? <> · accrued {money(r.days * standbyRate)}</> : <> · set standby rate</>)}
+          {showCosts && r.status === "standby" && (standbyRate != null ? <> · accrued {money(r.days * standbyRate)}</> : <> · set standby rate</>)}
           {r.status === "activated" && <> · {r.hours.toFixed(1)}h{showCosts && <> · {r.laborCost != null ? money(r.laborCost) : "no rate"}</>}</>}
         </div>
       </div>
@@ -72,8 +72,8 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs">
           <Stat label="Activated hours" value={`${totals.hours.toFixed(1)}h`} />
           {showCosts && <Stat label="Labor cost" value={money(totals.labor)} hint={totals.laborMissing ? `${totals.laborMissing} missing rate` : undefined} />}
-          <Stat label="Standby accrued" value={standbyRate != null ? money(totals.standbyAccrued) : "—"} hint={standbyRate == null ? "set standby rate" : `${totals.standbyDays} person-days`} />
-          <Stat label="Expenses" value={money(totals.exp)} />
+          {showCosts ? <Stat label="Standby accrued" value={standbyRate != null ? money(totals.standbyAccrued) : "—"} hint={standbyRate == null ? "set standby rate" : `${totals.standbyDays} person-days`} /> : <Stat label="Standby" value={`${totals.standbyDays} person-days`} />}
+          {showCosts && <Stat label="Expenses" value={money(totals.exp)} />}
           {showCosts && <Stat label="Equipment" value={money(equipment.equipmentTotal)} hint={equipment.missingRate ? `${equipment.missingRate} no rate` : `${equipment.billable.length} billable · not in cost total`} />}
           {showCosts && <Stat label="Grand total" value={money(totals.grand)} strong />}
         </div>
