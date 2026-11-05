@@ -48,7 +48,7 @@ export function SigninSheetsPanel({ doc, projectName, initialSheet }: { doc: Pro
     return generateSigninSheet(await data.arrayBuffer(), fields, sheet.rows, { rowsPerPage: doc.rows_per_page ?? 12, rowHeight: doc.row_height_pct ?? 0.045, zone: sheet.zone, day: sheet.day, project: projectName, mission: sheet.location.project_number || '', location: sheet.location.name, address: [sheet.location.address, sheet.location.city, sheet.location.state, sheet.location.zip].filter(Boolean).join(', ') }, loadSheetSignature);
   };
   const download = async (items: typeof sheets, zipName?: string) => {
-    if (busy || !items.length) return; setBusy(true);
+    if (busy || !items.length || savedError) return; setBusy(true);
     try {
       const { default: JSZip } = await import('jszip'); const zip = new JSZip();
       for (const sheet of items) {
