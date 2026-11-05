@@ -11,6 +11,9 @@ export interface ProjectDocument {
   file_type: string;
   uploaded_by: string | null;
   created_at: string;
+  location_id: string | null;
+  requires_signature: boolean;
+  notes: string | null;
 }
 
 export const useProjectDocuments = (projectId: string | undefined) => {
@@ -38,11 +41,15 @@ export const useUploadProjectDocument = () => {
   return useMutation({
     mutationFn: async ({
       projectId,
-      file,
+      file, locationId, requiresSignature = false, notes,
     }: {
       projectId: string;
       file: File;
+      locationId?: string | null;
+      requiresSignature?: boolean;
+      notes?: string;
     }) => {
+      if (requiresSignature && file.type !== "application/pdf") throw new Error("Signature requests require a PDF");
       // Upload to storage
       const fileExt = file.name.split(".").pop();
       const fileName = `${projectId}/${Date.now()}-${file.name}`;
@@ -62,6 +69,9 @@ export const useUploadProjectDocument = () => {
         .insert([
           {
             project_id: projectId,
+            location_id: locationId || null,
+            requires_signature: requiresSignature,
+            notes: notes?.trim() || null,
             file_name: file.name,
             file_path: fileName,
             file_size: file.size,
@@ -72,7 +82,7 @@ export const useUploadProjectDocument = () => {
         .select()
         .single();
 
-      if (insertError) throw insertError;
+      if (insertError) { await supabase.storage.from("project-documents").remove([fileName]); throw insertError; }
       return data;
     },
     onSuccess: (_, variables) => {

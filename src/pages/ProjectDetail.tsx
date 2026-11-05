@@ -265,7 +265,7 @@ const ProjectDetail = () => {
         <TabsContent value="docs">
           <div className="space-y-8">
             <ProjectOverviewTab projectId={id} project={project} />
-            <ProjectDocuments projectId={id} />
+            <ProjectDocuments projectId={id} projectName={project.name} />
             <ProjectActivityTimeline projectId={id} />
           </div>
         </TabsContent>

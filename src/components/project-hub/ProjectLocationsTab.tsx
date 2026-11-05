@@ -1,3 +1,6 @@
+import { useProjectDocuments } from "@/integrations/supabase/hooks/useProjectDocuments";
+import { useDocumentSignatures } from "@/integrations/supabase/hooks/useDocumentSignatures";
+import { LocationDocumentsLine } from "@/components/documents/LocationDocumentsLine";
 import { useEffect, useMemo, useState } from "react";
 import { LayoutGrid, Rows3 } from "lucide-react";
 import { LocationsGrid } from "./LocationsGrid";
@@ -67,6 +70,8 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
   const canWrite = isAdmin || isManager;
   const { data: project } = useProject(projectId);
   const { data: locations = [], isLoading } = useProjectLocations(projectId);
+  const { data: documents = [] } = useProjectDocuments(projectId);
+  const { data: signatures = [] } = useDocumentSignatures(projectId);
   const locationNames = useMemo(() => Object.fromEntries(locations.map((l) => [l.id, l.name])), [locations]);
   const add = useAddProjectLocation();
   const update = useUpdateProjectLocation();
@@ -226,6 +231,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
                   </div>
                 )}
                 {l.scope && <ScopeText text={l.scope} />}
+                <LocationDocumentsLine projectId={projectId} locationId={l.id} documents={documents} signatures={signatures} />
                 <LocationStaffing locationId={l.id} summary={staffing?.[l.id]} canWrite={canWrite} projectId={l.project_id} locationName={l.name} />
                 <LocationAssets projectId={l.project_id} locationId={l.id} locationName={l.name} canWrite={canWrite} locationNames={locationNames} />
                 <LocationLodging projectId={projectId} locationId={l.id} housingBy={l.housing_provided_by} canWrite={canWrite} />

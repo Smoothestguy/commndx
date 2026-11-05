@@ -15,3 +15,7 @@
 - [x] Add route-scoped offline shell, durable punch queue, retry guards, and bilingual saved state.
 - [x] Add Field Mode offline warnings and Visits/PDF/confirmation GPS tags.
 - [x] Test queue/reconnect/reload using intercepted RPCs, generated worker offline reload, authenticated GPS links/PDF display, and TypeScript; no migrations. Real punch writes and published deployment not exercised.
+# Document signatures
+- [x] Regenerate live types; deploy private token signing and authenticated text requests, no migrations.
+- [x] Add mobile signing page, shared Field Mode pad, document upload/status/recipient/certificate UI and location links.
+- [x] Verify a live test PDF upload → anonymous signature → reload → staff tracking → signed certificate download; test idempotency, signed-remind skip, invalid auth/token and rules; clean up fixture; TypeScript and preview passed. No real SMS sent. Signature evidence uses private project-documents rather than the existing publicly readable field-captures bucket.
