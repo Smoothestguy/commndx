@@ -6,10 +6,10 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState, useCallback } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useProjectDocuments, useUploadProjectDocument, useDeleteProjectDocument, useGetProjectDocumentUrl } from "@/integrations/supabase/hooks/useProjectDocuments";
 import { FileText, Upload, Trash2, Download, Loader2, Eye } from "lucide-react";
 import { format } from "date-fns";
@@ -35,6 +35,8 @@ export const ProjectDocuments = ({ projectId, projectName = "Project" }: Project
   const deleteDocument = useDeleteProjectDocument();
   const getDocumentUrl = useGetProjectDocumentUrl();
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const uploadInFlight = useRef(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [previewDoc, setPreviewDoc] = useState<ProjectDocument | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -43,25 +45,32 @@ export const ProjectDocuments = ({ projectId, projectName = "Project" }: Project
   const isImage = (fileType: string) => fileType?.startsWith("image/");
   const isPdf = (fileType: string) => fileType === "application/pdf" || fileType?.includes("pdf");
 
-  const handleFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files;
-      if (!files || files.length === 0) return;
+  const handleUploadOpenChange = (open: boolean) => {
+    // Keep an actual upload visible rather than reopening with an empty, locked picker.
+    if (uploadInFlight.current) return;
+    setSelectedFile(null);
+    setRequiresSignature(false);
+    setLocationId("project");
+    setNotes("");
+    uploadDocument.reset();
+    setUploadOpen(open);
+  };
 
-      setIsUploading(true);
-      try {
-        for (const file of Array.from(files)) {
-          await uploadDocument.mutateAsync({ projectId, file, requiresSignature, locationId: locationId === "project" ? null : locationId, notes });
-        }
-        setUploadOpen(false);
-      } catch { /* Mutation displays the failure; keep upload dialog open. */
-      } finally {
-        setIsUploading(false);
-        e.target.value = "";
-      }
-    },
-    [projectId, uploadDocument, requiresSignature, locationId, notes]
-  );
+  const handleUpload = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedFile || uploadInFlight.current) return;
+    uploadInFlight.current = true;
+    setIsUploading(true);
+    try {
+      await uploadDocument.mutateAsync({ projectId, file: selectedFile, requiresSignature, locationId: locationId === "project" ? null : locationId, notes });
+      setUploadOpen(false);
+      setSelectedFile(null);
+    } catch { /* Mutation displays the failure; retain the selected file for retry. */
+    } finally {
+      uploadInFlight.current = false;
+      setIsUploading(false);
+    }
+  };
 
   const forceDownload = async (url: string, fileName: string) => {
     const response = await fetch(url);
@@ -119,7 +128,7 @@ export const ProjectDocuments = ({ projectId, projectName = "Project" }: Project
             <FileText className="h-5 w-5 text-primary" />
             Project Documents ({documents?.length || 0})
           </CardTitle>
-          {canManage && <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}><Upload className="h-4 w-4 mr-1" />Upload</Button>}
+          {canManage && <Button variant="outline" size="sm" onClick={() => handleUploadOpenChange(true)}><Upload className="h-4 w-4 mr-1" />Upload</Button>}
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -188,13 +197,21 @@ export const ProjectDocuments = ({ projectId, projectName = "Project" }: Project
         </CardContent>
       </Card>
 
-      <Dialog open={uploadOpen} onOpenChange={setUploadOpen}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>Upload document</DialogTitle></DialogHeader>
-        <label className="flex items-center justify-between gap-3 text-sm">Requires signature<Switch checked={requiresSignature} onCheckedChange={setRequiresSignature} /></label>
-        <Label>Location</Label><Select value={locationId} onValueChange={setLocationId}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="project">Project-wide</SelectItem>{locations.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent></Select>
-        <Label htmlFor="doc-notes">Notes (optional)</Label><Textarea id="doc-notes" value={notes} onChange={e => setNotes(e.target.value)} maxLength={3000} />
-        <input type="file" aria-label="Document file" accept={requiresSignature ? "application/pdf,.pdf" : undefined} disabled={isUploading} onChange={handleFileChange} className="w-full text-sm" />
-        {isUploading && <Loader2 className="h-5 w-5 animate-spin" />}
-      </DialogContent></Dialog>
+      <Dialog open={uploadOpen} onOpenChange={handleUploadOpenChange}>
+        <DialogContent className="max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto" onEscapeKeyDown={e => { if (isUploading) e.preventDefault(); }} onInteractOutside={e => { if (isUploading) e.preventDefault(); }}>
+          <DialogHeader><DialogTitle>Upload document</DialogTitle></DialogHeader>
+          <form onSubmit={handleUpload} className="space-y-4" aria-busy={isUploading}>
+            <label className="flex items-center justify-between gap-3 text-sm">Requires signature<Switch checked={requiresSignature} disabled={isUploading} onCheckedChange={setRequiresSignature} /></label>
+            <div className="space-y-2"><Label htmlFor="doc-location">Location</Label><Select value={locationId} disabled={isUploading} onValueChange={setLocationId}><SelectTrigger id="doc-location"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="project">Project-wide</SelectItem>{locations.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-2"><Label htmlFor="doc-notes">Notes (optional)</Label><Textarea id="doc-notes" value={notes} disabled={isUploading} onChange={e => setNotes(e.target.value)} maxLength={3000} /></div>
+            <div className="space-y-2"><Label htmlFor="doc-file">Document file</Label><input id="doc-file" type="file" aria-label="Document file" accept=".pdf,image/*,.doc,.docx" disabled={isUploading} onChange={e => setSelectedFile(e.target.files?.[0] ?? null)} className="block min-h-11 w-full min-w-0 text-sm text-foreground file:mr-3 file:min-h-11 file:rounded-md file:border file:border-input file:bg-secondary file:px-3 file:text-secondary-foreground disabled:opacity-50" /></div>
+            <DialogFooter>
+              <Button type="button" variant="outline" disabled={isUploading} onClick={() => handleUploadOpenChange(false)}>Cancel</Button>
+              <Button type="submit" disabled={!selectedFile || isUploading}>{isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}{isUploading ? "Uploading…" : "Upload"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
       {/* Preview Dialog */}
       <Dialog open={!!previewDoc} onOpenChange={() => { setPreviewDoc(null); setPreviewUrl(null); }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">

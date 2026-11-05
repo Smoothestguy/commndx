@@ -1,5 +1,9 @@
 # Applicant locations
 
+# Document upload regression
+- [ ] Replace automatic upload with explicit file selection and submission; isolate busy state and make phone dialog scrollable.
+- [ ] Verify real PDF/image storage and row writes, access policies, failure/reopen behavior, and TypeScript.
+
 - [x] Add shared formatting and missing-ZIP batch lookup.
 - [x] Update staff applicant lists and information views; leave public forms and database unchanged.
 - [x] Verify fallback behavior and compilation; report affected views and files.
