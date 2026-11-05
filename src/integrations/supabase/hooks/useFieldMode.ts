@@ -252,7 +252,7 @@ export function useCheckIn(projectId: string | undefined, locationIds: string[])
       for (const pid of memberIds) { if (!signed[pid]) { if (!signatures[pid]) throw new Error('Signature required before check-in'); signed[pid]=await uploadFieldSignature(pid,signatures[pid]); } }
       let visitId = '';
       for (const pid of memberIds) {
-        const {data,error}=await supabase.functions.invoke('shift-discipline',{body:{action:'field',location_id,personnel_id:pid,lat,lng,...signed[pid],early_reason:earlyReason,override_reason:overrideReason}});
+        const {data,error}=await supabase.functions.invoke('shift-discipline',{body:{action:'field',location_id,personnel_id:pid,crew_id,lat,lng,...signed[pid],early_reason:earlyReason,override_reason:overrideReason}});
         if(error)throw new Error('Check-in unavailable');
         if(!data?.ok){const failure=new Error(data?.reason||'Check-in unavailable') as Error & {rejection?:any};failure.rejection=data;throw failure;}
         visitId=data.visit_id;

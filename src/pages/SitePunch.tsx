@@ -72,7 +72,7 @@ export default function SitePunch() {
       if (!intent) { setPending(null); return; }
       setBusy(true);
       try {
-        const finish=async(current:PunchIntent)=>{if(current.action==='in'){const committed={...current,committed:true};savePunch(committed);setPending(committed);const {data,error}=await supabase.functions.invoke('punch-signature',{body:{action:'save',token:current.token,at:current.at,signature_png_base64:current.signatureBase64}});if(error||!data?.ok){setError('Check-in recorded; signature still needs saving. Keep this page open to retry.');return;} }confirm(current,current.action);};
+        const finish=async(current:PunchIntent)=>{if(current.action==='in'){const committed={...current,committed:true};savePunch(committed);setPending(committed);const {data,error}=await supabase.functions.invoke('punch-signature',{body:{action:'save',token:current.token,at:current.effectiveAt||current.at,signature_png_base64:current.signatureBase64}});if(error||!data?.ok){setError('Check-in recorded; signature still needs saving. Keep this page open to retry.');return;} }confirm(current,current.action);};
         if(intent.committed){await finish(intent);return;}
         // A response can be lost after the toggle committed. Check server state before retrying.
         if (intent.tries > 0) {
@@ -80,7 +80,7 @@ export default function SitePunch() {
           if (error) { if (!isNetworkError(error)) setError("Could not verify the saved punch. / No se pudo verificar el registro guardado."); return; }
           const current = data as unknown as Info;
           if (current?.valid && ((intent.action === "in" && current.on_site_since && Date.parse(current.on_site_since) >= Date.parse(intent.at) - 1000) || (intent.action === "out" && !current.on_site_since))) {
-            await finish(intent); return;
+            await finish({...intent,effectiveAt:intent.action==='in'?current.on_site_since||intent.at:intent.at}); return;
           }
           if (!current?.valid || (intent.action === "in" && current.on_site_since) || (intent.action === "out" && current.on_site_since && Date.parse(current.on_site_since) > Date.parse(intent.at))) {
             blocked.current = true;
