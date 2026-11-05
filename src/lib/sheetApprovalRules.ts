@@ -1,5 +1,7 @@
 import { localDay, nextDay } from './signinSheets';
 export type SheetStatus = 'locked' | 'activity' | 'missing' | 'idle';
+export const KIOSK_REFRESH_MS = 60_000;
+export const KIOSK_RETURN_MS = 3_000;
 export function sheetStatus(input: { locked: boolean; activity: boolean; assigned: boolean; day: string; mobe?: string | null; demobe?: string | null }): SheetStatus {
   if (input.locked) return 'locked';
   if (input.activity) return 'activity';

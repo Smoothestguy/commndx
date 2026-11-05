@@ -1,10 +1,10 @@
 # Applicant locations
 
 # Phase 2 customer sign-in sheets
-- [ ] Customer countersign, immutable private PDF/hash, version history and reason-required reopening across attendance/time edits.
-- [ ] Expiring kiosk links, tablet public signing/check-out, GPS override and QR posters.
-- [ ] Seven-day location status board and reusable-template action/picker.
-- [ ] Live browser verification, focused tests and requested TypeScript check; no migrations.
+- [x] Customer countersign with nonblocking recorded GPS, immutable private PDF/hash, historical downloads and reason-required reopening across attendance/time mutations; live version 1 → reopen → version 2 and locked attendance edit verified. Dedicated approval page avoids covering arbitrary template rows.
+- [x] Expiring kiosk links, private public signing, same-local-day roster status, 60s refresh/3s return, check-out confirmation, GPS override and letter QR posters. Live sign-in/private signature, no-GPS/reason override, token/roster/auth/stale-state boundaries verified. Checkout remains blocked by existing live function below.
+- [x] Seven-day location status board with clickable sheets and reusable-template action/picker; live shared-file row/field copy verified. No migrations.
+- [x] Live admin browser verification, 390px customer approval/tablet kiosk, PDF text/render inspection, 20 focused tests and requested TypeScript check; temporary fixtures removed. Actual iPhone Safari/separate manager unverified. UI guards protect manual edits; database-wide lock enforcement is not present in the live schema and was not added under the no-migrations constraint.
 
 # Deployment data-flow fixes
 - [x] Same-local-day Field Mode visits, flagged stale closure and review clearing; live stale-shell closure verified at location end-of-day.

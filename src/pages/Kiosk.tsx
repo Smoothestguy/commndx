@@ -5,7 +5,7 @@ import { ForceDarkTheme } from '@/components/ForceDarkTheme';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { SignaturePad } from '@/components/documents/SignaturePad';
-import { getSheetGps } from '@/lib/sheetApprovalRules';
+import { getSheetGps, KIOSK_REFRESH_MS, KIOSK_RETURN_MS } from '@/lib/sheetApprovalRules';
 import { localTime } from '@/lib/signinSheets';
 import { Loader2, CheckCircle2, ArrowLeft } from 'lucide-react';
 type Person = { personnel_id: string; name: string; on_site: boolean; since?: string | null };
@@ -15,8 +15,8 @@ export default function Kiosk() {
  const { token } = useParams(); const [info,setInfo]=useState<Info|null>(null),[person,setPerson]=useState<Person|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[done,setDone]=useState(''),[rejection,setRejection]=useState<{reason:string;distance_m?:number;radius_m?:number}|null>(null),[reason,setReason]=useState('');
  const signature=useRef<string>(),pending=useRef<string>(),mutex=useRef(false);
  const load=async()=>{if(!token)return;const {data,error}=await supabase.functions.invoke('kiosk-signature',{body:{action:'info',token}});if(error){setError('Kiosk unavailable or link expired. Ask your supervisor.');setInfo(null);}else{setInfo(data);setError('');}};
- useEffect(()=>{void load();const interval=setInterval(()=>{if(!mutex.current)void load();},60000);return()=>clearInterval(interval);},[token]);
- useEffect(()=>{if(!done)return;const timer=setTimeout(()=>{setDone('');setPerson(null);setRejection(null);setReason('');signature.current=undefined;pending.current=undefined;void load();},3000);return()=>clearTimeout(timer);},[done]);
+ useEffect(()=>{void load();const interval=setInterval(()=>{if(!mutex.current)void load();},KIOSK_REFRESH_MS);return()=>clearInterval(interval);},[token]);
+ useEffect(()=>{if(!done)return;const timer=setTimeout(()=>{setDone('');setPerson(null);setRejection(null);setReason('');signature.current=undefined;pending.current=undefined;void load();},KIOSK_RETURN_MS);return()=>clearTimeout(timer);},[done]);
  const send=async(blob?:Blob,override?:string)=>{
   if(!person||!token||mutex.current)return;mutex.current=true;setBusy(true);setError('');
   try {if(blob)signature.current=await base64(blob);const pos=await getSheetGps();const {data,error}=await supabase.functions.invoke('kiosk-signature',{body:{action:pending.current?'save':'punch',token,personnel_id:person.personnel_id,expected:person.on_site?'out':'in',signature:signature.current,stay_id:pending.current,lat:pos?.lat??null,lng:pos?.lng??null,accuracy:pos?.accuracy??null,override_reason:override}});

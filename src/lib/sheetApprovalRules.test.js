@@ -1,8 +1,10 @@
 import { expect, it } from 'bun:test';
-import { sha256, sheetStatus, validReopenReason, locationDays } from './sheetApprovalRules';
+import { sha256, sheetStatus, validReopenReason, locationDays, KIOSK_REFRESH_MS, KIOSK_RETURN_MS } from './sheetApprovalRules';
 import { countersignSheet } from './customerApprovalPdf';
 import { PDFDocument } from 'pdf-lib';
 const defaults={locked:false,activity:false,assigned:true,day:'2026-11-05',mobe:'2026-11-01',demobe:'2026-11-10'};
+it('kiosk refreshes roster every sixty seconds',()=>expect(KIOSK_REFRESH_MS).toBe(60000));
+it('kiosk returns to roster after three seconds',()=>expect(KIOSK_RETURN_MS).toBe(3000));
 it('locked countersigned day is green even with activity',()=>expect(sheetStatus({...defaults,locked:true,activity:true})).toBe('locked'));
 it('activity without lock is yellow',()=>expect(sheetStatus({...defaults,activity:true})).toBe('activity'));
 it('assigned people without sign-ins during deployment is red',()=>expect(sheetStatus(defaults)).toBe('missing'));
