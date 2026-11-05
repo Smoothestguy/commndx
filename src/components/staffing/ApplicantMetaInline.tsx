@@ -3,8 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { splitRoleTags } from "@/lib/roleTags";
 import type { CertSummary } from "@/hooks/useApplicantCertSummary";
+import { useAgencyNames } from '@/hooks/useAgencyNames';
+import { AgencyChip } from '@/components/personnel/AgencyChip';
 
-type Meta = { role_tags?: string[] | null; staff_notes?: string | null } | null | undefined;
+type Meta = { vendor_id?: string | null; role_tags?: string[] | null; staff_notes?: string | null } | null | undefined;
 
 /** Role-tag badges (max 2 + overflow) and certification indicator, shown after the name. */
 export function ApplicantTagBadges({
@@ -17,9 +19,11 @@ export function ApplicantTagBadges({
   className?: string;
 }) {
   const { shown, overflow } = splitRoleTags(applicant?.role_tags);
-  if (!shown.length && !certs?.count) return null;
+  const {data:agencies}=useAgencyNames();
+  if (!shown.length && !certs?.count && !applicant?.vendor_id) return null;
   return (
     <span className={cn("inline-flex flex-wrap items-center gap-1", className)}>
+      <AgencyChip name={applicant?.vendor_id ? agencies?.get(applicant.vendor_id) : undefined} />
       {shown.map((t) => (
         <Badge key={t} variant="secondary" className="h-5 px-1.5 text-[10px] font-normal">
           {t}

@@ -912,6 +912,7 @@ export default function PublicApplicationForm() {
       }
 
       const submitResult = await submitApplication.mutateAsync({
+        agencyToken: searchParams.get('agency') || undefined,
         posting_id: posting.id,
         applicant: {
           first_name: data.first_name,

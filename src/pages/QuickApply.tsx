@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +34,7 @@ type Posting = {
 
 export default function QuickApply() {
   const { token } = useParams<{ token: string }>();
+  const [searchParams]=useSearchParams();
   const [loading, setLoading] = useState(true);
   const [invite, setInvite] = useState<{
     valid: boolean;
@@ -71,7 +72,8 @@ export default function QuickApply() {
     if (!token) return;
     setSubmitting(true);
     try {
-      const { data, error } = await supabase.rpc("confirm_quick_apply", {
+      const agency=searchParams.get('agency');
+      const { data, error } = agency ? await supabase.functions.invoke('agency-application',{body:{action:'quick',agency_token:agency,token,phone:phone||null,email:email||null}}) : await supabase.rpc("confirm_quick_apply", {
         _token: token,
         _phone: phone || null,
         _email: email || null,
@@ -158,8 +160,9 @@ export default function QuickApply() {
     );
   }
 
-  const a = invite.applicant!;
-  const p = invite.posting!;
+  const a = invite.applicant;
+  const p = invite.posting;
+  if(!a||!p)return null;
   const initials = `${a.first_name?.[0] ?? ""}${a.last_name?.[0] ?? ""}`.toUpperCase();
   const projLoc = [p.project_city, p.project_state].filter(Boolean).join(", ");
 

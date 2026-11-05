@@ -24,6 +24,7 @@ import { Search, Send, Users } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 type Row = {
+  vendor_id: string | null;
   id: string;
   first_name: string;
   last_name: string;
@@ -50,7 +51,7 @@ const useMasterApplicants = () =>
     queryFn: async (): Promise<Row[]> => {
       const { data: applicants, error } = await supabase
         .from("applicants")
-        .select("id, first_name, last_name, email, phone, photo_url, city, state, home_zip, starred_at, role_tags, staff_notes, status, created_at")
+        .select("id, vendor_id, first_name, last_name, email, phone, photo_url, city, state, home_zip, starred_at, role_tags, staff_notes, status, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
 
