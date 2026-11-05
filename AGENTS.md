@@ -11,3 +11,4 @@
 - Customer sign-in sheets use a pure location-timezone/day segmentation and PDF layer separate from Chicago payroll; paginated project trail and batched evidence reads feed it, so later lock/countersign phases can preserve generated evidence without changing payroll.
 - Reusable sign-in templates copy document metadata and fields but share private storage originals; client deletion must never delete shared files because cross-project references may be hidden by RLS.
 - Location geocoding is manager-authorized in an edge function; address and manual-coordinate timezone resolution use the same entrypoint, and secret Mapbox tokens are never returned to browsers.
+- Already-signed public punch history is read through a token-validated minimal-response edge function scoped to that token's person, location and recent local day; never grant anonymous trail access.

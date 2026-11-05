@@ -1,7 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
-import tzLookup from 'https://esm.sh/tz-lookup@6.1.25';
 const json = (v: unknown, status = 200) => new Response(JSON.stringify(v), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
