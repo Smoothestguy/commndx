@@ -34,6 +34,9 @@ export interface VisitRow {
 
 export interface VisitPerson {
   synced_late?: boolean;
+  early_in_reason?: string | null;
+  offsite_approved_by?: string | null;
+  offsite_approved_at?: string | null;
   id: string;
   visit_id: string;
   checked_in_at: string | null;
@@ -112,7 +115,7 @@ async function fetchVisitBundle(locationIds: string[], fromIso: string, toIso: s
   if (!vids.length) return { visits: visits ?? [], people: [], purchases: [], photos: [] };
 
   const [ppl, pur, pho] = await Promise.all([
-    db.from("visit_personnel").select("id, visit_id, personnel_id, signature_url, signed_at, checked_in_at, checked_out_at, synced_late").in("visit_id", vids),
+    db.from("visit_personnel").select("id, visit_id, personnel_id, signature_url, signed_at, checked_in_at, checked_out_at, synced_late, early_in_reason, offsite_approved_by, offsite_approved_at").in("visit_id", vids),
     db.from("visit_purchases").select("id, visit_id, amount, vendor, note, receipt_url, created_at").in("visit_id", vids),
     db.from("visit_photos").select("id, visit_id, photo_url, caption, taken_at").in("visit_id", vids),
   ]);
@@ -239,41 +242,26 @@ export async function uploadFieldSignature(personnelId: string, blob: Blob) {
 export function useCheckIn(projectId: string | undefined, locationIds: string[]) {
   const inv = useInv(projectId);
   return useMutation({
-    mutationFn: async ({ location_id, crew_id, memberIds, lat, lng, signatures = {} }: {
-      location_id: string; crew_id: string | null; memberIds: string[]; lat: number | null; lng: number | null; signatures?: Record<string, Blob>;
+    mutationFn: async ({ location_id, crew_id, memberIds, lat, lng, signatures = {}, earlyReason, overrideReason }: {
+      location_id: string; crew_id: string | null; memberIds: string[]; lat: number | null; lng: number | null; signatures?: Record<string, Blob>; earlyReason?: string; overrideReason?: string;
     }) => {
       if (!navigator.onLine) throw new Error("No signal — try again in coverage");
       const { data: { user } } = await supabase.auth.getUser();
       // Copy-forward: members who already signed today keep their signature — never ask twice.
       const signed = await fetchTodaySignatures(locationIds, memberIds,location_id);
       for (const pid of memberIds) { if (!signed[pid]) { if (!signatures[pid]) throw new Error('Signature required before check-in'); signed[pid]=await uploadFieldSignature(pid,signatures[pid]); } }
-      const now = new Date().toISOString();
-      const { data: location, error: locError } = await db.from('project_locations').select('timezone').eq('id',location_id).single(); if (locError) throw locError;
-      const zone=location?.timezone || 'America/Chicago';
-      const {data: open,error: openError}=await db.from('location_visits').select('id,check_in_at').eq('location_id',location_id).is('check_out_at',null).order('check_in_at',{ascending:false}); if(openError)throw openError;
-      let visit: {id:string}|undefined;
-      for(const old of open??[]) { const end=staleVisitEnd(old.check_in_at,now,zone);if(end){const {error}=await db.from('location_visits').update({check_out_at:end,needs_review:true,auto_closed:true}).eq('id',old.id).is('check_out_at',null);if(error)throw error;}else if(!visit)visit=old; }
-      if(!visit){const {data,error}=await db.from('location_visits').insert({location_id,crew_id,check_in_at:now,check_in_lat:lat,check_in_lng:lng,created_by:user?.id??null}).select('id').single();if(error)throw error;visit=data;}
-      if(!visit)throw new Error('Visit unavailable');
-      const {data: existing,error: existingError}=await db.from('visit_personnel').select('personnel_id,checked_out_at').eq('visit_id',visit.id).in('personnel_id',memberIds);if(existingError)throw existingError;
-      if((existing??[]).some((p:any)=>p.checked_out_at))throw new Error('Already signed in today at this site');
-      const existingIds=new Set((existing??[]).map((p:any)=>p.personnel_id));
-      const rows = memberIds.filter(pid=>!existingIds.has(pid)).map((pid) => ({
-        visit_id: visit.id,
-        personnel_id: pid,
-        checked_in_at:now,checked_in_by:user?.id??null,
-        signature_url: signed[pid]?.signature_url ?? null,
-        signed_at: signed[pid]?.signed_at ?? (signed[pid] ? now : null),
-      }));
-      if (rows.length) {
-        const { error: pErr } = await db.from("visit_personnel").insert(rows);
-        if (pErr) throw pErr;
+      let visitId = '';
+      for (const pid of memberIds) {
+        const {data,error}=await supabase.functions.invoke('shift-discipline',{body:{action:'field',location_id,personnel_id:pid,lat,lng,...signed[pid],early_reason:earlyReason,override_reason:overrideReason}});
+        if(error)throw new Error('Check-in unavailable');
+        if(!data?.ok){const failure=new Error(data?.reason||'Check-in unavailable') as Error & {rejection?:any};failure.rejection=data;throw failure;}
+        visitId=data.visit_id;
       }
       await autoActivate(projectId, location_id, memberIds);
-      return { visitId: visit.id as string, needsSignature: [] as string[] };
+      return { visitId, needsSignature: [] as string[] };
     },
     onSuccess: (_r, v) => inv(v.location_id),
-    onError: (e: any) => toast.error(e?.message ?? "Check-in failed"),
+    onError: (e: any) => { if (!e.rejection) toast.error(e?.message ?? "Check-in failed"); },
   });
 }
 
@@ -566,18 +554,19 @@ export function useCheckOutPerson(projectId: string | undefined) {
 export function useAddPersonToVisit(projectId: string | undefined, locationIds: string[]) {
   const inv = useInv(projectId);
   return useMutation({
-    mutationFn: async ({ visit, personnel_id, blob }: { visit: VisitRow; personnel_id: string; blob?: Blob }) => {
+    mutationFn: async ({ visit, personnel_id, blob, earlyReason, overrideReason }: { visit: VisitRow; personnel_id: string; blob?: Blob; earlyReason?: string; overrideReason?: string }) => {
       if(!navigator.onLine)throw new Error('No signal — try again in coverage');
       const signed = await fetchTodaySignatures(locationIds, [personnel_id],visit.location_id);
       if(!signed[personnel_id]&&!blob)throw new Error('Signature required before check-in');
       let signature=signed[personnel_id];if(!signature){if(!blob)throw new Error('Signature required');signature=await uploadFieldSignature(personnel_id,blob);}
-      const {data:{user}}=await supabase.auth.getUser();
-      const {error}=await db.from('visit_personnel').insert({visit_id:visit.id,personnel_id,checked_in_at:new Date().toISOString(),checked_in_by:user?.id??null,...signature});if(error)throw error;
+      const {lat,lng}=await getCoords();
+      const {data,error}=await supabase.functions.invoke('shift-discipline',{body:{action:'field',location_id:visit.location_id,personnel_id,lat,lng,...signature,early_reason:earlyReason,override_reason:overrideReason}});
+      if(error)throw new Error('Check-in unavailable');if(!data?.ok){const failure=new Error(data?.reason||'Check-in unavailable') as Error & {rejection?:any};failure.rejection=data;throw failure;}
       await autoActivate(projectId, visit.location_id, [personnel_id]);
       return { needsSignature: false, locationId: visit.location_id };
     },
     onSuccess: (r) => inv(r.locationId),
-    onError: (e: any) => toast.error(e?.message ?? "Failed to add person"),
+    onError: (e: any) => { if (!e.rejection) toast.error(e?.message ?? "Failed to add person"); },
   });
 }
 

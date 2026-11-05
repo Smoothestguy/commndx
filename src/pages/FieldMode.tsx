@@ -1,3 +1,6 @@
+import { EarlyCheckIn } from '@/components/signin/EarlyCheckIn';
+import { Textarea } from '@/components/ui/textarea';
+import { type EarlyRejection } from '@/lib/shiftDiscipline';
 import { SignaturePad } from "@/components/documents/SignaturePad";
 import { SaveCrewPrompt } from '@/components/personnel/lifecycle/SaveCrewPrompt';
 import { needsCrew } from '@/lib/deploymentFlow';
@@ -56,8 +59,11 @@ function CheckInSheet({ location, crew, projectId, locationIds, onClose }: {
   const {data:allCrews=[]}=useCrews(projectId);
   const [drawn,setDrawn]=useState<Record<string,Blob>>({});
   const [preparing,setPreparing]=useState(false);
+  const [rejection,setRejection]=useState<EarlyRejection|null>(null);
+  const [overrideReason,setOverrideReason]=useState('');
   const [crewPrompt,setCrewPrompt]=useState<string|null>(null);
-  const finishCheckIn=async(signatures:Record<string,Blob>)=>{const {lat,lng}=await getCoords();checkIn.mutate({location_id:location.id,crew_id:crew?.id??null,memberIds:[...selected],lat,lng,signatures},{onSuccess:({visitId})=>{setSigQueue([]);if(needsCrew([...selected],allCrews))setCrewPrompt(visitId);else onClose();}});};
+  const finishCheckIn=async(signatures:Record<string,Blob>,earlyReason?:string,override?:string)=>{setDrawn(signatures);const {lat,lng}=await getCoords();checkIn.mutate({location_id:location.id,crew_id:crew?.id??null,memberIds:[...selected],lat,lng,signatures,earlyReason,overrideReason:override},{onError:(e)=>{const r=(e as Error & {rejection?:EarlyRejection}).rejection;if(r){setSigQueue([]);setRejection(r);}},onSuccess:({visitId})=>{setRejection(null);setSigQueue([]);if(earlyReason)toast.success('Early check-in — pending supervisor approval');if(needsCrew([...selected],allCrews))setCrewPrompt(visitId);else onClose();}});};
+
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -85,6 +91,8 @@ function CheckInSheet({ location, crew, projectId, locationIds, onClose }: {
   };
 
 
+  if(rejection?.reason==='before_shift')return <EarlyCheckIn rejection={rejection} timezone={location.timezone||undefined} busy={checkIn.isPending} onSubmit={r=>finishCheckIn(drawn,r,overrideReason||undefined)}/>;
+  if(rejection)return <section className="p-4 space-y-4"><p className="text-warning">{rejection.reason==='no_gps'?"Couldn't get your location":rejection.reason==='out_of_range'?"You're outside the site geofence":'Check-in unavailable — ask your supervisor'}</p>{['no_gps','out_of_range'].includes(rejection.reason)&&<><Textarea aria-label="Off-site reason" placeholder="Reason (required)" value={overrideReason} onChange={e=>setOverrideReason(e.target.value)} maxLength={1000}/><Button disabled={checkIn.isPending||!overrideReason.trim()} onClick={()=>finishCheckIn(drawn,undefined,overrideReason.trim())}>I'M ON SITE ANYWAY</Button></>}</section>;
   if(crewPrompt)return <SaveCrewPrompt projectId={projectId} ids={[...selected]} visitId={crewPrompt} onDone={onClose}/>;
   if (sigQueue.length) {
     const pid = sigQueue[0];
@@ -218,6 +226,9 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, peopl
     return directory.filter((d) => !presentIds.has(d.id))
       .filter((d) => !n || fullName(d).toLowerCase().includes(n)).slice(0, 30);
   }, [directory, addSearch, presentIds]);
+  const [addRejection,setAddRejection]=useState<EarlyRejection|null>(null);
+  const [addReason,setAddReason]=useState('');
+  const retryAdd=(earlyReason?:string,overrideReason?:string)=>{const vars=addPerson.variables;if(!vars)return;addPerson.mutate({...vars,earlyReason,overrideReason},{onSuccess:()=>{setAddRejection(null);setSigFor(null);setMode('menu');},onError:e=>setAddRejection((e as Error & {rejection?:EarlyRejection}).rejection||null)});};
   const [addedName, setAddedName] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [amount, setAmount] = useState("");
@@ -255,6 +266,10 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, peopl
     );
   };
 
+  const failedAdd=(addPerson.error as (Error & {rejection?:EarlyRejection})|null)?.rejection;
+  const currentRejection=addRejection||failedAdd;
+  if(currentRejection?.reason==='before_shift')return <EarlyCheckIn rejection={currentRejection} timezone={location.timezone||undefined} busy={addPerson.isPending} onSubmit={r=>retryAdd(r,addReason||undefined)}/>;
+  if(currentRejection&&['no_gps','out_of_range'].includes(currentRejection.reason))return <section className="p-4 space-y-4"><p className="text-warning">Location unavailable or outside the geofence</p><Textarea aria-label="Off-site reason" placeholder="Reason (required)" value={addReason} onChange={e=>setAddReason(e.target.value)} maxLength={1000}/><Button disabled={!addReason.trim()||addPerson.isPending} onClick={()=>retryAdd(undefined,addReason.trim())}>I'M ON SITE ANYWAY</Button></section>;
   if (sigFor) {
     return (
       <SignaturePad
