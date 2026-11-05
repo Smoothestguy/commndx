@@ -12,7 +12,7 @@ export function routeMiles(points: { lat: number | null; lng: number | null; at:
   const valid = points.filter((p): p is { lat: number; lng: number; at: string } => p.lat != null && p.lng != null && Number.isFinite(p.lat) && Number.isFinite(p.lng)).sort((a,b) => a.at.localeCompare(b.at));
   return valid.slice(1).reduce((sum, point, i) => sum + distanceKm(valid[i], point), 0) * 1.2 / 1.609344;
 }
-export function compactHours(hours: number) { return hours >= 1000 ? `${new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(hours)} h` : `${Math.round(hours)}h`; }
+export function compactHours(hours: number) { return hours >= 1000 ? `${new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(hours).toLowerCase()} h` : `${Math.round(hours)}h`; }
 export function needsCrew(ids: string[], crews: { status: string; members: { personnel_id: string }[] }[]) {
   const unique = [...new Set(ids)];
   return unique.length >= 2 && !crews.some(c => c.status === 'active' && unique.every(id => c.members.some(m => m.personnel_id === id)));

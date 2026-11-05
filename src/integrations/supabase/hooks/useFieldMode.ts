@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { insertStatusRows } from "./usePersonnelStatus";
 import { addDays as addCalendarDays, chicagoMidnight, splitAtMidnight } from "@/lib/shifts";
-import { localDay, midnight, nextDay } from '@/lib/signinSheets';
+import { localDay, midnight, nextDay, rowsForDay, type SheetStay } from '@/lib/signinSheets';
 import { staleVisitEnd } from '@/lib/deploymentFlow';
 import { signatureImageUrl } from '@/utils/signedDocumentExport';
 
@@ -296,10 +296,10 @@ export function useSaveSignature(projectId: string | undefined) {
  * Round only after summing each person's segments for the date.
  */
 async function visitAttendanceDates(visitId: string): Promise<string[]> {
-  const { data, error } = await db.from("personnel_location_trail").select("in_at, out_at").eq("visit_id", visitId);
+  const { data, error } = await db.from("personnel_location_trail").select("in_at, out_at,location_id").eq("visit_id", visitId);
   if (error) throw error;
-  return [...new Set<string>((data ?? []).flatMap((r: { in_at: string; out_at: string | null }) =>
-    splitAtMidnight(r.in_at, r.out_at ?? new Date().toISOString()).map((s) => s.date)))];
+  const {data:location}=await db.from('project_locations').select('timezone').eq('id',data?.[0]?.location_id).maybeSingle();const zone=location?.timezone||'America/Chicago';
+  return [...new Set<string>((data??[]).flatMap((r:{in_at:string;out_at:string|null})=>{const dates:string[]=[];let d=localDay(r.in_at,zone);const end=localDay(r.out_at||new Date().toISOString(),zone);while(d<=end){dates.push(d);d=nextDay(d);}return dates;}))];
 }
 
 async function recomputeAttendanceFromVisits(locationId: string, touchedDates: string[]) {
@@ -307,8 +307,9 @@ async function recomputeAttendanceFromVisits(locationId: string, touchedDates: s
   const first = dates[0];
   const last = dates[dates.length - 1];
   if (!first || !last) return;
-  const start = chicagoMidnight(first);
-  const end = chicagoMidnight(addCalendarDays(last, 1));
+  const {data:location}=await db.from('project_locations').select('timezone').eq('id',locationId).single();const zone=location?.timezone||'America/Chicago';
+  const start = new Date(midnight(first,zone)).toISOString();
+  const end = new Date(midnight(nextDay(last),zone)).toISOString();
   const { data, error } = await db.from("personnel_location_trail")
     .select("personnel_id, crew_id, in_at, out_at, hours")
     .eq("location_id", locationId).lt("in_at", end).or(`out_at.is.null,out_at.gte.${start}`);
@@ -322,11 +323,12 @@ async function recomputeAttendanceFromVisits(locationId: string, touchedDates: s
   const included = new Set(dates);
   const now = new Date().toISOString();
   for (const r of (data ?? []) as TrailRow[]) {
-    for (const s of splitAtMidnight(r.in_at, r.out_at ?? now)) {
-      if (!included.has(s.date)) continue;
-      const key = `${r.personnel_id}:${s.date}`;
-      const total = totals.get(key) ?? { personnel_id: r.personnel_id, att_date: s.date, hours: 0, crew_id: r.crew_id ?? null };
-      total.hours += s.hours;
+    for (const date of included) {
+      const row:SheetStay={id:r.visit_personnel_id||'',personnelId:r.personnel_id,locationId,name:'',position:'',inAt:r.in_at,outAt:r.out_at||now,signature:null,offsite:false};
+      const s=rowsForDay([row],locationId,date,zone)[0];if(!s)continue;
+      const key = `${r.personnel_id}:${date}`;
+      const total = totals.get(key) ?? { personnel_id: r.personnel_id, att_date: date, hours: 0, crew_id: r.crew_id ?? null };
+      total.hours += s.hours??0;
       total.crew_id = r.crew_id ?? null;
       totals.set(key, total);
     }
@@ -357,6 +359,7 @@ export function useCheckOut(projectId: string | undefined) {
       if (error) throw error;
       // Attendance grid fills itself from real times.
       // Live triggers own location-local attendance and canonical time entries.
+      await recomputeAttendanceFromVisits(visit.location_id,await visitAttendanceDates(visit.id));
       return visit.location_id;
     },
     onSuccess: (locationId) => { inv(locationId); toast.success("Checked out"); },
@@ -407,8 +410,10 @@ export function useUpdateVisit(projectId: string | undefined) {
     mutationFn: async ({ id, check_in_at, check_out_at, location_id }: {
       id: string; check_in_at: string; check_out_at: string | null; location_id: string;
     }) => {
+      const oldDates=await visitAttendanceDates(id);
       const { error } = await db.from("location_visits").update({ check_in_at, check_out_at, needs_review:false }).eq("id", id);
       if (error) throw error;
+      await recomputeAttendanceFromVisits(location_id,[...oldDates,...await visitAttendanceDates(id)]);
       return location_id;
     },
     onSuccess: (lid) => { inv(lid); toast.success("Visit updated"); },
@@ -542,6 +547,7 @@ export function useCheckOutPerson(projectId: string | undefined) {
         .eq("visit_id", visit.id).eq("personnel_id", personnel_id);
       if (error) throw error;
       // Checkout trigger owns attendance/time-entry writes in location timezone.
+      await recomputeAttendanceFromVisits(visit.location_id,await visitAttendanceDates(visit.id));
       return visit.location_id;
     },
     onSuccess: (lid) => { inv(lid); toast.success("Checked out"); },
@@ -557,7 +563,7 @@ export function useAddPersonToVisit(projectId: string | undefined, locationIds: 
       if(!navigator.onLine)throw new Error('No signal — try again in coverage');
       const signed = await fetchTodaySignatures(locationIds, [personnel_id],visit.location_id);
       if(!signed[personnel_id]&&!blob)throw new Error('Signature required before check-in');
-      const signature=signed[personnel_id]||await uploadFieldSignature(personnel_id,blob as Blob);
+      let signature=signed[personnel_id];if(!signature){if(!blob)throw new Error('Signature required');signature=await uploadFieldSignature(personnel_id,blob);}
       const {data:{user}}=await supabase.auth.getUser();
       const {error}=await db.from('visit_personnel').insert({visit_id:visit.id,personnel_id,checked_in_at:new Date().toISOString(),checked_in_by:user?.id??null,...signature});if(error)throw error;
       await autoActivate(projectId, visit.location_id, [personnel_id]);

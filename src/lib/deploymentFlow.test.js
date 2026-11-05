@@ -5,4 +5,4 @@ it('reuses same local day even across UTC midnight',()=>{expect(staleVisitEnd('2
 it('uses location timezone for stale boundary',()=>{expect(staleVisitEnd('2026-11-05T01:00:00Z','2026-11-05T12:00:00Z','Asia/Tokyo')).toBeNull();});
 it('orders route points, skips missing coordinates and applies 1.2 road factor and miles conversion',()=>{expect(routeMiles([{lat:0,lng:1,at:'2026-11-05T12:00Z'},{lat:null,lng:null,at:'2026-11-05T11:00Z'},{lat:0,lng:0,at:'2026-11-05T10:00Z'}])).toBeCloseTo(111.19492664455873*1.2/1.609344,5);});
 it('prompts for two people only when not in one active crew',()=>{expect(needsCrew(['a'],[])).toBe(false);expect(needsCrew(['a','b'],[])).toBe(true);expect(needsCrew(['a','b'],[{status:'active',members:[{personnel_id:'a'},{personnel_id:'b'}]}])).toBe(false);expect(needsCrew(['a','b'],[{status:'disbanded',members:[{personnel_id:'a'},{personnel_id:'b'}]}])).toBe(true);});
-it('formats requested compact hours',()=>{expect(compactHours(936)).toBe('936h');expect(compactHours(1200)).toBe('1.2K h');});
+it('formats requested compact hours',()=>{expect(compactHours(936)).toBe('936h');expect(compactHours(1200)).toBe('1.2k h');});
