@@ -1,3 +1,8 @@
+# Shift discipline
+- [ ] Update public, kiosk and Field Mode early-arrival flows and extension requests/status.
+- [ ] Add manager review actions and early badges; update secure shift reminders.
+- [ ] Verify rules, browser flows and requested typecheck; no migrations, schedules remain paused.
+
 # Applicant locations
 
 # Phase 3 sign-in sheets
