@@ -25,9 +25,9 @@ Deno.serve(async req => {
     const a=v.applicant;
     const {data:existing,error:ee}=await db.rpc('find_applicant_id_by_contact',{_email:a.email,_phone:a.phone});if(ee)throw ee;
     let applicantId=existing;
-    if(!applicantId){const {data:id,error}=await db.rpc('create_applicant_return_id',{_first_name:a.first_name,_last_name:a.last_name,_email:a.email,_phone:a.phone,_address:a.address??null,_city:a.city??null,_state:a.state??null,_home_zip:a.home_zip??null,_photo_url:a.photo_url??null});if(error)throw error;applicantId=id;
-      // Set attribution only on the record created by this request, not a caller-supplied or guessed ID.
-      const {error:attributionError}=await db.from('applicants').update({vendor_id:vendor.id}).eq('id',applicantId).is('vendor_id',null);if(attributionError)throw attributionError;
+    if(!applicantId){
+      const created=await db.from('applicants').insert({id:crypto.randomUUID(),first_name:a.first_name,last_name:a.last_name,email:a.email,phone:a.phone,address:a.address??null,city:a.city??null,state:a.state??null,home_zip:a.home_zip??null,photo_url:a.photo_url??null,vendor_id:vendor.id}).select('id').single();
+      if(created.error){if(created.error.code!=='23505')throw created.error;const retry=await db.rpc('find_applicant_id_by_contact',{_email:a.email,_phone:a.phone});if(retry.error||!retry.data)throw created.error;applicantId=retry.data;}else applicantId=created.data.id;
     }
     const {data:active,error:ae}=await db.rpc('has_active_application_for_posting',{_applicant_id:applicantId,_job_posting_id:posting.id});if(ae)throw ae;
     const {data:id,error}=await db.rpc(active?'resubmit_application':'create_application_return_id',{_job_posting_id:posting.id,_applicant_id:applicantId,_answers:v.answers,_client_submitted_at:v.clientSubmittedAt??null,_geo_lat:v.geo?.lat??null,_geo_lng:v.geo?.lng??null,_geo_accuracy:v.geo?.accuracy??null,_geo_source:v.geo?.source??null,_geo_captured_at:v.geo?.capturedAt??null,_geo_error:v.geo?.error??null,_user_agent:v.userAgent??null,_sms_consent:!!v.smsConsent,_sms_consent_phone:v.smsConsent?v.smsConsentPhone??null:null,_sms_consent_text_version:v.smsConsent?v.smsConsentTextVersion??'v1.0':null});if(error)throw error;
