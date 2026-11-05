@@ -1,5 +1,11 @@
 # Applicant locations
 
+# Phase 3 sign-in sheets
+- [ ] Manager reconciliation, reasoned acknowledgments/manual edits, blocked week close and all-source locks.
+- [ ] Deduplicated roster SMS alerts, supervisor no-show banner and late-sync trail chips.
+- [ ] Yesterday's locked PDF email delivery, optional Drive copy, Chicago daily schedule and POC email.
+- [ ] Browser verification, focused rule tests and requested TypeScript check; no schema migrations.
+
 # Phase 2 customer sign-in sheets
 - [x] Customer countersign with nonblocking recorded GPS, immutable private PDF/hash, historical downloads and reason-required reopening across attendance/time mutations; live version 1 → reopen → version 2 and locked attendance edit verified. Dedicated approval page avoids covering arbitrary template rows.
 - [x] Expiring kiosk links, private public signing, same-local-day roster status, 60s refresh/3s return, check-out confirmation, GPS override and letter QR posters. Live sign-in/private signature, no-GPS/reason override, token/roster/auth/stale-state boundaries verified. Checkout remains blocked by existing live function below.
