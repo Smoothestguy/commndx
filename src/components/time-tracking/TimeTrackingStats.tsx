@@ -5,6 +5,7 @@ import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySett
 import { formatCurrency } from "@/lib/utils";
 import { calculateWeeklyOvertimeByEmployee, calculateLaborCost } from "@/lib/overtimeUtils";
 import { useMemo } from "react";
+import { compactHours } from '@/lib/deploymentFlow';
 
 interface TimeTrackingStatsProps {
   entries: TimeEntryWithDetails[];
@@ -85,37 +86,37 @@ export function TimeTrackingStats({ entries }: TimeTrackingStatsProps) {
   const stats = [
     {
       label: "Total Hours",
-      value: totalHours.toFixed(2),
+      value: compactHours(totalHours),
       icon: Clock,
       color: "text-primary",
     },
     {
       label: "Regular Hours",
-      value: regularHours.toFixed(2),
+      value: compactHours(regularHours),
       icon: Clock,
       color: "text-blue-500",
     },
     {
       label: "Overtime Hours",
-      value: overtimeHours.toFixed(2),
+      value: compactHours(overtimeHours),
       icon: AlertCircle,
       color: "text-orange-500",
     },
     {
       label: "Holiday Hours",
-      value: holidayHours.toFixed(2),
+      value: compactHours(holidayHours),
       icon: Gift,
       color: "text-purple-500",
     },
     {
       label: "Total Cost",
-      value: formatCurrency(totalCost),
+      value: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 }).format(totalCost),
       icon: DollarSign,
       color: "text-success",
     },
     {
       label: "Uninvoiced",
-      value: uninvoicedHours.toFixed(2),
+      value: compactHours(uninvoicedHours),
       icon: FileText,
       color: "text-warning",
     },

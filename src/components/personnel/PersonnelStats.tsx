@@ -1,5 +1,6 @@
 import { usePersonnelStats } from "@/integrations/supabase/hooks/usePersonnel";
 import { StatCard } from "@/components/dashboard/StatCard";
+import { Button } from '@/components/ui/button';
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Users,
@@ -18,7 +19,7 @@ interface StatConfig {
 }
 
 export const PersonnelStats = () => {
-  const { data: statsData, isLoading } = usePersonnelStats();
+  const { data: statsData, isLoading, error, refetch } = usePersonnelStats();
   const isMobile = useIsMobile();
 
   if (isLoading) {
@@ -34,6 +35,7 @@ export const PersonnelStats = () => {
     );
   }
 
+  if (error) return <div role="alert" className="text-sm text-warning">Personnel totals unavailable. <Button size="sm" variant="ghost" onClick={() => refetch()}>Retry</Button></div>;
   const stats: StatConfig[] = [
     { title: "Total", value: statsData?.total || 0, icon: Users, showOnMobile: true },
     { title: "Active", value: statsData?.active || 0, icon: UserCheck, showOnMobile: true },

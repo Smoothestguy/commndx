@@ -2,7 +2,7 @@
 
 - Staff applicant locations use the shared applicant location formatter and a view-level cached ZIP batch lookup; preserve applicant fields and resolve fallbacks only for display to avoid per-row requests and unnecessary writes.
 - Equipment per-diem billing is derived on read from `asset_assignments` (location_id, billable, day_rate ?? assets.default_day_rate) via `src/lib/assetBilling.ts`; never store accrued totals, so project, location and financial views stay consistent.
-- Use shared Chicago midnight segmentation for timesheets and visit-derived attendance, with location shift overrides threaded from cached project locations, so exports and calendar-day attendance stay consistent without extra location queries.
+- Use Chicago midnight segmentation for payroll timesheets; operational attendance/visits use location-local days and cached location shift overrides, keeping payroll detail separate from server-owned time-entry accrual.
 - Public punch offline support uses a generated Workbox worker scoped to `/punch/`, registered only in published top-level contexts; never cache auth/API responses or register in previews. Durable per-token intents retain GPS/time and use Web Locks plus state reconciliation before toggle retries to reduce duplicate punches without changing server logic.
 - Document signatures use token-validated `document-sign` for public reads/writes and authenticated role checks for sends; private object paths and no-overwrite signature uploads preserve evidence. Staff signature queries are project-batched. Placement uses PDF.js crop/rotation geometry and normalized top-left coordinates; the shared dynamic PDF-lib generator maps into PDF bottom-left coordinates and retains certificates, so individual and ZIP exports agree without persisting generated PDFs.
 - Field Mode and public document signing share the pointer-event SignaturePad to keep phone drawing behavior consistent.
@@ -12,3 +12,5 @@
 - Reusable sign-in templates copy document metadata and fields but share private storage originals; client deletion must never delete shared files because cross-project references may be hidden by RLS.
 - Location geocoding is manager-authorized in an edge function; address and manual-coordinate timezone resolution use the same entrypoint, and secret Mapbox tokens are never returned to browsers.
 - Already-signed public punch history is read through a token-validated minimal-response edge function scoped to that token's person, location and recent local day; never grant anonymous trail access.
+- Deployment/roster operational hours use paginated time_entries while punch trail remains detail; assignment/status counts share one hook to prevent list/header cache-shape conflicts.
+- Public punch signatures use an expiring-token edge function and immutable private storage paths; committed queue intents retry only the signature write, never toggle an already accepted punch.

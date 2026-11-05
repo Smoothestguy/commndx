@@ -1,5 +1,13 @@
 # Applicant locations
 
+# Deployment data-flow fixes
+- [x] Same-local-day Field Mode visits, flagged stale closure and review clearing; live stale-shell closure verified at location end-of-day.
+- [x] Required private check-in signatures, same-day copy-forward and durable public signature retries; live public and two-person Field Mode signatures verified. New signatures use private project-documents rather than public field-captures.
+- [x] Canonical time-entry hours/costs and shared assignment/status counts; list/header previously collided under one cache key with different result shapes. Time Tracking KPIs now use selected date window.
+- [x] Crew prompt and editable route-mileage estimate; live crew creation and estimate dialog verified; haversine/factor/order rules tested.
+- [x] Personnel stats resolve using parallel exact counts rather than sequential full-record loads; compact time KPIs, 24 tests and requested TypeScript passed. No migrations/layout changes; temporary fixtures removed; actual iPhone Safari and separate manager account unverified.
+- [ ] Live checkout → generated time-entry verification blocked by existing server sync_visit_time_entry: INSERT omits required time_entries.user_id (NOT NULL, no default), so checkout rolls back. Requires owner/live-server correction; no migration or workaround applied.
+
 # Phase 1 location customer sign-in sheets
 - [x] Live types; location coordinates, timezone and geocoding with manager-only authorization; no migrations. Numeric-coordinate fallback used instead of a map preview; live address lookup and coordinate save/readback verified.
 - [x] Binding/scope/resizable row-band editor, template upload/location links and reusable template copy. Live upload, tablet resize/save and shared-file copy verified.

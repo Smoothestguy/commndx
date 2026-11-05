@@ -8,6 +8,8 @@ import { AlertCircle, CheckCircle2, Loader2, MapPin, WifiOff } from "lucide-reac
 import { clearPunch, isNetworkError, readPunch, savePunch, withPunchLock, type PunchIntent } from "@/lib/punchQueue";
 import { Textarea } from "@/components/ui/textarea";
 import { registerPunchOffline } from "@/lib/punchOffline";
+import { SignaturePad } from '@/components/documents/SignaturePad';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 
 type Info = { valid: boolean; reason?: string; first_name?: string; location_name?: string; address?: string | null; report_at?: string | null; on_site_since?: string | null };
 type Done = { action: "in" | "out"; at: string; geo: boolean; offsite: boolean } | null;
@@ -41,6 +43,8 @@ export default function SitePunch() {
   const [rejection, setRejection] = useState<Rejection | null>(null);
   const [overriding, setOverriding] = useState(false);
   const [overrideReason, setOverrideReason] = useState('');
+  const [signing,setSigning]=useState<PunchIntent|null>(null);
+  const prepare=async(intent:PunchIntent)=>{if(!navigator.onLine){setSigning(intent);return false;}const {data,error}=await supabase.functions.invoke('punch-signature',{body:{action:'prepare',token:intent.token,at:intent.at,lat:intent.lat,lng:intent.lng,override_reason:intent.overrideReason}});if(error)throw new Error(error instanceof FunctionsHttpError?await error.context.text():error.message);if(!data.ok){savePunch(intent);setPending(intent);setRejection(data);blocked.current=true;return false;}if(!data.has_signature&&!intent.signatureBase64){setSigning(intent);return false;}return true;};
 
   const updateInfo = useCallback((value: Info) => {
     setInfo(value);
@@ -66,19 +70,27 @@ export default function SitePunch() {
       if (!intent) { setPending(null); return; }
       setBusy(true);
       try {
+        const finish=async(current:PunchIntent)=>{if(current.action==='in'){const committed={...current,committed:true};savePunch(committed);setPending(committed);const {data,error}=await supabase.functions.invoke('punch-signature',{body:{action:'save',token:current.token,at:current.at,signature_png_base64:current.signatureBase64}});if(error||!data?.ok){setError('Check-in recorded; signature still needs saving. Keep this page open to retry.');return;} }confirm(current,current.action);};
+        if(intent.committed){await finish(intent);return;}
         // A response can be lost after the toggle committed. Check server state before retrying.
         if (intent.tries > 0) {
           const { data, error } = await supabase.rpc("get_site_checkin_info", { p_token: token });
           if (error) { if (!isNetworkError(error)) setError("Could not verify the saved punch. / No se pudo verificar el registro guardado."); return; }
           const current = data as unknown as Info;
           if (current?.valid && ((intent.action === "in" && current.on_site_since && Date.parse(current.on_site_since) >= Date.parse(intent.at) - 1000) || (intent.action === "out" && !current.on_site_since))) {
-            confirm(intent, intent.action); return;
+            await finish(intent); return;
           }
           if (!current?.valid || (intent.action === "in" && current.on_site_since) || (intent.action === "out" && current.on_site_since && Date.parse(current.on_site_since) > Date.parse(intent.at))) {
             blocked.current = true;
             setError("Your site status changed. Call the office before retrying. / Tu estado cambió. Llama a la oficina antes de reintentar.");
             return;
           }
+        }
+        if(intent.action==='in'&&!intent.signatureBase64){
+          const {data:preflight,error:preflightError}=await supabase.functions.invoke('punch-signature',{body:{action:'prepare',token:intent.token,at:intent.at,lat:intent.lat,lng:intent.lng,override_reason:intent.overrideReason}});
+          if(preflightError){setError('Could not verify the saved signature. Keep this page open to retry.');return;}
+          if(!preflight?.ok){blocked.current=true;setRejection(preflight);return;}
+          if(!preflight.has_signature){setSigning(intent);return;}
         }
         const attempt = { ...intent, tries: intent.tries + 1 };
         savePunch(attempt); setPending(attempt);
@@ -104,7 +116,7 @@ export default function SitePunch() {
           setError("Punch not accepted — call the office. Your saved punch is kept. / Registro no aceptado; llama a la oficina. Se conserva el registro.");
           return;
         }
-        confirm(intent, result.action);
+        await finish({...intent,action:result.action});
       } catch (e) {
         if (!isNetworkError(e)) setError("Could not send the saved punch. / No se pudo enviar el registro guardado.");
       } finally { setBusy(false); }
@@ -141,6 +153,7 @@ export default function SitePunch() {
       const pos = await getPos();
       if (readPunch(token)) { setPending(readPunch(token)); return; }
       const intent: PunchIntent = { token, lat: pos?.lat ?? null, lng: pos?.lng ?? null, accuracy: pos?.accuracy ?? null, at, tries: 0, action: info?.on_site_since ? "out" : "in" };
+      if(intent.action==='in'&&!await prepare(intent))return;
       savePunch(intent); setPending(intent); // Write ahead: reloads cannot lose an in-flight punch.
       await flush();
     } catch {
@@ -150,8 +163,9 @@ export default function SitePunch() {
   const override = async () => {
     if (!token || !overrideReason.trim() || busy) return;
     const intent = readPunch(token); if (!intent) return;
-    savePunch({ ...intent, overrideReason: overrideReason.trim(), tries: 0 });
-    blocked.current = false; setRejection(null); setOverriding(false); await flush();
+    const next={ ...intent, overrideReason: overrideReason.trim(), tries: 0 };
+    blocked.current = false; setRejection(null); setOverriding(false);
+    try{if(!await prepare(next))return;savePunch(next);await flush();}catch(e){setError(e instanceof Error?e.message:'Check-in unavailable');}
   };
   const t = (iso: string) => rejection?.timezone ? new Intl.DateTimeFormat('en-GB', { timeZone: rejection.timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso)) : format(new Date(iso), "HH:mm");
   const onSite = !!info?.on_site_since;
@@ -160,12 +174,12 @@ export default function SitePunch() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-5">
       <ForceDarkTheme />
-      <div className="w-full max-w-md text-center space-y-6">
+      {signing ? <div className="w-full max-w-md h-[85dvh]"><SignaturePad name={info?.first_name||'You'} required description="Sign to check in" saving={busy} onSkip={()=>{}} onSave={async blob=>{const intent=signing;setBusy(true);try{const base64=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob);});savePunch({...intent,signatureBase64:base64});setSigning(null);setPending(readPunch(intent.token));blocked.current=false;await flush();}catch{setError('Could not save your signature. Please try again.');}finally{setBusy(false);}}}/></div> : <div className="w-full max-w-md text-center space-y-6">
         <p className="text-sm uppercase tracking-widest text-muted-foreground">Fairfield Response Group</p>
         {pending && !rejection && <div role="status" className="border-2 border-warning bg-warning/15 text-warning rounded-md p-5 space-y-3">
           <WifiOff className="h-12 w-12 mx-auto" />
-          <h1 className="text-2xl font-bold">No signal — punch saved {t(pending.at)}</h1>
-          <p className="text-lg">It will send automatically when you're back in coverage. Keep this page open or revisit the link.</p>
+          <h1 className="text-2xl font-bold">{pending.committed?'Signature pending — check-in recorded':error?'Punch not accepted — saved for review':navigator.onLine?'Sending saved punch':'No signal — punch saved'} {t(pending.at)}</h1>
+          <p className="text-lg">{error?'Keep this page open and call the office.':"It will send automatically when you're back in coverage. Keep this page open or revisit the link."}</p>
           <p className="text-base">Sin señal — registro guardado a las {t(pending.at)}. Se enviará al volver la señal. Mantén esta página abierta o vuelve a abrir el enlace.</p>
           {busy && <Loader2 className="h-5 w-5 animate-spin mx-auto" />}
         </div>}
@@ -203,7 +217,7 @@ export default function SitePunch() {
           </> : <Button className="w-full h-20 text-xl" onClick={() => setOverriding(true)}>I'M ON SITE ANYWAY</Button>}
         </div>}
         {error && <p role="alert" className="text-lg text-destructive">{error} <a className="underline" href={`tel:${OFFICE_PHONE.replace(/\D/g, "")}`}>{OFFICE_PHONE}</a></p>}
-      </div>
+      </div>}
     </div>
   );
 }

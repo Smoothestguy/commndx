@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAllCurrentStatuses, PROJECT_REQUIRED } from './usePersonnelStatus';
 
 export interface PersonnelProjectAssignment {
   id: string;
@@ -48,28 +49,32 @@ export interface RateBracketInfo {
 
 // Get assignment counts for multiple projects (efficient batch query)
 export function useAssignmentCountsByProject(projectIds: string[]) {
-  return useQuery({
-    queryKey: ["personnel-assignment-counts", projectIds],
+  const statuses=useAllCurrentStatuses();
+  const query=useQuery({
+    queryKey: ["personnel-assignment-counts", [...projectIds].sort()],
     queryFn: async () => {
       if (!projectIds.length) return {};
       
       const { data, error } = await supabase
         .from("personnel_project_assignments")
-        .select("project_id")
+        .select("project_id,personnel_id")
         .in("project_id", projectIds)
         .eq("status", "active");
 
       if (error) throw error;
 
       // Group by project_id and count
-      const counts: Record<string, number> = {};
+      const counts: Record<string, string[]> = {};
       data?.forEach((a) => {
-        counts[a.project_id] = (counts[a.project_id] || 0) + 1;
+        (counts[a.project_id]??=[]).push(a.personnel_id);
       });
       return counts;
     },
     enabled: projectIds.length > 0,
   });
+  const counts:Record<string,number>={};
+  for(const id of projectIds){const people=new Set(query.data?.[id]??[]);for(const s of Object.values(statuses.data??{}))if(s.project_id===id&&PROJECT_REQUIRED.includes(s.status))people.add(s.personnel_id);counts[id]=people.size;}
+  return {...query,data:counts,isLoading:query.isLoading||statuses.isLoading};
 }
 
 // Get all personnel assigned to a specific project (filters out inactive/do_not_hire personnel)

@@ -1,4 +1,6 @@
 import { SignaturePad } from "@/components/documents/SignaturePad";
+import { SaveCrewPrompt } from '@/components/personnel/lifecycle/SaveCrewPrompt';
+import { needsCrew } from '@/lib/deploymentFlow';
 import { AddExpenseDialog } from "@/components/personnel/lifecycle/AddExpenseDialog";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -17,6 +19,7 @@ import { useCrews, usePersonnelDirectory, fullName, Crew } from "@/integrations/
 import {
   getCoords, todayYmd, useAddPurchase, useAddVisitPhoto, useCheckIn, useCheckOut,
   useSaveSignature, useTodayVisits, VisitRow, VisitPerson, useCheckOutPerson, useAddPersonToVisit,
+  fetchTodaySignatures,
 } from "@/integrations/supabase/hooks/useFieldMode";
 
 const CREW_KEY = (pid: string) => `fieldModeCrew:${pid}`;
@@ -48,10 +51,13 @@ function CheckInSheet({ location, crew, projectId, locationIds, onClose }: {
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [sigQueue, setSigQueue] = useState<string[]>([]);
-  const [sigVisitId, setSigVisitId] = useState<string | null>(null);
   const { data: directory = [] } = usePersonnelDirectory(showSearch);
   const checkIn = useCheckIn(projectId, locationIds);
-  const saveSig = useSaveSignature(projectId);
+  const {data:allCrews=[]}=useCrews(projectId);
+  const [drawn,setDrawn]=useState<Record<string,Blob>>({});
+  const [preparing,setPreparing]=useState(false);
+  const [crewPrompt,setCrewPrompt]=useState<string|null>(null);
+  const finishCheckIn=async(signatures:Record<string,Blob>)=>{const {lat,lng}=await getCoords();checkIn.mutate({location_id:location.id,crew_id:crew?.id??null,memberIds:[...selected],lat,lng,signatures},{onSuccess:({visitId})=>{setSigQueue([]);if(needsCrew([...selected],allCrews))setCrewPrompt(visitId);else onClose();}});};
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -75,44 +81,23 @@ function CheckInSheet({ location, crew, projectId, locationIds, onClose }: {
 
   const doCheckIn = async () => {
     if (!navigator.onLine) { toast.error("No signal — try again in coverage"); return; }
-    const { lat, lng } = await getCoords(); // never blocks
-    checkIn.mutate(
-      { location_id: location.id, crew_id: crew?.id ?? null, memberIds: [...selected], lat, lng },
-      {
-        onSuccess: ({ visitId, needsSignature }) => {
-          if (needsSignature.length) {
-            setSigVisitId(visitId);
-            setSigQueue(needsSignature);
-          } else {
-            onClose();
-          }
-        },
-      },
-    );
+    setPreparing(true);try{const signed=await fetchTodaySignatures(locationIds,[...selected],location.id);const missing=[...selected].filter(id=>!signed[id]);if(missing.length)setSigQueue(missing);else await finishCheckIn({});}catch(e){toast.error(e instanceof Error?e.message:'Check-in unavailable');}finally{setPreparing(false);}
   };
 
-  // When the signature queue empties after a check-in, close the sheet (effect, not render).
-  useEffect(() => {
-    if (sigVisitId && sigQueue.length === 0) onClose();
-  }, [sigVisitId, sigQueue, onClose]);
 
-  if (sigVisitId && sigQueue.length) {
+  if(crewPrompt)return <SaveCrewPrompt projectId={projectId} ids={[...selected]} visitId={crewPrompt} onDone={onClose}/>;
+  if (sigQueue.length) {
     const pid = sigQueue[0];
     return (
       <SignaturePad
-        name={nameOf(pid)}
-        saving={saveSig.isPending}
-        onSkip={() => setSigQueue((q) => q.slice(1))}
-        onSave={(blob) =>
-          saveSig.mutate(
-            { visit_id: sigVisitId, personnel_id: pid, blob },
-            { onSettled: () => setSigQueue((q) => q.slice(1)) },
-          )
-        }
+        key={pid} name={nameOf(pid)}
+        required
+        saving={checkIn.isPending}
+        onSkip={()=>{}}
+        onSave={blob=>{const next={...drawn,[pid]:blob};setDrawn(next);if(sigQueue.length>1)setSigQueue(q=>q.slice(1));else void finishCheckIn(next);}}
       />
     );
   }
-  if (sigVisitId) return null;
 
   return (
     <div className="flex flex-col h-full">
@@ -197,7 +182,7 @@ function CheckInSheet({ location, crew, projectId, locationIds, onClose }: {
         <Button
           size="lg"
           className="w-full h-16 text-xl font-bold bg-success hover:bg-success/90 text-success-foreground"
-          disabled={selected.size === 0 || checkIn.isPending}
+          disabled={selected.size === 0 || checkIn.isPending || preparing}
           onClick={doCheckIn}
         >
           {checkIn.isPending ? <Loader2 className="h-6 w-6 animate-spin" /> : `CHECK IN (${selected.size})`}
@@ -222,6 +207,8 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, peopl
   const checkOutPerson = useCheckOutPerson(projectId);
   const addPerson = useAddPersonToVisit(projectId, locationIds);
   const saveSig = useSaveSignature(projectId);
+  const {data:allCrews=[]}=useCrews(projectId);
+  const [crewDismissed,setCrewDismissed]=useState(false);
   const onSite = people.filter((p) => !p.checked_out_at);
   const leftEarly = people.filter((p) => p.checked_out_at);
   const sinceOf = (p: VisitPerson) => p.checked_in_at ?? visit.check_in_at;
@@ -272,9 +259,10 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, peopl
     return (
       <SignaturePad
         name={addedName}
-        saving={saveSig.isPending}
+        required
+        saving={saveSig.isPending || addPerson.isPending}
         onSkip={() => setSigFor(null)}
-        onSave={(blob) => saveSig.mutate({ visit_id: visit.id, personnel_id: sigFor, blob }, { onSettled: () => setSigFor(null) })}
+        onSave={(blob) => addPerson.mutate({visit,personnel_id:sigFor,blob},{onSuccess:()=>{setSigFor(null);setMode('menu');}})}
       />
     );
   }
@@ -290,6 +278,7 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, peopl
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {!crewDismissed && needsCrew(onSite.map(p=>p.personnel_id),allCrews) && <SaveCrewPrompt projectId={projectId} ids={onSite.map(p=>p.personnel_id)} visitId={visit.id} onDone={()=>setCrewDismissed(true)}/>}
         {stale && mode === "menu" && (
           <div className="rounded-xl border-2 border-warning bg-warning/10 p-4 space-y-2">
             <p className="font-semibold">Forgot to check out?</p>
@@ -322,7 +311,7 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, peopl
             </div>
             {leftEarly.length > 0 && (
               <p className="text-xs text-muted-foreground">
-                Left: {leftEarly.map((p) => `${p.personnel?.first_name ?? fullName(p.personnel)} ${fmtTime(p.checked_out_at!)}`).join(" · ")}
+                Left: {leftEarly.map((p) => `${p.personnel?.first_name ?? fullName(p.personnel)} ${p.checked_out_at ? fmtTime(p.checked_out_at) : ''}`).join(" · ")}
               </p>
             )}
           </div>
@@ -335,12 +324,7 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, peopl
               {addResults.map((d) => (
                 <button key={d.id} type="button" disabled={addPerson.isPending}
                   className="w-full text-left px-4 py-3 text-base hover:bg-muted"
-                  onClick={() => addPerson.mutate({ visit, personnel_id: d.id }, {
-                    onSuccess: ({ needsSignature }) => {
-                      setMode("menu");
-                      if (needsSignature) { setAddedName(fullName(d)); setSigFor(d.id); }
-                    },
-                  })}>
+                  onClick={async()=>{try{const signed=await fetchTodaySignatures(locationIds,[d.id],location.id);if(!signed[d.id]){setAddedName(fullName(d));setSigFor(d.id);}else addPerson.mutate({visit,personnel_id:d.id},{onSuccess:()=>setMode('menu')});}catch(e){toast.error(e instanceof Error?e.message:'Signature lookup failed');}}}>
                   {fullName(d)}
                 </button>
               ))}
@@ -607,9 +591,9 @@ export default function FieldMode() {
               <ActiveVisitSheet
                 visit={sheet.visit}
                 location={sheet.location}
-                projectId={projectId!}
+                projectId={projectId || ''}
                 defaultShiftHours={defaultShiftHours}
-                people={(bundle?.people ?? []).filter((p) => p.visit_id === sheet.visit!.id)}
+                people={(bundle?.people ?? []).filter((p) => p.visit_id === sheet.visit?.id)}
                 locationIds={locationIds}
                 onClose={() => setSheet(null)}
               />
@@ -617,7 +601,7 @@ export default function FieldMode() {
               <CheckInSheet
                 location={sheet.location}
                 crew={crew}
-                projectId={projectId!}
+                projectId={projectId || ''}
                 locationIds={locationIds}
                 onClose={() => setSheet(null)}
               />

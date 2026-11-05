@@ -11,7 +11,7 @@ interface ProjectStatsProps {
 export function ProjectStats({ projects, individualCount = 0, teamCount = 0 }: ProjectStatsProps) {
   const isMobile = useIsMobile();
   const totalProjects = projects.length;
-  const activeProjects = projects.filter(p => p.status === "active").length;
+  const activeProjects = projects.filter(p => p.status === 'active' && !['quote','complete','canceled'].includes(p.stage)).length;
   const completedProjects = projects.filter(p => p.status === "completed").length;
   const onHoldProjects = projects.filter(p => p.status === "on-hold").length;
 

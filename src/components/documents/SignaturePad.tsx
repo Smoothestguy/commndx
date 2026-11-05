@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
-export function SignaturePad({ name, onSave, onSkip, saving, description = "One signature covers all of today's sites." }: {
-  name: string; onSave: (blob: Blob) => void; onSkip: () => void; saving: boolean; description?: string;
+export function SignaturePad({ name, onSave, onSkip, saving, required = false, description = "One signature covers all of today's sites." }: {
+  name: string; onSave: (blob: Blob) => void; onSkip: () => void; saving: boolean; description?: string; required?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
@@ -12,6 +12,7 @@ export function SignaturePad({ name, onSave, onSkip, saving, description = "One 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    setHasInk(false);
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width * 2;
     canvas.height = rect.height * 2;
@@ -80,7 +81,7 @@ export function SignaturePad({ name, onSave, onSkip, saving, description = "One 
       </div>
       <div className="p-4 flex gap-3">
         <Button variant="outline" size="lg" className="h-14 flex-1 text-base" onClick={clear}>Clear</Button>
-        <Button variant="ghost" size="lg" className="h-14" onClick={onSkip}>Skip</Button>
+        {!required && <Button variant="ghost" size="lg" className="h-14" onClick={onSkip}>Skip</Button>}
         <Button size="lg" className="h-14 flex-1 text-base" disabled={!hasInk || saving} onClick={save}>
           {saving && <Loader2 className="h-5 w-5 animate-spin mr-2" />}Save
         </Button>
