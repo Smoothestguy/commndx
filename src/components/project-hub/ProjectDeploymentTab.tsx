@@ -7,6 +7,8 @@ import { SigninSheetsPanel } from '@/components/documents/SigninSheetsPanel';
 import { SigninStatusBoard } from '@/components/signin/SigninStatusBoard';
 import { ReconcileView } from '@/components/signin/ReconcileView';
 import { DeploymentAlerts } from '@/components/signin/DeploymentAlerts';
+import { ShiftReviews } from '@/components/signin/ShiftReviews';
+import { EarlyInBadge } from '@/components/signin/EarlyInBadge';
 import { ReusableSigninPicker } from '@/components/documents/ReusableSigninPicker';
 import { toast } from 'sonner';
 import { AgencyFilter } from "./AgencyFilter";
@@ -957,6 +959,7 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
         </Button>
       </CardHeader>
       <CardContent className="pt-0 space-y-1">
+        {canEdit && <ShiftReviews projectId={projectId} locations={locations} />}
         <OnSiteNowBoard projectId={projectId} onPerson={openTrail} />
         <Tabs value={view} onValueChange={(v) => { setView(v as any); if (v !== "trail") setTrailRange(null); }} className="pt-2">
           <TabsList className="h-8">
@@ -1033,6 +1036,7 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
                             <button type="button" className="hover:underline" onClick={() => openTrail(p.personnel_id)}>{fullName(p.personnel)}</button>
                             {p.checked_out_at && <span className="text-muted-foreground">left {format(new Date(p.checked_out_at), "HH:mm")}</span>}
                             {canEdit && p.synced_late && <Badge variant="outline" title="Recorded offline at device time, synced later" className="text-[10px]">synced late</Badge>}
+                            <EarlyInBadge row={p} />
                             {p.signature_url && (
                               <a href={p.signature_url} target="_blank" rel="noopener noreferrer">
                                 <img src={p.signature_url} alt="signature" className="h-5 rounded bg-white" loading="lazy" />
@@ -1181,7 +1185,7 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
   }, [allRows, agency, agencies.vendorByPerson]);
   const personName = personId ? (peopleOpts.find(([id]) => id === personId)?.[1] ?? (rows[0] ? trailName(rows[0]) : "Person")) : "";
   const { data: visitNotes = {} } = useVisitNotes(rows.map((r) => r.visit_id));
-  const { data: lateIds = [] } = useQuery({ queryKey: ['trail-late-sync', projectId, rows.map(r => r.visit_personnel_id)], enabled: canLog && rows.length > 0, queryFn: async () => { const ids: string[] = []; for (let i = 0; i < rows.length; i += 200) { const { data, error } = await supabase.from('visit_personnel').select('id').in('id', rows.slice(i, i + 200).map(r => r.visit_personnel_id)).eq('synced_late', true); if (error) throw error; ids.push(...(data || []).map(r => r.id)); } return ids; } });
+  const { data: reviewFlags = [] } = useQuery({ queryKey: ['trail-review-flags', projectId, rows.map(r => r.visit_personnel_id)], enabled: rows.length > 0, queryFn: async () => { const flags: {id:string;synced_late:boolean;early_in_reason:string|null;offsite_approved_by:string|null;offsite_approved_at:string|null}[] = []; for (let i = 0; i < rows.length; i += 200) { const { data, error } = await supabase.from('visit_personnel').select('id,synced_late,early_in_reason,offsite_approved_by,offsite_approved_at').in('id', rows.slice(i, i + 200).map(r => r.visit_personnel_id)); if (error) throw error; flags.push(...(data || [])); } return flags; } });
   const isManual = (r: TrailRow) => /^manual entry/i.test(visitNotes[r.visit_id] ?? "");
   const total = rows.reduce((s, r) => s + (r.hours != null ? Number(r.hours) : 0), 0);
   const fmt = (iso: string | null) => (iso ? format(new Date(iso), "M/d HH:mm") : "on site");
@@ -1261,7 +1265,7 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
               {rows.map((r) => (
                 <tr key={r.visit_personnel_id}>
                   <td className="py-1.5 pr-2"><button type="button" className="font-medium hover:underline text-left" onClick={() => setPersonId(r.personnel_id)}>{trailName(r)}</button>{!r.signature_url && <Badge variant="outline" className="text-warning text-[10px] ml-1">no signature</Badge>}</td>
-                  <td className="pr-2">{r.location_name ?? "—"}{isManual(r) && <Pencil className="inline h-3 w-3 ml-1 text-muted-foreground" aria-label="Manual entry" />}{canLog && lateIds.includes(r.visit_personnel_id) && <Badge variant="outline" title="Recorded offline at device time, synced later" className="text-[10px] ml-1">synced late</Badge>}</td>
+                  <td className="pr-2">{r.location_name ?? "—"}{isManual(r) && <Pencil className="inline h-3 w-3 ml-1 text-muted-foreground" aria-label="Manual entry" />}{canLog && reviewFlags.some(f=>f.id===r.visit_personnel_id&&f.synced_late) && <Badge variant="outline" title="Recorded offline at device time, synced later" className="text-[10px] ml-1">synced late</Badge>}<EarlyInBadge row={reviewFlags.find(f=>f.id===r.visit_personnel_id)||{}} /></td>
                   <td className="pr-2 whitespace-nowrap">{fmt(r.in_at)}</td>
                   <td className="pr-2 whitespace-nowrap">{fmt(r.out_at)}</td>
                   <td className="text-right">{r.hours != null ? Number(r.hours).toFixed(2) : "—"}</td>
