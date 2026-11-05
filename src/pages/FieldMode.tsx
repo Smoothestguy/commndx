@@ -635,7 +635,7 @@ export default function FieldMode() {
           >
             <X className="h-5 w-5" />
           </Button>
-          {sheet&&(isAdmin||isManager)&&<Button variant="outline" className="absolute top-3 right-16 h-10 z-10" onClick={()=>{setScanLocation(sheet.location);setSheet(null);}}>Scan badge</Button>}
+          {sheet&&(isAdmin||isManager)&&<div className="absolute top-3 right-16 z-10"><Button variant="outline" className="h-10" onClick={()=>{setScanLocation(sheet.location);setSheet(null);}}>Scan badge</Button></div>}
         </DialogContent>
       </Dialog>
     </div>
