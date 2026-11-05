@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ensureSheetsOpen } from '@/lib/sheetLocks';
 
 const db = supabase as any;
 
@@ -135,6 +136,7 @@ export function useSetAttendance() {
     mutationFn: async ({ location_id, personnel_id, att_date, status, hours, crew_id }: {
       location_id: string; personnel_id: string; att_date: string; status: AttendanceStatus | null; hours?: number | null; crew_id?: string | null;
     }) => {
+      await ensureSheetsOpen([{ locationId: location_id, dates: [att_date] }]);
       if (!status) {
         const { error } = await db.from("location_attendance").delete()
           .eq("location_id", location_id).eq("personnel_id", personnel_id).eq("att_date", att_date);
@@ -165,6 +167,7 @@ export function useMarkCrewAttendance() {
       crew_id: string; location_id: string; att_date: string; status: AttendanceStatus; defaultHours: number; memberIds: string[];
     }) => {
       if (!memberIds.length) return { location_id, count: 0 };
+      await ensureSheetsOpen([{ locationId: location_id, dates: [att_date] }]);
       const { data: { user } } = await supabase.auth.getUser();
       const rows = memberIds.map((pid) => ({
         location_id, personnel_id: pid, att_date, status, crew_id,

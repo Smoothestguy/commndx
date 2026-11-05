@@ -7,6 +7,7 @@ import { addDays as addCalendarDays, chicagoMidnight, splitAtMidnight } from "@/
 import { localDay, midnight, nextDay, rowsForDay, type SheetStay } from '@/lib/signinSheets';
 import { staleVisitEnd } from '@/lib/deploymentFlow';
 import { signatureImageUrl } from '@/utils/signedDocumentExport';
+import { ensureSheetsOpen, guardVisitDates } from '@/lib/sheetLocks';
 
 const db = supabase as any;
 const BUCKET = "field-captures";
@@ -411,6 +412,7 @@ export function useUpdateVisit(projectId: string | undefined) {
       id: string; check_in_at: string; check_out_at: string | null; location_id: string;
     }) => {
       const oldDates=await visitAttendanceDates(id);
+      await guardVisitDates(location_id, check_in_at, check_out_at, oldDates);
       const { error } = await db.from("location_visits").update({ check_in_at, check_out_at, needs_review:false }).eq("id", id);
       if (error) throw error;
       await recomputeAttendanceFromVisits(location_id,[...oldDates,...await visitAttendanceDates(id)]);
@@ -426,6 +428,7 @@ export function useDeleteVisit(projectId: string | undefined) {
   return useMutation({
     mutationFn: async ({ id, location_id }: { id: string; location_id: string }) => {
       const oldDates = await visitAttendanceDates(id);
+      await ensureSheetsOpen([{ locationId: location_id, dates: oldDates }]);
       const { error } = await db.from("location_visits").delete().eq("id", id);
       if (error) throw error;
       await recomputeAttendanceFromVisits(location_id, oldDates);
@@ -514,6 +517,7 @@ export function useLogManualTime(projectId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (i: { personnel_id: string; location_id: string; day: string; in_at: string; out_at: string; note?: string }) => {
+      await guardVisitDates(i.location_id, i.in_at, i.out_at);
       const { data: { user } } = await supabase.auth.getUser();
       const notes = i.note?.trim() ? `Manual entry — ${i.note.trim()}` : "Manual entry";
       const { data: v, error } = await db.from("location_visits").insert({
@@ -542,6 +546,7 @@ export function useCheckOutPerson(projectId: string | undefined) {
   return useMutation({
     mutationFn: async ({ visit, personnel_id }: { visit: VisitRow; personnel_id: string }) => {
       if (!navigator.onLine) throw new Error("No signal — try again in coverage");
+      await guardVisitDates(visit.location_id, visit.check_in_at, new Date().toISOString());
       const { error } = await db.from("visit_personnel")
         .update({ checked_out_at: new Date().toISOString() })
         .eq("visit_id", visit.id).eq("personnel_id", personnel_id);
