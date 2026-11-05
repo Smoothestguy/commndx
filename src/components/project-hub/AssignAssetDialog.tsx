@@ -1,3 +1,4 @@
+import { useUserRole } from "@/hooks/useUserRole";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -82,6 +83,8 @@ export function AssignAssetDialog({
   onOpenChange, 
   projectId 
 }: AssignAssetDialogProps) {
+  const { isAdmin, isManager } = useUserRole();
+  const canSeeRates = isAdmin || isManager;
   const [activeTab, setActiveTab] = useState<"existing" | "new">("existing");
   const [createdAssetId, setCreatedAssetId] = useState<string | null>(null);
   
@@ -119,7 +122,7 @@ export function AssignAssetDialog({
       type: values.type,
       label: values.label,
       serial_number: values.serialNumber || null,
-      default_day_rate: values.dayRate ? Number(values.dayRate) : null,
+      ...(canSeeRates ? { default_day_rate: values.dayRate ? Number(values.dayRate) : null } : {}),
       address: values.address || null,
       instructions: values.instructions || null,
       status: "available",
@@ -412,7 +415,7 @@ export function AssignAssetDialog({
                   )}
                 />
 
-                <FormField
+                {canSeeRates && <FormField
                   control={newAssetForm.control}
                   name="dayRate"
                   render={({ field }) => (
@@ -424,7 +427,7 @@ export function AssignAssetDialog({
                       <FormMessage />
                     </FormItem>
                   )}
-                />
+                />}
 
                 <FormField
                   control={newAssetForm.control}

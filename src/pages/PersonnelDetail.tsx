@@ -1,3 +1,6 @@
+import { useVendors } from "@/integrations/supabase/hooks/useVendors";
+import { useUserRole } from "@/hooks/useUserRole";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import { DetailPageLayout } from "@/components/layout/DetailPageLayout";
 import { SEO } from "@/components/SEO";
@@ -56,6 +59,8 @@ const PersonnelDetail = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const defaultTab = searchParams.get("tab") || "overview";
+  const { isAdmin, isManager } = useUserRole();
+  const { data: agencies = [] } = useVendors();
   const { data: personnel, isLoading } = usePersonnelById(id);
   const { data: existingInvitation } = usePersonnelInvitationCheck(id);
   const resendOnboardingEmail = useResendOnboardingEmail();
@@ -377,11 +382,12 @@ const PersonnelDetail = () => {
                       Out of Compliance
                     </Badge>
                   )}
+                  {(isAdmin || isManager) && <Select value={personnel.vendor_id || "__none__"} onValueChange={v => updatePersonnel.mutate({ id: personnel.id, updates: { vendor_id: v === "__none__" ? null : v } })} disabled={updatePersonnel.isPending}><SelectTrigger aria-label="Agency / Vendor" className="h-8 w-48"><SelectValue placeholder="Agency / Vendor" /></SelectTrigger><SelectContent><SelectItem value="__none__">No agency / vendor</SelectItem>{agencies.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent></Select>}
                   {personnel.vendor_id && (
                     <Link to={`/vendors/${personnel.vendor_id}`}>
                       <Badge variant="outline" className="gap-1 cursor-pointer hover:bg-accent">
                         <Building2 className="h-3 w-3" />
-                        Linked to Vendor
+                        {agencies.find(v => v.id === personnel.vendor_id)?.name || "Agency / Vendor"}
                       </Badge>
                     </Link>
                   )}
