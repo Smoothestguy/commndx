@@ -152,6 +152,7 @@ import JobPostingEntries from "./pages/JobPostingEntries";
 import PublicApplicationForm from "./pages/PublicApplicationForm";
 import PhotoRequest from "./pages/PhotoRequest";
 import SitePunch from "./pages/SitePunch";
+import DocumentSign from "./pages/DocumentSign";
 import QuickApply from "./pages/QuickApply";
 import MasterApplicants from "./pages/MasterApplicants";
 import Workforce from "./pages/Workforce";
@@ -256,6 +257,7 @@ const App = () => {
                     />
                     <Route path="/photo/:token" element={<PhotoRequest />} />
                     <Route path="/punch/:token" element={<SitePunch />} />
+                    <Route path="/sign/:token" element={<DocumentSign />} />
                     <Route path="/quick-apply/:token" element={<QuickApply />} />
                     {/* Onboarding Routes */}
                     <Route

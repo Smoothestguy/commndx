@@ -1,3 +1,11 @@
+import { useUserRole } from "@/hooks/useUserRole";
+import { useProjectLocations } from "@/integrations/supabase/hooks/useProjectLocations";
+import { useDocumentSignatures } from "@/integrations/supabase/hooks/useDocumentSignatures";
+import { DocumentSignaturePanel } from "@/components/documents/DocumentSignaturePanel";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,10 +17,20 @@ import type { ProjectDocument } from "@/integrations/supabase/hooks/useProjectDo
 
 interface ProjectDocumentsProps {
   projectId: string;
+  projectName?: string;
 }
 
-export const ProjectDocuments = ({ projectId }: ProjectDocumentsProps) => {
+export const ProjectDocuments = ({ projectId, projectName = "Project" }: ProjectDocumentsProps) => {
   const { data: documents, isLoading } = useProjectDocuments(projectId);
+  const { isAdmin, isManager, isUser } = useUserRole();
+  const canManage = isAdmin || isManager;
+  const canSend = canManage || isUser;
+  const { data: locations = [] } = useProjectLocations(projectId);
+  const { data: signatures = [] } = useDocumentSignatures(projectId);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [requiresSignature, setRequiresSignature] = useState(false);
+  const [locationId, setLocationId] = useState("project");
+  const [notes, setNotes] = useState("");
   const uploadDocument = useUploadProjectDocument();
   const deleteDocument = useDeleteProjectDocument();
   const getDocumentUrl = useGetProjectDocumentUrl();
@@ -33,14 +51,16 @@ export const ProjectDocuments = ({ projectId }: ProjectDocumentsProps) => {
       setIsUploading(true);
       try {
         for (const file of Array.from(files)) {
-          await uploadDocument.mutateAsync({ projectId, file });
+          await uploadDocument.mutateAsync({ projectId, file, requiresSignature, locationId: locationId === "project" ? null : locationId, notes });
         }
+        setUploadOpen(false);
+      } catch { /* Mutation displays the failure; keep upload dialog open. */
       } finally {
         setIsUploading(false);
         e.target.value = "";
       }
     },
-    [projectId, uploadDocument]
+    [projectId, uploadDocument, requiresSignature, locationId, notes]
   );
 
   const forceDownload = async (url: string, fileName: string) => {
@@ -99,28 +119,7 @@ export const ProjectDocuments = ({ projectId }: ProjectDocumentsProps) => {
             <FileText className="h-5 w-5 text-primary" />
             Project Documents ({documents?.length || 0})
           </CardTitle>
-          <div>
-            <input
-              type="file"
-              id="document-upload"
-              className="hidden"
-              multiple
-              onChange={handleFileChange}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isUploading}
-              onClick={() => document.getElementById("document-upload")?.click()}
-            >
-              {isUploading ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Upload className="h-4 w-4 mr-2" />
-              )}
-              Upload
-            </Button>
-          </div>
+          {canManage && <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}><Upload className="h-4 w-4 mr-1" />Upload</Button>}
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -136,14 +135,15 @@ export const ProjectDocuments = ({ projectId }: ProjectDocumentsProps) => {
               {documents.map((doc) => (
                 <div
                   key={doc.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
+                  className="p-3 rounded-lg bg-secondary/50 space-y-2"
                 >
+                  <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-3 min-w-0">
                     <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                     <div className="min-w-0">
                       <p className="font-medium truncate">{doc.file_name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {formatFileSize(doc.file_size)} • {format(new Date(doc.created_at), "MMM dd, yyyy")}
+                        {doc.location_id && `${locations.find(l => l.id === doc.location_id)?.name || "Location"} • `}{formatFileSize(doc.file_size)} • {format(new Date(doc.created_at), "MMM dd, yyyy")}
                       </p>
                     </div>
                   </div>
@@ -169,15 +169,18 @@ export const ProjectDocuments = ({ projectId }: ProjectDocumentsProps) => {
                         <Download className="h-4 w-4" />
                       )}
                     </Button>
-                    <Button
+                    {canManage && !doc.requires_signature && <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDelete(doc.id, doc.file_path)}
                       title="Delete"
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    </Button>}
                   </div>
+                  </div>
+                  {doc.notes && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{doc.notes}</p>}
+                  {doc.requires_signature && <DocumentSignaturePanel doc={doc} rows={signatures.filter(r => r.document_id === doc.id)} projectName={projectName} canSend={canSend} canManage={canManage} />}
                 </div>
               ))}
             </div>
@@ -185,6 +188,13 @@ export const ProjectDocuments = ({ projectId }: ProjectDocumentsProps) => {
         </CardContent>
       </Card>
 
+      <Dialog open={uploadOpen} onOpenChange={setUploadOpen}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>Upload document</DialogTitle></DialogHeader>
+        <label className="flex items-center justify-between gap-3 text-sm">Requires signature<Switch checked={requiresSignature} onCheckedChange={setRequiresSignature} /></label>
+        <Label>Location</Label><Select value={locationId} onValueChange={setLocationId}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="project">Project-wide</SelectItem>{locations.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent></Select>
+        <Label htmlFor="doc-notes">Notes (optional)</Label><Textarea id="doc-notes" value={notes} onChange={e => setNotes(e.target.value)} maxLength={3000} />
+        <input type="file" aria-label="Document file" accept={requiresSignature ? "application/pdf,.pdf" : undefined} disabled={isUploading} onChange={handleFileChange} className="w-full text-sm" />
+        {isUploading && <Loader2 className="h-5 w-5 animate-spin" />}
+      </DialogContent></Dialog>
       {/* Preview Dialog */}
       <Dialog open={!!previewDoc} onOpenChange={() => { setPreviewDoc(null); setPreviewUrl(null); }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
