@@ -1,4 +1,6 @@
 import { EarlyCheckIn } from '@/components/signin/EarlyCheckIn';
+import { FieldBadgeCheckIn } from '@/components/signin/FieldBadgeCheckIn';
+import { useUserRole } from '@/hooks/useUserRole';
 import { Textarea } from '@/components/ui/textarea';
 import { type EarlyRejection } from '@/lib/shiftDiscipline';
 import { SignaturePad } from "@/components/documents/SignaturePad";
@@ -475,6 +477,8 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, peopl
 // ---------- Page ----------
 
 export default function FieldMode() {
+  const {isAdmin,isManager}=useUserRole();
+  const [scanLocation,setScanLocation]=useState<ProjectLocation|null>(null);
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { data: project } = useProject(projectId);
@@ -599,9 +603,11 @@ export default function FieldMode() {
       </main>
 
       {/* Full-screen sheet */}
+      <Dialog open={!!scanLocation} onOpenChange={open=>{if(!open)setScanLocation(null);}}><DialogContent className="w-full max-w-3xl h-[100dvh] sm:h-auto max-h-[100dvh] overflow-y-auto p-0">{scanLocation&&<FieldBadgeCheckIn location={scanLocation} projectId={projectId||''} locationIds={locationIds} onDone={()=>{toast.success('Badge check-in recorded');setScanLocation(null);}}/>}</DialogContent></Dialog>
       <Dialog open={!!sheet} onOpenChange={(o) => !o && setSheet(null)}>
         <DialogContent className="max-w-none w-full h-[100dvh] p-0 gap-0 rounded-none border-0 [&>button]:hidden">
           {sheet && (
+            scanLocation ? null :
             sheet.visit ? (
               <ActiveVisitSheet
                 visit={sheet.visit}
@@ -629,6 +635,7 @@ export default function FieldMode() {
           >
             <X className="h-5 w-5" />
           </Button>
+          {sheet&&(isAdmin||isManager)&&<Button variant="outline" className="absolute top-3 right-16 h-10 z-10" onClick={()=>setScanLocation(sheet.location)}>Scan badge</Button>}
         </DialogContent>
       </Dialog>
     </div>
