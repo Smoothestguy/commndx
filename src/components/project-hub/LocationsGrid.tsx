@@ -221,6 +221,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
           const locAssets = assetsAtLocation(assetRows, l.id);
           const full = (s?.needed ?? 0) > 0 && (s?.assigned ?? 0) >= (s?.needed ?? 0);
           const meta = [
+            l.lat != null && l.lng != null && "📍 geofenced",
             l.project_number && `#${l.project_number}`,
             locAssets.length > 0 && `${locAssets.length} asset${locAssets.length === 1 ? "" : "s"}`,
             l.housing_provided_by === "customer" && "Housing: Cust",
@@ -236,7 +237,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                 <div className="flex items-center gap-2 min-w-0">
                   <button type="button" onClick={() => toggle(l.id)} className="flex items-center gap-1 font-semibold min-w-0 flex-1 text-left" aria-expanded={isOpen}>
                     {isOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
-                    <span className="truncate">{l.name}</span>
+                    <span className="truncate">{l.name}</span>{l.lat != null && l.lng != null && <Badge variant="outline">📍 geofenced</Badge>}
                   </button>
                   <span className={cn("font-medium shrink-0 tabular-nums", full ? "text-success" : "text-warning")}>{s?.assigned ?? 0}/{s?.needed ?? 0}</span>
                   <span className="flex items-center shrink-0">
@@ -336,7 +337,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                       <div className="flex items-center gap-2 whitespace-nowrap min-w-0">
                         <button type="button" onClick={() => toggle(l.id)} className="flex items-center gap-1 font-semibold min-w-0 flex-1 sm:flex-initial text-left" aria-expanded={isOpen} title={l.name}>
                           {isOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
-                          <span className="truncate">{l.name}</span>
+                          <span className="truncate">{l.name}</span>{l.lat != null && l.lng != null && <Badge variant="outline">📍 geofenced</Badge>}
                         </button>
                         {l.project_number && <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">#{l.project_number}</Badge>}
                         <span className={cn("font-medium shrink-0", full ? "text-success" : "text-warning")}>{s?.assigned ?? 0}/{s?.needed ?? 0}</span>
