@@ -1,5 +1,9 @@
 # Applicant locations
 
+# Document upload regression
+- [x] Replace automatic upload with explicit file selection and submission; isolate busy state and make phone dialog scrollable.
+- [x] Verify live PDF/image storage, metadata inserts and list refresh, private file readback, denied anonymous reads, failure/reopen behavior, 390px/short-height scrolling, six rule tests and `bunx tsgo --noEmit`; fixtures removed. Admin session verified; no manager account exists, so manager end-to-end and actual iPhone Safari remain unverified. Minimal document policy hardening applied for discovered anonymous access; upload INSERT policy unchanged.
+
 - [x] Add shared formatting and missing-ZIP batch lookup.
 - [x] Update staff applicant lists and information views; leave public forms and database unchanged.
 - [x] Verify fallback behavior and compilation; report affected views and files.

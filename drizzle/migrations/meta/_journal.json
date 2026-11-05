@@ -64,6 +64,13 @@
       "when": 1791377338230,
       "tag": "0008_sms_blast_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793851149880,
+      "tag": "0009_restrict_project_document_policies_to_authenticated",
+      "breakpoints": true
     }
   ]
 }

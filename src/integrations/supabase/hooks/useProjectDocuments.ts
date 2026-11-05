@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../client";
 import { toast } from "sonner";
+import { projectDocumentFileType } from "@/lib/projectDocumentUpload";
 
 export interface ProjectDocument {
   id: string;
@@ -49,19 +50,19 @@ export const useUploadProjectDocument = () => {
       requiresSignature?: boolean;
       notes?: string;
     }) => {
-      if (requiresSignature && file.type !== "application/pdf") throw new Error("Signature requests require a PDF");
+      const fileType = projectDocumentFileType(file);
+      if (requiresSignature && fileType !== "application/pdf") throw new Error("Signature requests require a PDF");
+      // Resolve the authenticated uploader before making any storage writes.
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) throw authError || new Error("Please sign in again before uploading a document");
       // Upload to storage
-      const fileExt = file.name.split(".").pop();
       const fileName = `${projectId}/${Date.now()}-${file.name}`;
       
       const { error: uploadError } = await supabase.storage
         .from("project-documents")
-        .upload(fileName, file);
+        .upload(fileName, file.type ? file : new File([file], file.name, { type: fileType }), { upsert: false });
 
       if (uploadError) throw uploadError;
-
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
 
       // Create document record
       const { data, error: insertError } = await supabase
@@ -75,8 +76,8 @@ export const useUploadProjectDocument = () => {
             file_name: file.name,
             file_path: fileName,
             file_size: file.size,
-            file_type: file.type,
-            uploaded_by: user?.id || null,
+            file_type: fileType,
+            uploaded_by: user.id,
           },
         ])
         .select()
