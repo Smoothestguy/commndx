@@ -2,7 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
 import { validSignaturePng } from '../_shared/signatureRules.ts';
-const schema=z.object({action:z.enum(['prepare','save']),token:z.string().uuid(),at:z.string().datetime(),lat:z.number().min(-90).max(90).nullable().optional(),lng:z.number().min(-180).max(180).nullable().optional(),override_reason:z.string().trim().min(1).max(1000).optional(),signature_png_base64:z.string().max(280000).optional()});
+const schema=z.object({action:z.enum(['prepare','save']),token:z.string().uuid(),at:z.string().datetime({offset:true}),lat:z.number().min(-90).max(90).nullable().optional(),lng:z.number().min(-180).max(180).nullable().optional(),override_reason:z.string().trim().min(1).max(1000).optional(),signature_png_base64:z.string().max(280000).optional()});
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{...corsHeaders,'Content-Type':'application/json','Cache-Control':'no-store'}});
 const day=(iso:string,zone:string)=>new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso));
 const distance=(lat:number,lng:number,a:number,b:number)=>{const r=(v:number)=>v*Math.PI/180;const d=Math.sin(r(a-lat)/2)**2+Math.cos(r(lat))*Math.cos(r(a))*Math.sin(r(b-lng)/2)**2;return 6371000*2*Math.atan2(Math.sqrt(d),Math.sqrt(Math.max(0,1-d)));};
@@ -10,7 +10,9 @@ Deno.serve(async req=>{
  if(req.method==='OPTIONS')return new Response('ok',{headers:corsHeaders});if(req.method!=='POST')return json({error:'Method not allowed'},405);
  try{
   const parsed=schema.safeParse(await req.json());if(!parsed.success)return json({error:'Invalid request'},400);const v=parsed.data;
-  if(Date.parse(v.at)>Date.now()+60000||Date.parse(v.at)<Date.now()-7*86400000)return json({error:'Punch time unavailable'},400);
+  // Small early arrivals are stored at shift start (up to ten minutes ahead).
+  // Save still requires an exact matching token-scoped stay below; prepare never trusts future device time.
+  if(Date.parse(v.at)>Date.now()+(v.action==='save'?10*60000:60000)||Date.parse(v.at)<Date.now()-7*86400000)return json({error:'Punch time unavailable'},400);
   const db=createClient(Deno.env.get('SUPABASE_URL')??'',Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')??'');
   const {data:token,error:tokenError}=await db.from('site_checkin_tokens').select('personnel_id,location_id,expires_at').eq('id',v.token).maybeSingle();if(tokenError)throw tokenError;if(!token||Date.parse(token.expires_at)<=Date.now())return json({error:'Inactive link'},403);
   const {data:loc,error:locError}=await db.from('project_locations').select('timezone,lat,lng,geofence_radius_m').eq('id',token.location_id).single();if(locError)throw locError;const zone=loc.timezone||'America/Chicago',date=day(v.at,zone);

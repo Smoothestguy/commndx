@@ -1,0 +1,25 @@
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { EXTENSION_REASONS, extensionChoices } from '@/lib/shiftDiscipline';
+type Extension = { status: string; until_at: string };
+export function ShiftExtensionRequest({ token }: { token: string }) {
+  const [open,setOpen]=useState(false),[choice,setChoice]=useState(''),[text,setText]=useState(''),[until,setUntil]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
+  const [info,setInfo]=useState<{timezone?:string;shift_end?:string;extension?:Extension|null}>({});
+  useEffect(() => { let active=true; const load=async()=>{const {data,error}=await supabase.functions.invoke('shift-discipline',{body:{action:'info',token}});if(active&&!error)setInfo(data);};void load();const timer=setInterval(load,60_000);return()=>{active=false;clearInterval(timer);}; },[token]);
+  const time=(at:string)=>new Intl.DateTimeFormat('en-GB',{timeZone:info.timezone||'America/Chicago',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(at));
+  const choices=extensionChoices(Date.now(),info.shift_end),reason=choice==='Other'?text.trim():choice;
+  const submit=async()=>{if(!reason||!until)return;setBusy(true);setError('');try{const {data,error}=await supabase.rpc('request_shift_extension',{p_token:token,p_reason:reason,p_until:until});const result=data as {ok?:boolean;until?:string;status?:string}|null;if(error||!result?.ok||!result.until)throw new Error('Request not accepted. Choose a future time within six hours.');setInfo(i=>({...i,extension:{status:result.status||'pending',until_at:result.until||until}}));setOpen(false);}catch(e){setError(e instanceof Error?e.message:'Could not request extension');}finally{setBusy(false);}};
+  return <div className="space-y-2"><Button variant="outline" className="w-full min-h-14" onClick={()=>{setUntil(choices[0]||'');setError('');setOpen(true);}}>Staying longer?</Button>
+    {info.extension&&<p role="status" className={info.extension.status==='denied'?'text-destructive':'text-warning'}>{info.extension.status==='pending'?'Requested':'Extension'} until {time(info.extension.until_at)} — {info.extension.status==='pending'?'pending approval':info.extension.status}</p>}
+    <Dialog open={open} onOpenChange={v=>{if(!busy)setOpen(v);}}><DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Staying longer?</DialogTitle></DialogHeader>
+      <div className="flex flex-wrap gap-2">{EXTENSION_REASONS.map(r=><Button key={r} variant={choice===r?'default':'outline'} className="min-h-11" onClick={()=>setChoice(r)}>{r}</Button>)}</div>
+      {choice==='Other'&&<Textarea aria-label="Extension reason" maxLength={200} placeholder="Reason (required)" value={text} onChange={e=>setText(e.target.value)}/>}
+      <label className="text-sm">Until</label><Select value={until} onValueChange={setUntil}><SelectTrigger aria-label="Until"><SelectValue/></SelectTrigger><SelectContent>{choices.map(at=><SelectItem key={at} value={at}>{time(at)}</SelectItem>)}</SelectContent></Select>
+      {error&&<p role="alert" className="text-destructive">{error}</p>}<Button className="min-h-14" disabled={busy||!reason||!choices.includes(until)} onClick={submit}>Request extension</Button>
+    </DialogContent></Dialog>
+  </div>;
+}
