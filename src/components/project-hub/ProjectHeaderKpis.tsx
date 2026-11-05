@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Users, DollarSign, Target, Briefcase } from "lucide-react";
 import { useJobOrdersByProject } from "@/integrations/supabase/hooks/useJobOrders";
 import { useMilestonesByProject } from "@/integrations/supabase/hooks/useMilestones";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface Props {
   projectId: string;
@@ -22,6 +23,7 @@ function Chip({ icon, label, value }: { icon: React.ReactNode; label: string; va
 }
 
 export function ProjectHeaderKpis({ projectId }: Props) {
+  const { isAdmin, isManager } = useUserRole();
   const { data: jobOrders = [] } = useJobOrdersByProject(projectId);
   const { data: milestones = [] } = useMilestonesByProject(projectId);
 
@@ -81,11 +83,11 @@ export function ProjectHeaderKpis({ projectId }: Props) {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
-      <Chip
+      {(isAdmin || isManager) && <Chip
         icon={<DollarSign className="h-4 w-4" />}
         label="Contract Value"
         value={`$${contractValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-      />
+      />}
       <Chip
         icon={<Users className="h-4 w-4" />}
         label="Crew Assigned"
