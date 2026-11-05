@@ -19,7 +19,7 @@ export async function kioskMedia(db: SupabaseClient, body: { token: string; pers
   const signaturePath = `field-captures/kiosk/${token.location_id}/${body.stay_id}/signature.png`;
   for (const [path, bytes, contentType] of [[selfiePath, selfie, 'image/jpeg'], [signaturePath, signature, 'image/png']] as const) {
     const { error } = await db.storage.from('project-documents').upload(path, bytes, { contentType, upsert: false });
-    if (error) { const { data: existing, error: readError } = await db.storage.from('project-documents').download(path); if (readError || !existing) return { status: 409, body: { ok: false, reason: 'media_pending', stay_id: body.stay_id } }; }
+    if (error) { const { data: existing, error: readError } = await db.storage.from('project-documents').download(path); if (readError || !existing) return { status: 409, body: { ok: false, reason: 'media_pending', stay_id: body.stay_id } }; const prior=new Uint8Array(await existing.arrayBuffer());if(prior.length!==bytes.length||prior.some((value,i)=>value!==bytes[i]))return {status:409,body:{error:'Accepted evidence cannot be replaced'}}; }
   }
   const { error: ue } = await db.from('visit_personnel').update({ selfie_url: selfiePath }).eq('id', body.stay_id).is('selfie_url', null);
   if (ue) throw ue;
