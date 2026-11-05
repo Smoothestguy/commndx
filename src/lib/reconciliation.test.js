@@ -1,0 +1,18 @@
+import {it,expect} from 'bun:test';
+import {reconciliation,closeBlockers,addDay} from '../../supabase/functions/_shared/reconciliation';
+import {rosterThresholds,shiftAt} from '../../supabase/functions/_shared/rosterRules';
+const t={personnel_id:'p',first_name:'Pat',location_id:'l',in_at:'2026-11-05T12:00:00Z',out_at:'2026-11-05T20:00:00Z'};
+const e={id:'e',personnel_id:'p',entry_date:'2026-11-05',entry_source:'clock',clock_in_at:t.in_at,clock_out_at:t.out_at,hours:8,invoice_id:'i'};
+const rows=(entries)=>reconciliation([t],entries,{l:'America/Chicago'},'2026-11-02','2026-11-08');
+it('does not flag exactly 15 minutes',()=>expect(rows([{...e,hours:8.25}])).toHaveLength(0));
+it('flags more than 15 minutes',()=>expect(rows([{...e,hours:8.251}])[0].kind).toContain('visit_clock'));
+it('flags shifted clocks even when total hours agree',()=>expect(rows([{...e,clock_in_at:'2026-11-05T12:16:00Z'}])[0].gap).toBe(16));
+it('flags missing old-clock and invoice sources',()=>expect(rows([])[0].kind).toBe('visit_clock_missing+visit_invoice_missing'));
+it('visit entries do not count as old clock but do count when invoiced',()=>expect(rows([{...e,entry_source:'visit'}])[0].clock).toBeNull());
+it('requires every flag to be acknowledged with matching evidence',()=>{const r=rows([]);expect(closeBlockers(r,[])).toHaveLength(1);const ack={personnel_id:'p',var_date:r[0].date,kind:r[0].kind,note:JSON.stringify({fingerprint:r[0].fingerprint,reason:'Reviewed'})};expect(closeBlockers(r,[ack])).toHaveLength(0);expect(closeBlockers(rows([{...e,hours:9}]),[ack])).toHaveLength(1);});
+it('open stays cannot be closed by acknowledgment',()=>{const r=reconciliation([{...t,out_at:null}],[],{l:'America/Chicago'},'2026-11-05','2026-11-05',Date.parse('2026-11-05T19:00Z'));expect(closeBlockers(r,[{personnel_id:'p',var_date:r[0].date,kind:r[0].kind,note:JSON.stringify({fingerprint:r[0].fingerprint})}])).toHaveLength(1);});
+it('segments visits at location midnight',()=>{const r=reconciliation([{...t,in_at:'2026-11-06T05:00Z',out_at:'2026-11-06T07:00Z'}],[],{l:'America/Chicago'},'2026-11-05','2026-11-06');expect(r.map(x=>[x.date,x.visit.hours])).toEqual([['2026-11-05',1],['2026-11-06',1]]);});
+it('no-show SMS starts at 15 minutes and supervisor at 30',()=>{const at=m=>rosterThresholds(Date.parse('2026-11-05T12:00Z')+m*60000,'America/Chicago','06:00','18:00',null);expect(at(14).remind).toBe(false);expect(at(15).remind).toBe(true);expect(at(29).supervisor).toBe(false);expect(at(30).supervisor).toBe(true);});
+it('day checkout reminder starts 30 minutes past night start',()=>{expect(rosterThresholds(Date.parse('2026-11-06T00:29Z'),'America/Chicago','06:00','18:00',t.in_at).checkout).toBe(false);expect(rosterThresholds(Date.parse('2026-11-06T00:30Z'),'America/Chicago','06:00','18:00',t.in_at).checkout).toBe(true);});
+it('night shift ends at next day day-start',()=>expect(rosterThresholds(Date.parse('2026-11-06T12:30Z'),'America/Chicago','06:00','18:00','2026-11-06T00:00Z').checkout).toBe(true));
+it('daily 07:00 Chicago follows DST',()=>{expect(new Date(shiftAt('2026-07-05','07:00','America/Chicago')).toISOString()).toBe('2026-07-05T12:00:00.000Z');expect(new Date(shiftAt('2026-11-05','07:00','America/Chicago')).toISOString()).toBe('2026-11-05T13:00:00.000Z');expect(addDay('2026-11-05',-1)).toBe('2026-11-04');});

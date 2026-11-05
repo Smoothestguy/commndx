@@ -29,7 +29,8 @@ export async function guardVisitDates(locationId: string, inAt: string, outAt: s
 }
 export async function guardTimeEntries(ids: string[], proposed?: { location_id?: string | null; entry_date?: string }) {
   if (!ids.length) return;
-  const { data, error } = await supabase.from('time_entries').select('location_id,entry_date,clock_in_at,clock_out_at').in('id', ids); if (error) throw error;
+  const { data, error } = await supabase.from('time_entries').select('location_id,entry_date,clock_in_at,clock_out_at,is_locked').in('id', ids); if (error) throw error;
+  if (data?.some(r => r.is_locked)) throw new Error('Time entry is locked — the week cannot be edited');
   const locationIds = [...new Set((data || []).flatMap(r => r.location_id ? [r.location_id] : []))];
   const locations = locationIds.length ? await supabase.from('project_locations').select('id,timezone').in('id', locationIds) : { data: [], error: null }; if (locations.error) throw locations.error;
   await ensureSheetsOpen((data || []).flatMap(r => { const zone = locations.data?.find(l => l.id === r.location_id)?.timezone || 'America/Chicago'; const dates = r.clock_in_at ? locationDays(r.clock_in_at, r.clock_out_at, zone) : [r.entry_date]; const scopes = r.location_id ? [{ locationId: r.location_id, dates }] : []; const locationId = proposed?.location_id ?? r.location_id; if (locationId && proposed?.entry_date) scopes.push({ locationId, dates: [proposed.entry_date] }); return scopes; }));

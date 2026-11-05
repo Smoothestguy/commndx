@@ -5,6 +5,8 @@ import { localDay } from '@/lib/signinSheets';
 import { useProjectDocuments } from '@/integrations/supabase/hooks/useProjectDocuments';
 import { SigninSheetsPanel } from '@/components/documents/SigninSheetsPanel';
 import { SigninStatusBoard } from '@/components/signin/SigninStatusBoard';
+import { ReconcileView } from '@/components/signin/ReconcileView';
+import { DeploymentAlerts } from '@/components/signin/DeploymentAlerts';
 import { ReusableSigninPicker } from '@/components/documents/ReusableSigninPicker';
 import { toast } from 'sonner';
 import { AgencyFilter } from "./AgencyFilter";
@@ -902,7 +904,7 @@ const visitHours = (v: VisitRow) =>
 
 export function VisitsCard({ projectId, locations, crews, from, to, canEdit, defaultView = "visits" }: {
   projectId: string; locations: ProjectLocation[]; crews: Crew[]; from: string; to: string; canEdit: boolean;
-  defaultView?: "visits" | "trail" | "timesheet";
+  defaultView?: "visits" | "trail" | "timesheet" | "reconcile";
 }) {
   const locIds = locations.map((l) => l.id);
   const { data, isLoading } = useVisitsWindow(locIds, from, to);
@@ -913,7 +915,7 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
   const [edit, setEdit] = useState<{ id: string; location_id: string; inAt: string; outAt: string } | null>(null);
   const [delId, setDelId] = useState<VisitRow | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
-  const [view, setView] = useState<"visits" | "trail" | "timesheet">(defaultView);
+  const [view, setView] = useState<"visits" | "trail" | "timesheet" | "reconcile">(defaultView);
   const [trailPerson, setTrailPerson] = useState<string>("");
   const [trailRange, setTrailRange] = useState<{ from: string; to: string } | null>(null);
   const [tsWeek, setTsWeek] = useState(() => currentWeekStart());
@@ -961,9 +963,10 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
             <TabsTrigger value="visits" className="text-xs">Visits</TabsTrigger>
             <TabsTrigger value="trail" className="text-xs">Trail</TabsTrigger>
             <TabsTrigger value="timesheet" className="text-xs">Timesheet</TabsTrigger>
+            {canEdit && <TabsTrigger value="reconcile" className="text-xs">Reconcile</TabsTrigger>}
           </TabsList>
         </Tabs>
-        {view === "timesheet" ? (
+        {view === "reconcile" && canEdit ? <ReconcileView projectId={projectId} week={tsWeek} setWeek={setTsWeek} /> : view === "timesheet" ? (
           <TimesheetView projectId={projectId} projectName={projectName} locations={locations} week={tsWeek} setWeek={setTsWeek}
             onPerson={(pid, w) => { setTrailPerson(pid); setTrailRange({ from: w, to: addDaysStr(w, 6) }); setView("trail"); }} />
         ) : view === "trail" ? (
@@ -1029,6 +1032,7 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
                           <span key={p.personnel_id} className="inline-flex items-center gap-1.5 border rounded-full px-2 py-0.5 text-xs">
                             <button type="button" className="hover:underline" onClick={() => openTrail(p.personnel_id)}>{fullName(p.personnel)}</button>
                             {p.checked_out_at && <span className="text-muted-foreground">left {format(new Date(p.checked_out_at), "HH:mm")}</span>}
+                            {canEdit && p.synced_late && <Badge variant="outline" title="Recorded offline at device time, synced later" className="text-[10px]">synced late</Badge>}
                             {p.signature_url && (
                               <a href={p.signature_url} target="_blank" rel="noopener noreferrer">
                                 <img src={p.signature_url} alt="signature" className="h-5 rounded bg-white" loading="lazy" />
@@ -1177,6 +1181,7 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
   }, [allRows, agency, agencies.vendorByPerson]);
   const personName = personId ? (peopleOpts.find(([id]) => id === personId)?.[1] ?? (rows[0] ? trailName(rows[0]) : "Person")) : "";
   const { data: visitNotes = {} } = useVisitNotes(rows.map((r) => r.visit_id));
+  const { data: lateIds = [] } = useQuery({ queryKey: ['trail-late-sync', projectId, rows.map(r => r.visit_personnel_id)], enabled: canLog && rows.length > 0, queryFn: async () => { const ids: string[] = []; for (let i = 0; i < rows.length; i += 200) { const { data, error } = await supabase.from('visit_personnel').select('id').in('id', rows.slice(i, i + 200).map(r => r.visit_personnel_id)).eq('synced_late', true); if (error) throw error; ids.push(...(data || []).map(r => r.id)); } return ids; } });
   const isManual = (r: TrailRow) => /^manual entry/i.test(visitNotes[r.visit_id] ?? "");
   const total = rows.reduce((s, r) => s + (r.hours != null ? Number(r.hours) : 0), 0);
   const fmt = (iso: string | null) => (iso ? format(new Date(iso), "M/d HH:mm") : "on site");
@@ -1256,7 +1261,7 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
               {rows.map((r) => (
                 <tr key={r.visit_personnel_id}>
                   <td className="py-1.5 pr-2"><button type="button" className="font-medium hover:underline text-left" onClick={() => setPersonId(r.personnel_id)}>{trailName(r)}</button>{!r.signature_url && <Badge variant="outline" className="text-warning text-[10px] ml-1">no signature</Badge>}</td>
-                  <td className="pr-2">{r.location_name ?? "—"}{isManual(r) && <Pencil className="inline h-3 w-3 ml-1 text-muted-foreground" aria-label="Manual entry" />}</td>
+                  <td className="pr-2">{r.location_name ?? "—"}{isManual(r) && <Pencil className="inline h-3 w-3 ml-1 text-muted-foreground" aria-label="Manual entry" />}{canLog && lateIds.includes(r.visit_personnel_id) && <Badge variant="outline" title="Recorded offline at device time, synced later" className="text-[10px] ml-1">synced late</Badge>}</td>
                   <td className="pr-2 whitespace-nowrap">{fmt(r.in_at)}</td>
                   <td className="pr-2 whitespace-nowrap">{fmt(r.out_at)}</td>
                   <td className="text-right">{r.hours != null ? Number(r.hours).toFixed(2) : "—"}</td>
@@ -1300,6 +1305,7 @@ function useProjectName(projectId: string) {
 // ---------- Tab root ----------
 
 export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
+  const [alertView, setAlertView] = useState<{view: 'visits' | 'trail' | 'reconcile'; key: number}>({view:'visits',key:0});
   const [sheetSelection, setSheetSelection] = useState<{ doc: string; location: string; day: string }>();
   const { data: documents = [] } = useProjectDocuments(projectId);
   const { data: locations = [], isLoading } = useProjectLocations(projectId);
@@ -1328,12 +1334,13 @@ export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
           <DeploymentSettings projectId={projectId} canEdit={canEdit} />
         </div>
       </div>
+      {canEdit && <DeploymentAlerts projectId={projectId} locations={locations} onView={view => { setAlertView(s => ({view,key:s.key+1})); setTimeout(() => document.getElementById('deployment-visits')?.scrollIntoView({behavior:'smooth'}), 0); }} />}
       <ProjectRosterCard projectId={projectId} />
       <SigninStatusBoard projectId={projectId} locations={locations} onSelect={(location, day, document) => { const doc = documents.find(d => d.is_signin_template && (d.id === document || !document && (d.location_ids?.includes(location) || d.location_id === location))); if (!doc) { toast.error('Enable a sign-in template for this location first'); return; } setSheetSelection({ doc: doc.id, location, day }); }} />
       {canEdit && <ReusableSigninPicker projectId={projectId} />}
       {documents.some(d => d.is_signin_template) && <section className="space-y-2"><h3 className="text-sm font-semibold">Customer sign-in sheets</h3>{documents.filter(d => d.is_signin_template).map(doc => <div key={doc.id}><p className="text-sm font-medium">{doc.file_name}</p><SigninSheetsPanel doc={doc} projectName={project?.name || 'Project'} initialSheet={sheetSelection?.doc === doc.id ? sheetSelection : undefined} /></div>)}</section>}
       <CrewsSection projectId={projectId} crews={crews} canEdit={canEdit} />
-      <VisitsCard projectId={projectId} locations={locations} crews={crews} from={r.from} to={r.to} canEdit={canEdit} />
+      <div id="deployment-visits"><VisitsCard key={alertView.key} defaultView={alertView.view} projectId={projectId} locations={locations} crews={crews} from={r.from} to={r.to} canEdit={canEdit} /></div>
       <MileageCard crews={crews} locations={locations} from={r.from} to={r.to} mileageRate={mileageRate} canEdit={canEdit} />
       <Tabs defaultValue="service">
         <TabsList>
