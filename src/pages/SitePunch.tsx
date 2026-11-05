@@ -11,7 +11,7 @@ import { registerPunchOffline } from "@/lib/punchOffline";
 
 type Info = { valid: boolean; reason?: string; first_name?: string; location_name?: string; address?: string | null; report_at?: string | null; on_site_since?: string | null };
 type Done = { action: "in" | "out"; at: string; geo: boolean; offsite: boolean } | null;
-type Rejection = { reason: string; distance_m?: number; radius_m?: number; in_at?: string; out_at?: string };
+type Rejection = { reason: string; distance_m?: number; radius_m?: number; in_at?: string; out_at?: string; timezone?: string };
 const OFFICE_PHONE = "(281) 748-3832";
 const infoKey = (token: string) => `site-punch-info:${token}`;
 function cachedInfo(token: string): Info | null {
@@ -94,7 +94,11 @@ export default function SitePunch() {
           blocked.current = true;
           if (result && ['out_of_range', 'no_gps', 'already_signed_today'].includes(result.reason)) {
             setRejection(result); setError(null); savePunch({ ...intent, tries: 0 });
-            if (result.reason === 'already_signed_today') { clearPunch(token); setPending(null); }
+            if (result.reason === 'already_signed_today') {
+              clearPunch(token); setPending(null);
+              const { data: history, error: historyError } = await supabase.functions.invoke('site-punch-history', { body: { token, at: intent.at } });
+              if (!historyError && history) setRejection({ ...result, ...history });
+            }
             return;
           }
           setError("Punch not accepted — call the office. Your saved punch is kept. / Registro no aceptado; llama a la oficina. Se conserva el registro.");
@@ -149,7 +153,7 @@ export default function SitePunch() {
     savePunch({ ...intent, overrideReason: overrideReason.trim(), tries: 0 });
     blocked.current = false; setRejection(null); setOverriding(false); await flush();
   };
-  const t = (iso: string) => format(new Date(iso), "HH:mm");
+  const t = (iso: string) => rejection?.timezone ? new Intl.DateTimeFormat('en-GB', { timeZone: rejection.timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso)) : format(new Date(iso), "HH:mm");
   const onSite = !!info?.on_site_since;
   const mapsHref = info?.address ? `https://maps.google.com/?q=${encodeURIComponent(info.address)}` : null;
 
