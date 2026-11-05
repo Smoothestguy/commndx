@@ -5,7 +5,7 @@ import { service, authorize, json } from '../_shared/signinJobs.ts';
 const schema=z.discriminatedUnion('action',[
  z.object({action:z.literal('info'),token:z.string().uuid()}),
  z.object({action:z.literal('review'),id:z.string().uuid(),kind:z.enum(['early','extension']),status:z.enum(['approved','denied'])}),
- z.object({action:z.literal('field'),location_id:z.string().uuid(),personnel_id:z.string().uuid(),crew_id:z.string().uuid().nullable().optional(),signature_url:z.string().max(500),signed_at:z.string().datetime(),lat:z.number().min(-90).max(90).nullable(),lng:z.number().min(-180).max(180).nullable(),early_reason:z.string().trim().min(1).max(200).optional(),override_reason:z.string().trim().min(1).max(1000).optional()})
+ z.object({action:z.literal('field'),location_id:z.string().uuid(),personnel_id:z.string().uuid(),crew_id:z.string().uuid().nullable().optional(),signature_url:z.string().max(500),signed_at:z.string().datetime({offset:true}),lat:z.number().min(-90).max(90).nullable(),lng:z.number().min(-180).max(180).nullable(),early_reason:z.string().trim().min(1).max(200).optional(),override_reason:z.string().trim().min(1).max(1000).optional()})
 ]);
 Deno.serve(async req=>{
  if(req.method==='OPTIONS')return new Response('ok',{headers:corsHeaders});if(req.method!=='POST')return json({error:'Method not allowed'},405);
