@@ -1,3 +1,5 @@
+import { supabase } from "@/integrations/supabase/client";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { useProjectDocuments } from "@/integrations/supabase/hooks/useProjectDocuments";
 import { useDocumentSignatures } from "@/integrations/supabase/hooks/useDocumentSignatures";
 import { LocationDocumentsLine } from "@/components/documents/LocationDocumentsLine";
@@ -46,7 +48,7 @@ const EMPTY = {
   name: "", project_number: "", scope: "", address: "", city: "", state: "", zip: "",
   poc_name: "", poc_phone: "", poc_email: "", status: "active", sort_order: "",
   housing_provided_by: "none", meals_provided: false as boolean, meals_notes: "", mobe_date: "", demobe_date: "",
-  day_shift_start: "", night_shift_start: "",
+  day_shift_start: "", night_shift_start: "", lat: "", lng: "", timezone: "", geofence_radius_m: "300",
 };
 type FormState = typeof EMPTY;
 
@@ -100,6 +102,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
   const [rows, setRows] = useState<ReqRow[]>([]);
   const [seeded, setSeeded] = useState(false);
   const [savingReqs, setSavingReqs] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
   const qc = useQueryClient();
   const { data: existingReqs, isFetched: reqsFetched } = useLocationRequirements(open && editing ? editing.id : undefined);
   if (open && editing && reqsFetched && !seeded) {
@@ -111,6 +114,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
   const openEdit = (l: ProjectLocation) => {
     setEditing(l);
     setForm({
+      lat: l.lat == null ? "" : String(l.lat), lng: l.lng == null ? "" : String(l.lng), timezone: l.timezone ?? "", geofence_radius_m: String(l.geofence_radius_m ?? 300),
       name: l.name, project_number: l.project_number ?? "", scope: l.scope ?? "", address: l.address ?? "",
       city: l.city ?? "", state: l.state ?? "", zip: l.zip ?? "", poc_name: l.poc_name ?? "",
       poc_phone: l.poc_phone ?? "", poc_email: l.poc_email ?? "", status: l.status || "active",
@@ -125,8 +129,17 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
 
   const save = async () => {
     if (!form.name.trim()) return;
+    const hasLat = !!form.lat.trim(), hasLng = !!form.lng.trim();
+    if (hasLat !== hasLng || (hasLat && (!Number.isFinite(Number(form.lat)) || Math.abs(Number(form.lat)) > 90 || !Number.isFinite(Number(form.lng)) || Math.abs(Number(form.lng)) > 180)) || !Number.isFinite(Number(form.geofence_radius_m)) || Number(form.geofence_radius_m) <= 0) { toast.error('Enter valid coordinates and a positive radius'); return; }
+    let timezone = form.timezone.trim() || null;
+    if (hasLat) {
+      const { data, error } = await supabase.functions.invoke('geocode-location', { body: { lat: Number(form.lat), lng: Number(form.lng) } });
+      if (error) { toast.error('Could not resolve the location timezone. Location was not saved.'); return; }
+      timezone = data.timezone;
+    }
     const n = (v: string) => (v.trim() ? v.trim() : null);
     const payload = {
+      lat: hasLat ? Number(form.lat) : null, lng: hasLng ? Number(form.lng) : null, timezone, geofence_radius_m: Number(form.geofence_radius_m),
       project_id: projectId, name: form.name.trim(), project_number: n(form.project_number), scope: n(form.scope),
       address: n(form.address), city: n(form.city), state: n(form.state), zip: n(form.zip),
       poc_name: n(form.poc_name), poc_phone: n(form.poc_phone), poc_email: n(form.poc_email),
@@ -156,6 +169,16 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
     setOpen(false);
   };
 
+  const geocode = async () => {
+    setGeocoding(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('geocode-location', { body: { address: [form.address, form.city, form.state, form.zip].filter(Boolean).join(', ') } });
+      if (error) throw new Error(error instanceof FunctionsHttpError ? await error.context.text() : error.message);
+      setForm(prev => ({ ...prev, lat: String(data.lat), lng: String(data.lng), timezone: data.timezone }));
+      toast.success('Coordinates and timezone found');
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Geocoding failed'); }
+    finally { setGeocoding(false); }
+  };
   const f = (k: keyof FormState) => ({
     value: form[k] as string,
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm({ ...form, [k]: e.target.value }),
@@ -195,6 +218,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold truncate">{l.name}</span>
+                      {l.lat != null && l.lng != null && <Badge variant="outline">📍 geofenced</Badge>}
                       {l.project_number && <Badge variant="outline">#{l.project_number}</Badge>}
                       <Badge variant={l.status === "active" ? "default" : "secondary"} className="capitalize">{l.status}</Badge>
                       {l.housing_provided_by === "customer" && <Badge variant="outline">Housing: Customer</Badge>}
@@ -263,6 +287,11 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
               <div><Label>State</Label><Input {...f("state")} maxLength={2} /></div>
               <div><Label>ZIP</Label><Input {...f("zip")} /></div>
             </div>
+            <div className="col-span-2"><Button type="button" variant="outline" disabled={geocoding || !form.address.trim()} onClick={geocode}>{geocoding ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <MapPin className="h-4 w-4 mr-1" />}Geocode from address</Button></div>
+            <div><Label htmlFor="loc-lat">Latitude</Label><Input id="loc-lat" type="number" min={-90} max={90} step="any" {...f('lat')} /></div>
+            <div><Label htmlFor="loc-lng">Longitude</Label><Input id="loc-lng" type="number" min={-180} max={180} step="any" {...f('lng')} /></div>
+            <div><Label htmlFor="loc-radius">Geofence radius (m)</Label><Input id="loc-radius" type="number" min={1} {...f('geofence_radius_m')} /></div>
+            <div><Label>Timezone</Label><Input value={form.timezone} readOnly /></div>
             <div><Label>POC name</Label><Input {...f("poc_name")} /></div>
             <div><Label>POC phone</Label><Input type="tel" {...f("poc_phone")} /></div>
             <div><Label>POC email</Label><Input type="email" {...f("poc_email")} /></div>
@@ -309,7 +338,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={save} disabled={!form.name.trim() || saving}>{saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Save</Button>
+            <Button onClick={save} disabled={!form.name.trim() || saving || geocoding}>{saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
