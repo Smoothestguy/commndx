@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
-import { validSignaturePng } from '../document-sign/rules.ts';
+import { validSignaturePng } from '../_shared/signatureRules.ts';
 const schema=z.object({action:z.enum(['prepare','save']),token:z.string().uuid(),at:z.string().datetime(),lat:z.number().min(-90).max(90).nullable().optional(),lng:z.number().min(-180).max(180).nullable().optional(),override_reason:z.string().trim().min(1).max(1000).optional(),signature_png_base64:z.string().max(280000).optional()});
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{...corsHeaders,'Content-Type':'application/json','Cache-Control':'no-store'}});
 const day=(iso:string,zone:string)=>new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso));
