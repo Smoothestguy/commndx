@@ -12,6 +12,7 @@ export function SignaturePad({ name, onSave, onSkip, saving, required = false, d
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    setHasInk(false);
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width * 2;
     canvas.height = rect.height * 2;

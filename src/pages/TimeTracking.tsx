@@ -206,7 +206,7 @@ export default function TimeTracking() {
         )}
 
         {/* Stats */}
-        <TimeTrackingStats entries={entries} />
+        <TimeTrackingStats entries={filteredEntries} />
 
         {/* Tabs */}
         <Tabs defaultValue="entries" className="w-full">

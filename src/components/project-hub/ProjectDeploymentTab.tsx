@@ -780,7 +780,6 @@ function SummaryStrip({ locations, crews, from, to, mileageRate, canEdit }: {
   locations: ProjectLocation[]; crews: Crew[]; from: string; to: string; mileageRate: number | null; canEdit: boolean;
 }) {
   const locIds = locations.map((l) => l.id);
-  const { data: att = [] } = useLocationAttendanceBatch(locIds, from, to);
   const {data:entries=[]}=useDeploymentHours(locations[0]?.project_id,from,to);
   const { data: miles = [] } = useCrewMileage(crews.map((c) => c.id), from, to);
   const { data: rl } = useRoleLabels(locIds, crews);

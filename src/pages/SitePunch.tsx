@@ -172,8 +172,8 @@ export default function SitePunch() {
         <p className="text-sm uppercase tracking-widest text-muted-foreground">Fairfield Response Group</p>
         {pending && !rejection && <div role="status" className="border-2 border-warning bg-warning/15 text-warning rounded-md p-5 space-y-3">
           <WifiOff className="h-12 w-12 mx-auto" />
-          <h1 className="text-2xl font-bold">{pending.committed?'Signature pending — check-in recorded':'No signal — punch saved'} {t(pending.at)}</h1>
-          <p className="text-lg">It will send automatically when you're back in coverage. Keep this page open or revisit the link.</p>
+          <h1 className="text-2xl font-bold">{pending.committed?'Signature pending — check-in recorded':error?'Punch not accepted — saved for review':navigator.onLine?'Sending saved punch':'No signal — punch saved'} {t(pending.at)}</h1>
+          <p className="text-lg">{error?'Keep this page open and call the office.':"It will send automatically when you're back in coverage. Keep this page open or revisit the link."}</p>
           <p className="text-base">Sin señal — registro guardado a las {t(pending.at)}. Se enviará al volver la señal. Mantén esta página abierta o vuelve a abrir el enlace.</p>
           {busy && <Loader2 className="h-5 w-5 animate-spin mx-auto" />}
         </div>}
