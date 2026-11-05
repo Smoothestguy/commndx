@@ -317,6 +317,36 @@ export type Database = {
           },
         ]
       }
+      alert_log: {
+        Row: {
+          alert_date: string
+          detail: string | null
+          id: string
+          kind: string
+          location_id: string | null
+          personnel_id: string | null
+          sent_at: string
+        }
+        Insert: {
+          alert_date: string
+          detail?: string | null
+          id?: string
+          kind: string
+          location_id?: string | null
+          personnel_id?: string | null
+          sent_at?: string
+        }
+        Update: {
+          alert_date?: string
+          detail?: string | null
+          id?: string
+          kind?: string
+          location_id?: string | null
+          personnel_id?: string | null
+          sent_at?: string
+        }
+        Relationships: []
+      }
       applicant_capabilities: {
         Row: {
           applicant_id: string
@@ -2608,33 +2638,72 @@ export type Database = {
           },
         ]
       }
+      document_locations: {
+        Row: {
+          document_id: string
+          location_id: string
+        }
+        Insert: {
+          document_id: string
+          location_id: string
+        }
+        Update: {
+          document_id?: string
+          location_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_locations_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "project_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_locations_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_sign_fields: {
         Row: {
+          binding: string
           created_at: string
           document_id: string
+          h_pct: number | null
           id: string
           kind: string
           page: number
+          scope: string
           w_pct: number
           x_pct: number
           y_pct: number
         }
         Insert: {
+          binding?: string
           created_at?: string
           document_id: string
+          h_pct?: number | null
           id?: string
           kind?: string
           page: number
+          scope?: string
           w_pct?: number
           x_pct: number
           y_pct: number
         }
         Update: {
+          binding?: string
           created_at?: string
           document_id?: string
+          h_pct?: number | null
           id?: string
           kind?: string
           page?: number
+          scope?: string
           w_pct?: number
           x_pct?: number
           y_pct?: number
@@ -3881,6 +3950,41 @@ export type Database = {
           },
         ]
       }
+      kiosk_tokens: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          label: string | null
+          location_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          label?: string | null
+          location_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          label?: string | null
+          location_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kiosk_tokens_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       location_assignments: {
         Row: {
           assigned_at: string
@@ -4082,6 +4186,7 @@ export type Database = {
       }
       location_visits: {
         Row: {
+          auto_closed: boolean
           check_in_at: string
           check_in_lat: number | null
           check_in_lng: number | null
@@ -4093,9 +4198,11 @@ export type Database = {
           crew_id: string | null
           id: string
           location_id: string
+          needs_review: boolean
           notes: string | null
         }
         Insert: {
+          auto_closed?: boolean
           check_in_at?: string
           check_in_lat?: number | null
           check_in_lng?: number | null
@@ -4107,9 +4214,11 @@ export type Database = {
           crew_id?: string | null
           id?: string
           location_id: string
+          needs_review?: boolean
           notes?: string | null
         }
         Update: {
+          auto_closed?: boolean
           check_in_at?: string
           check_in_lat?: number | null
           check_in_lng?: number | null
@@ -4121,6 +4230,7 @@ export type Database = {
           crew_id?: string | null
           id?: string
           location_id?: string
+          needs_review?: boolean
           notes?: string | null
         }
         Relationships: [
@@ -6418,10 +6528,14 @@ export type Database = {
           file_size: number
           file_type: string
           id: string
+          is_reusable_template: boolean
+          is_signin_template: boolean
           location_id: string | null
           notes: string | null
           project_id: string
           requires_signature: boolean
+          row_height_pct: number | null
+          rows_per_page: number | null
           uploaded_by: string | null
         }
         Insert: {
@@ -6431,10 +6545,14 @@ export type Database = {
           file_size: number
           file_type: string
           id?: string
+          is_reusable_template?: boolean
+          is_signin_template?: boolean
           location_id?: string | null
           notes?: string | null
           project_id: string
           requires_signature?: boolean
+          row_height_pct?: number | null
+          rows_per_page?: number | null
           uploaded_by?: string | null
         }
         Update: {
@@ -6444,10 +6562,14 @@ export type Database = {
           file_size?: number
           file_type?: string
           id?: string
+          is_reusable_template?: boolean
+          is_signin_template?: boolean
           location_id?: string | null
           notes?: string | null
           project_id?: string
           requires_signature?: boolean
+          row_height_pct?: number | null
+          rows_per_page?: number | null
           uploaded_by?: string | null
         }
         Relationships: [
@@ -6610,8 +6732,11 @@ export type Database = {
           created_at: string
           day_shift_start: string | null
           demobe_date: string | null
+          geofence_radius_m: number
           housing_provided_by: string
           id: string
+          lat: number | null
+          lng: number | null
           meals_notes: string | null
           meals_provided: boolean
           mobe_date: string | null
@@ -6626,6 +6751,7 @@ export type Database = {
           sort_order: number
           state: string | null
           status: string
+          timezone: string | null
           updated_at: string
           zip: string | null
         }
@@ -6635,8 +6761,11 @@ export type Database = {
           created_at?: string
           day_shift_start?: string | null
           demobe_date?: string | null
+          geofence_radius_m?: number
           housing_provided_by?: string
           id?: string
+          lat?: number | null
+          lng?: number | null
           meals_notes?: string | null
           meals_provided?: boolean
           mobe_date?: string | null
@@ -6651,6 +6780,7 @@ export type Database = {
           sort_order?: number
           state?: string | null
           status?: string
+          timezone?: string | null
           updated_at?: string
           zip?: string | null
         }
@@ -6660,8 +6790,11 @@ export type Database = {
           created_at?: string
           day_shift_start?: string | null
           demobe_date?: string | null
+          geofence_radius_m?: number
           housing_provided_by?: string
           id?: string
+          lat?: number | null
+          lng?: number | null
           meals_notes?: string | null
           meals_provided?: boolean
           mobe_date?: string | null
@@ -6676,6 +6809,7 @@ export type Database = {
           sort_order?: number
           state?: string | null
           status?: string
+          timezone?: string | null
           updated_at?: string
           zip?: string | null
         }
@@ -8447,6 +8581,116 @@ export type Database = {
         }
         Relationships: []
       }
+      signin_sheet_days: {
+        Row: {
+          countersign_in_geofence: boolean | null
+          countersign_lat: number | null
+          countersign_lng: number | null
+          countersign_name: string | null
+          countersign_url: string | null
+          countersigned_at: string | null
+          created_at: string
+          document_id: string | null
+          id: string
+          location_id: string
+          locked_by: string | null
+          pdf_hash: string | null
+          pdf_url: string | null
+          sheet_date: string
+          status: string
+        }
+        Insert: {
+          countersign_in_geofence?: boolean | null
+          countersign_lat?: number | null
+          countersign_lng?: number | null
+          countersign_name?: string | null
+          countersign_url?: string | null
+          countersigned_at?: string | null
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          location_id: string
+          locked_by?: string | null
+          pdf_hash?: string | null
+          pdf_url?: string | null
+          sheet_date: string
+          status?: string
+        }
+        Update: {
+          countersign_in_geofence?: boolean | null
+          countersign_lat?: number | null
+          countersign_lng?: number | null
+          countersign_name?: string | null
+          countersign_url?: string | null
+          countersigned_at?: string | null
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          location_id?: string
+          locked_by?: string | null
+          pdf_hash?: string | null
+          pdf_url?: string | null
+          sheet_date?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signin_sheet_days_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "project_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signin_sheet_days_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      signin_sheet_versions: {
+        Row: {
+          change_reason: string | null
+          changed_by: string | null
+          created_at: string
+          id: string
+          pdf_hash: string | null
+          pdf_url: string | null
+          sheet_day_id: string
+          version: number
+        }
+        Insert: {
+          change_reason?: string | null
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          pdf_hash?: string | null
+          pdf_url?: string | null
+          sheet_day_id: string
+          version: number
+        }
+        Update: {
+          change_reason?: string | null
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          pdf_hash?: string | null
+          pdf_url?: string | null
+          sheet_day_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signin_sheet_versions_sheet_day_id_fkey"
+            columns: ["sheet_day_id"]
+            isOneToOne: false
+            referencedRelation: "signin_sheet_days"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_checkin_tokens: {
         Row: {
           created_at: string
@@ -8691,6 +8935,7 @@ export type Database = {
           last_location_check_at: string | null
           last_location_lat: number | null
           last_location_lng: number | null
+          location_id: string | null
           lunch_duration_minutes: number | null
           lunch_end_at: string | null
           lunch_start_at: string | null
@@ -8703,6 +8948,7 @@ export type Database = {
           updated_at: string
           user_id: string
           vendor_bill_id: string | null
+          visit_personnel_id: string | null
           week_closeout_id: string | null
         }
         Insert: {
@@ -8735,6 +8981,7 @@ export type Database = {
           last_location_check_at?: string | null
           last_location_lat?: number | null
           last_location_lng?: number | null
+          location_id?: string | null
           lunch_duration_minutes?: number | null
           lunch_end_at?: string | null
           lunch_start_at?: string | null
@@ -8747,6 +8994,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           vendor_bill_id?: string | null
+          visit_personnel_id?: string | null
           week_closeout_id?: string | null
         }
         Update: {
@@ -8779,6 +9027,7 @@ export type Database = {
           last_location_check_at?: string | null
           last_location_lat?: number | null
           last_location_lng?: number | null
+          location_id?: string | null
           lunch_duration_minutes?: number | null
           lunch_end_at?: string | null
           lunch_start_at?: string | null
@@ -8791,6 +9040,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           vendor_bill_id?: string | null
+          visit_personnel_id?: string | null
           week_closeout_id?: string | null
         }
         Relationships: [
@@ -8806,6 +9056,13 @@ export type Database = {
             columns: ["job_order_id"]
             isOneToOne: false
             referencedRelation: "job_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
             referencedColumns: ["id"]
           },
           {
@@ -8841,6 +9098,20 @@ export type Database = {
             columns: ["vendor_bill_id"]
             isOneToOne: false
             referencedRelation: "vendor_bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_visit_personnel_id_fkey"
+            columns: ["visit_personnel_id"]
+            isOneToOne: true
+            referencedRelation: "personnel_location_trail"
+            referencedColumns: ["visit_personnel_id"]
+          },
+          {
+            foreignKeyName: "time_entries_visit_personnel_id_fkey"
+            columns: ["visit_personnel_id"]
+            isOneToOne: true
+            referencedRelation: "visit_personnel"
             referencedColumns: ["id"]
           },
           {
@@ -9347,6 +9618,64 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      variance_resolutions: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          note: string | null
+          personnel_id: string
+          project_id: string
+          resolution: string
+          resolved_by: string | null
+          var_date: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          note?: string | null
+          personnel_id: string
+          project_id: string
+          resolution: string
+          resolved_by?: string | null
+          var_date: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          note?: string | null
+          personnel_id?: string
+          project_id?: string
+          resolution?: string
+          resolved_by?: string | null
+          var_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "variance_resolutions_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "variance_resolutions_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "variance_resolutions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vendor_bill_attachments: {
         Row: {
@@ -10023,33 +10352,54 @@ export type Database = {
       }
       visit_personnel: {
         Row: {
+          accuracy_m: number | null
           checked_in_at: string | null
           checked_in_by: string | null
           checked_out_at: string | null
+          distance_m: number | null
           id: string
+          in_geofence: boolean | null
+          offsite_approved_at: string | null
+          offsite_approved_by: string | null
+          offsite_reason: string | null
           personnel_id: string
           signature_url: string | null
           signed_at: string | null
+          synced_late: boolean
           visit_id: string
         }
         Insert: {
+          accuracy_m?: number | null
           checked_in_at?: string | null
           checked_in_by?: string | null
           checked_out_at?: string | null
+          distance_m?: number | null
           id?: string
+          in_geofence?: boolean | null
+          offsite_approved_at?: string | null
+          offsite_approved_by?: string | null
+          offsite_reason?: string | null
           personnel_id: string
           signature_url?: string | null
           signed_at?: string | null
+          synced_late?: boolean
           visit_id: string
         }
         Update: {
+          accuracy_m?: number | null
           checked_in_at?: string | null
           checked_in_by?: string | null
           checked_out_at?: string | null
+          distance_m?: number | null
           id?: string
+          in_geofence?: boolean | null
+          offsite_approved_at?: string | null
+          offsite_approved_by?: string | null
+          offsite_reason?: string | null
           personnel_id?: string
           signature_url?: string | null
           signed_at?: string | null
+          synced_late?: boolean
           visit_id?: string
         }
         Relationships: [
@@ -10393,6 +10743,38 @@ export type Database = {
           },
         ]
       }
+      week_closeouts: {
+        Row: {
+          closed_at: string
+          closed_by: string | null
+          id: string
+          project_id: string
+          week_start: string
+        }
+        Insert: {
+          closed_at?: string
+          closed_by?: string | null
+          id?: string
+          project_id: string
+          week_start: string
+        }
+        Update: {
+          closed_at?: string
+          closed_by?: string | null
+          id?: string
+          project_id?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "week_closeouts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       weekly_labor_invoice_sources: {
         Row: {
           created_at: string | null
@@ -10650,6 +11032,18 @@ export type Database = {
       }
     }
     Functions: {
+      _punch_core: {
+        Args: {
+          p_accuracy: number
+          p_at: string
+          p_lat: number
+          p_lng: number
+          p_location: string
+          p_override_reason: string
+          p_personnel: string
+        }
+        Returns: Json
+      }
       accept_invitation: {
         Args: { _invitation_id: string; _user_id: string }
         Returns: Json
@@ -10904,6 +11298,7 @@ export type Database = {
         Returns: string
       }
       generate_vendor_bill_number: { Args: never; Returns: string }
+      get_kiosk_info: { Args: { p_kiosk: string }; Returns: Json }
       get_my_banking_info: {
         Args: never
         Returns: {
@@ -10977,6 +11372,17 @@ export type Database = {
       }
       is_personnel: { Args: { _user_id: string }; Returns: boolean }
       is_vendor: { Args: { _user_id: string }; Returns: boolean }
+      kiosk_punch: {
+        Args: {
+          p_accuracy?: number
+          p_kiosk: string
+          p_lat?: number
+          p_lng?: number
+          p_override_reason?: string
+          p_personnel: string
+        }
+        Returns: Json
+      }
       log_application_attempt_error: {
         Args: {
           _job_posting_id: string
@@ -11053,9 +11459,17 @@ export type Database = {
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       site_punch: {
-        Args: { p_at?: string; p_lat?: number; p_lng?: number; p_token: string }
+        Args: {
+          p_accuracy?: number
+          p_at?: string
+          p_lat?: number
+          p_lng?: number
+          p_override_reason?: string
+          p_token: string
+        }
         Returns: Json
       }
+      sync_visit_time_entry: { Args: { p_vp: string }; Returns: undefined }
       update_applicant_geo: {
         Args: {
           _applicant_id: string

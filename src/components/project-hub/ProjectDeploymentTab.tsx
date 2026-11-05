@@ -1,4 +1,6 @@
 import { useProjectAgencies } from "@/hooks/useProjectAgencies";
+import { useProjectDocuments } from '@/integrations/supabase/hooks/useProjectDocuments';
+import { SigninSheetsPanel } from '@/components/documents/SigninSheetsPanel';
 import { AgencyFilter } from "./AgencyFilter";
 import { RoleSelect } from "./RoleSelect";
 import { GeoTag } from "./GeoTag";
@@ -1286,6 +1288,7 @@ function useProjectName(projectId: string) {
 // ---------- Tab root ----------
 
 export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
+  const { data: documents = [] } = useProjectDocuments(projectId);
   const { data: locations = [], isLoading } = useProjectLocations(projectId);
   const { data: crews = [] } = useCrews(projectId);
   const { data: project } = useProject(projectId);
@@ -1313,6 +1316,7 @@ export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
         </div>
       </div>
       <ProjectRosterCard projectId={projectId} />
+      {canEdit && documents.some(d => d.is_signin_template) && <section className="space-y-2"><h3 className="text-sm font-semibold">Customer sign-in sheets</h3>{documents.filter(d => d.is_signin_template).map(doc => <div key={doc.id}><p className="text-sm font-medium">{doc.file_name}</p><SigninSheetsPanel doc={doc} projectName={project?.name || 'Project'} /></div>)}</section>}
       <CrewsSection projectId={projectId} crews={crews} canEdit={canEdit} />
       <VisitsCard projectId={projectId} locations={locations} crews={crews} from={r.from} to={r.to} canEdit={canEdit} />
       <MileageCard crews={crews} from={r.from} to={r.to} mileageRate={mileageRate} canEdit={canEdit} />

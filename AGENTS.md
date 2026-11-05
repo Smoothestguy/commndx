@@ -8,3 +8,7 @@
 - Field Mode and public document signing share the pointer-event SignaturePad to keep phone drawing behavior consistent.
 - Project document selection never starts network writes; explicit submission owns busy state and prevents dismissal while uploading so reopened native file inputs cannot inherit an invisible upload.
 - Project agency tags use an authenticated project-scoped minimal-projection function because the staff directory omits vendor_id; never widen personnel/vendor access or expose financial fields for agency labels. Agency exports allow-list hours-only columns and filter vendor plus selected Chicago week independently of screen filters.
+- Customer sign-in sheets use a pure location-timezone/day segmentation and PDF layer separate from Chicago payroll; paginated project trail and batched evidence reads feed it, so later lock/countersign phases can preserve generated evidence without changing payroll.
+- Reusable sign-in templates copy document metadata and fields but share private storage originals; client deletion must never delete shared files because cross-project references may be hidden by RLS.
+- Location geocoding is manager-authorized in an edge function; address and manual-coordinate timezone resolution use the same entrypoint, and secret Mapbox tokens are never returned to browsers.
+- Already-signed public punch history is read through a token-validated minimal-response edge function scoped to that token's person, location and recent local day; never grant anonymous trail access.

@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { SignField } from './documentStamp';
 
 export async function loadDocumentFields(documentId: string): Promise<SignField[]> {
-  const { data, error } = await supabase.from('document_sign_fields').select('id,page,x_pct,y_pct,w_pct,kind').eq('document_id', documentId).order('page').order('created_at');
+  const { data, error } = await supabase.from('document_sign_fields').select('id,page,x_pct,y_pct,w_pct,h_pct,kind,binding,scope').eq('document_id', documentId).order('page').order('created_at');
   if (error) throw error;
   return data || [];
 }

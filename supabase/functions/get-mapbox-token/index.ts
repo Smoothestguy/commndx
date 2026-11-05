@@ -14,7 +14,8 @@ serve(async (req) => {
   try {
     const mapboxToken = Deno.env.get('MapBox');
     
-    if (!mapboxToken) {
+    // Never expose a secret (sk.) token to browser callers.
+    if (!mapboxToken || !mapboxToken.startsWith('pk.')) {
       return new Response(
         JSON.stringify({ error: 'Mapbox token not configured' }),
         { 

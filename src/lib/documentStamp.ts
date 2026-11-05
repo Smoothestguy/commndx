@@ -1,5 +1,7 @@
 export type SignFieldKind = 'signature' | 'name' | 'date';
-export interface SignField { id: string; page: number; x_pct: number; y_pct: number; w_pct: number; kind: string; }
+export const SIGN_BINDINGS = ['date', 'project_name', 'mission_number', 'location_name', 'location_address', 'employee_name', 'position', 'signature', 'time_in', 'time_out', 'total_hours', 'name'] as const;
+export type SignBinding = typeof SIGN_BINDINGS[number];
+export interface SignField { id: string; page: number; x_pct: number; y_pct: number; w_pct: number; kind: string; h_pct?: number | null; binding?: string; scope?: string; }
 
 export const stampedDate = (iso: string) => {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: 'numeric', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(iso));
@@ -8,8 +10,8 @@ export const stampedDate = (iso: string) => {
 };
 
 // Stored y_pct is measured from the TOP of the displayed page, never PDF bottom-left.
-export function stampRect(field: Pick<SignField, 'x_pct' | 'y_pct' | 'w_pct'>, width: number, height: number, aspect: number) {
-  const w = field.w_pct * width, h = w / aspect;
+export function stampRect(field: Pick<SignField, 'x_pct' | 'y_pct' | 'w_pct' | 'h_pct'>, width: number, height: number, aspect: number) {
+  const w = field.w_pct * width, h = field.h_pct ? field.h_pct * height : w / aspect;
   return { x: field.x_pct * width, y: height - field.y_pct * height - h, width: w, height: h };
 }
 
@@ -39,7 +41,8 @@ export async function stampDocument(original: ArrayBuffer, pngBytes: ArrayBuffer
     if (field.kind === 'signature') {
       const rect = stampRect(field, width, height, png.width / png.height);
       if (rect.y < 0) throw new Error('Signature extends past the page. Move the field upward.');
-      page.drawImage(png, rect);
+      const fitted = png.scaleToFit(rect.width, rect.height);
+      page.drawImage(png, { x: rect.x, y: rect.y + (rect.height - fitted.height) / 2, ...fitted });
     } else if (field.kind === 'name' || field.kind === 'date') {
       const text = printable(field.kind === 'name' ? evidence.name : stampedDate(evidence.signedAt));
       const size = Math.min(10, field.w_pct * width / Math.max(1, font.widthOfTextAtSize(text, 1)));

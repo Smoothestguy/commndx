@@ -15,6 +15,11 @@ export interface ProjectDocument {
   location_id: string | null;
   requires_signature: boolean;
   notes: string | null;
+  is_signin_template?: boolean;
+  is_reusable_template?: boolean;
+  rows_per_page?: number | null;
+  row_height_pct?: number | null;
+  location_ids?: string[];
 }
 
 export const useProjectDocuments = (projectId: string | undefined) => {
@@ -30,7 +35,11 @@ export const useProjectDocuments = (projectId: string | undefined) => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data as ProjectDocument[];
+      const docs = data as ProjectDocument[];
+      if (!docs.length) return docs;
+      const { data: links, error: linkError } = await supabase.from('document_locations').select('document_id,location_id').in('document_id', docs.map(d => d.id));
+      if (linkError) throw linkError;
+      return docs.map(d => ({ ...d, location_ids: (links ?? []).filter(l => l.document_id === d.id).map(l => l.location_id) }));
     },
     enabled: !!projectId,
   });
@@ -42,16 +51,19 @@ export const useUploadProjectDocument = () => {
   return useMutation({
     mutationFn: async ({
       projectId,
-      file, locationId, requiresSignature = false, notes,
+      file, locationId, requiresSignature = false, notes, isSigninTemplate = false, isReusableTemplate = false, locationIds = [],
     }: {
       projectId: string;
       file: File;
       locationId?: string | null;
       requiresSignature?: boolean;
       notes?: string;
+      isSigninTemplate?: boolean;
+      isReusableTemplate?: boolean;
+      locationIds?: string[];
     }) => {
       const fileType = projectDocumentFileType(file);
-      if (requiresSignature && fileType !== "application/pdf") throw new Error("Signature requests require a PDF");
+      if ((requiresSignature || isSigninTemplate) && fileType !== "application/pdf") throw new Error("Signature requests and sign-in templates require a PDF");
       // Resolve the authenticated uploader before making any storage writes.
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) throw authError || new Error("Please sign in again before uploading a document");
@@ -72,6 +84,10 @@ export const useUploadProjectDocument = () => {
             project_id: projectId,
             location_id: locationId || null,
             requires_signature: requiresSignature,
+            is_signin_template: isSigninTemplate,
+            is_reusable_template: isSigninTemplate && isReusableTemplate,
+            rows_per_page: isSigninTemplate ? 12 : null,
+            row_height_pct: isSigninTemplate ? 0.045 : null,
             notes: notes?.trim() || null,
             file_name: file.name,
             file_path: fileName,
@@ -84,6 +100,10 @@ export const useUploadProjectDocument = () => {
         .single();
 
       if (insertError) { await supabase.storage.from("project-documents").remove([fileName]); throw insertError; }
+      if (isSigninTemplate && locationIds.length) {
+        const { error } = await supabase.from('document_locations').insert(locationIds.map(location_id => ({ document_id: data.id, location_id })));
+        if (error) { await supabase.from('project_documents').delete().eq('id', data.id); await supabase.storage.from('project-documents').remove([fileName]); throw error; }
+      }
       return data;
     },
     onSuccess: (_, variables) => {
@@ -101,15 +121,6 @@ export const useDeleteProjectDocument = () => {
 
   return useMutation({
     mutationFn: async ({ id, filePath, projectId }: { id: string; filePath: string; projectId: string }) => {
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from("project-documents")
-        .remove([filePath]);
-
-      if (storageError) {
-        console.error("Storage delete error:", storageError);
-      }
-
       // Delete record
       const { error } = await supabase
         .from("project_documents")
@@ -117,6 +128,8 @@ export const useDeleteProjectDocument = () => {
         .eq("id", id);
 
       if (error) throw error;
+      // Reusable copies can share an object across projects. Never remove shared originals here.
+      // Object cleanup must be performed by a privileged reference-aware lifecycle, not a staff client.
       return projectId;
     },
     onSuccess: (projectId) => {

@@ -15,6 +15,10 @@ export interface ProjectLocation {
   poc_name: string | null;
   poc_phone: string | null;
   poc_email: string | null;
+  lat: number | null;
+  lng: number | null;
+  timezone: string | null;
+  geofence_radius_m: number;
   status: string;
   sort_order: number | null;
   housing_provided_by: string | null;
