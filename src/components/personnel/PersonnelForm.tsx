@@ -389,24 +389,24 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
 
               {/* Show warning if bill_rate <= pay_rate */}
               {watch("bill_rate") !== undefined && watch("pay_rate") !== undefined && 
-               watch("bill_rate")! > 0 && watch("pay_rate")! > 0 && 
-               watch("bill_rate")! <= watch("pay_rate")! && (
+               (watch("bill_rate") ?? 0) > 0 && (watch("pay_rate") ?? 0) > 0 && 
+               (watch("bill_rate") ?? 0) <= (watch("pay_rate") ?? 0) && (
                 <p className="text-sm text-yellow-600">
                   ⚠️ Bill rate should typically be higher than pay rate for margin
                 </p>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="vendor_id">Assigned Vendor</Label>
+                <Label htmlFor="vendor_id">Agency / Vendor</Label>
                 <Select
                   value={watch("vendor_id") || "__none__"}
                   onValueChange={(value) => setValue("vendor_id", value === "__none__" ? "" : value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select vendor (optional)" />
+                    <SelectValue placeholder="Select agency / vendor (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">No Vendor</SelectItem>
+                    <SelectItem value="__none__">No agency / vendor</SelectItem>
                     {vendors?.map((vendor) => (
                       <SelectItem key={vendor.id} value={vendor.id}>
                         {vendor.name}

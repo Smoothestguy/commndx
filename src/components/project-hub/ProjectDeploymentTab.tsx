@@ -1,3 +1,5 @@
+import { useProjectAgencies } from "@/hooks/useProjectAgencies";
+import { AgencyFilter } from "./AgencyFilter";
 import { RoleSelect } from "./RoleSelect";
 import { GeoTag } from "./GeoTag";
 import { geoCoordinates } from "@/lib/geoTag";
@@ -1142,20 +1144,23 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
   personId: string; setPersonId: (id: string) => void;
 }) {
   const [locId, setLocId] = useState<string>("");
+  const [agency, setAgency] = useState("all");
+  const agencies = useProjectAgencies(projectId);
   const [pickOpen, setPickOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const { isAdmin: tAdmin, isManager: tManager } = useUserRole();
   const canLog = tAdmin || tManager;
   const { data: project } = useProject(projectId);
-  const { data: rows = [], isLoading } = useTrail(projectId, { personnelId: personId || null, locationId: locId || null, from, to });
+  const { data: rawRows = [], isLoading } = useTrail(projectId, { personnelId: personId || null, locationId: locId || null, from, to });
+  const rows = rawRows.filter(r => agency === "all" || agencies.vendorByPerson[r.personnel_id] === agency);
   // Person options come from the trail itself (unfiltered by person) so the list only shows people who have entries.
   const { data: allRows = [] } = useTrail(projectId, { locationId: locId || null, from, to });
   const peopleOpts = useMemo(() => {
     const m = new Map<string, string>();
-    for (const r of allRows) m.set(r.personnel_id, trailName(r));
+    for (const r of allRows) if (agency === "all" || agencies.vendorByPerson[r.personnel_id] === agency) m.set(r.personnel_id, trailName(r));
     return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  }, [allRows]);
+  }, [allRows, agency, agencies.vendorByPerson]);
   const personName = personId ? (peopleOpts.find(([id]) => id === personId)?.[1] ?? (rows[0] ? trailName(rows[0]) : "Person")) : "";
   const { data: visitNotes = {} } = useVisitNotes(rows.map((r) => r.visit_id));
   const isManual = (r: TrailRow) => /^manual entry/i.test(visitNotes[r.visit_id] ?? "");
@@ -1191,6 +1196,7 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
             {locations.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
           </SelectContent>
         </Select>
+        <AgencyFilter value={agency} onChange={v => { setAgency(v); setPersonId(""); }} vendors={agencies.vendors} />
         {personId && <span className="text-sm font-medium">Total {total.toFixed(2)}h</span>}
         <div className="ml-auto flex gap-1">
           {canLog && <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => setLogOpen(true)}><Clock className="h-3.5 w-3.5" />Log time</Button>}
