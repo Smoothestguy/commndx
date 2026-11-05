@@ -1,5 +1,5 @@
 import { expect, it } from 'bun:test';
-import { PDFDocument, degrees } from 'pdf-lib';
+import { PDFDocument, PDFName, degrees } from 'pdf-lib';
 import { newSignField, stampRect, stampDocument, stampedDate } from './documentStamp';
 const png = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64')).buffer;
 const evidence = { name: 'Test Signer', signedAt: '2026-11-05T13:42:00Z', documentName: 'Test.pdf', projectName: 'Test', reference: 'test' };
@@ -19,7 +19,7 @@ it('keeps zero-field originals and appends the certificate', async () => {
 it('stamps the original page and keeps its rotation plus certificate', async () => {
   const original = await PDFDocument.create(); original.addPage([600, 800]).setRotation(degrees(90));
   const bytes = await stampDocument((await original.save()).buffer, png, [{ id: 'test', page: 1, x_pct: 0.2, y_pct: 0.3, w_pct: 0.25, kind: 'signature' }], evidence);
-  const pdf = await PDFDocument.load(bytes); expect(pdf.getPageCount()).toBe(2); expect(pdf.getPage(0).getRotation().angle).toBe(90); expect(pdf.getPage(0).node.Resources().lookupMaybe('XObject')).toBeDefined();
+  const pdf = await PDFDocument.load(bytes); expect(pdf.getPageCount()).toBe(2); expect(pdf.getPage(0).getRotation().angle).toBe(90); expect(pdf.getPage(0).node.Resources().get(PDFName.of('XObject'))).toBeDefined();
 });
 it('rejects a field on a nonexistent page rather than silently missing a signature', async () => {
   const original = await PDFDocument.create(); original.addPage();
