@@ -33,6 +33,7 @@ export interface VisitRow {
 }
 
 export interface VisitPerson {
+  synced_late?: boolean;
   id: string;
   visit_id: string;
   checked_in_at: string | null;
@@ -111,7 +112,7 @@ async function fetchVisitBundle(locationIds: string[], fromIso: string, toIso: s
   if (!vids.length) return { visits: visits ?? [], people: [], purchases: [], photos: [] };
 
   const [ppl, pur, pho] = await Promise.all([
-    db.from("visit_personnel").select("id, visit_id, personnel_id, signature_url, signed_at, checked_in_at, checked_out_at").in("visit_id", vids),
+    db.from("visit_personnel").select("id, visit_id, personnel_id, signature_url, signed_at, checked_in_at, checked_out_at, synced_late").in("visit_id", vids),
     db.from("visit_purchases").select("id, visit_id, amount, vendor, note, receipt_url, created_at").in("visit_id", vids),
     db.from("visit_photos").select("id, visit_id, photo_url, caption, taken_at").in("visit_id", vids),
   ]);

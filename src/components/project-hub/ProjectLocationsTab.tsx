@@ -130,6 +130,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
 
   const save = async () => {
     if (!form.name.trim()) return;
+    if (form.poc_email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.poc_email.trim())) { toast.error('Enter a valid POC email'); return; }
     const hasLat = !!form.lat.trim(), hasLng = !!form.lng.trim();
     if (hasLat !== hasLng || (hasLat && (!Number.isFinite(Number(form.lat)) || Math.abs(Number(form.lat)) > 90 || !Number.isFinite(Number(form.lng)) || Math.abs(Number(form.lng)) > 180)) || !Number.isFinite(Number(form.geofence_radius_m)) || Number(form.geofence_radius_m) <= 0) { toast.error('Enter valid coordinates and a positive radius'); return; }
     let timezone = form.timezone.trim() || null;
@@ -296,7 +297,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
             <div><Label>Timezone</Label><Input value={form.timezone} readOnly /></div>
             <div><Label>POC name</Label><Input {...f("poc_name")} /></div>
             <div><Label>POC phone</Label><Input type="tel" {...f("poc_phone")} /></div>
-            <div><Label>POC email</Label><Input type="email" {...f("poc_email")} /></div>
+            <div><Label htmlFor="location-poc-email">POC email</Label><Input id="location-poc-email" type="email" {...f("poc_email")} /></div>
             {deploymentMode && <div><Label>Mobe date</Label><Input type="date" {...f("mobe_date")} /></div>}
             {deploymentMode && <div><Label>Demobe date</Label><Input type="date" {...f("demobe_date")} /></div>}
             <div><Label>Sort order</Label><Input type="number" {...f("sort_order")} /></div>
