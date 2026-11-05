@@ -1,5 +1,12 @@
 # Applicant locations
 
+# Deployment data-flow fixes
+- [ ] Same-local-day Field Mode visits, flagged stale closure and review clearing.
+- [ ] Required private check-in signatures, same-day copy-forward and durable public signature retries.
+- [ ] Canonical time-entry hours/costs and shared assignment/status counts.
+- [ ] Crew prompt and editable route-mileage estimate.
+- [ ] Personnel loading and compact time KPIs; tests, browser checks and requested TypeScript check; no migrations/layout changes.
+
 # Phase 1 location customer sign-in sheets
 - [x] Live types; location coordinates, timezone and geocoding with manager-only authorization; no migrations. Numeric-coordinate fallback used instead of a map preview; live address lookup and coordinate save/readback verified.
 - [x] Binding/scope/resizable row-band editor, template upload/location links and reusable template copy. Live upload, tablet resize/save and shared-file copy verified.
