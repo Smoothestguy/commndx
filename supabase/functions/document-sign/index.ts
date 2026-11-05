@@ -73,14 +73,16 @@ Deno.serve(async req => {
     if (!signature || !['pending', 'signed'].includes(signature.status)) return json({ error: 'Signature link not available' }, 404);
     if (signatureExpired(signature.expires_at)) return json({ error: 'Signature link expired' }, 410);
     if (body.action === 'info') {
-      const [{ data: doc, error: docError }, { data: person, error: personError }] = await Promise.all([
+      const [{ data: doc, error: docError }, { data: person, error: personError }, { count: fieldCount, error: fieldError }] = await Promise.all([
         db.from('project_documents').select('file_name,file_path,notes').eq('id', signature.document_id).single(),
         db.from('personnel').select('first_name').eq('id', signature.personnel_id).single(),
+        // Reveal only field presence after token validation, never anonymous table access.
+        db.from('document_sign_fields').select('id', { count: 'exact', head: true }).eq('document_id', signature.document_id),
       ]);
-      if (docError || personError) throw docError || personError;
+      if (docError || personError || fieldError) throw docError || personError || fieldError;
       const { data: pdf, error: pdfError } = await db.storage.from('project-documents').createSignedUrl(doc.file_path, 3600);
       if (pdfError) throw pdfError;
-      return json({ first_name: person.first_name, title: doc.file_name, notes: doc.notes, already_signed: signature.status === 'signed', signed_at: signature.signed_at, pdf_url: pdf.signedUrl });
+      return json({ first_name: person.first_name, title: doc.file_name, notes: doc.notes, already_signed: signature.status === 'signed', signed_at: signature.signed_at, pdf_url: pdf.signedUrl, has_fields: (fieldCount || 0) > 0 });
     }
     if (signature.status === 'signed') return json({ ok: true, signed_at: signature.signed_at });
     const base64 = body.signature_png_base64.replace(/^data:image\/png;base64,/, '');

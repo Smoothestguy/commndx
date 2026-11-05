@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { SignaturePad } from '@/components/documents/SignaturePad';
 import { documentSign, signatureTime } from '@/lib/documentSign';
 import { toast } from 'sonner';
-interface Info { first_name: string; title: string; notes: string | null; already_signed: boolean; signed_at: string | null; pdf_url: string; }
+interface Info { first_name: string; title: string; notes: string | null; already_signed: boolean; signed_at: string | null; pdf_url: string; has_fields?: boolean; }
 function gps(): Promise<{ lat: number | null; lng: number | null }> {
   return new Promise(resolve => {
     const timer = setTimeout(() => resolve({ lat: null, lng: null }), 4000);
@@ -40,6 +40,7 @@ export default function DocumentSign() {
       {error ? <div role="alert" className="space-y-3"><h1 className="text-xl font-semibold">{error}</h1><p>Call the office: <a className="text-primary underline" href="tel:+12817483832">(281) 748-3832</a></p></div> : !info ? <Loader2 className="animate-spin mx-auto" aria-label="Loading document" /> : info.already_signed ? <div className="py-12 text-center space-y-3"><CheckCircle2 className="h-14 w-14 mx-auto text-primary" /><h1 className="text-xl font-semibold">Signed {info.signed_at ? signatureTime(info.signed_at) : ''} ✓</h1><p className="text-muted-foreground">Firmado. Gracias — su firma ha sido guardada.</p><p>{info.title}</p></div> : <>
         <h1 className="text-2xl font-semibold break-words flex items-start gap-2"><FileText className="h-6 w-6 shrink-0 mt-1" />{info.title}</h1>
         <iframe src={info.pdf_url} title={info.title} className="w-full h-[48vh] border rounded-md bg-muted" />
+        {info.has_fields && <p className="text-sm text-muted-foreground">Your signature will be placed on the document where indicated.</p>}
         <a href={info.pdf_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary underline"><ExternalLink className="h-4 w-4" />Open PDF</a>
         {info.notes && <p className="whitespace-pre-wrap break-words">{info.notes}</p>}
         <label className="block space-y-2"><span>I,</span><Input aria-label="Signer name" value={name} onChange={e => setName(e.target.value)} maxLength={150} /><span className="block">have read and agree to this document.</span></label>
