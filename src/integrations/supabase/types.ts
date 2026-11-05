@@ -8548,6 +8548,67 @@ export type Database = {
           },
         ]
       }
+      shift_extensions: {
+        Row: {
+          decided_at: string | null
+          decided_by: string | null
+          ext_date: string
+          id: string
+          location_id: string
+          personnel_id: string
+          reason: string
+          requested_at: string
+          status: string
+          until_at: string
+        }
+        Insert: {
+          decided_at?: string | null
+          decided_by?: string | null
+          ext_date: string
+          id?: string
+          location_id: string
+          personnel_id: string
+          reason: string
+          requested_at?: string
+          status?: string
+          until_at: string
+        }
+        Update: {
+          decided_at?: string | null
+          decided_by?: string | null
+          ext_date?: string
+          id?: string
+          location_id?: string
+          personnel_id?: string
+          reason?: string
+          requested_at?: string
+          status?: string
+          until_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_extensions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_extensions_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_extensions_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       signin_provider_settings: {
         Row: {
           apply_facebook_enabled: boolean
@@ -8946,7 +9007,7 @@ export type Database = {
           regular_hours: number | null
           status: string | null
           updated_at: string
-          user_id: string
+          user_id: string | null
           vendor_bill_id: string | null
           visit_personnel_id: string | null
           week_closeout_id: string | null
@@ -8992,7 +9053,7 @@ export type Database = {
           regular_hours?: number | null
           status?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
           vendor_bill_id?: string | null
           visit_personnel_id?: string | null
           week_closeout_id?: string | null
@@ -9038,7 +9099,7 @@ export type Database = {
           regular_hours?: number | null
           status?: string | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
           vendor_bill_id?: string | null
           visit_personnel_id?: string | null
           week_closeout_id?: string | null
@@ -10357,6 +10418,8 @@ export type Database = {
           checked_in_by: string | null
           checked_out_at: string | null
           distance_m: number | null
+          early_in_reason: string | null
+          early_out_reason: string | null
           id: string
           in_geofence: boolean | null
           offsite_approved_at: string | null
@@ -10374,6 +10437,8 @@ export type Database = {
           checked_in_by?: string | null
           checked_out_at?: string | null
           distance_m?: number | null
+          early_in_reason?: string | null
+          early_out_reason?: string | null
           id?: string
           in_geofence?: boolean | null
           offsite_approved_at?: string | null
@@ -10391,6 +10456,8 @@ export type Database = {
           checked_in_by?: string | null
           checked_out_at?: string | null
           distance_m?: number | null
+          early_in_reason?: string | null
+          early_out_reason?: string | null
           id?: string
           in_geofence?: boolean | null
           offsite_approved_at?: string | null
@@ -11032,17 +11099,39 @@ export type Database = {
       }
     }
     Functions: {
-      _punch_core: {
-        Args: {
-          p_accuracy: number
-          p_at: string
-          p_lat: number
-          p_lng: number
-          p_location: string
-          p_override_reason: string
-          p_personnel: string
-        }
-        Returns: Json
+      _punch_core:
+        | {
+            Args: {
+              p_accuracy: number
+              p_at: string
+              p_lat: number
+              p_lng: number
+              p_location: string
+              p_override_reason: string
+              p_personnel: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_accuracy: number
+              p_at: string
+              p_early_reason?: string
+              p_lat: number
+              p_lng: number
+              p_location: string
+              p_override_reason: string
+              p_personnel: string
+            }
+            Returns: Json
+          }
+      _shift_end_for: {
+        Args: { p_in: string; p_location: string }
+        Returns: string
+      }
+      _shift_start_for: {
+        Args: { p_at: string; p_location: string }
+        Returns: string
       }
       accept_invitation: {
         Args: { _invitation_id: string; _user_id: string }
@@ -11375,6 +11464,7 @@ export type Database = {
       kiosk_punch: {
         Args: {
           p_accuracy?: number
+          p_early_reason?: string
           p_kiosk: string
           p_lat?: number
           p_lng?: number
@@ -11415,6 +11505,10 @@ export type Database = {
       }
       merge_applicants: {
         Args: { _keep_id: string; _merge_id: string }
+        Returns: Json
+      }
+      request_shift_extension: {
+        Args: { p_reason: string; p_token: string; p_until: string }
         Returns: Json
       }
       reset_vendor_bill_sequence_for_new_year: {
@@ -11462,6 +11556,7 @@ export type Database = {
         Args: {
           p_accuracy?: number
           p_at?: string
+          p_early_reason?: string
           p_lat?: number
           p_lng?: number
           p_override_reason?: string
