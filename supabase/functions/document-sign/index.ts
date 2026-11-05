@@ -3,6 +3,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
+import { canSendSignatures, signatureExpired, validSignaturePng } from './rules.ts';
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 const input = z.discriminatedUnion('action', [
   z.object({ action: z.literal('info'), token: z.string().uuid() }),
@@ -27,7 +28,7 @@ Deno.serve(async req => {
       const uid = data.claims.sub;
       const { data: roles, error: roleError } = await db.from('user_roles').select('role').eq('user_id', uid);
       if (roleError) throw roleError;
-      if (!roles?.some(r => ['admin', 'manager', 'user'].includes(r.role))) return json({ error: 'Forbidden' }, 403);
+      if (!canSendSignatures((roles || []).map(r => r.role))) return json({ error: 'Forbidden' }, 403);
       const { data: doc, error: docError } = await db.from('project_documents').select('id,file_name,requires_signature,file_type').eq('id', body.document_id).maybeSingle();
       if (docError) throw docError;
       if (!doc) return json({ error: 'Document not found' }, 404);
@@ -70,7 +71,7 @@ Deno.serve(async req => {
     const { data: signature, error: sigError } = await db.from('document_signatures').select('*').eq('id', body.token).maybeSingle();
     if (sigError) throw sigError;
     if (!signature || !['pending', 'signed'].includes(signature.status)) return json({ error: 'Signature link not available' }, 404);
-    if (new Date(signature.expires_at).getTime() <= Date.now()) return json({ error: 'Signature link expired' }, 410);
+    if (signatureExpired(signature.expires_at)) return json({ error: 'Signature link expired' }, 410);
     if (body.action === 'info') {
       const [{ data: doc, error: docError }, { data: person, error: personError }] = await Promise.all([
         db.from('project_documents').select('file_name,file_path,notes').eq('id', signature.document_id).single(),
@@ -86,7 +87,7 @@ Deno.serve(async req => {
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) return json({ error: 'Invalid PNG' }, 400);
     let bytes: Uint8Array;
     try { bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0)); } catch { return json({ error: 'Invalid PNG' }, 400); }
-    if (bytes.length > 204800 || bytes.length < 24 || ![137,80,78,71,13,10,26,10].every((n,i) => bytes[i] === n)) return json({ error: 'Signature must be a PNG under 200KB' }, 400);
+    if (!validSignaturePng(bytes)) return json({ error: 'Signature must be a PNG under 200KB' }, 400);
     const path = `doc-signatures/${signature.document_id}/${signature.personnel_id}.png`;
     // Never overwrite an accepted signature, including concurrent/retried submissions.
     // field-captures is publicly readable in this project. Use the existing private
