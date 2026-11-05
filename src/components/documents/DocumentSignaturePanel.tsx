@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,12 +23,17 @@ export function DocumentSignaturePanel({ doc, rows, projectName, canSend, canMan
   const [results, setResults] = useState<{ personnel_id: string; status: string; reason?: string }[]>([]);
   const [downloading, setDownloading] = useState<string | null>(null);
   const send = useSendDocumentSignatures(doc.project_id);
-  const { data: people = [], isLoading, error } = useSignatureRecipients(doc.project_id, doc.location_id, picker ? scope : 'project', picker ? search : '');
+  const { data: people = [], isLoading, error } = useSignatureRecipients(doc.project_id, doc.location_id, scope, search, picker);
   const pending = rows.filter(r => r.status === 'pending');
   const sendTo = async (ids: string[]) => {
     if (!ids.length) return;
     try {
-      const { results: sent } = await send.mutateAsync({ document_id: doc.id, personnel_ids: ids }); setResults(sent);
+      const sent = [];
+      for (let i = 0; i < ids.length; i += 100) {
+        const batch = await send.mutateAsync({ document_id: doc.id, personnel_ids: ids.slice(i, i + 100) });
+        sent.push(...batch.results);
+      }
+      setResults(sent);
       const failures = sent.filter(r => r.status === 'failed');
       if (failures.length) toast.error(`${failures.length} text request(s) failed. Check results below.`);
       else { toast.success(`${sent.filter(r => r.status === 'sent').length} signature request(s) texted`); setPicker(false); setSelected(new Set()); }

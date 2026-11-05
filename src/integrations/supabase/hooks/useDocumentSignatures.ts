@@ -22,8 +22,8 @@ export function useSendDocumentSignatures(projectId: string) {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (input: { document_id: string; personnel_ids: string[] }) => documentSign<{ results: { personnel_id: string; status: string; reason?: string }[] }>({ action: 'send', ...input }), onSettled: () => qc.invalidateQueries({ queryKey: ['document-signatures', projectId] }) });
 }
-export function useSignatureRecipients(projectId: string, locationId: string | null, scope: string, search: string) {
-  return useQuery({ queryKey: ['signature-recipients', projectId, locationId, scope, search], queryFn: async () => {
+export function useSignatureRecipients(projectId: string, locationId: string | null, scope: string, search: string, enabled = true) {
+  return useQuery({ queryKey: ['signature-recipients', projectId, locationId, scope, search], enabled, queryFn: async () => {
     let ids: string[] | null = null;
     if (scope === 'location' && locationId) {
       const { data, error } = await supabase.from('location_assignments').select('personnel_id').eq('location_id', locationId).eq('status', 'active');
