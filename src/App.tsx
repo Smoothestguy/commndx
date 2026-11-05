@@ -152,6 +152,8 @@ import JobPostingEntries from "./pages/JobPostingEntries";
 import PublicApplicationForm from "./pages/PublicApplicationForm";
 import PhotoRequest from "./pages/PhotoRequest";
 import SitePunch from "./pages/SitePunch";
+import Kiosk from "./pages/Kiosk";
+import { SheetReopenDialog } from '@/components/signin/SheetReopenDialog';
 import DocumentSign from "./pages/DocumentSign";
 import QuickApply from "./pages/QuickApply";
 import MasterApplicants from "./pages/MasterApplicants";
@@ -203,6 +205,7 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <SheetReopenDialog />
           <Router>
             <AuthProvider>
               <ThemeSync />
@@ -257,6 +260,7 @@ const App = () => {
                     />
                     <Route path="/photo/:token" element={<PhotoRequest />} />
                     <Route path="/punch/:token" element={<SitePunch />} />
+                    <Route path="/kiosk/:token" element={<Kiosk />} />
                     <Route path="/sign/:token" element={<DocumentSign />} />
                     <Route path="/quick-apply/:token" element={<QuickApply />} />
                     {/* Onboarding Routes */}
