@@ -10,7 +10,9 @@ Deno.serve(async req=>{
  if(req.method==='OPTIONS')return new Response('ok',{headers:corsHeaders});if(req.method!=='POST')return json({error:'Method not allowed'},405);
  try{
   const parsed=schema.safeParse(await req.json());if(!parsed.success)return json({error:'Invalid request'},400);const v=parsed.data;
-  if(Date.parse(v.at)>Date.now()+60000||Date.parse(v.at)<Date.now()-7*86400000)return json({error:'Punch time unavailable'},400);
+  // Small early arrivals are stored at shift start (up to ten minutes ahead).
+  // Save still requires an exact matching token-scoped stay below; prepare never trusts future device time.
+  if(Date.parse(v.at)>Date.now()+(v.action==='save'?10*60000:60000)||Date.parse(v.at)<Date.now()-7*86400000)return json({error:'Punch time unavailable'},400);
   const db=createClient(Deno.env.get('SUPABASE_URL')??'',Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')??'');
   const {data:token,error:tokenError}=await db.from('site_checkin_tokens').select('personnel_id,location_id,expires_at').eq('id',v.token).maybeSingle();if(tokenError)throw tokenError;if(!token||Date.parse(token.expires_at)<=Date.now())return json({error:'Inactive link'},403);
   const {data:loc,error:locError}=await db.from('project_locations').select('timezone,lat,lng,geofence_radius_m').eq('id',token.location_id).single();if(locError)throw locError;const zone=loc.timezone||'America/Chicago',date=day(v.at,zone);
