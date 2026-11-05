@@ -1,4 +1,7 @@
 import { useProjectAgencies } from "@/hooks/useProjectAgencies";
+import { useDeploymentHours } from '@/hooks/useDeploymentHours';
+import { routeMiles } from '@/lib/deploymentFlow';
+import { localDay } from '@/lib/signinSheets';
 import { useProjectDocuments } from '@/integrations/supabase/hooks/useProjectDocuments';
 import { SigninSheetsPanel } from '@/components/documents/SigninSheetsPanel';
 import { AgencyFilter } from "./AgencyFilter";
@@ -626,8 +629,8 @@ function CrewsSection({ projectId, crews, canEdit }: { projectId: string; crews:
 
 // ---------- Mileage ----------
 
-function MileageCard({ crews, from, to, mileageRate, canEdit }: {
-  crews: Crew[]; from: string; to: string; mileageRate: number | null; canEdit: boolean;
+function MileageCard({ crews, locations, from, to, mileageRate, canEdit }: {
+  crews: Crew[]; locations: ProjectLocation[]; from: string; to: string; mileageRate: number | null; canEdit: boolean;
 }) {
   const crewIds = crews.map((c) => c.id);
   const { data: rows = [], isLoading } = useCrewMileage(crewIds, from, to);
@@ -639,6 +642,9 @@ function MileageCard({ crews, from, to, mileageRate, canEdit }: {
   const [miles, setMiles] = useState("");
   const [notes, setNotes] = useState("");
   const [delId, setDelId] = useState<string | null>(null);
+  const [estimated,setEstimated]=useState(false);
+  const [suggesting,setSuggesting]=useState<string|null>(null);
+  const suggest=async(crew:Crew)=>{setSuggesting(crew.id);try{const {data,error}=await supabase.from('location_visits').select('location_id,check_in_at').eq('crew_id',crew.id).gte('check_in_at',new Date(Date.now()-2*86400000).toISOString()).order('check_in_at');if(error)throw error;const now=new Date().toISOString();const points=(data??[]).flatMap(v=>{const loc=locations.find(l=>l.id===v.location_id);if(!loc||localDay(v.check_in_at,loc.timezone||'America/Chicago')!==localDay(now,loc.timezone||'America/Chicago'))return [];return [{lat:loc.lat??null,lng:loc.lng??null,at:v.check_in_at}];});openRef.current=true;setCrewId(crew.id);setDate(today());setMiles(routeMiles(points).toFixed(1));setNotes('Estimated from today’s route (straight-line × 1.2)');setEstimated(true);setOpen(true);}catch(e){console.error(e);}finally{setSuggesting(null);}};
 
   const crewName = useMemo(() => Object.fromEntries(crews.map((c) => [c.id, c.name])), [crews]);
   const totalMiles = rows.reduce((s, r) => s + (Number(r.miles) || 0), 0);
@@ -648,7 +654,7 @@ function MileageCard({ crews, from, to, mileageRate, canEdit }: {
   if (open && !openRef.current) {
     openRef.current = true;
     setCrewId(crews.find((c) => c.status === "active")?.id ?? crews[0]?.id ?? "");
-    setDate(today()); setMiles(""); setNotes("");
+    setDate(today()); setMiles(""); setNotes("");setEstimated(false);
   } else if (!open && openRef.current) openRef.current = false;
 
   if (crews.length === 0) return null;
@@ -660,6 +666,7 @@ function MileageCard({ crews, from, to, mileageRate, canEdit }: {
         <Button size="sm" variant="outline" className="gap-1" onClick={() => setOpen(true)}><Plus className="h-4 w-4" />Log miles</Button>
       </CardHeader>
       <CardContent className="pt-0 space-y-2">
+        {crews.filter(c=>c.status==='active').map(c=><div key={c.id} className="flex items-center gap-2 text-xs"><span>{c.name}</span><Button size="sm" variant="ghost" disabled={!!suggesting} onClick={()=>suggest(c)}>Suggest from today's route</Button></div>)}
         {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">No miles logged in this window.</p>
         ) : (
@@ -706,7 +713,7 @@ function MileageCard({ crews, from, to, mileageRate, canEdit }: {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Date</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
-              <div><Label>Miles</Label><Input type="number" inputMode="decimal" min={0} step="0.1" value={miles} onChange={(e) => setMiles(e.target.value)} /></div>
+              <div><Label>{estimated?'Miles (estimated)':'Miles'}</Label><Input aria-label="Miles" type="number" inputMode="decimal" min={0} step="0.1" value={miles} onChange={(e) => setMiles(e.target.value)} /></div>
             </div>
             <div><Label>Notes (optional)</Label><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
             <p className="text-[11px] text-muted-foreground">Re-entering the same crew + date overwrites the previous entry.</p>
@@ -774,6 +781,7 @@ function SummaryStrip({ locations, crews, from, to, mileageRate, canEdit }: {
 }) {
   const locIds = locations.map((l) => l.id);
   const { data: att = [] } = useLocationAttendanceBatch(locIds, from, to);
+  const {data:entries=[]}=useDeploymentHours(locations[0]?.project_id,from,to);
   const { data: miles = [] } = useCrewMileage(crews.map((c) => c.id), from, to);
   const { data: rl } = useRoleLabels(locIds, crews);
   const { data: receiptsToday = 0 } = useTodayReceiptsTotal(locIds);
@@ -782,12 +790,12 @@ function SummaryStrip({ locations, crews, from, to, mileageRate, canEdit }: {
   const s = useMemo(() => {
     const personDays = new Set<string>();
     let hours = 0, missingRate = 0, laborBill = 0;
-    for (const a of att) {
-      if (a.status === "worked") personDays.add(`${a.personnel_id}|${a.att_date}`);
+    for (const a of entries) {
+      if (Number(a.hours)>0) personDays.add(`${a.personnel_id}|${a.entry_date}`);
       const h = Number(a.hours) || 0;
       hours += h;
       if (h > 0) {
-        const role = rl?.roleByPerson[a.personnel_id];
+        const role = a.personnel_id ? rl?.roleByPerson[a.personnel_id] : undefined;
         const rate = role ? rl?.rates[`${a.location_id}|${role}`] : undefined;
         if (rate != null) laborBill += h * rate; else missingRate++;
       }
@@ -795,7 +803,7 @@ function SummaryStrip({ locations, crews, from, to, mileageRate, canEdit }: {
     const totalMiles = miles.reduce((sum, m) => sum + (Number(m.miles) || 0), 0);
     const mileBill = mileageRate != null ? totalMiles * mileageRate : 0;
     return { personDays: personDays.size, hours, totalMiles, missingRate, billable: laborBill + mileBill };
-  }, [att, miles, rl, mileageRate]);
+  }, [entries, miles, rl, mileageRate]);
 
   const Item = ({ label, value }: { label: string; value: string }) => (
     <div className="flex-1 min-w-[7rem] border rounded-md px-3 py-2">
@@ -987,6 +995,8 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
                     <GeoTag lat={v.check_in_lat} lng={v.check_in_lng} />
                     {!geoCoordinates(v.check_in_lat, v.check_in_lng) && <GeoTag lat={v.check_out_lat} lng={v.check_out_lng} label="Geo-tagged check-out" />}
                     {v.crew_id && <Badge variant="outline" className="ml-2 text-[10px]">{crewName[v.crew_id] ?? "Crew"}</Badge>}
+                    {v.needs_review && <Badge variant="outline" className="text-warning border-warning text-[10px]">Auto-closed — review</Badge>}
+                    {vPeople.some(p=>!p.signature_url) && <Badge variant="outline" className="text-warning text-[10px]">no signature</Badge>}
                     <span className="block text-[11px] text-muted-foreground">
                       {formatLocalDate(v.check_in_at, "M/d")} · {format(new Date(v.check_in_at), "HH:mm")} – {v.check_out_at ? format(new Date(v.check_out_at), "HH:mm") : "on site"}
                       {hrs != null && ` · ${hrs}h`} · {vPeople.length} {vPeople.length === 1 ? "person" : "people"}
@@ -1243,7 +1253,7 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
             <tbody className="divide-y">
               {rows.map((r) => (
                 <tr key={r.visit_personnel_id}>
-                  <td className="py-1.5 pr-2"><button type="button" className="font-medium hover:underline text-left" onClick={() => setPersonId(r.personnel_id)}>{trailName(r)}</button></td>
+                  <td className="py-1.5 pr-2"><button type="button" className="font-medium hover:underline text-left" onClick={() => setPersonId(r.personnel_id)}>{trailName(r)}</button>{!r.signature_url && <Badge variant="outline" className="text-warning text-[10px] ml-1">no signature</Badge>}</td>
                   <td className="pr-2">{r.location_name ?? "—"}{isManual(r) && <Pencil className="inline h-3 w-3 ml-1 text-muted-foreground" aria-label="Manual entry" />}</td>
                   <td className="pr-2 whitespace-nowrap">{fmt(r.in_at)}</td>
                   <td className="pr-2 whitespace-nowrap">{fmt(r.out_at)}</td>
@@ -1319,7 +1329,7 @@ export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
       {canEdit && documents.some(d => d.is_signin_template) && <section className="space-y-2"><h3 className="text-sm font-semibold">Customer sign-in sheets</h3>{documents.filter(d => d.is_signin_template).map(doc => <div key={doc.id}><p className="text-sm font-medium">{doc.file_name}</p><SigninSheetsPanel doc={doc} projectName={project?.name || 'Project'} /></div>)}</section>}
       <CrewsSection projectId={projectId} crews={crews} canEdit={canEdit} />
       <VisitsCard projectId={projectId} locations={locations} crews={crews} from={r.from} to={r.to} canEdit={canEdit} />
-      <MileageCard crews={crews} from={r.from} to={r.to} mileageRate={mileageRate} canEdit={canEdit} />
+      <MileageCard crews={crews} locations={locations} from={r.from} to={r.to} mileageRate={mileageRate} canEdit={canEdit} />
       <Tabs defaultValue="service">
         <TabsList>
           <TabsTrigger value="service">Service grid</TabsTrigger>
