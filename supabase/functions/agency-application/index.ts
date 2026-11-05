@@ -19,7 +19,7 @@ Deno.serve(async req => {
       const { data: invite, error: ie } = await db.rpc('get_quick_apply_invite', { _token: v.token }); if (ie) throw ie;
       if (!invite?.valid || !invite?.applicant?.id || invite.used) return json({ error: 'Invite unavailable' }, 403);
       const { data: result, error: qe } = await db.rpc('confirm_quick_apply', { _token: v.token, _phone: v.phone, _email: v.email }); if (qe) throw qe;
-      if (result?.success && mayAttributeAgency(null,'invite')) { const {error}=await db.from('applicants').update({ vendor_id: vendor.id }).eq('id', invite.applicant.id).is('vendor_id',null);if(error)throw error; }
+      if (result?.success) { const current=await db.from('applicants').select('vendor_id').eq('id',invite.applicant.id).single();if(current.error)throw current.error;if(mayAttributeAgency(current.data.vendor_id,'invite')){const {error}=await db.from('applicants').update({ vendor_id: vendor.id }).eq('id', invite.applicant.id).is('vendor_id',null);if(error)throw error;} }
       return json(result);
     }
     const { data: posting, error: pe } = await db.from('job_postings').select('id').eq('id',v.posting_id).eq('is_open',true).maybeSingle();if(pe)throw pe;if(!posting)return json({error:'Posting unavailable'},403);
