@@ -1,6 +1,7 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
 import { service, json } from '../_shared/signinJobs.ts';
+import { mayAttributeAgency } from '../_shared/agencyRules.ts';
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('submit'), agency_token: z.string().uuid(), posting_id: z.string().uuid(), applicant: z.object({ first_name: z.string().trim().min(1).max(100), last_name: z.string().trim().min(1).max(100), email: z.string().email().max(255), phone: z.string().max(40), address: z.string().max(500).optional(), city: z.string().max(100).optional(), state: z.string().max(100).optional(), home_zip: z.string().max(20).optional(), photo_url: z.string().max(2000).optional() }), answers: z.record(z.unknown()), geo: z.object({ lat: z.number().min(-90).max(90).nullable(), lng: z.number().min(-180).max(180).nullable(), accuracy: z.number().min(0).nullable(), source: z.enum(['device','ip_fallback']).nullable(), capturedAt: z.string().nullable(), error: z.string().nullable() }).optional(), clientSubmittedAt: z.string().datetime().optional(), userAgent: z.string().max(1000).optional(), smsConsent: z.boolean().optional(), smsConsentPhone: z.string().max(40).optional(), smsConsentTextVersion: z.string().max(100).optional() }),
   z.object({ action: z.literal('quick'), agency_token: z.string().uuid(), token: z.string().min(1).max(200), phone: z.string().max(40).nullable(), email: z.string().email().max(255).nullable() }),
@@ -18,7 +19,7 @@ Deno.serve(async req => {
       const { data: invite, error: ie } = await db.rpc('get_quick_apply_invite', { _token: v.token }); if (ie) throw ie;
       if (!invite?.valid || !invite?.applicant?.id || invite.used) return json({ error: 'Invite unavailable' }, 403);
       const { data: result, error: qe } = await db.rpc('confirm_quick_apply', { _token: v.token, _phone: v.phone, _email: v.email }); if (qe) throw qe;
-      if (result?.success) { const {error}=await db.from('applicants').update({ vendor_id: vendor.id }).eq('id', invite.applicant.id).is('vendor_id',null);if(error)throw error; }
+      if (result?.success && mayAttributeAgency(null,'invite')) { const {error}=await db.from('applicants').update({ vendor_id: vendor.id }).eq('id', invite.applicant.id).is('vendor_id',null);if(error)throw error; }
       return json(result);
     }
     const { data: posting, error: pe } = await db.from('job_postings').select('id').eq('id',v.posting_id).eq('is_open',true).maybeSingle();if(pe)throw pe;if(!posting)return json({error:'Posting unavailable'},403);

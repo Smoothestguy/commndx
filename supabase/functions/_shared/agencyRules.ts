@@ -1,0 +1,2 @@
+// Attribution never replaces an established agency or accepts caller-provided applicant IDs.
+export const mayAttributeAgency = (existingVendorId: string | null, proof: 'new' | 'invite' | 'contact') => !existingVendorId && (proof === 'new' || proof === 'invite');
