@@ -2608,6 +2608,47 @@ export type Database = {
           },
         ]
       }
+      document_sign_fields: {
+        Row: {
+          created_at: string
+          document_id: string
+          id: string
+          kind: string
+          page: number
+          w_pct: number
+          x_pct: number
+          y_pct: number
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          id?: string
+          kind?: string
+          page: number
+          w_pct?: number
+          x_pct: number
+          y_pct: number
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          id?: string
+          kind?: string
+          page?: number
+          w_pct?: number
+          x_pct?: number
+          y_pct?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_sign_fields_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "project_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_signatures: {
         Row: {
           created_at: string
