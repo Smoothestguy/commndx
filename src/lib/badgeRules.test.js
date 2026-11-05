@@ -1,0 +1,11 @@
+import { expect, it } from 'bun:test';
+import { badgeId, kioskMode, canManageBadges, searchReady } from './badgeRules';
+const id='11111111-2222-4333-8444-555555555555';
+it('kiosks default to private search',()=>expect(kioskMode(null)).toBe('search'));
+it('unknown URL modes cannot enable roster',()=>expect(kioskMode('all')).toBe('search'));
+it('explicit roster and badge modes are retained',()=>{expect(kioskMode('roster')).toBe('roster');expect(kioskMode('badge')).toBe('badge');});
+it('badge payload accepts a plain UUID',()=>expect(badgeId(id)).toBe(id));
+it('badge payload accepts a URL containing its UUID',()=>{expect(badgeId(`https://fairfieldrg.com/badge/${id}`)).toBe(id);expect(badgeId(`https://fairfieldrg.com/?badge=${id}`)).toBe(id);});
+it('badge payload rejects invalid and script payloads',()=>{expect(badgeId('not-a-badge')).toBeNull();expect(badgeId(`javascript:/${id}`)).toBeNull();});
+it('badge issuance is admin or manager only',()=>{expect(canManageBadges(['user'])).toBe(false);expect(canManageBadges(['manager'])).toBe(true);expect(canManageBadges(['admin'])).toBe(true);});
+it('name search starts at three nonblank characters',()=>{expect(searchReady(' Jo ')).toBe(false);expect(searchReady(' Jai ')).toBe(true);});
