@@ -1,5 +1,12 @@
 # Applicant locations
 
+# Phase 1 location customer sign-in sheets
+- [ ] Live types; location coordinates, timezone and geocoding with manager-only authorization; no migrations.
+- [ ] Binding/scope/resizable row-band editor, template upload/location links and reusable template copy.
+- [ ] New punch RPC arguments, geofence rejection/override UX and durable offline retries.
+- [ ] Location/day PDF and ZIP generation with local times, overflow and staff-only off-site badges; convert existing blank template without altering signatures.
+- [ ] Rule tests, browser verification and requested TypeScript check.
+
 # Signature field placement and stamping
 - [x] Regenerate live types; add manager PDF field placement and saved normalized fields without migrations.
 - [x] Stamp original pages per signer, retain certificates, add multi-signer ZIP and token-page placement note. Generate on download only; optional stamped thumbnails skipped.
