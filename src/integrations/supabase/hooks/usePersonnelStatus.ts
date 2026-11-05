@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useDeploymentHours } from '@/hooks/useDeploymentHours';
 
 const db = supabase as any;
 
@@ -162,22 +163,20 @@ export interface RosterRow extends CurrentStatus {
 const daysSince = (iso: string | null) =>
   iso ? Math.max(1, Math.ceil((Date.now() - new Date(iso).getTime()) / 86_400_000)) : 0;
 
-/** People whose CURRENT status points at this project, with trail hours + resolvable labor cost (costs only for managers). */
+/** Canonical approved visit/manual time entries feed roster hours; trail is detail only. */
 export function useProjectRoster(projectId?: string, withCosts = false) {
+  const hoursQuery = useDeploymentHours(projectId);
   const { list, isLoading: sLoading } = useCurrentStatuses({ projectId });
   const activatedIds = list.filter((s) => s.status === "activated").map((s) => s.personnel_id);
   const key = activatedIds.slice().sort().join(",");
 
   const detail = useQuery({
-    queryKey: ["project-roster", projectId, key, withCosts],
+    queryKey: ["project-roster", projectId, key, withCosts, hoursQuery.dataUpdatedAt],
     enabled: !!projectId,
     queryFn: async () => {
       const hoursByPerson: Record<string, Record<string, number>> = {}; // pid -> location -> hours
       if (activatedIds.length) {
-        const { data, error } = await db.from("personnel_location_trail")
-          .select("personnel_id, location_id, hours").eq("project_id", projectId).in("personnel_id", activatedIds);
-        if (error) throw error;
-        for (const r of data ?? []) {
+        for (const r of hoursQuery.data ?? []) {
           if (!r.personnel_id || r.hours == null) continue;
           const m = (hoursByPerson[r.personnel_id] ??= {});
           m[r.location_id ?? ""] = (m[r.location_id ?? ""] ?? 0) + Number(r.hours);
@@ -229,7 +228,7 @@ export function useProjectRoster(projectId?: string, withCosts = false) {
     });
   }, [list, detail.data, withCosts]);
 
-  return { rows, isLoading: sLoading || detail.isLoading };
+  return { rows, isLoading: sLoading || detail.isLoading || hoursQuery.isLoading };
 }
 
 // ---------- Personnel expenses ----------

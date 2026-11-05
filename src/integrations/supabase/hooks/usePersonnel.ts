@@ -474,39 +474,24 @@ export const useToggleDoNotHire = () => {
 export const usePersonnelStats = () => {
   return useQuery({
     queryKey: ["personnel-stats"],
+    retry: 1,
     queryFn: async () => {
-      const { data: all } = await supabase.from("personnel").select("*");
-
-      const { data: active } = await supabase
-        .from("personnel")
-        .select("*")
-        .eq("status", "active");
-
-      const { data: inactive } = await supabase
-        .from("personnel")
-        .select("*")
-        .eq("status", "inactive");
-
-      const { data: doNotHire } = await supabase
-        .from("personnel")
-        .select("*")
-        .eq("status", "do_not_hire");
-
-      const { data: expiring } = await supabase
-        .from("personnel_certifications")
-        .select("*")
-        .gte("expiry_date", new Date().toISOString())
-        .lte(
-          "expiry_date",
-          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-        );
+      const signal = AbortSignal.timeout(15000);
+      const results = await Promise.all([
+        supabase.from('personnel').select('id', { count: 'exact', head: true }).abortSignal(signal),
+        supabase.from('personnel').select('id', { count: 'exact', head: true }).eq('status','active').abortSignal(signal),
+        supabase.from('personnel').select('id', { count: 'exact', head: true }).eq('status','inactive').abortSignal(signal),
+        supabase.from('personnel').select('id', { count: 'exact', head: true }).eq('status','do_not_hire').abortSignal(signal),
+        supabase.from('personnel_certifications').select('id', { count: 'exact', head: true }).gte('expiry_date',new Date().toISOString().slice(0,10)).lte('expiry_date',new Date(Date.now()+30*86400000).toISOString().slice(0,10)).abortSignal(signal),
+      ]);
+      for (const result of results) if (result.error) throw result.error;
 
       return {
-        total: all?.length || 0,
-        active: active?.length || 0,
-        inactive: inactive?.length || 0,
-        doNotHire: doNotHire?.length || 0,
-        expiringCerts: expiring?.length || 0,
+        total: results[0].count ?? 0,
+        active: results[1].count ?? 0,
+        inactive: results[2].count ?? 0,
+        doNotHire: results[3].count ?? 0,
+        expiringCerts: results[4].count ?? 0,
       };
     },
   });

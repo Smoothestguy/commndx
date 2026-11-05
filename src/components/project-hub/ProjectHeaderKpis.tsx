@@ -5,6 +5,7 @@ import { Users, DollarSign, Target, Briefcase } from "lucide-react";
 import { useJobOrdersByProject } from "@/integrations/supabase/hooks/useJobOrders";
 import { useMilestonesByProject } from "@/integrations/supabase/hooks/useMilestones";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useAssignmentCountsByProject } from '@/integrations/supabase/hooks/usePersonnelProjectAssignments';
 
 interface Props {
   projectId: string;
@@ -27,18 +28,8 @@ export function ProjectHeaderKpis({ projectId }: Props) {
   const { data: jobOrders = [] } = useJobOrdersByProject(projectId);
   const { data: milestones = [] } = useMilestonesByProject(projectId);
 
-  const { data: crewCount = 0 } = useQuery({
-    queryKey: ["personnel-assignment-counts", [projectId]],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from("personnel_project_assignments")
-        .select("*", { count: "exact", head: true })
-        .eq("project_id", projectId)
-        .eq("status", "active");
-      if (error) throw error;
-      return count || 0;
-    },
-  });
+  const { data: counts } = useAssignmentCountsByProject([projectId]);
+  const crewCount = counts?.[projectId] ?? 0;
 
   const { data: recruiting } = useQuery({
     queryKey: ["project-recruiting-kpi", projectId],
