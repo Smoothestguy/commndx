@@ -13,7 +13,7 @@ import { EarlyCheckIn } from '@/components/signin/EarlyCheckIn';
 import { ShiftExtensionRequest } from '@/components/signin/ShiftExtensionRequest';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 
-type Info = { valid: boolean; reason?: string; first_name?: string; location_name?: string; address?: string | null; report_at?: string | null; on_site_since?: string | null };
+type Info = { valid: boolean; reason?: string; first_name?: string; location_name?: string; address?: string | null; report_at?: string | null; on_site_since?: string | null; timezone?: string };
 type Done = { action: "in" | "out"; at: string; geo: boolean; offsite: boolean; early?: boolean } | null;
 type Rejection = { reason: string; distance_m?: number; radius_m?: number; in_at?: string; out_at?: string; timezone?: string; shift_start?: string; early_minutes?: number };
 const OFFICE_PHONE = "(281) 748-3832";
@@ -135,7 +135,7 @@ export default function SitePunch() {
       if (!navigator.onLine) return;
       const { data, error } = await supabase.rpc("get_site_checkin_info", { p_token: token });
       if (!active) return;
-      if (!error && data) updateInfo(data as unknown as Info);
+      if (!error && data) { const value=data as unknown as Info; if(value.valid){const {data:shift}=await supabase.functions.invoke('shift-discipline',{body:{action:'info',token}});if(active)updateInfo({...value,timezone:shift?.timezone});}else updateInfo(value); }
       else if (!isNetworkError(error)) updateInfo({ valid: false });
     };
     void load().then(flush);
@@ -169,7 +169,7 @@ export default function SitePunch() {
     blocked.current = false; setRejection(null); setOverriding(false);
     try{if(!await prepare(next))return;savePunch(next);await flush();}catch(e){setError(e instanceof Error?e.message:'Check-in unavailable');}
   };
-  const t = (iso: string) => rejection?.timezone ? new Intl.DateTimeFormat('en-GB', { timeZone: rejection.timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso)) : format(new Date(iso), "HH:mm");
+  const t = (iso: string) => new Intl.DateTimeFormat('en-GB', { timeZone: rejection?.timezone || info?.timezone || 'America/Chicago', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso));
   const onSite = !!info?.on_site_since;
   const mapsHref = info?.address ? `https://maps.google.com/?q=${encodeURIComponent(info.address)}` : null;
 
@@ -213,7 +213,7 @@ export default function SitePunch() {
           </Button>}
           {onSite && token && <ShiftExtensionRequest token={token} />}
         </>}
-        {rejection?.reason === 'before_shift' ? <EarlyCheckIn rejection={rejection} timezone={rejection.timezone} busy={busy} onSubmit={async reason => { if (!token || busy) return; const intent=readPunch(token); if (!intent) return; savePunch({...intent,earlyReason:reason,tries:0});setRejection(null);blocked.current=false;await flush(); }} /> : rejection && <div role="status" className={`rounded-md border-2 p-5 space-y-4 ${rejection.reason === 'already_signed_today' ? 'border-success text-success' : 'border-warning text-warning'}`}>
+        {rejection?.reason === 'before_shift' ? <EarlyCheckIn rejection={rejection} timezone={rejection.timezone||info?.timezone} busy={busy} onSubmit={async reason => { if (!token || busy) return; const intent=readPunch(token); if (!intent) return; savePunch({...intent,earlyReason:reason,tries:0});setRejection(null);blocked.current=false;await flush(); }} /> : rejection && <div role="status" className={`rounded-md border-2 p-5 space-y-4 ${rejection.reason === 'already_signed_today' ? 'border-success text-success' : 'border-warning text-warning'}`}>
           <h1 className="text-2xl font-bold">{rejection.reason === 'out_of_range' ? `You're ${Math.round(rejection.distance_m ?? 0)}m from ${info?.location_name || 'the site'} (allowed ${rejection.radius_m ?? 300}m)` : rejection.reason === 'no_gps' ? "Couldn't get your location" : 'Already signed in today at this site'}</h1>
           {rejection.reason === 'already_signed_today' ? <p>{rejection.in_at && `In ${t(rejection.in_at)}`} {rejection.out_at && `Out ${t(rejection.out_at)}`}</p> : overriding ? <>
             <Textarea aria-label="Off-site reason" placeholder="Reason (required)" value={overrideReason} maxLength={1000} onChange={e => setOverrideReason(e.target.value)} />
