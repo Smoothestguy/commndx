@@ -114,7 +114,7 @@ export default function QuickApply() {
           <CardContent>
             {invite?.public_token ? (
               <Button asChild className="w-full">
-                <Link to={`/apply/${invite.public_token}`}>Apply on the regular form</Link>
+                <Link to={`/apply/${invite.public_token}${searchParams.get('agency')?`?agency=${encodeURIComponent(searchParams.get('agency')||'')}`:''}`}>Apply on the regular form</Link>
               </Button>
             ) : (
               <p className="text-sm text-muted-foreground">
@@ -235,7 +235,7 @@ export default function QuickApply() {
             </Button>
 
             <div className="text-center">
-              <Link to={`/apply/${p.public_token}`} className="text-xs text-muted-foreground underline">
+              <Link to={`/apply/${p.public_token}${searchParams.get('agency')?`?agency=${encodeURIComponent(searchParams.get('agency')||'')}`:''}`} className="text-xs text-muted-foreground underline">
                 Need to update more info? Use the full form
               </Link>
             </div>
