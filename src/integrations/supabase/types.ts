@@ -4186,6 +4186,7 @@ export type Database = {
       }
       location_visits: {
         Row: {
+          auto_closed: boolean
           check_in_at: string
           check_in_lat: number | null
           check_in_lng: number | null
@@ -4197,9 +4198,11 @@ export type Database = {
           crew_id: string | null
           id: string
           location_id: string
+          needs_review: boolean
           notes: string | null
         }
         Insert: {
+          auto_closed?: boolean
           check_in_at?: string
           check_in_lat?: number | null
           check_in_lng?: number | null
@@ -4211,9 +4214,11 @@ export type Database = {
           crew_id?: string | null
           id?: string
           location_id: string
+          needs_review?: boolean
           notes?: string | null
         }
         Update: {
+          auto_closed?: boolean
           check_in_at?: string
           check_in_lat?: number | null
           check_in_lng?: number | null
@@ -4225,6 +4230,7 @@ export type Database = {
           crew_id?: string | null
           id?: string
           location_id?: string
+          needs_review?: boolean
           notes?: string | null
         }
         Relationships: [
@@ -8929,6 +8935,7 @@ export type Database = {
           last_location_check_at: string | null
           last_location_lat: number | null
           last_location_lng: number | null
+          location_id: string | null
           lunch_duration_minutes: number | null
           lunch_end_at: string | null
           lunch_start_at: string | null
@@ -8941,6 +8948,7 @@ export type Database = {
           updated_at: string
           user_id: string
           vendor_bill_id: string | null
+          visit_personnel_id: string | null
           week_closeout_id: string | null
         }
         Insert: {
@@ -8973,6 +8981,7 @@ export type Database = {
           last_location_check_at?: string | null
           last_location_lat?: number | null
           last_location_lng?: number | null
+          location_id?: string | null
           lunch_duration_minutes?: number | null
           lunch_end_at?: string | null
           lunch_start_at?: string | null
@@ -8985,6 +8994,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           vendor_bill_id?: string | null
+          visit_personnel_id?: string | null
           week_closeout_id?: string | null
         }
         Update: {
@@ -9017,6 +9027,7 @@ export type Database = {
           last_location_check_at?: string | null
           last_location_lat?: number | null
           last_location_lng?: number | null
+          location_id?: string | null
           lunch_duration_minutes?: number | null
           lunch_end_at?: string | null
           lunch_start_at?: string | null
@@ -9029,6 +9040,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           vendor_bill_id?: string | null
+          visit_personnel_id?: string | null
           week_closeout_id?: string | null
         }
         Relationships: [
@@ -9044,6 +9056,13 @@ export type Database = {
             columns: ["job_order_id"]
             isOneToOne: false
             referencedRelation: "job_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
             referencedColumns: ["id"]
           },
           {
@@ -9079,6 +9098,20 @@ export type Database = {
             columns: ["vendor_bill_id"]
             isOneToOne: false
             referencedRelation: "vendor_bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_visit_personnel_id_fkey"
+            columns: ["visit_personnel_id"]
+            isOneToOne: true
+            referencedRelation: "personnel_location_trail"
+            referencedColumns: ["visit_personnel_id"]
+          },
+          {
+            foreignKeyName: "time_entries_visit_personnel_id_fkey"
+            columns: ["visit_personnel_id"]
+            isOneToOne: true
+            referencedRelation: "visit_personnel"
             referencedColumns: ["id"]
           },
           {
@@ -11436,6 +11469,7 @@ export type Database = {
         }
         Returns: Json
       }
+      sync_visit_time_entry: { Args: { p_vp: string }; Returns: undefined }
       update_applicant_geo: {
         Args: {
           _applicant_id: string
