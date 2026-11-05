@@ -4,6 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { insertStatusRows } from "./usePersonnelStatus";
 import { addDays as addCalendarDays, chicagoMidnight, splitAtMidnight } from "@/lib/shifts";
+import { localDay, midnight, nextDay } from '@/lib/signinSheets';
+import { staleVisitEnd } from '@/lib/deploymentFlow';
+import { signatureImageUrl } from '@/utils/signedDocumentExport';
 
 const db = supabase as any;
 const BUCKET = "field-captures";
@@ -18,6 +21,8 @@ export interface VisitRow {
   crew_id: string | null;
   check_in_at: string;
   check_out_at: string | null;
+  needs_review?: boolean;
+  auto_closed?: boolean;
   notes: string | null;
   created_by: string | null;
   check_in_lat?: number | null;
@@ -96,7 +101,7 @@ interface VisitBundle {
 async function fetchVisitBundle(locationIds: string[], fromIso: string, toIso: string): Promise<VisitBundle> {
   if (!locationIds.length) return { visits: [], people: [], purchases: [], photos: [] };
   const { data: visits, error } = await db.from("location_visits")
-    .select("id, location_id, crew_id, check_in_at, check_out_at, notes, created_by, check_in_lat, check_in_lng, check_out_lat, check_out_lng")
+    .select("id, location_id, crew_id, check_in_at, check_out_at, needs_review, auto_closed, notes, created_by, check_in_lat, check_in_lng, check_out_lat, check_out_lng")
     .in("location_id", locationIds)
     .gte("check_in_at", fromIso).lte("check_in_at", toIso)
     .order("check_in_at", { ascending: false });
@@ -114,7 +119,9 @@ async function fetchVisitBundle(locationIds: string[], fromIso: string, toIso: s
   if (pho.error) throw pho.error;
 
   const names = await fetchDirectoryNames((ppl.data ?? []).map((p: any) => p.personnel_id));
-  const people = (ppl.data ?? []).map((p: any) => ({ ...p, personnel: names[p.personnel_id] ?? null })) as VisitPerson[];
+  const urls = new Map<string, string>();
+  await Promise.all([...new Set<string>((ppl.data ?? []).map((p: any) => p.signature_url).filter(Boolean))].map(async path => { urls.set(path, path.startsWith('http') ? path : await signatureImageUrl(path)); }));
+  const people = (ppl.data ?? []).map((p: any) => ({ ...p, signature_url: p.signature_url ? urls.get(p.signature_url) : null, personnel: names[p.personnel_id] ?? null })) as VisitPerson[];
   return { visits: visits ?? [], people, purchases: pur.data ?? [], photos: pho.data ?? [] };
 }
 
@@ -126,7 +133,15 @@ export function useTodayVisits(projectId: string | undefined, locationIds: strin
     queryKey: ["today-visits", projectId, ids, day],
     enabled: !!projectId && ids.length > 0,
     refetchInterval: 60_000,
-    queryFn: () => fetchVisitBundle(ids, dayStart(day), dayEnd(day)),
+    queryFn: async () => {
+      const { data: locations, error } = await db.from('project_locations').select('id,timezone').in('id',ids); if (error) throw error;
+      const zones = new Map<string,string>((locations ?? []).map((l: any) => [l.id,l.timezone || 'America/Chicago']));
+      const now = new Date().toISOString();
+      const bundle = await fetchVisitBundle(ids,new Date(Date.now()-2*86400000).toISOString(),new Date(Date.now()+86400000).toISOString());
+      const visits = bundle.visits.filter(v => { const zone=zones.get(v.location_id)||'America/Chicago';return localDay(v.check_in_at,zone)===localDay(now,zone); });
+      const visitIds=new Set(visits.map(v=>v.id));
+      return {visits,people:bundle.people.filter(p=>visitIds.has(p.visit_id)),purchases:bundle.purchases.filter(p=>visitIds.has(p.visit_id)),photos:bundle.photos.filter(p=>visitIds.has(p.visit_id))};
+    },
   });
 }
 
@@ -164,6 +179,7 @@ function useInv(projectId: string | undefined) {
   const qc = useQueryClient();
   return (locationId?: string) => {
     qc.invalidateQueries({ queryKey: ["today-visits", projectId] });
+    for (const key of ['time-entries','all-time-entries','deployment-hours','project-time-entries','on-site-now','personnel-assignment-counts']) qc.invalidateQueries({ queryKey: [key] });
     qc.invalidateQueries({ queryKey: ["visits-window"] });
     qc.invalidateQueries({ queryKey: ["personnel-current-status"] });
     qc.invalidateQueries({ queryKey: ["project-roster"] });
@@ -180,17 +196,13 @@ function useInv(projectId: string | undefined) {
 }
 
 /** Latest signature each person has recorded TODAY (any visit, this project). */
-async function fetchTodaySignatures(locationIds: string[], personnelIds: string[]) {
-  if (!locationIds.length || !personnelIds.length) return {} as Record<string, { signature_url: string; signed_at: string }>;
-  const day = todayYmd();
-  const { data: visits, error } = await db.from("location_visits")
-    .select("id").in("location_id", locationIds).gte("check_in_at", dayStart(day)).lte("check_in_at", dayEnd(day));
-  if (error) throw error;
-  const vids = (visits ?? []).map((v: any) => v.id);
-  if (!vids.length) return {};
+export async function fetchTodaySignatures(locationIds: string[], personnelIds: string[], locationId?: string) {
+  if (!personnelIds.length) return {} as Record<string, { signature_url: string; signed_at: string }>;
+  const { data: location } = await db.from('project_locations').select('timezone').eq('id',locationId || locationIds[0]).single();
+  const zone = location?.timezone || 'America/Chicago', day=localDay(new Date().toISOString(),zone);
   const { data, error: pErr } = await db.from("visit_personnel")
     .select("personnel_id, signature_url, signed_at")
-    .in("visit_id", vids).in("personnel_id", personnelIds)
+    .in("personnel_id", personnelIds).gte('signed_at',new Date(midnight(day,zone)).toISOString()).lt('signed_at',new Date(midnight(nextDay(day),zone)).toISOString())
     .not("signature_url", "is", null)
     .order("signed_at", { ascending: false });
   if (pErr) throw pErr;
@@ -217,34 +229,46 @@ async function autoActivate(projectId: string | undefined, locationId: string, p
   }
 }
 
+export async function uploadFieldSignature(personnelId: string, blob: Blob) {
+  const path = `field-signatures/${personnelId}/${crypto.randomUUID()}.png`;
+  const { error } = await supabase.storage.from('project-documents').upload(path, blob, { contentType: 'image/png', upsert: false });
+  if (error) throw error; return { signature_url: path, signed_at: new Date().toISOString() };
+}
 export function useCheckIn(projectId: string | undefined, locationIds: string[]) {
   const inv = useInv(projectId);
   return useMutation({
-    mutationFn: async ({ location_id, crew_id, memberIds, lat, lng }: {
-      location_id: string; crew_id: string | null; memberIds: string[]; lat: number | null; lng: number | null;
+    mutationFn: async ({ location_id, crew_id, memberIds, lat, lng, signatures = {} }: {
+      location_id: string; crew_id: string | null; memberIds: string[]; lat: number | null; lng: number | null; signatures?: Record<string, Blob>;
     }) => {
       if (!navigator.onLine) throw new Error("No signal — try again in coverage");
       const { data: { user } } = await supabase.auth.getUser();
-      const { data: visit, error } = await db.from("location_visits")
-        .insert({ location_id, crew_id, check_in_lat: lat, check_in_lng: lng, created_by: user?.id ?? null })
-        .select("id").single();
-      if (error) throw error;
-
       // Copy-forward: members who already signed today keep their signature — never ask twice.
-      const signed = await fetchTodaySignatures(locationIds, memberIds);
+      const signed = await fetchTodaySignatures(locationIds, memberIds,location_id);
+      for (const pid of memberIds) { if (!signed[pid]) { if (!signatures[pid]) throw new Error('Signature required before check-in'); signed[pid]=await uploadFieldSignature(pid,signatures[pid]); } }
       const now = new Date().toISOString();
-      const rows = memberIds.map((pid) => ({
+      const { data: location, error: locError } = await db.from('project_locations').select('timezone').eq('id',location_id).single(); if (locError) throw locError;
+      const zone=location?.timezone || 'America/Chicago';
+      const {data: open,error: openError}=await db.from('location_visits').select('id,check_in_at').eq('location_id',location_id).is('check_out_at',null).order('check_in_at',{ascending:false}); if(openError)throw openError;
+      let visit: {id:string}|undefined;
+      for(const old of open??[]) { const end=staleVisitEnd(old.check_in_at,now,zone);if(end){const {error}=await db.from('location_visits').update({check_out_at:end,needs_review:true,auto_closed:true}).eq('id',old.id).is('check_out_at',null);if(error)throw error;}else if(!visit)visit=old; }
+      if(!visit){const {data,error}=await db.from('location_visits').insert({location_id,crew_id,check_in_at:now,check_in_lat:lat,check_in_lng:lng,created_by:user?.id??null}).select('id').single();if(error)throw error;visit=data;}
+      if(!visit)throw new Error('Visit unavailable');
+      const {data: existing,error: existingError}=await db.from('visit_personnel').select('personnel_id,checked_out_at').eq('visit_id',visit.id).in('personnel_id',memberIds);if(existingError)throw existingError;
+      if((existing??[]).some((p:any)=>p.checked_out_at))throw new Error('Already signed in today at this site');
+      const existingIds=new Set((existing??[]).map((p:any)=>p.personnel_id));
+      const rows = memberIds.filter(pid=>!existingIds.has(pid)).map((pid) => ({
         visit_id: visit.id,
         personnel_id: pid,
+        checked_in_at:now,checked_in_by:user?.id??null,
         signature_url: signed[pid]?.signature_url ?? null,
         signed_at: signed[pid]?.signed_at ?? (signed[pid] ? now : null),
       }));
       if (rows.length) {
-        const { error: pErr } = await db.from("visit_personnel").upsert(rows, { onConflict: "visit_id,personnel_id" });
+        const { error: pErr } = await db.from("visit_personnel").insert(rows);
         if (pErr) throw pErr;
       }
       await autoActivate(projectId, location_id, memberIds);
-      return { visitId: visit.id as string, needsSignature: memberIds.filter((pid) => !signed[pid]) };
+      return { visitId: visit.id as string, needsSignature: [] as string[] };
     },
     onSuccess: (_r, v) => inv(v.location_id),
     onError: (e: any) => toast.error(e?.message ?? "Check-in failed"),
@@ -256,10 +280,9 @@ export function useSaveSignature(projectId: string | undefined) {
   const inv = useInv(projectId);
   return useMutation({
     mutationFn: async ({ visit_id, personnel_id, blob }: { visit_id: string; personnel_id: string; blob: Blob }) => {
-      const path = `signatures/${personnel_id}/${todayYmd()}.png`;
-      const url = await uploadCapture(path, blob);
+      const signature = await uploadFieldSignature(personnel_id, blob);
       const { error } = await db.from("visit_personnel")
-        .update({ signature_url: url, signed_at: new Date().toISOString() })
+        .update(signature)
         .eq("visit_id", visit_id).eq("personnel_id", personnel_id);
       if (error) throw error;
     },
@@ -333,7 +356,7 @@ export function useCheckOut(projectId: string | undefined) {
         .eq("id", visit.id);
       if (error) throw error;
       // Attendance grid fills itself from real times.
-      await recomputeAttendanceFromVisits(visit.location_id, await visitAttendanceDates(visit.id));
+      // Live triggers own location-local attendance and canonical time entries.
       return visit.location_id;
     },
     onSuccess: (locationId) => { inv(locationId); toast.success("Checked out"); },
@@ -384,10 +407,8 @@ export function useUpdateVisit(projectId: string | undefined) {
     mutationFn: async ({ id, check_in_at, check_out_at, location_id }: {
       id: string; check_in_at: string; check_out_at: string | null; location_id: string;
     }) => {
-      const oldDates = await visitAttendanceDates(id);
-      const { error } = await db.from("location_visits").update({ check_in_at, check_out_at }).eq("id", id);
+      const { error } = await db.from("location_visits").update({ check_in_at, check_out_at, needs_review:false }).eq("id", id);
       if (error) throw error;
-      await recomputeAttendanceFromVisits(location_id, [...oldDates, ...await visitAttendanceDates(id)]);
       return location_id;
     },
     onSuccess: (lid) => { inv(lid); toast.success("Visit updated"); },
@@ -520,7 +541,7 @@ export function useCheckOutPerson(projectId: string | undefined) {
         .update({ checked_out_at: new Date().toISOString() })
         .eq("visit_id", visit.id).eq("personnel_id", personnel_id);
       if (error) throw error;
-      await recomputeAttendanceFromVisits(visit.location_id, await visitAttendanceDates(visit.id));
+      // Checkout trigger owns attendance/time-entry writes in location timezone.
       return visit.location_id;
     },
     onSuccess: (lid) => { inv(lid); toast.success("Checked out"); },
@@ -532,24 +553,15 @@ export function useCheckOutPerson(projectId: string | undefined) {
 export function useAddPersonToVisit(projectId: string | undefined, locationIds: string[]) {
   const inv = useInv(projectId);
   return useMutation({
-    mutationFn: async ({ visit, personnel_id }: { visit: VisitRow; personnel_id: string }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      const signed = await fetchTodaySignatures(locationIds, [personnel_id]);
-      const now = new Date().toISOString();
-      const { error } = await db.from("visit_personnel").insert({
-        visit_id: visit.id,
-        personnel_id,
-        checked_in_at: now,
-        checked_in_by: user?.id ?? null,
-        signature_url: signed[personnel_id]?.signature_url ?? null,
-        signed_at: signed[personnel_id]?.signed_at ?? null,
-      });
-      if (error) {
-        if (error.code === "23505") throw new Error("Already on this visit");
-        throw error;
-      }
+    mutationFn: async ({ visit, personnel_id, blob }: { visit: VisitRow; personnel_id: string; blob?: Blob }) => {
+      if(!navigator.onLine)throw new Error('No signal — try again in coverage');
+      const signed = await fetchTodaySignatures(locationIds, [personnel_id],visit.location_id);
+      if(!signed[personnel_id]&&!blob)throw new Error('Signature required before check-in');
+      const signature=signed[personnel_id]||await uploadFieldSignature(personnel_id,blob as Blob);
+      const {data:{user}}=await supabase.auth.getUser();
+      const {error}=await db.from('visit_personnel').insert({visit_id:visit.id,personnel_id,checked_in_at:new Date().toISOString(),checked_in_by:user?.id??null,...signature});if(error)throw error;
       await autoActivate(projectId, visit.location_id, [personnel_id]);
-      return { needsSignature: !signed[personnel_id], locationId: visit.location_id };
+      return { needsSignature: false, locationId: visit.location_id };
     },
     onSuccess: (r) => inv(r.locationId),
     onError: (e: any) => toast.error(e?.message ?? "Failed to add person"),
