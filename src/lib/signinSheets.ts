@@ -15,7 +15,7 @@ export function midnight(day: string, zone: string) {
   }
   return t;
 }
-export type SheetStay = { id: string; personnelId: string; locationId: string; name: string; position: string; inAt: string; outAt: string | null; signature: string | null; offsite: boolean };
+export type SheetStay = { id: string; personnelId: string; locationId: string; name: string; position: string; inAt: string; outAt: string | null; signature: string | null; signaturesByDay?: Record<string, string>; offsite: boolean };
 export type SheetRow = SheetStay & { day: string; hours: number | null };
 export function rowsForDay(stays: SheetStay[], locationId: string, day: string, zone: string, now = Date.now()): SheetRow[] {
   const start = midnight(day, zone), end = midnight(nextDay(day), zone);
@@ -23,7 +23,8 @@ export function rowsForDay(stays: SheetStay[], locationId: string, day: string, 
     const from = Math.max(start, Date.parse(s.inAt));
     const to = Math.min(end, s.outAt ? Date.parse(s.outAt) : now);
     const closed = !!s.outAt || end <= now;
-    return { ...s, day, inAt: new Date(from).toISOString(), outAt: closed ? new Date(to).toISOString() : null, hours: closed ? Math.max(0, (to - from) / 3600000) : null };
+    const signature = day === localDay(s.inAt, zone) ? s.signature || s.signaturesByDay?.[day] || null : s.signaturesByDay?.[day] || null;
+    return { ...s, signature, day, inAt: new Date(from).toISOString(), outAt: closed ? new Date(to).toISOString() : null, hours: closed ? Math.max(0, (to - from) / 3600000) : null };
   }).sort((a, b) => a.inAt.localeCompare(b.inAt) || a.id.localeCompare(b.id));
 }
 export const sheetFileName = (location: string, day: string) => `${location.replace(/[^\p{L}\p{N} ._-]/gu, '').trim() || 'location'}-${day}.pdf`;

@@ -58,7 +58,9 @@ export async function loadSheetStays(projectId: string, locations: ProjectLocati
     const member = members.find(m => m.crew_id === r.crew_id && m.personnel_id === r.personnel_id && m.joined_on <= day && (!m.left_on || m.left_on >= day));
     const flag = flags.get(r.visit_personnel_id);
     const fallback = signatures.find(s => s.personnel_id === r.personnel_id && s.signed_at && localDay(s.signed_at, zone) === day);
-    return [{ id: r.visit_personnel_id, personnelId: r.personnel_id, locationId: r.location_id, name: [r.first_name, r.last_name].filter(Boolean).join(' '), position: role?.role_label || member?.role_label || '', inAt: r.in_at, outAt: r.out_at, signature: flag?.signature_url || r.signature_url || fallback?.signature_url || null, offsite: flag?.in_geofence === false }];
+    const signaturesByDay: Record<string, string> = {};
+    for (const s of signatures) if (s.personnel_id === r.personnel_id && s.signed_at && s.signature_url) { const key = localDay(s.signed_at, zone); if (!signaturesByDay[key]) signaturesByDay[key] = s.signature_url; }
+    return [{ id: r.visit_personnel_id, personnelId: r.personnel_id, locationId: r.location_id, name: [r.first_name, r.last_name].filter(Boolean).join(' '), position: role?.role_label || member?.role_label || '', inAt: r.in_at, outAt: r.out_at, signature: flag?.signature_url || r.signature_url || fallback?.signature_url || null, signaturesByDay, offsite: flag?.in_geofence === false }];
   });
 }
 export async function loadSheetSignature(path: string) {
