@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import type { ProjectDocument } from '@/integrations/supabase/hooks/useProjectDocuments';
 import type { DocumentSignature } from '@/integrations/supabase/hooks/useDocumentSignatures';
 export function LocationDocumentsLine({ projectId, locationId, documents, signatures }: { projectId: string; locationId: string; documents: ProjectDocument[]; signatures: DocumentSignature[] }) {
-  const docs = documents.filter(d => d.location_id === locationId);
+  const docs = documents.filter(d => d.location_id === locationId || d.location_ids?.includes(locationId));
   if (!docs.length) return null;
   const ids = new Set(docs.filter(d => d.requires_signature).map(d => d.id));
   const rows = signatures.filter(s => ids.has(s.document_id));
