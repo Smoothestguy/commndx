@@ -19,3 +19,8 @@
 - [x] Regenerate live types; deploy private token signing and authenticated text requests, no migrations.
 - [x] Add mobile signing page, shared Field Mode pad, document upload/status/recipient/certificate UI and location links.
 - [x] Verify a live test PDF upload → anonymous signature → reload → staff tracking → signed certificate download; test idempotency, signed-remind skip, invalid auth/token and rules; clean up fixture; TypeScript and preview passed. No real SMS sent. Signature evidence uses private project-documents rather than the existing publicly readable field-captures bucket.
+
+# Rate privacy and agency hours
+- [ ] Audit/gate money in field-facing project views without changing admin Financials.
+- [ ] Add agency editor/tags and project Agency filters using batched safe lookups.
+- [ ] Add strictly hours-only two-sheet agency export; test scope/columns, staff visibility, and TypeScript.
