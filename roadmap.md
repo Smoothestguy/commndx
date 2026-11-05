@@ -1,5 +1,11 @@
 # Applicant locations
 
+# Phase 2 customer sign-in sheets
+- [ ] Customer countersign, immutable private PDF/hash, version history and reason-required reopening across attendance/time edits.
+- [ ] Expiring kiosk links, tablet public signing/check-out, GPS override and QR posters.
+- [ ] Seven-day location status board and reusable-template action/picker.
+- [ ] Live browser verification, focused tests and requested TypeScript check; no migrations.
+
 # Deployment data-flow fixes
 - [x] Same-local-day Field Mode visits, flagged stale closure and review clearing; live stale-shell closure verified at location end-of-day.
 - [x] Required private check-in signatures, same-day copy-forward and durable public signature retries; live public and two-person Field Mode signatures verified. New signatures use private project-documents rather than public field-captures.
