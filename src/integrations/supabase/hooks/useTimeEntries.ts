@@ -5,6 +5,7 @@ import { startOfWeek, endOfWeek, format } from "date-fns";
 import { useMyProjectAssignments } from "./useProjectAssignments";
 import { useAuditLog, computeChanges } from "@/hooks/useAuditLog";
 import type { Json } from "../types";
+import { guardTimeEntries } from '@/lib/sheetLocks';
 
 export interface TimeEntry {
   id: string;
@@ -281,6 +282,7 @@ export const useUpdateTimeEntryStatus = () => {
 
   return useMutation({
     mutationFn: async ({ ids, status }: { ids: string[]; status: string }) => {
+      await guardTimeEntries(ids);
       const { data, error } = await supabase
         .from("time_entries")
         .update({ status })
@@ -389,6 +391,7 @@ export const useUpdateTimeEntry = () => {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<TimeEntry> & { id: string }) => {
+      await guardTimeEntries([id], updates);
       // Fetch current data for comparison
       const { data: before } = await supabase
         .from("time_entries")
@@ -445,6 +448,7 @@ export const useDeleteTimeEntry = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      await guardTimeEntries([id]);
       // Fetch current data for logging
       const { data: before } = await supabase
         .from("time_entries")
@@ -484,6 +488,7 @@ export const useBulkDeleteTimeEntries = () => {
   return useMutation({
     mutationFn: async (ids: string[]) => {
       if (ids.length === 0) throw new Error("No entries to delete");
+      await guardTimeEntries(ids);
 
       const { error } = await supabase
         .from("time_entries")
@@ -552,6 +557,10 @@ export const useBulkAddTimeEntries = () => {
     mutationFn: async (entries: TimeEntryInsert[]) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
+      for (const entry of entries) {
+        const { data, error } = await supabase.from('time_entries').select('id').eq('project_id', entry.project_id).eq('user_id', user.id).eq('entry_date', entry.entry_date);
+        if (error) throw error; await guardTimeEntries((data || []).map(r => r.id));
+      }
 
       // Filter out entries with 0 or no hours - overtime calculated at weekly aggregation
       const validEntries = entries
@@ -610,6 +619,10 @@ export const useBulkAddPersonnelTimeEntries = () => {
     mutationFn: async (entries: PersonnelTimeEntryInsert[]) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
+      for (const entry of entries) {
+        const { data, error } = await supabase.from('time_entries').select('id').eq('project_id', entry.project_id).eq('personnel_id', entry.personnel_id).eq('entry_date', entry.entry_date);
+        if (error) throw error; await guardTimeEntries((data || []).map(r => r.id));
+      }
 
       // Filter out entries with 0 or no hours - overtime calculated at weekly aggregation
       const validEntries = entries

@@ -1,0 +1,17 @@
+import { expect, it } from 'bun:test';
+import { sha256, sheetStatus, validReopenReason, locationDays, KIOSK_REFRESH_MS, KIOSK_RETURN_MS } from './sheetApprovalRules';
+import { countersignSheet } from './customerApprovalPdf';
+import { PDFDocument } from 'pdf-lib';
+const defaults={locked:false,activity:false,assigned:true,day:'2026-11-05',mobe:'2026-11-01',demobe:'2026-11-10'};
+it('kiosk refreshes roster every sixty seconds',()=>expect(KIOSK_REFRESH_MS).toBe(60000));
+it('kiosk returns to roster after three seconds',()=>expect(KIOSK_RETURN_MS).toBe(3000));
+it('locked countersigned day is green even with activity',()=>expect(sheetStatus({...defaults,locked:true,activity:true})).toBe('locked'));
+it('activity without lock is yellow',()=>expect(sheetStatus({...defaults,activity:true})).toBe('activity'));
+it('assigned people without sign-ins during deployment is red',()=>expect(sheetStatus(defaults)).toBe('missing'));
+it('before mobe is gray',()=>expect(sheetStatus({...defaults,day:'2026-10-31'})).toBe('idle'));
+it('after demobe is gray',()=>expect(sheetStatus({...defaults,day:'2026-11-11'})).toBe('idle'));
+it('unexpected actual activity remains yellow outside deployment',()=>expect(sheetStatus({...defaults,day:'2026-10-31',activity:true})).toBe('activity'));
+it('reopening requires nonblank reason',()=>{expect(validReopenReason('   ')).toBe(false);expect(validReopenReason('Correct checkout time')).toBe(true);});
+it('edit dates follow location-local midnight',()=>expect(locationDays('2026-11-05T04:00:00Z','2026-11-05T08:00:00Z','America/New_York')).toEqual(['2026-11-04','2026-11-05']));
+it('SHA-256 uses final exact PDF bytes',async()=>expect(await sha256(new TextEncoder().encode('abc'))).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'));
+it('approval keeps all original pages and adds separate non-overlapping evidence',async()=>{const pdf=await PDFDocument.create();pdf.addPage([612,792]);const image=Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==','base64'));const final=await countersignSheet(await pdf.save(),image.buffer,'Customer','2026-11-05T19:42:00Z','America/New_York');expect((await PDFDocument.load(final)).getPageCount()).toBe(2);});

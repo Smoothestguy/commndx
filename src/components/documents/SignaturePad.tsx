@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
-export function SignaturePad({ name, onSave, onSkip, saving, required = false, description = "One signature covers all of today's sites." }: {
-  name: string; onSave: (blob: Blob) => void; onSkip: () => void; saving: boolean; description?: string; required?: boolean;
+export function SignaturePad({ name, onSave, onSkip, saving, required = false, compact = false, description = "One signature covers all of today's sites." }: {
+  name: string; onSave: (blob: Blob) => void; onSkip: () => void; saving: boolean; description?: string; required?: boolean; compact?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
@@ -69,10 +69,10 @@ export function SignaturePad({ name, onSave, onSkip, saving, required = false, d
         <p className="text-lg font-semibold">{name}, sign here</p>
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
-      <div className="flex-1 px-4 min-h-0">
+      <div className={compact ? "px-4 shrink-0" : "flex-1 px-4 min-h-0"}>
         <canvas
           ref={canvasRef}
-          className="w-full h-full min-h-[40vh] rounded-lg border-2 border-dashed touch-none cursor-crosshair bg-card"
+          className={compact ? "block w-full h-[40dvh] max-h-96 rounded-lg border-2 border-dashed touch-none cursor-crosshair bg-card" : "w-full h-full min-h-[40vh] rounded-lg border-2 border-dashed touch-none cursor-crosshair bg-card"}
           onPointerDown={start}
           onPointerMove={move}
           onPointerUp={end}

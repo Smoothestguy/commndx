@@ -14,3 +14,5 @@
 - Already-signed public punch history is read through a token-validated minimal-response edge function scoped to that token's person, location and recent local day; never grant anonymous trail access.
 - Deployment/roster operational hours use paginated time_entries while punch trail remains detail; assignment/status counts share one hook to prevent list/header cache-shape conflicts.
 - Public punch signatures use an expiring-token edge function and immutable private storage paths; committed queue intents retry only the signature write, never toggle an already accepted punch.
+- Customer sheet approvals use manager-authorized functions, verified SHA-256 and immutable version paths; reopening reserves the next version with a reason before attendance/time mutations. Shared-file template originals and prior signed PDFs are never overwritten.
+- Kiosk signatures use an expiring location-token/active-roster function around the live kiosk RPC; expected-state reconciliation prevents stale UI toggles, and signature-only retries target the committed stay without punching again.
