@@ -6,7 +6,13 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState, useRef } from "react";
+import { SigninSheetsPanel } from "@/components/documents/SigninSheetsPanel";
+import { ReusableSigninPicker } from "@/components/documents/ReusableSigninPicker";
+import { Checkbox } from "@/components/ui/checkbox";
+import { convertBlankSigninTemplate } from "@/lib/signinTemplateData";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -30,6 +36,16 @@ export const ProjectDocuments = ({ projectId, projectName = "Project" }: Project
   const [uploadOpen, setUploadOpen] = useState(false);
   const [requiresSignature, setRequiresSignature] = useState(false);
   const [locationId, setLocationId] = useState("project");
+  const [isSigninTemplate, setIsSigninTemplate] = useState(false), [isReusableTemplate, setIsReusableTemplate] = useState(false), [locationIds, setLocationIds] = useState<string[]>([]);
+  const qc = useQueryClient();
+  const converted = useRef(new Set<string>());
+  useEffect(() => {
+    if (!canManage) return;
+    for (const doc of documents ?? []) if (!doc.is_signin_template && /^blank sign[ -]?in sheet\.pdf$/i.test(doc.file_name) && !converted.current.has(doc.id)) {
+      converted.current.add(doc.id);
+      void convertBlankSigninTemplate(doc).then(() => qc.invalidateQueries({ queryKey: ["project-documents", projectId] })).catch(e => { converted.current.delete(doc.id); toast.error(e instanceof Error ? e.message : "Blank template conversion failed"); });
+    }
+  }, [documents, canManage, qc, projectId]);
   const [notes, setNotes] = useState("");
   const uploadDocument = useUploadProjectDocument();
   const deleteDocument = useDeleteProjectDocument();
@@ -51,7 +67,7 @@ export const ProjectDocuments = ({ projectId, projectName = "Project" }: Project
     setSelectedFile(null);
     setRequiresSignature(false);
     setLocationId("project");
-    setNotes("");
+    setNotes(""); setIsSigninTemplate(false); setIsReusableTemplate(false); setLocationIds([]);
     uploadDocument.reset();
     setUploadOpen(open);
   };
@@ -62,7 +78,7 @@ export const ProjectDocuments = ({ projectId, projectName = "Project" }: Project
     uploadInFlight.current = true;
     setIsUploading(true);
     try {
-      await uploadDocument.mutateAsync({ projectId, file: selectedFile, requiresSignature, locationId: locationId === "project" ? null : locationId, notes });
+      await uploadDocument.mutateAsync({ projectId, file: selectedFile, requiresSignature, locationId: isSigninTemplate || locationId === "project" ? null : locationId, notes, isSigninTemplate, isReusableTemplate, locationIds });
       setUploadOpen(false);
       setSelectedFile(null);
     } catch { /* Mutation displays the failure; retain the selected file for retry. */
@@ -128,7 +144,7 @@ export const ProjectDocuments = ({ projectId, projectName = "Project" }: Project
             <FileText className="h-5 w-5 text-primary" />
             Project Documents ({documents?.length || 0})
           </CardTitle>
-          {canManage && <Button variant="outline" size="sm" onClick={() => handleUploadOpenChange(true)}><Upload className="h-4 w-4 mr-1" />Upload</Button>}
+          {canManage && <div className="flex flex-wrap gap-2"><ReusableSigninPicker projectId={projectId} /><Button variant="outline" size="sm" onClick={() => handleUploadOpenChange(true)}><Upload className="h-4 w-4 mr-1" />Upload</Button></div>}
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -189,6 +205,7 @@ export const ProjectDocuments = ({ projectId, projectName = "Project" }: Project
                   </div>
                   </div>
                   {doc.notes && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{doc.notes}</p>}
+                  {canManage && doc.is_signin_template && <SigninSheetsPanel doc={doc} projectName={projectName} />}
                   {doc.requires_signature && <DocumentSignaturePanel doc={doc} rows={signatures.filter(r => r.document_id === doc.id)} projectName={projectName} canSend={canSend} canManage={canManage} />}
                 </div>
               ))}
@@ -202,7 +219,9 @@ export const ProjectDocuments = ({ projectId, projectName = "Project" }: Project
           <DialogHeader><DialogTitle>Upload document</DialogTitle></DialogHeader>
           <form onSubmit={handleUpload} className="space-y-4" aria-busy={isUploading}>
             <label className="flex items-center justify-between gap-3 text-sm">Requires signature<Switch checked={requiresSignature} disabled={isUploading} onCheckedChange={setRequiresSignature} /></label>
-            <div className="space-y-2"><Label htmlFor="doc-location">Location</Label><Select value={locationId} disabled={isUploading} onValueChange={setLocationId}><SelectTrigger id="doc-location"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="project">Project-wide</SelectItem>{locations.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent></Select></div>
+            <label className="flex items-center justify-between gap-3 text-sm">Sign-in sheet template<Switch checked={isSigninTemplate} disabled={isUploading} onCheckedChange={setIsSigninTemplate} /></label>
+            {isSigninTemplate && <><label className="flex items-center justify-between gap-3 text-sm">Save as reusable template<Switch checked={isReusableTemplate} disabled={isUploading} onCheckedChange={setIsReusableTemplate} /></label><div className="space-y-1">{locations.map(l => <label key={l.id} className="flex items-center gap-3 min-h-11"><Checkbox disabled={isUploading} checked={locationIds.includes(l.id)} onCheckedChange={v => setLocationIds(prev => v ? [...prev, l.id] : prev.filter(id => id !== l.id))} />{l.name}</label>)}</div></>}
+            {!isSigninTemplate && <div className="space-y-2"><Label htmlFor="doc-location">Location</Label><Select value={locationId} disabled={isUploading} onValueChange={setLocationId}><SelectTrigger id="doc-location"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="project">Project-wide</SelectItem>{locations.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent></Select></div>}
             <div className="space-y-2"><Label htmlFor="doc-notes">Notes (optional)</Label><Textarea id="doc-notes" value={notes} disabled={isUploading} onChange={e => setNotes(e.target.value)} maxLength={3000} /></div>
             <div className="space-y-2"><Label htmlFor="doc-file">Document file</Label><input id="doc-file" type="file" aria-label="Document file" accept=".pdf,image/*,.doc,.docx" disabled={isUploading} onChange={e => setSelectedFile(e.target.files?.[0] ?? null)} className="block min-h-11 w-full min-w-0 text-sm text-foreground file:mr-3 file:min-h-11 file:rounded-md file:border file:border-input file:bg-secondary file:px-3 file:text-secondary-foreground disabled:opacity-50" /></div>
             <DialogFooter>
