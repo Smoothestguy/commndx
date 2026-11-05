@@ -66,6 +66,7 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
           {r.status === "activated" && <> · {r.hours.toFixed(1)}h{showCosts && <> · {r.laborCost != null ? money(r.laborCost) : "no rate"}</>}</>}
         </div>
       </div>
+      <PersonnelBadgeActions personnelId={r.personnel_id} compact />
       <PersonnelStatusButton personnelId={r.personnel_id} projectId={projectId} projectName={(project as any)?.name} hideProjectName className="max-w-[7rem] sm:max-w-none" />
       <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Send site text" onClick={() => setTextFor(r.personnel_id)}><MessageSquare className="h-4 w-4" /></Button>
       {showCosts && <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Log time" onClick={() => setLogFor(r)}><Clock className="h-4 w-4" /></Button>}
@@ -77,7 +78,7 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
     <Card>
       <SendSiteTextDialog open={!!textFor} onOpenChange={(o) => !o && setTextFor(null)} personnelIds={textFor ? [textFor] : []} projectId={projectId} />
       <CardHeader className="pb-2 space-y-2">
-        <CardTitle className="text-base">Roster</CardTitle>
+        <div className="flex flex-wrap items-center justify-between gap-2"><CardTitle className="text-base">Roster</CardTitle>{showCosts&&<Button size="sm" variant="outline" disabled={printing||!rows.length} onClick={async()=>{setPrinting(true);try{await printBadges(badgeSelection.length?badgeSelection:rows.map(r=>r.personnel_id));}catch(e){toast.error(e instanceof Error?e.message:'Badge printing failed');}finally{setPrinting(false);}}}>{printing?'Preparing…':`Print badges (PDF)${badgeSelection.length?` (${badgeSelection.length})`:''}`}</Button>}</div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs">
           <Stat label="Activated hours" value={`${totals.hours.toFixed(1)}h`} />
           {showCosts && <Stat label="Labor cost" value={money(totals.labor)} hint={totals.laborMissing ? `${totals.laborMissing} missing rate` : undefined} />}
