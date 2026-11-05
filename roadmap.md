@@ -1,7 +1,7 @@
 # Shift discipline
-- [ ] Update public, kiosk and Field Mode early-arrival flows and extension requests/status.
-- [ ] Add manager review actions and early badges; update secure shift reminders.
-- [ ] Verify rules, browser flows and requested typecheck; no migrations, schedules remain paused.
+- [x] Update public, kiosk and Field Mode early-arrival reason flows; durable intents retain server effective timestamps. Public extension requests show current token-scoped status and fifteen-minute choices capped at six hours.
+- [x] Add manager-only review function, banners in Deployment/Visits and early badges; preserve reasons with approval markers. Extensions support approve/deny; early arrivals support approve only because the live schema has no independent denial marker. Preshift day/night and extension-aware nags deployed; cron untouched.
+- [x] Live isolated public signature/early request/extension → staff approve/deny → readback, kiosk signed early punch, Field Mode server gate/retry, and five-minute auto-accept passed. Phone screens checked; 44 tests and bunx tsgo --noEmit passed. No SMS or migrations; fixtures cleaned/archived. Actual iPhone Safari, separate manager login, and full Field Mode UI early flow unverified.
 
 # Applicant locations
 
