@@ -1,5 +1,6 @@
 import { useProjectAgencies } from "@/hooks/useProjectAgencies";
 import { AgencyChip } from "@/components/personnel/AgencyChip";
+import { LocationKioskActions } from '@/components/signin/LocationKioskActions';
 import { RoleSelect } from "./RoleSelect";
 import { useUpdateAssignmentRole } from "@/integrations/supabase/hooks/useLocationStaffing";
 import { Fragment, useEffect, useMemo, useState } from "react";
@@ -247,6 +248,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                   </span>
                 </div>
                 {isOpen && meta.length > 0 && <div className="pl-5 mt-0.5 text-[11px] text-muted-foreground">{meta.join(" · ")}</div>}
+                {canWrite && isOpen && <LocationKioskActions location={l} />}
               </div>
               {isOpen && rows.map((a) => {
                 const k = `${a.personnel_id}:${l.id}`;
@@ -356,6 +358,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                       </div>
                     </td>
                   </tr>
+                  {canWrite && isOpen && <tr><td colSpan={cols} className="px-2 py-1"><LocationKioskActions location={l} /></td></tr>}
                   {isOpen && rows.map((a) => {
                     const k = `${a.personnel_id}:${l.id}`;
                     const h = hours[k];
