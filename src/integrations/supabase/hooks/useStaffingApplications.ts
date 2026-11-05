@@ -66,6 +66,7 @@ export interface JobPosting {
 }
 
 export interface Applicant {
+  vendor_id?: string | null;
   id: string;
   first_name: string;
   last_name: string;
@@ -491,6 +492,7 @@ export const useSubmitApplication = () => {
   return useMutation({
     mutationFn: async ({
       posting_id,
+      agencyToken,
       applicant: applicantData,
       answers,
       geo,
@@ -501,6 +503,7 @@ export const useSubmitApplication = () => {
       smsConsentTextVersion,
     }: {
       posting_id: string;
+      agencyToken?: string;
       applicant: {
         first_name: string;
         last_name: string;
@@ -520,6 +523,12 @@ export const useSubmitApplication = () => {
       smsConsentPhone?: string;
       smsConsentTextVersion?: string;
     }) => {
+      if (agencyToken) {
+        const {data,error}=await supabase.functions.invoke('agency-application',{body:{action:'submit',agency_token:agencyToken,posting_id,applicant:applicantData,answers,geo,clientSubmittedAt,userAgent,smsConsent,smsConsentPhone,smsConsentTextVersion}});
+        if(error||!data?.id)throw new Error(data?.error||'Agency application could not be submitted');
+        if(smsConsent&&smsConsentPhone)await supabase.functions.invoke('send-application-sms-confirmation',{body:{applicationId:data.id,phone:smsConsentPhone,firstName:applicantData.first_name}});
+        return data as {id:string;applicant_id:string};
+      }
       console.log("[Application] Starting submission for posting:", posting_id);
       console.log("[Application] Applicant data:", applicantData);
       
@@ -808,7 +817,7 @@ export const useApproveApplicationWithType = () => {
           // Update existing personnel with applicant_id if not set
           await supabase
             .from("personnel")
-            .update({ applicant_id: applicant.id } as any)
+            .update({ applicant_id: applicant.id, ...(applicant.vendor_id ? { vendor_id: applicant.vendor_id } : {}) } as any)
             .eq("id", existingPersonnel.id);
           createdPersonnel = { ...existingPersonnel, _linkedExisting: true };
         } else {
@@ -821,6 +830,7 @@ export const useApproveApplicationWithType = () => {
               email: applicant.email,
               phone: applicant.phone,
               applicant_id: applicant.id,
+              vendor_id: applicant.vendor_id || null,
               status: 'active' as const,
             } as any)
             .select()
@@ -874,7 +884,7 @@ export const useApproveApplicationWithType = () => {
           createdVendor = vendor;
 
           // Link personnel to vendor if both were created
-          if (createdPersonnel && createdVendor) {
+          if (createdPersonnel && createdVendor && !applicant.vendor_id) {
             await supabase
               .from("personnel")
               .update({ vendor_id: createdVendor.id } as any)
@@ -912,7 +922,7 @@ export const useApproveApplicationWithType = () => {
       }
 
       // For personnel-only type, always create a linked vendor for QuickBooks sync
-      if (recordType === 'personnel' && createdPersonnel && !createdVendor) {
+      if (recordType === 'personnel' && createdPersonnel && !createdVendor && !applicant.vendor_id) {
         console.log('[Approve] Personnel-only type, creating linked vendor for QB sync');
         const { data: existingVendorByEmail } = await supabase
           .from("vendors")
@@ -1047,7 +1057,7 @@ export const useApproveApplication = () => {
         // Update existing personnel with applicant_id if not set
         await supabase
           .from("personnel")
-          .update({ applicant_id: applicant.id } as any)
+          .update({ applicant_id: applicant.id, ...(applicant.vendor_id ? { vendor_id: applicant.vendor_id } : {}) } as any)
           .eq("id", existingPersonnel.id);
 
         return existingPersonnel;
@@ -1078,6 +1088,7 @@ export const useApproveApplication = () => {
           email: applicant.email,
           phone: applicant.phone,
           applicant_id: applicant.id,
+          vendor_id: applicant.vendor_id || null,
           status: 'active' as const,
         } as any)
         .select()

@@ -4,8 +4,10 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
 import { canSendSignatures, signatureExpired, validSignaturePng } from './rules.ts';
+import { kioskMedia } from '../_shared/kioskMedia.ts';
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 const input = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('kiosk_media'), token: z.string().uuid(), personnel_id: z.string().uuid(), stay_id: z.string().uuid(), selfie: z.string().min(1).max(2000000), signature: z.string().min(1).max(280000) }),
   z.object({ action: z.literal('info'), token: z.string().uuid() }),
   z.object({ action: z.literal('sign'), token: z.string().uuid(), signature_png_base64: z.string().min(1).max(280000), sign_name: z.string().trim().min(1).max(150), lat: z.number().min(-90).max(90).nullable().optional(), lng: z.number().min(-180).max(180).nullable().optional() }),
   z.object({ action: z.literal('send'), document_id: z.string().uuid(), personnel_ids: z.array(z.string().uuid()).min(1).max(100) }),
@@ -20,6 +22,7 @@ Deno.serve(async req => {
     const url = Deno.env.get('SUPABASE_URL'); const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (!url || !key) return json({ error: 'Signing service unavailable' }, 503);
     const db = createClient(url, key);
+    if (body.action === 'kiosk_media') { const result = await kioskMedia(db, body); return json(result.body, result.status); }
     if (body.action === 'send') {
       const auth = req.headers.get('Authorization');
       if (!auth?.startsWith('Bearer ')) return json({ error: 'Unauthorized' }, 401);

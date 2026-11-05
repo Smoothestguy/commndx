@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { VendorHiringLink } from '@/components/vendors/VendorHiringLink';
 import { useParams, useNavigate } from "react-router-dom";
 import { SendVendorOnboardingDialog } from "@/components/vendors/SendVendorOnboardingDialog";
 import { DirectDepositView } from "@/components/personnel/DirectDepositView";
@@ -147,6 +148,7 @@ export default function VendorDetail() {
           )}
         </div>
         {/* Basic Information Card */}
+        <VendorHiringLink vendorId={vendor.id} />
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
