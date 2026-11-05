@@ -89,7 +89,9 @@ Deno.serve(async req => {
     if (bytes.length > 204800 || bytes.length < 24 || ![137,80,78,71,13,10,26,10].every((n,i) => bytes[i] === n)) return json({ error: 'Signature must be a PNG under 200KB' }, 400);
     const path = `doc-signatures/${signature.document_id}/${signature.personnel_id}.png`;
     // Never overwrite an accepted signature, including concurrent/retried submissions.
-    const { error: uploadError } = await db.storage.from('field-captures').upload(path, bytes, { contentType: 'image/png', upsert: false });
+    // field-captures is publicly readable in this project. Use the existing private
+    // project-documents bucket for signature evidence without changing schema/policies.
+    const { error: uploadError } = await db.storage.from('project-documents').upload(path, bytes, { contentType: 'image/png', upsert: false });
     if (uploadError) {
       const { data: current } = await db.from('document_signatures').select('status,signed_at').eq('id', signature.id).single();
       if (current?.status === 'signed') return json({ ok: true, signed_at: current.signed_at });
@@ -99,7 +101,7 @@ Deno.serve(async req => {
     if (saveError || !saved) {
       const { data: current } = await db.from('document_signatures').select('status,signed_at').eq('id', signature.id).single();
       if (current?.status === 'signed') return json({ ok: true, signed_at: current.signed_at });
-      await db.storage.from('field-captures').remove([path]);
+      await db.storage.from('project-documents').remove([path]);
       if (saveError) throw saveError;
       return json({ error: 'Link expired or status changed' }, 409);
     }

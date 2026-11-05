@@ -4,8 +4,8 @@ import type { DocumentSignature } from '@/integrations/supabase/hooks/useDocumen
 import type { ProjectDocument } from '@/integrations/supabase/hooks/useProjectDocuments';
 export async function signatureImageUrl(path: string) {
   // Persist private object paths, never expired signed URLs.
-  const objectPath = path.includes('/field-captures/') ? decodeURIComponent(path.split('/field-captures/')[1].split('?')[0]) : path;
-  const { data, error } = await supabase.storage.from('field-captures').createSignedUrl(objectPath, 3600);
+  const objectPath = path.includes('/project-documents/') ? decodeURIComponent(path.split('/project-documents/')[1].split('?')[0]) : path;
+  const { data, error } = await supabase.storage.from('project-documents').createSignedUrl(objectPath, 3600);
   if (error) throw error;
   return data.signedUrl;
 }
