@@ -191,7 +191,7 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
           {roles.map(([role, v]) => (
             <Badge key={role} variant="outline" className={cn(
               v.assigned >= v.needed ? "border-success/40 bg-success/15 text-success" : "border-warning/40 bg-warning/15 text-warning",
-            )}>{role} {v.assigned}/{v.needed}{v.rate != null && ` · $${Number(v.rate).toLocaleString(undefined, { maximumFractionDigits: 2 })}/hr`}</Badge>
+            )}>{role} {v.assigned}/{v.needed}{canWrite && v.rate != null && ` · $${Number(v.rate).toLocaleString(undefined, { maximumFractionDigits: 2 })}/hr`}</Badge>
           ))}
         </div>
       )}

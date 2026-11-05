@@ -149,10 +149,10 @@ const ProjectDetail = () => {
       actions={
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           {canArchive && <ProjectStatusMenu project={project} />}
-          <Button variant="outline" onClick={handleExportPDF}>
+          {canArchive && <Button variant="outline" onClick={handleExportPDF}>
             <Download className="h-4 w-4 mr-2" />
             Export PDF
-          </Button>
+          </Button>}
           {canArchive && (project.archived_at ? (
             <Button variant="outline" onClick={() => unarchiveProject.mutate({ id: project.id, name: project.name })} disabled={unarchiveProject.isPending}>
               <ArchiveRestore className="h-4 w-4 mr-2" />

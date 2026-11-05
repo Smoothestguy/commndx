@@ -105,6 +105,7 @@ export const useAssignPersonnelToVendor = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["personnel"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-by-vendor"] });
+      queryClient.invalidateQueries({ queryKey: ["project-agencies"] });
       queryClient.invalidateQueries({ queryKey: ["personnel", variables.personnelId] });
       toast.success(
         variables.vendorId
@@ -308,6 +309,7 @@ export const useUpdatePersonnel = () => {
       queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-by-project"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-by-vendor"] });
+      queryClient.invalidateQueries({ queryKey: ["project-agencies"] });
       // Force refetch time entries so rate changes reflect immediately
       queryClient.invalidateQueries({ 
         queryKey: ["all-time-entries"],
@@ -416,6 +418,7 @@ export const useDeletePersonnel = () => {
       queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-by-project"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-by-vendor"] });
+      queryClient.invalidateQueries({ queryKey: ["project-agencies"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-stats"] });
       toast.success("Personnel deactivated successfully");
     },
@@ -454,6 +457,7 @@ export const useToggleDoNotHire = () => {
       queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-by-project"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-by-vendor"] });
+      queryClient.invalidateQueries({ queryKey: ["project-agencies"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-stats"] });
       toast.success(
         newStatus === "do_not_hire"
@@ -580,6 +584,7 @@ export const useReactivatePersonnel = () => {
       queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-by-project"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-by-vendor"] });
+      queryClient.invalidateQueries({ queryKey: ["project-agencies"] });
       toast.success("Personnel reactivated successfully");
     },
     onError: (error: Error) => {

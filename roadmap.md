@@ -19,3 +19,8 @@
 - [x] Regenerate live types; deploy private token signing and authenticated text requests, no migrations.
 - [x] Add mobile signing page, shared Field Mode pad, document upload/status/recipient/certificate UI and location links.
 - [x] Verify a live test PDF upload → anonymous signature → reload → staff tracking → signed certificate download; test idempotency, signed-remind skip, invalid auth/token and rules; clean up fixture; TypeScript and preview passed. No real SMS sent. Signature evidence uses private project-documents rather than the existing publicly readable field-captures bucket.
+
+# Rate privacy and agency hours
+- [x] Audit/gate money in field-facing project views, roster, deployment receipts/mileage, asset creation, header contract value and financial project PDF export; admin Financials unchanged.
+- [x] Add clearable agency editor/tags and project Agency filters with authenticated project-scoped batched minimal-projection lookup; no migrations.
+- [x] Verify populated Edilberto Quiros agency XLSX from selected week with exactly Timesheet/Detail and no money columns; workbook scope/privacy/open-punch tests and TypeScript passed. Authenticated mobile flows passed; plain-user presentation gates checked with intercepted role response, not a separate real plain-user session; agency write not exercised.

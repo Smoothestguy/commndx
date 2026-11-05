@@ -1,3 +1,5 @@
+import { useProjectAgencies } from "@/hooks/useProjectAgencies";
+import { AgencyChip } from "@/components/personnel/AgencyChip";
 import { RoleSelect } from "./RoleSelect";
 import { useUpdateAssignmentRole } from "@/integrations/supabase/hooks/useLocationStaffing";
 import { Fragment, useEffect, useMemo, useState } from "react";
@@ -59,6 +61,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
   canWrite: boolean;
   onOpenCard: (locationId: string) => void;
 }) {
+  const { agencyName } = useProjectAgencies(projectId);
   const locIds = useMemo(() => locations.map((l) => l.id), [locations]);
   const { data: assignments = [] } = useLocationsAssignments(locIds);
   const { data: texted = {} } = useLastSiteTexts(locIds);
@@ -251,7 +254,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                 return (
                   <div key={a.id} className="border-t px-2 py-1.5 pl-6">
                     <div className="flex items-center gap-2 min-w-0">
-                      <Link to={`/personnel/${a.personnel_id}`} className="font-medium truncate flex-1 min-w-0 hover:underline">{nameOf(a)}</Link>
+                      <Link to={`/personnel/${a.personnel_id}`} className="font-medium truncate flex-1 min-w-0 hover:underline">{nameOf(a)} <AgencyChip name={agencyName(a.personnel_id)} /></Link>
                       <PersonnelStatusButton personnelId={a.personnel_id} projectId={projectId} locationId={l.id} hideProjectName className="text-[10px] px-1.5 py-0 max-w-[9rem] shrink-0" />
                     </div>
                     <div className="flex items-center gap-2 min-w-0">
@@ -281,7 +284,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
               ))}
               {isOpen && !search && open.map(([role, v]) => (
                 <div key={`open-${role}`} className="border-t px-2 py-1.5 pl-6 flex items-center gap-2 text-muted-foreground">
-                  <span className="italic truncate flex-1 min-w-0">{role} — {v.needed - v.assigned} open{fmtRate(v.rate)}</span>
+                  <span className="italic truncate flex-1 min-w-0">{role} — {v.needed - v.assigned} open{canWrite && fmtRate(v.rate)}</span>
                   {canWrite && <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => setAssignFor({ locationId: l.id, role })}>Assign</Button>}
                 </div>
               ))}
@@ -358,7 +361,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                     return (
                       <tr key={a.id} className="border-t hover:bg-muted/30">
                         <td className="px-2 py-1 pl-7 font-medium truncate">
-                          <Link to={`/personnel/${a.personnel_id}`} className="hover:underline underline-offset-2" title={nameOf(a)}>{nameOf(a)}</Link>
+                          <Link to={`/personnel/${a.personnel_id}`} className="hover:underline underline-offset-2" title={nameOf(a)}>{nameOf(a)}</Link> <AgencyChip name={agencyName(a.personnel_id)} />
                         </td>
                         <td className="px-1 py-0.5 text-muted-foreground truncate" title={a.role_label ?? undefined}>{roleEdit(a, l.id, "max-w-full")}</td>
                         <td className="px-2 py-1 overflow-hidden">
@@ -405,7 +408,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                   ))}
                   {isOpen && !search && open.map(([role, v]) => (
                     <tr key={`open-${role}`} className="border-t text-muted-foreground">
-                      <td colSpan={cols - 1} className="px-2 py-1 pl-7 italic">{role} — {v.needed - v.assigned} open{fmtRate(v.rate)}</td>
+                      <td colSpan={cols - 1} className="px-2 py-1 pl-7 italic">{role} — {v.needed - v.assigned} open{canWrite && fmtRate(v.rate)}</td>
                       <td className="px-1 py-1 text-right">
                         {canWrite && (
                           <Button size="sm" variant="outline" className="h-6 px-1.5 text-[11px]" onClick={() => setAssignFor({ locationId: l.id, role })}>Assign</Button>
