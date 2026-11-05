@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
-import { signatureTime } from '@/lib/documentSign';
+import { stampDocument, type SignField } from '@/lib/documentStamp';
+import { loadDocumentFields } from '@/lib/documentSignFields';
 import type { DocumentSignature } from '@/integrations/supabase/hooks/useDocumentSignatures';
 import type { ProjectDocument } from '@/integrations/supabase/hooks/useProjectDocuments';
 export async function signatureImageUrl(path: string) {
@@ -9,37 +10,33 @@ export async function signatureImageUrl(path: string) {
   if (error) throw error;
   return data.signedUrl;
 }
-export async function downloadSignedDocument(doc: ProjectDocument, signature: DocumentSignature, projectName: string) {
+export async function generateSignedDocument(doc: ProjectDocument, signature: DocumentSignature, projectName: string, shared?: { original: ArrayBuffer; fields: SignField[] }) {
   if (!signature.signature_url || !signature.signed_at) throw new Error('Signature is not available');
-  const { PDFDocument, StandardFonts } = await import('pdf-lib');
-  const [{ data: original, error }, imageUrl] = await Promise.all([supabase.storage.from('project-documents').download(doc.file_path), signatureImageUrl(signature.signature_url)]);
-  if (error || !original) throw error || new Error('PDF unavailable');
+  const [source, imageUrl] = await Promise.all([shared || signedDocumentSource(doc), signatureImageUrl(signature.signature_url)]);
   const response = await fetch(imageUrl);
   if (!response.ok) throw new Error('Signature image unavailable');
-  const pdf = await PDFDocument.load(await original.arrayBuffer());
-  const font = await pdf.embedFont(StandardFonts.Helvetica), bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const page = pdf.addPage([612, 792]);
-  // Standard PDF fonts cannot encode arbitrary Unicode; replace unsupported glyphs safely.
-  const printable = (text: string) => Array.from(text).map(char => { try { font.encodeText(char); return char; } catch { return '?'; } }).join('');
-  let y = 735;
-  const line = (text: string, heading = false) => {
-    const words = printable(text).split(/\s+/); let row = '';
-    for (const word of words) {
-      const next = row ? `${row} ${word}` : word;
-      if (font.widthOfTextAtSize(next, 11) > 500 && row) { page.drawText(row, { x: 50, y, size: 11, font: heading ? bold : font }); y -= 20; row = word; } else row = next;
-    }
-    page.drawText(row, { x: 50, y, size: 11, font: heading ? bold : font }); y -= 28;
-  };
-  line('Signature certificate', true);
-  line(`Document: ${doc.file_name}`); line(`Project: ${projectName}`);
-  line(`Signer: ${signature.sign_name || signature.name}`);
-  line(`Signed: ${signatureTime(signature.signed_at)}`);
-  if (signature.sign_lat != null && signature.sign_lng != null) line(`GPS: ${signature.sign_lat}, ${signature.sign_lng}`);
-  line(`Reference: ${signature.id}`);
-  const png = await pdf.embedPng(await response.arrayBuffer());
-  const size = png.scaleToFit(480, 180);
-  page.drawImage(png, { x: 50, y: y - size.height - 10, width: size.width, height: size.height });
-  const bytes = await pdf.save();
-  const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }));
-  const a = document.createElement('a'); a.href = url; a.download = `${doc.file_name.replace(/\.pdf$/i, '')}-${(signature.sign_name || signature.name).replace(/[^\p{L}\p{N} -]/gu, '')}-signed.pdf`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return stampDocument(source.original, await response.arrayBuffer(), source.fields, { name: signature.sign_name || signature.name, signedAt: signature.signed_at, documentName: doc.file_name, projectName, reference: signature.id, lat: signature.sign_lat, lng: signature.sign_lng });
+}
+async function signedDocumentSource(doc: ProjectDocument) {
+  const [{ data, error }, fields] = await Promise.all([supabase.storage.from('project-documents').download(doc.file_path), loadDocumentFields(doc.id)]);
+  if (error || !data) throw error || new Error('PDF unavailable');
+  return { original: await data.arrayBuffer(), fields };
+}
+const safeName = (name: string) => name.replace(/[^\p{L}\p{N} ._-]/gu, '').replace(/^\.+/, '').trim() || 'signer';
+function saveBlob(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+export async function downloadSignedDocument(doc: ProjectDocument, signature: DocumentSignature, projectName: string) {
+  const bytes = await generateSignedDocument(doc, signature, projectName);
+  saveBlob(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }), `${safeName(doc.file_name.replace(/\.pdf$/i, ''))}-${safeName(signature.sign_name || signature.name)}-signed.pdf`);
+}
+export async function downloadAllSignedDocuments(doc: ProjectDocument, rows: DocumentSignature[], projectName: string) {
+  const signed = rows.filter(r => r.status === 'signed');
+  if (signed.length < 2) return;
+  const [{ default: JSZip }, source] = await Promise.all([import('jszip'), signedDocumentSource(doc)]);
+  const zip = new JSZip();
+  // Sequential generation bounds memory; IDs avoid overwriting same-named signers.
+  for (const row of signed) zip.file(`${safeName(doc.file_name.replace(/\.pdf$/i, ''))}-${safeName(row.sign_name || row.name)}-${row.id}-signed.pdf`, await generateSignedDocument(doc, row, projectName, source));
+  saveBlob(await zip.generateAsync({ type: 'blob' }), `${safeName(doc.file_name.replace(/\.pdf$/i, ''))}-all-signed.zip`);
 }

@@ -6,12 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Download, Send } from 'lucide-react';
+import { Loader2, Download, Send, PenLine } from 'lucide-react';
 import { useSendDocumentSignatures, useSignatureRecipients, type DocumentSignature } from '@/integrations/supabase/hooks/useDocumentSignatures';
 import type { ProjectDocument } from '@/integrations/supabase/hooks/useProjectDocuments';
 import { signatureTime } from '@/lib/documentSign';
-import { signatureImageUrl, downloadSignedDocument } from '@/utils/signedDocumentExport';
+import { signatureImageUrl, downloadSignedDocument, downloadAllSignedDocuments } from '@/utils/signedDocumentExport';
 import { toast } from 'sonner';
+import { DocumentFieldPlacement } from './DocumentFieldPlacement';
 function SignatureThumbnail({ path }: { path: string }) {
   const { data } = useQuery({ queryKey: ['document-signature-image', path], queryFn: () => signatureImageUrl(path), staleTime: 50 * 60000 });
   return data ? <a href={data} target="_blank" rel="noopener noreferrer"><img loading="lazy" src={data} alt="Signature" className="w-20 h-10 object-contain border rounded" /></a> : null;
@@ -22,6 +23,8 @@ export function DocumentSignaturePanel({ doc, rows, projectName, canSend, canMan
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [results, setResults] = useState<{ personnel_id: string; status: string; reason?: string }[]>([]);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [placing, setPlacing] = useState(false);
+  const signedCount = rows.filter(r => r.status === 'signed').length;
   const send = useSendDocumentSignatures(doc.project_id);
   const { data: people = [], isLoading, error } = useSignatureRecipients(doc.project_id, doc.location_id, scope, search, picker);
   const pending = rows.filter(r => r.status === 'pending');
@@ -43,6 +46,8 @@ export function DocumentSignaturePanel({ doc, rows, projectName, canSend, canMan
     <div className="flex flex-wrap items-center gap-2">
       <Button variant="ghost" size="sm" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}><Badge variant="outline">Signatures {rows.filter(r => r.status === 'signed').length}/{rows.length}</Badge></Button>
       {canSend && <Button variant="outline" size="sm" onClick={() => { setPicker(true); setResults([]); }}><Send className="h-3.5 w-3.5 mr-1" />Request signatures</Button>}
+      {canManage && doc.file_type?.includes('pdf') && <Button variant="outline" size="sm" onClick={() => setPlacing(true)}><PenLine className="h-3.5 w-3.5 mr-1" />Place signature fields</Button>}
+      {canManage && signedCount >= 2 && <Button variant="outline" size="sm" disabled={downloading !== null} onClick={async () => { setDownloading('all'); try { await downloadAllSignedDocuments(doc, rows, projectName); } catch (e) { toast.error(e instanceof Error ? e.message : 'Download failed'); } finally { setDownloading(null); } }}>{downloading === 'all' ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}Download all signed (ZIP)</Button>}
     </div>
     {expanded && <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs text-muted-foreground">{pending.length} missing</span>{canSend && pending.length > 0 && <Button size="sm" variant="outline" disabled={send.isPending} onClick={() => sendTo(pending.map(r => r.personnel_id))}>Remind all pending</Button>}</div>
@@ -53,11 +58,12 @@ export function DocumentSignaturePanel({ doc, rows, projectName, canSend, canMan
         {row.signature_url && <SignatureThumbnail path={row.signature_url} />}
         <div className="flex gap-1 ml-auto">
           {canSend && row.status === 'pending' && <Button size="sm" variant="outline" disabled={send.isPending} onClick={() => sendTo([row.personnel_id])}>Remind</Button>}
-          {canManage && row.status === 'signed' && <Button size="sm" variant="outline" title="Download signed copy" disabled={downloading === row.id} onClick={async () => { setDownloading(row.id); try { await downloadSignedDocument(doc, row, projectName); } catch (e) { toast.error(e instanceof Error ? e.message : 'Download failed'); } finally { setDownloading(null); } }}>{downloading === row.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}<span className="ml-1">Signed copy</span></Button>}
+          {canManage && row.status === 'signed' && <Button size="sm" variant="outline" title="Download signed copy" disabled={downloading !== null} onClick={async () => { setDownloading(row.id); try { await downloadSignedDocument(doc, row, projectName); } catch (e) { toast.error(e instanceof Error ? e.message : 'Download failed'); } finally { setDownloading(null); } }}>{downloading === row.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}<span className="ml-1">Signed copy</span></Button>}
         </div>
       </div>)}
     </div>}
     {results.some(r => r.status === 'failed') && <div role="alert" className="text-xs text-destructive">{results.filter(r => r.status === 'failed').map(r => <p key={r.personnel_id}>{rows.find(p => p.personnel_id === r.personnel_id)?.name || people.find(p => p.id === r.personnel_id)?.name || 'Recipient'}: {r.reason}</p>)}</div>}
+    {placing && <DocumentFieldPlacement doc={doc} onClose={() => setPlacing(false)} />}
     <Dialog open={picker} onOpenChange={setPicker}><DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Request signatures</DialogTitle></DialogHeader>
       <p className="text-sm break-words">{doc.file_name}</p>
       <Tabs value={scope} onValueChange={setScope}><TabsList className="w-full">{doc.location_id && <TabsTrigger value="location" className="flex-1 px-2">This location</TabsTrigger>}<TabsTrigger value="project" className="flex-1 px-2">This project</TabsTrigger><TabsTrigger value="all" className="flex-1 px-2">All personnel</TabsTrigger></TabsList></Tabs>
