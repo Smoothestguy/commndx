@@ -2608,6 +2608,76 @@ export type Database = {
           },
         ]
       }
+      document_signatures: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          document_id: string
+          expires_at: string
+          id: string
+          personnel_id: string
+          sent_at: string | null
+          sign_lat: number | null
+          sign_lng: number | null
+          sign_name: string | null
+          signature_url: string | null
+          signed_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          document_id: string
+          expires_at?: string
+          id?: string
+          personnel_id: string
+          sent_at?: string | null
+          sign_lat?: number | null
+          sign_lng?: number | null
+          sign_name?: string | null
+          signature_url?: string | null
+          signed_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          document_id?: string
+          expires_at?: string
+          id?: string
+          personnel_id?: string
+          sent_at?: string | null
+          sign_lat?: number | null
+          sign_lng?: number | null
+          sign_name?: string | null
+          signature_url?: string | null
+          signed_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_signatures_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "project_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_signatures_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_signatures_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       emergency_contacts: {
         Row: {
           contact_name: string
@@ -6307,7 +6377,10 @@ export type Database = {
           file_size: number
           file_type: string
           id: string
+          location_id: string | null
+          notes: string | null
           project_id: string
+          requires_signature: boolean
           uploaded_by: string | null
         }
         Insert: {
@@ -6317,7 +6390,10 @@ export type Database = {
           file_size: number
           file_type: string
           id?: string
+          location_id?: string | null
+          notes?: string | null
           project_id: string
+          requires_signature?: boolean
           uploaded_by?: string | null
         }
         Update: {
@@ -6327,10 +6403,20 @@ export type Database = {
           file_size?: number
           file_type?: string
           id?: string
+          location_id?: string | null
+          notes?: string | null
           project_id?: string
+          requires_signature?: boolean
           uploaded_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "project_documents_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_documents_project_id_fkey"
             columns: ["project_id"]
