@@ -29,7 +29,7 @@ export function SigninSheetsPanel({ doc, projectName, initialSheet }: { doc: Pro
   const { data: locations = [] } = useProjectLocations(doc.project_id);
   const [selected, setSelected] = useState<string[]>(doc.location_ids?.length ? doc.location_ids : doc.location_id ? [doc.location_id] : []);
   const qc = useQueryClient();
-  useEffect(() => { if (initialSheet) { setSelected([initialSheet.location]); setFrom(initialSheet.day); setTo(initialSheet.day); setOpen(true); } }, [initialSheet]);
+  useEffect(() => { if (initialSheet) { setSelected([initialSheet.location]); setFrom(initialSheet.day); setTo(initialSheet.day); setOpen(true); } }, [initialSheet?.location, initialSheet?.day]);
   const validRange = !!from && !!to && from <= to && Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`) <= 366 * 86400000;
   const { data: stays = [], isLoading, error } = useQuery({ queryKey: ['signin-sheet-stays', doc.project_id, from, to], enabled: open && validRange, queryFn: () => loadSheetStays(doc.project_id, locations, from, to) });
   const { data: savedDays = [], error: savedError } = useSheetDays(locations.map(l => l.id), from, to, open && validRange);

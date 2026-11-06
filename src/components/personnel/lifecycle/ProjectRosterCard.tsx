@@ -1,3 +1,4 @@
+import { NonBillableChip } from '@/components/personnel/NonBillableChip';
 import { useProjectAgencies } from "@/hooks/useProjectAgencies";
 import { AgencyChip } from "@/components/personnel/AgencyChip";
 import { PersonnelBadgeActions } from '@/components/personnel/PersonnelBadgeActions';
@@ -22,7 +23,7 @@ const money = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDi
 const nm = (r: RosterRow) => [r.first_name, r.last_name].filter(Boolean).join(" ") || "Unknown";
 
 export function ProjectRosterCard({ projectId }: { projectId: string }) {
-  const { agencyName } = useProjectAgencies(projectId);
+  const { agencyName, nonBillableByPerson } = useProjectAgencies(projectId);
   const { isAdmin, isManager } = useUserRole();
   const showCosts = isAdmin || isManager;
   const { data: project } = useProject(projectId);
@@ -44,13 +45,13 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
 
   const totals = useMemo(() => {
     const hours = activated.reduce((a, r) => a + r.hours, 0);
-    const labor = activated.reduce((a, r) => a + (r.laborCost ?? 0), 0);
-    const laborMissing = activated.filter((r) => r.hours > 0 && r.laborCost == null).length;
+    const labor = activated.reduce((a, r) => a + (nonBillableByPerson[r.personnel_id] === false ? r.laborCost ?? 0 : 0), 0);
+    const laborMissing = activated.filter((r) => nonBillableByPerson[r.personnel_id] === false && r.hours > 0 && r.laborCost == null).length;
     const standbyDays = standby.reduce((a, r) => a + r.days, 0);
-    const standbyAccrued = standbyRate != null ? standbyDays * standbyRate : 0;
+    const standbyAccrued = standbyRate != null ? standby.filter(r => nonBillableByPerson[r.personnel_id] === false).reduce((a, r) => a + r.days, 0) * standbyRate : 0;
     const exp = expenses.reduce((a, e) => a + e.amount, 0);
     return { hours, labor, laborMissing, standbyDays, standbyAccrued, exp, grand: labor + standbyAccrued + exp };
-  }, [activated, standby, standbyRate, expenses]);
+  }, [activated, standby, standbyRate, expenses, nonBillableByPerson]);
 
   const toggle = (id: string) => setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
@@ -59,11 +60,11 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
       {showCosts && <Checkbox aria-label={`Select badge for ${nm(r)}`} checked={badgeSelection.includes(r.personnel_id)} onCheckedChange={checked => setBadgeSelection(ids => checked ? [...ids, r.personnel_id] : ids.filter(id => id !== r.personnel_id))} />}
       {showCosts && r.status === "standby" && <Checkbox checked={sel.includes(r.personnel_id)} onCheckedChange={() => toggle(r.personnel_id)} aria-label="Select" />}
       <div className="min-w-0 flex-1">
-        <div className="font-medium text-sm truncate">{nm(r)} <AgencyChip name={agencyName(r.personnel_id)} /></div>
+        <div className="font-medium text-sm truncate">{nm(r)} <AgencyChip name={agencyName(r.personnel_id)} /> <NonBillableChip value={nonBillableByPerson[r.personnel_id]} agency={agencyName(r.personnel_id)} /></div>
         <div className="text-xs text-muted-foreground">
           since {r.effective_at ? format(new Date(r.effective_at), "MMM d") : "—"} · {r.days}d
-          {showCosts && r.status === "standby" && (standbyRate != null ? <> · accrued {money(r.days * standbyRate)}</> : <> · set standby rate</>)}
-          {r.status === "activated" && <> · {r.hours.toFixed(1)}h{showCosts && <> · {r.laborCost != null ? money(r.laborCost) : "no rate"}</>}</>}
+          {showCosts && nonBillableByPerson[r.personnel_id] === false && r.status === "standby" && (standbyRate != null ? <> · accrued {money(r.days * standbyRate)}</> : <> · set standby rate</>)}
+          {r.status === "activated" && <> · {r.hours.toFixed(1)}h{showCosts && <> · {nonBillableByPerson[r.personnel_id] ? money(0) : r.laborCost != null ? money(r.laborCost) : "no rate"}</>}</>}
         </div>
       </div>
       <PersonnelBadgeActions personnelId={r.personnel_id} compact />

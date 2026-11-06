@@ -31,6 +31,7 @@ export interface PersonnelRowData {
   phone: string | null;
   city: string | null;
   state: string | null;
+  nonBillable?: boolean;
   payRate: number | null;
   billRate: number | null;
   rateBracket: string | null;

@@ -1,3 +1,4 @@
+import { DailyTimesheetPanel } from '@/components/signin/DailyTimesheetPanel';
 import { useProjectAgencies } from "@/hooks/useProjectAgencies";
 import { useDeploymentHours } from '@/hooks/useDeploymentHours';
 import { routeMiles } from '@/lib/deploymentFlow';
@@ -787,6 +788,7 @@ function SummaryStrip({ locations, crews, from, to, mileageRate, canEdit }: {
   locations: ProjectLocation[]; crews: Crew[]; from: string; to: string; mileageRate: number | null; canEdit: boolean;
 }) {
   const locIds = locations.map((l) => l.id);
+  const billingPeople = useProjectAgencies(locations[0]?.project_id || '');
   const {data:entries=[]}=useDeploymentHours(locations[0]?.project_id,from,to);
   const { data: miles = [] } = useCrewMileage(crews.map((c) => c.id), from, to);
   const { data: rl } = useRoleLabels(locIds, crews);
@@ -800,7 +802,7 @@ function SummaryStrip({ locations, crews, from, to, mileageRate, canEdit }: {
       if (Number(a.hours)>0) personDays.add(`${a.personnel_id}|${a.entry_date}`);
       const h = Number(a.hours) || 0;
       hours += h;
-      if (h > 0) {
+      if (h > 0 && a.billable !== false && a.personnel_id && billingPeople.nonBillableByPerson[a.personnel_id] === false) {
         const role = a.personnel_id ? rl?.roleByPerson[a.personnel_id] : undefined;
         const rate = role ? rl?.rates[`${a.location_id}|${role}`] : undefined;
         if (rate != null) laborBill += h * rate; else missingRate++;
@@ -809,7 +811,7 @@ function SummaryStrip({ locations, crews, from, to, mileageRate, canEdit }: {
     const totalMiles = miles.reduce((sum, m) => sum + (Number(m.miles) || 0), 0);
     const mileBill = mileageRate != null ? totalMiles * mileageRate : 0;
     return { personDays: personDays.size, hours, totalMiles, missingRate, billable: laborBill + mileBill };
-  }, [entries, miles, rl, mileageRate]);
+  }, [entries, miles, rl, mileageRate, billingPeople.data]);
 
   const Item = ({ label, value }: { label: string; value: string }) => (
     <div className="flex-1 min-w-[7rem] border rounded-md px-3 py-2">
@@ -1340,9 +1342,9 @@ export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
       </div>
       {canEdit && <DeploymentAlerts projectId={projectId} locations={locations} onView={view => { setAlertView(s => ({view,key:s.key+1})); setTimeout(() => document.getElementById('deployment-visits')?.scrollIntoView({behavior:'smooth'}), 0); }} />}
       <ProjectRosterCard projectId={projectId} />
-      <SigninStatusBoard projectId={projectId} locations={locations} onSelect={(location, day, document) => { const doc = documents.find(d => d.is_signin_template && (d.id === document || !document && (d.location_ids?.includes(location) || d.location_id === location))); if (!doc) { toast.error('Enable a sign-in template for this location first'); return; } setSheetSelection({ doc: doc.id, location, day }); }} />
+      <SigninStatusBoard projectId={projectId} locations={locations} onSelect={(location, day) => setSheetSelection({ doc: '', location, day })} />
       {canEdit && <ReusableSigninPicker projectId={projectId} />}
-      {documents.some(d => d.is_signin_template) && <section className="space-y-2"><h3 className="text-sm font-semibold">Customer sign-in sheets</h3>{documents.filter(d => d.is_signin_template).map(doc => <div key={doc.id}><p className="text-sm font-medium">{doc.file_name}</p><SigninSheetsPanel doc={doc} projectName={project?.name || 'Project'} initialSheet={sheetSelection?.doc === doc.id ? sheetSelection : undefined} /></div>)}</section>}
+      <section className="space-y-2"><h3 className="text-sm font-semibold">Customer sign-in sheets</h3><DailyTimesheetPanel projectId={projectId} projectName={project?.name || 'Project'} initialSheet={sheetSelection} /></section>
       <CrewsSection projectId={projectId} crews={crews} canEdit={canEdit} />
       <div id="deployment-visits"><VisitsCard key={alertView.key} defaultView={alertView.view} projectId={projectId} locations={locations} crews={crews} from={r.from} to={r.to} canEdit={canEdit} /></div>
       <MileageCard crews={crews} locations={locations} from={r.from} to={r.to} mileageRate={mileageRate} canEdit={canEdit} />

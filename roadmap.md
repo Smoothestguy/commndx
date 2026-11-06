@@ -1,8 +1,9 @@
 # Daily timesheets and non-billable personnel
-- [ ] Built-in location/day customer PDF, template precedence and existing private approval/lock flow.
-- [ ] Non-billable editor/labels and money exclusions while retaining attendance and agency hours.
-- [ ] Manager quick-add/assignment with optional text offer and no-phone guidance for existing Patriot personnel.
-- [ ] Focused rule tests, authenticated browser verification and requested TypeScript check; no migrations.
+- [x] Built-in location/day customer PDF, linked-template precedence and private approval/lock flow; live populated location PDF downloaded and isolated template-free approval/hash/storage readback verified. Employee signature/footer rendering inspected with synthetic evidence.
+- [x] Non-billable editor/labels and money exclusions while retaining attendance and agency hours; distinct from non-billable rate brackets.
+- [x] Manager quick-add/assignment with optional text offer and no-phone guidance; live no-phone/non-billable and phone-supplied offer tested without sending. 390px form inspected; test project archived and personnel inactive, historical approval retained.
+- [x] 31 focused tests, authenticated admin browser verification, requested TypeScript check and healthy preview; no migrations or cron changes. Separate manager login and actual Safari not exercised.
+- [ ] Patriot roster/vendor correction awaits the intended location/vendor identification: live four people are active/non-billable on Auburndale in Hurricane Personnel, with null vendor_id; no Patriot vendor row exists. Do not duplicate or move these records without clarification.
 
 # Kiosk privacy, badges and agency sign-up
 - [x] Search-default, explicit roster/selfie and badge modes with URL mode, bounded live search, selected short-lived profile photos, private token-scoped media, server-enforced selfie prerequisite and shift/geofence safeguards. Private project-documents stores evidence because field-captures is public.

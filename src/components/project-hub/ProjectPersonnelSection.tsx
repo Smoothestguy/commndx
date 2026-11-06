@@ -1,3 +1,4 @@
+import { NonBillableChip } from '@/components/personnel/NonBillableChip';
 import { PersonnelStatusButton } from "@/components/personnel/lifecycle/PersonnelStatusButton";
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
@@ -670,7 +671,7 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                             <div className="min-w-0 cursor-pointer" onClick={() => !isUnassigned && navigate(`/personnel/${person.personnelId}`)}>
                               <div className="flex items-center gap-2">
                                 <p className="font-medium truncate">
-                                  {person.name}
+                                  {person.name} <NonBillableChip value={person.nonBillable} />
                                 </p>
                                 {person.onboardingStatus === "completed" && (
                                   <Badge className="bg-success/10 text-success border-success/20 text-xs">
@@ -849,7 +850,7 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                                   <div>
                                     <div className="flex items-center gap-2">
                                       <p className="font-medium">
-                                        {person.name}
+                                        {person.name} <NonBillableChip value={person.nonBillable} />
                                       </p>
                                       {person.onboardingStatus === "completed" && (
                                         <Badge className="bg-success/10 text-success border-success/20 text-xs">

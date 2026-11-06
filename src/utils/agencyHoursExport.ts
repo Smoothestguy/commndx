@@ -2,7 +2,7 @@ import type { TimesheetEntry } from '@/integrations/supabase/hooks/useTimekeepin
 import { chicagoTime, dayLabel, weekDays } from '@/lib/shifts';
 const r2=(n:number)=>Math.round(n*100)/100;
 /** Deliberately allow-listed hours-only workbook; never spread source objects into rows. */
-export async function buildAgencyHoursWorkbook(vendorId:string,weekStart:string,entries:TimesheetEntry[],vendorByPerson:Record<string,string>) {
+export async function buildAgencyHoursWorkbook(vendorId:string,weekStart:string,entries:TimesheetEntry[],vendorByPerson:Record<string,string | null>) {
  if(!vendorId || vendorId==='all')throw new Error('Choose an agency');
  const days=weekDays(weekStart);
  const selected=entries.filter(e=>vendorByPerson[e.personnel_id]===vendorId&&days.includes(e.date));
@@ -21,7 +21,7 @@ export async function buildAgencyHoursWorkbook(vendorId:string,weekStart:string,
  [28,28,14,10,12,12,12,18].forEach((w,i)=>detail.getColumn(i+1).width=w);detail.getColumn(7).numFmt='0.00';
  return wb;
 }
-export async function exportAgencyHours(vendor:{id:string;name:string},weekStart:string,entries:TimesheetEntry[],vendorByPerson:Record<string,string>){
+export async function exportAgencyHours(vendor:{id:string;name:string},weekStart:string,entries:TimesheetEntry[],vendorByPerson:Record<string,string | null>){
  const wb=await buildAgencyHoursWorkbook(vendor.id,weekStart,entries,vendorByPerson);
  const bytes=await wb.xlsx.writeBuffer();const url=URL.createObjectURL(new Blob([bytes as ArrayBuffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
  const a=document.createElement('a');a.href=url;a.download=`${vendor.name.replace(/[^\p{L}\p{N} -]/gu,'').trim().replace(/\s+/g,'-')||'agency'}-hours-${weekStart}.xlsx`;a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);

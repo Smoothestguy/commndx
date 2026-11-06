@@ -73,6 +73,7 @@ function getPersonnelName(entry: TimeEntryWithDetails): string {
 
 // Get hourly rate from entry
 function getHourlyRate(entry: TimeEntryWithDetails): number | null {
+  if (entry.personnel?.non_billable) return 0;
   if (entry.personnel?.hourly_rate) return entry.personnel.hourly_rate;
   if (entry.profiles?.hourly_rate) return entry.profiles.hourly_rate;
   return null;

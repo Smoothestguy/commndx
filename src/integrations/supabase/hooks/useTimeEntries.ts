@@ -40,6 +40,7 @@ export interface TimeEntryWithDetails extends TimeEntry {
     hourly_rate: number | null;
   } | null;
   personnel?: {
+    non_billable?: boolean;
     first_name: string;
     last_name: string;
     hourly_rate: number | null;
@@ -257,7 +258,7 @@ export const useAdminTimeEntriesByWeek = (
         .from("time_entries")
         .select(`
           *,
-          personnel:personnel_id(id, first_name, last_name, hourly_rate, photo_url, address, city, state, zip, ssn_last_four),
+          personnel:personnel_id(non_billable, id, first_name, last_name, hourly_rate, photo_url, address, city, state, zip, ssn_last_four),
           projects:project_id(id, name)
         `)
         .gte("entry_date", startDateStr)
@@ -524,7 +525,7 @@ export const useAllTimeEntries = (
         .select(`
           *,
           profiles:user_id(first_name, last_name, email, hourly_rate),
-          personnel:personnel_id(first_name, last_name, hourly_rate, pay_rate, bill_rate, photo_url, everify_status, everify_expiry, work_auth_expiry, i9_completed_at),
+          personnel:personnel_id(non_billable, first_name, last_name, hourly_rate, pay_rate, bill_rate, photo_url, everify_status, everify_expiry, work_auth_expiry, i9_completed_at),
           projects:project_id(
             name,
             customer_id,

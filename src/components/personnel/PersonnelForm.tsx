@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAddPersonnel, useUpdatePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { PhotoUpload } from "./PhotoUpload";
+import { Switch } from '@/components/ui/switch';
 import type { Database } from "@/integrations/supabase/types";
 
 type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
@@ -39,6 +40,7 @@ const personnelSchema = z.object({
   notes: z.string().optional(),
   vendor_id: z.string().optional(),
   portal_required: z.boolean().optional(),
+  non_billable: z.boolean().default(false),
 });
 
 type PersonnelFormData = z.infer<typeof personnelSchema>;
@@ -100,6 +102,7 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
       notes: personnel?.notes || "",
       vendor_id: (personnel as any)?.vendor_id || defaultVendorId || "",
       portal_required: (personnel as any)?.portal_required ?? true,
+      non_billable: personnel?.non_billable ?? false,
     },
   });
 
@@ -388,6 +391,7 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
               </div>
 
               {/* Show warning if bill_rate <= pay_rate */}
+              <div className="flex items-center justify-between gap-3"><Label htmlFor="non-billable">Non-billable</Label><Switch id="non-billable" checked={watch('non_billable')} onCheckedChange={value => setValue('non_billable', value)} /></div>
               {watch("bill_rate") !== undefined && watch("pay_rate") !== undefined && 
                (watch("bill_rate") ?? 0) > 0 && (watch("pay_rate") ?? 0) > 0 && 
                (watch("bill_rate") ?? 0) <= (watch("pay_rate") ?? 0) && (

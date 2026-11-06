@@ -1,0 +1,15 @@
+import { it, expect } from 'bun:test';
+import { PDFDocument } from 'pdf-lib';
+import { dailyPeople, generateDailyTimesheet } from './dailyTimesheet';
+import { personnelAmount, quickAddEmail } from './personnelBilling';
+import { rowsForDay } from './signinSheets';
+import { buildAgencyHoursWorkbook } from '../utils/agencyHoursExport';
+const row = { id: 'one', personnelId: 'patrick', locationId: 'auburndale', name: 'Patrick Ricci', position: 'General Labor', day: '2026-11-05', inAt: '2026-11-05T13:00:00Z', outAt: '2026-11-05T17:00:00Z', hours: 4, signature: null, offsite: false, non_billable: true };
+it('includes customer non-billable people in daily rows', () => { expect(dailyPeople([row])[0].name).toBe('Patrick Ricci'); expect(dailyPeople([row])[0].hours).toBe(4); });
+it('uses one person row with summed separate worked stays', () => { const people = dailyPeople([row, { ...row, id: 'two', inAt: '2026-11-05T18:00:00Z', outAt: '2026-11-05T22:00:00Z' }]); expect(people.length).toBe(1); expect(people[0].hours).toBe(8); expect(people[0].outAt).toBe('2026-11-05T22:00:00Z'); });
+it('keeps an open stay open after grouping', () => { expect(dailyPeople([row, { ...row, id: 'two', outAt: null, hours: null }])[0].outAt).toBeNull(); });
+it('uses local days without changing payroll dates', () => { expect(rowsForDay([{ ...row, inAt: '2026-11-05T04:00:00Z', outAt: '2026-11-05T06:00:00Z' }], 'auburndale', '2026-11-04', 'America/New_York')[0].hours).toBe(1); });
+it('personnel non-billable excludes all dollar estimates', () => { expect(personnelAmount(8 * 38, true)).toBe(0); expect(personnelAmount(8 * 38, false)).toBe(304); });
+it('keeps non-billable people in the hours-only agency workbook', async () => { const wb = await buildAgencyHoursWorkbook('patriot', '2026-11-02', [{ id: 'e', personnel_id: 'patrick', name: 'Patrick Ricci', location_id: 'auburndale', location_name: 'Auburndale', visit_id: 'v', in_at: row.inAt, out_at: row.outAt, date: row.day, shift: 'day', hours: 4, open: false, source: 'visit', non_billable: true }], { patrick: 'patriot' }); expect(wb.getWorksheet('Timesheet').getRow(2).getCell(9).value).toBe(4); expect(wb.worksheets.length).toBe(2); });
+it('quick-add generates the required placeholder address', () => { expect(quickAddEmail('Jane', 'Doe', 123)).toBe('jane.doe.123@quickadd-placeholder.invalid'); });
+it('built-in PDF uses portrait letter and adds overflow pages', async () => { const bytes = await generateDailyTimesheet(Array.from({ length: 19 }, (_, i) => ({ ...row, personnelId: String(i) })), { day: row.day, zone: 'America/New_York', projectNumber: 'EM-5049-LTS-FCOCO', mission: 'Mission', location: 'Auburndale' }, async () => { throw new Error('not called'); }); const pdf = await PDFDocument.load(bytes); expect(pdf.getPageCount()).toBe(2); expect(pdf.getPage(0).getSize()).toEqual({ width: 612, height: 792 }); });

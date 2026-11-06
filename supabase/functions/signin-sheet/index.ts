@@ -4,7 +4,7 @@ import { z } from 'npm:zod@3';
 import { validSignaturePng } from '../_shared/signatureRules.ts';
 const schema = z.discriminatedUnion('action', [
  z.object({ action:z.literal('reopen'), sheet_day_id:z.string().uuid(), reason:z.string().trim().min(1).max(1000) }),
- z.object({ action:z.literal('approve'), location_id:z.string().uuid(), document_id:z.string().uuid(), sheet_date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/), name:z.string().trim().min(1).max(150), signature:z.string().max(280000), pdf:z.string().max(18000000), hash:z.string().regex(/^[a-f0-9]{64}$/), at:z.string().datetime(), lat:z.number().min(-90).max(90).nullable(), lng:z.number().min(-180).max(180).nullable() })
+ z.object({ action:z.literal('approve'), location_id:z.string().uuid(), document_id:z.string().uuid().nullable(), sheet_date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/), name:z.string().trim().min(1).max(150), signature:z.string().max(280000), pdf:z.string().max(18000000), hash:z.string().regex(/^[a-f0-9]{64}$/), at:z.string().datetime(), lat:z.number().min(-90).max(90).nullable(), lng:z.number().min(-180).max(180).nullable() })
 ]);
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsHeaders,'Content-Type':'application/json','Cache-Control':'no-store'}});
 const decode=(s:string)=>Uint8Array.from(atob(s.replace(/^data:image\/png;base64,/,'')),c=>c.charCodeAt(0));
@@ -24,10 +24,18 @@ Deno.serve(async req=>{
    if(oe||!opened){await db.from('signin_sheet_versions').delete().eq('id',reserved.id);return json({error:'Sheet changed; refresh and retry'},409);} return json({ok:true,version});
   }
   if(Math.abs(Date.now()-Date.parse(v.at))>15*60000)return json({error:'Approval time expired; sign again'},400);
-  const [{data:location,error:le},{data:doc,error:de}]=await Promise.all([db.from('project_locations').select('id,project_id,lat,lng,geofence_radius_m').eq('id',v.location_id).single(),db.from('project_documents').select('id,project_id,is_signin_template,location_id').eq('id',v.document_id).single()]); if(le||de)throw le||de;
-  if(!doc.is_signin_template||doc.project_id!==location.project_id)return json({error:'Template is not part of this project'},403);
-  const {data:links,error:linkError}=await db.from('document_locations').select('location_id').eq('document_id',doc.id); if(linkError)throw linkError;
-  if(!links?.some(l=>l.location_id===location.id)&&doc.location_id!==location.id)return json({error:'Link the template to this location first'},400);
+  const {data:location,error:le}=await db.from('project_locations').select('id,project_id,lat,lng,geofence_radius_m').eq('id',v.location_id).single(); if(le)throw le;
+  if(v.document_id) {
+   const {data:doc,error:de}=await db.from('project_documents').select('id,project_id,is_signin_template,location_id').eq('id',v.document_id).single();if(de)throw de;
+   if(!doc.is_signin_template||doc.project_id!==location.project_id)return json({error:'Template is not part of this project'},403);
+   const {data:links,error:linkError}=await db.from('document_locations').select('location_id').eq('document_id',doc.id);if(linkError)throw linkError;
+   if(!links?.some(l=>l.location_id===location.id)&&doc.location_id!==location.id)return json({error:'Link the template to this location first'},400);
+  } else {
+   const {data:templates,error:te}=await db.from('project_documents').select('id,location_id').eq('project_id',location.project_id).eq('is_signin_template',true);if(te)throw te;
+   const templateIds=(templates||[]).map(t=>t.id);
+   const linked=templateIds.length?await db.from('document_locations').select('document_id').eq('location_id',location.id).in('document_id',templateIds):{data:[],error:null};if(linked.error)throw linked.error;
+   if(templates?.some(t=>t.location_id===location.id)||linked.data?.length)return json({error:'Use the uploaded sign-in template for this location'},409);
+  }
   const pdf=decode(v.pdf),signature=decode(v.signature); if(!validSignaturePng(signature)||new TextDecoder().decode(pdf.slice(0,5))!=='%PDF-')return json({error:'Invalid PDF or signature'},400);
   const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',pdf)),b=>b.toString(16).padStart(2,'0')).join(''); if(hash!==v.hash)return json({error:'PDF integrity check failed'},400);
   const {error:ie}=await db.from('signin_sheet_days').upsert({location_id:v.location_id,sheet_date:v.sheet_date,document_id:v.document_id},{onConflict:'location_id,sheet_date',ignoreDuplicates:true});if(ie)throw ie;
