@@ -12,8 +12,9 @@ import { SignaturePad } from '@/components/documents/SignaturePad';
 import { EarlyCheckIn } from '@/components/signin/EarlyCheckIn';
 import { ShiftExtensionRequest } from '@/components/signin/ShiftExtensionRequest';
 import { FunctionsHttpError } from '@supabase/supabase-js';
+import { agencyLogo } from '@/lib/agencyPortal';
 
-type Info = { valid: boolean; reason?: string; first_name?: string; location_name?: string; address?: string | null; report_at?: string | null; on_site_since?: string | null; timezone?: string };
+type Info = { valid: boolean; reason?: string; first_name?: string; location_name?: string; address?: string | null; report_at?: string | null; on_site_since?: string | null; timezone?: string; agency_name?: string | null; agency_logo_url?: string | null };
 type Done = { action: "in" | "out"; at: string; geo: boolean; offsite: boolean; early?: boolean } | null;
 type Rejection = { reason: string; distance_m?: number; radius_m?: number; in_at?: string; out_at?: string; timezone?: string; shift_start?: string; early_minutes?: number };
 const OFFICE_PHONE = "(281) 748-3832";
@@ -40,6 +41,7 @@ export default function SitePunch() {
   const [done, setDone] = useState<Done>(null);
   const [pending, setPending] = useState<PunchIntent | null>(() => token ? readPunch(token) : null);
   const [error, setError] = useState<string | null>(null);
+  const [logoFailed,setLogoFailed]=useState(false);
   const tapping = useRef(false);
   const blocked = useRef(false);
   const [rejection, setRejection] = useState<Rejection | null>(null);
@@ -177,7 +179,7 @@ export default function SitePunch() {
     <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-5">
       <ForceDarkTheme />
       {signing ? <div className="w-full max-w-md h-[85dvh]"><SignaturePad name={info?.first_name||'You'} required description="Sign to check in" saving={busy} onSkip={()=>{}} onSave={async blob=>{const intent=signing;setBusy(true);try{const base64=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob);});savePunch({...intent,signatureBase64:base64});setSigning(null);setPending(readPunch(intent.token));blocked.current=false;await flush();}catch{setError('Could not save your signature. Please try again.');}finally{setBusy(false);}}}/></div> : <div className="w-full max-w-md text-center space-y-6">
-        <p className="text-sm uppercase tracking-widest text-muted-foreground">Fairfield Response Group</p>
+        {info?.valid&&info.agency_name?<div className="space-y-2">{agencyLogo.parse(info.agency_logo_url)&&!logoFailed?<img src={agencyLogo.parse(info.agency_logo_url)||undefined} alt={`${info.agency_name} logo`} referrerPolicy="no-referrer" onError={()=>setLogoFailed(true)} className="max-h-12 max-w-56 object-contain mx-auto"/>:<p className="text-xl font-semibold">{info.agency_name}</p>}<p className="text-xs text-muted-foreground">for Fairfield Response Group</p></div>:<p className="text-sm uppercase tracking-widest text-muted-foreground">Fairfield Response Group</p>}
         {pending && !rejection && <div role="status" className="border-2 border-warning bg-warning/15 text-warning rounded-md p-5 space-y-3">
           <WifiOff className="h-12 w-12 mx-auto" />
           <h1 className="text-2xl font-bold">{pending.committed?'Signature pending — check-in recorded':error?'Punch not accepted — saved for review':navigator.onLine?'Sending saved punch':'No signal — punch saved'} {t(pending.at)}</h1>

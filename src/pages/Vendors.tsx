@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { AgencyPortalLinks } from '@/components/vendors/AgencyPortalLinks';
+import { VendorLogoUpload } from '@/components/vendors/VendorLogoUpload';
 import { useNavigate, Link } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -381,6 +383,7 @@ const Vendors = () => {
       filterable: false,
       render: (item) => (
         <div className="flex items-center gap-2">
+          <AgencyPortalLinks vendorId={item.id} compact/>
           {item.onboarding_status !== "completed" && (
             <Button
               variant="ghost"
@@ -889,6 +892,7 @@ const Vendors = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Basic Information */}
               <div className="space-y-4">
+                {editingVendor&&<VendorLogoUpload vendorId={editingVendor.id} logoUrl={editingVendor.logo_url}/>}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="name">Vendor Name *</Label>

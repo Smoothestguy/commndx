@@ -8,6 +8,7 @@ export type VendorType = "contractor" | "personnel" | "supplier";
 
 export interface Vendor {
   id: string;
+  logo_url?: string | null;
   name: string;
   email: string;
   phone: string | null;

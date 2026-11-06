@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { VendorHiringLink } from '@/components/vendors/VendorHiringLink';
+import { VendorLogoUpload } from '@/components/vendors/VendorLogoUpload';
+import { AgencyPortalLinks } from '@/components/vendors/AgencyPortalLinks';
 import { useParams, useNavigate } from "react-router-dom";
 import { SendVendorOnboardingDialog } from "@/components/vendors/SendVendorOnboardingDialog";
 import { DirectDepositView } from "@/components/personnel/DirectDepositView";
@@ -131,7 +133,8 @@ export default function VendorDetail() {
     >
       <div className="space-y-6">
         {/* Header Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <AgencyPortalLinks vendorId={vendor.id}/>
           <Button variant="outline" onClick={() => navigate("/vendors")}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Vendors
@@ -149,6 +152,7 @@ export default function VendorDetail() {
         </div>
         {/* Basic Information Card */}
         <VendorHiringLink vendorId={vendor.id} />
+        <VendorLogoUpload vendorId={vendor.id} logoUrl={vendor.logo_url}/>
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
