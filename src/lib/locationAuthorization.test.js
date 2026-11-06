@@ -1,0 +1,11 @@
+import {it,expect} from 'bun:test';
+import {taskOrderDelta,authorizedTotal,authorizationGap} from './locationAuthorization';
+it('initial quantities add five operators',()=>expect(taskOrderDelta('initial',5)).toBe(5));
+it('increases add two pumps',()=>expect(taskOrderDelta('increase',2)).toBe(2));
+it('decreases remove positions',()=>expect(taskOrderDelta('decrease',3)).toBe(-3));
+it('demobilization removes assets',()=>expect(taskOrderDelta('demobilization',2)).toBe(-2));
+it('rejects zero lines',()=>expect(()=>taskOrderDelta('initial',0)).toThrow());
+it('positions exclude assets from PDF authorization totals',()=>expect(authorizedTotal([{line_kind:'position',label:'Operator',authorized:5},{line_kind:'asset',label:'Pump',authorized:2}],'position')).toBe(5));
+it('three assigned against five authorized is two under',()=>expect(authorizationGap(3,5)).toEqual({under:2,over:0}));
+it('six assigned against five authorized is one over',()=>expect(authorizationGap(6,5)).toEqual({under:0,over:1}));
+it('equal staffing is balanced',()=>expect(authorizationGap(5,5)).toEqual({under:0,over:0}));

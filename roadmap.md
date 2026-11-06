@@ -1,3 +1,8 @@
+# Location customer task orders
+- [ ] Task-order creation/history/documents, as-of authorization and requirement sync using live schema only.
+- [ ] Authorized/actual indicators, Deployment and daily in-app alerts (no SMS), replacement action.
+- [ ] Daily PDF authorization header, focused rules tests, TypeScript and authenticated browser verification.
+
 # Join approval correction
 - [x] Pending-only bilingual confirmation; public result parser discards unexpected punch/identity fields and requester never sees a punch link.
 - [x] Shared project-batched staff approval lists in Deployment and location/grid staffing headers, matched directory names, live approve/deny RPCs, roster invalidation and server-derived SMS action. Existing message IDs reserve one send per request; failed-text retries never reapprove and uncertain delivery is not automatically replayed.
