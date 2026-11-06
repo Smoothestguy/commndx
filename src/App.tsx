@@ -40,6 +40,7 @@ import CustomerDetail from "./pages/CustomerDetail";
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
 import ProjectJoin from './pages/ProjectJoin';
+import CustomerPortal from './pages/CustomerPortal';
 import FieldMode from "./pages/FieldMode";
 import Vendors from "./pages/Vendors";
 import VendorDetail from "./pages/VendorDetail";
@@ -262,6 +263,7 @@ const App = () => {
                     <Route path="/photo/:token" element={<PhotoRequest />} />
                     <Route path="/punch/:token" element={<SitePunch />} />
                     <Route path="/join/:token" element={<ProjectJoin />} />
+                    <Route path="/customer/:token" element={<CustomerPortal />} />
                     <Route path="/kiosk/:token" element={<Kiosk />} />
                     <Route path="/sign/:token" element={<DocumentSign />} />
                     <Route path="/quick-apply/:token" element={<QuickApply />} />
