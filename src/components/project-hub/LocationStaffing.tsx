@@ -262,7 +262,7 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
             if (projectId) autoMobilize(ids, projectId, `Assigned to ${locationName ?? "location"}`).then(invStatus).catch((e) => console.warn("auto-mobilize failed", e));
           }} />
       )}
-      <LogTimeDialog open={!!logFor} onOpenChange={v=>{if(!v)setLogFor(undefined);}} projectId={projectId || ''} personnelId={logFor}/>
+      <LogTimeDialog open={!!logFor} onOpenChange={v=>{if(!v)setLogFor(undefined);}} projectId={projectId || ''} personnelId={logFor} locationId={locationId}/>
       <AddExpenseDialog open={!!expenseFor} onOpenChange={v=>{if(!v)setExpenseFor(undefined);}} projectId={projectId} personnelId={expenseFor} lockProject/>
       <Dialog open={!!roleFor} onOpenChange={v=>{if(!v)setRoleFor(undefined);}}><DialogContent><DialogHeader><DialogTitle>Change role</DialogTitle></DialogHeader>{roleFor && <RoleSelect value={roleFor.role_label} canEdit={canWrite} priorityRoles={reqRoles} onChange={role_label=>setRole.mutate({id:roleFor.id,location_id:locationId,role_label})}/>}</DialogContent></Dialog>
       <SendSiteTextDialog open={!!textIds} onOpenChange={(o) => !o && setTextIds(null)} personnelIds={textIds ?? []} locationId={locationId} />
