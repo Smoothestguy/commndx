@@ -9,14 +9,15 @@ import { clearPunch, isNetworkError, readPunch, savePunch, withPunchLock, type P
 import { Textarea } from "@/components/ui/textarea";
 import { registerPunchOffline } from "@/lib/punchOffline";
 import { SignaturePad } from '@/components/documents/SignaturePad';
+import { LateCheckIn } from '@/components/signin/LateCheckIn';
 import { EarlyCheckIn } from '@/components/signin/EarlyCheckIn';
 import { ShiftExtensionRequest } from '@/components/signin/ShiftExtensionRequest';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { agencyLogo } from '@/lib/agencyPortal';
 
 type Info = { valid: boolean; reason?: string; first_name?: string; location_name?: string; address?: string | null; report_at?: string | null; on_site_since?: string | null; timezone?: string; agency_name?: string | null; agency_logo_url?: string | null };
-type Done = { action: "in" | "out"; at: string; geo: boolean; offsite: boolean; early?: boolean } | null;
-type Rejection = { reason: string; distance_m?: number; radius_m?: number; in_at?: string; out_at?: string; timezone?: string; shift_start?: string; early_minutes?: number };
+type Done = { action: "in" | "out"; at: string; geo: boolean; offsite: boolean; early?: boolean; lateMinutes?: number } | null;
+type Rejection = { reason: string; distance_m?: number; radius_m?: number; in_at?: string; out_at?: string; timezone?: string; shift_start?: string; early_minutes?: number; minutes_late?: number };
 const OFFICE_PHONE = "(281) 748-3832";
 const infoKey = (token: string) => `site-punch-info:${token}`;
 function cachedInfo(token: string): Info | null {
@@ -59,7 +60,7 @@ export default function SitePunch() {
     clearPunch(intent.token);
     setPending(null); setError(null);
     setRejection(null);
-    setDone({ action, at: intent.effectiveAt || intent.at, geo: intent.lat != null && intent.lng != null, offsite: !!intent.overrideReason, early: intent.earlyFlagged });
+    setDone({ action, at: intent.effectiveAt || intent.at, geo: intent.lat != null && intent.lng != null, offsite: !!intent.overrideReason, early: intent.earlyFlagged, lateMinutes: intent.lateMinutes });
     setInfo((i) => {
       const next = i ? { ...i, on_site_since: action === "in" ? intent.effectiveAt || intent.at : null } : i;
       if (next) { try { localStorage.setItem(infoKey(intent.token), JSON.stringify(next)); } catch { /* Best effort info cache. */ } }
@@ -99,16 +100,16 @@ export default function SitePunch() {
         const attempt = { ...intent, tries: intent.tries + 1 };
         savePunch(attempt); setPending(attempt);
         const { data, error } = await supabase.rpc("site_punch", {
-          p_token: token, p_lat: intent.lat ?? undefined, p_lng: intent.lng ?? undefined, p_at: intent.at, p_accuracy: intent.accuracy ?? undefined, p_override_reason: intent.overrideReason, p_early_reason: intent.earlyReason,
+          p_token: token, p_lat: intent.lat ?? undefined, p_lng: intent.lng ?? undefined, p_at: intent.at, p_accuracy: intent.accuracy ?? undefined, p_override_reason: intent.overrideReason, p_early_reason: intent.earlyReason, p_late_reason: intent.lateReason,
         });
         if (error) {
           if (!isNetworkError(error)) { blocked.current = true; setError("Punch not accepted — call the office. Your saved punch is kept. / Registro no aceptado; llama a la oficina. Se conserva el registro."); }
           return;
         }
-        const result = data as ({ ok?: boolean; action?: "in" | "out"; at?: string; early_flagged?: boolean } & Rejection) | null;
+        const result = data as ({ ok?: boolean; action?: "in" | "out"; at?: string; early_flagged?: boolean; late_minutes?: number; minutes_late?: number } & Rejection) | null;
         if (!result?.ok || !result.action) {
           blocked.current = true;
-          if (result && ['out_of_range', 'no_gps', 'already_signed_today', 'before_shift'].includes(result.reason)) {
+          if (result && ['out_of_range', 'no_gps', 'already_signed_today', 'before_shift', 'late'].includes(result.reason)) {
             setRejection(result); setError(null); savePunch({ ...intent, tries: 0 });
             if (result.reason === 'already_signed_today') {
               clearPunch(token); setPending(null);
@@ -120,7 +121,7 @@ export default function SitePunch() {
           setError("Punch not accepted — call the office. Your saved punch is kept. / Registro no aceptado; llama a la oficina. Se conserva el registro.");
           return;
         }
-        await finish({...intent,action:result.action,effectiveAt:result.at,earlyFlagged:result.early_flagged});
+        await finish({...intent,action:result.action,effectiveAt:result.at,earlyFlagged:result.early_flagged,lateMinutes:result.late_minutes??result.minutes_late});
       } catch (e) {
         if (!isNetworkError(e)) setError("Could not send the saved punch. / No se pudo enviar el registro guardado.");
       } finally { setBusy(false); }
@@ -200,6 +201,7 @@ export default function SitePunch() {
             <h1 className="text-3xl font-bold">{done.action === "in" ? "Checked in" : "Checked out"} {t(done.at)} ✓</h1>
             <p className="text-xl">{info.location_name}</p>
             <p className="text-xs text-muted-foreground">{done.geo ? "📍 location tagged" : "no GPS"}</p>
+            {!!done.lateMinutes && <p className="text-sm text-destructive">Marked {done.lateMinutes} min late</p>}
             {done.early && <p className="text-warning">Early check-in — pending supervisor approval</p>}
             {done.offsite && <p className="text-warning">Recorded as off-site — supervisor will review</p>}
             {done.action === "out" && <p className="text-lg text-muted-foreground">Total today shows on your supervisor's board.</p>}
@@ -215,7 +217,7 @@ export default function SitePunch() {
           </Button>}
           {onSite && token && <ShiftExtensionRequest token={token} />}
         </>}
-        {rejection?.reason === 'before_shift' ? <EarlyCheckIn rejection={rejection} timezone={rejection.timezone||info?.timezone} busy={busy} onSubmit={async reason => { if (!token || busy) return; const intent=readPunch(token); if (!intent) return; savePunch({...intent,earlyReason:reason,tries:0});setRejection(null);blocked.current=false;await flush(); }} /> : rejection && <div role="status" className={`rounded-md border-2 p-5 space-y-4 ${rejection.reason === 'already_signed_today' ? 'border-success text-success' : 'border-warning text-warning'}`}>
+        {rejection?.reason === 'late' ? <LateCheckIn rejection={rejection} timezone={rejection.timezone||info?.timezone} busy={busy} onSubmit={async reason => { if (!token || busy) return; const intent=readPunch(token); if (!intent) return; savePunch({...intent,lateReason:reason,tries:0});setRejection(null);blocked.current=false;await flush(); }} /> : rejection?.reason === 'before_shift' ? <EarlyCheckIn rejection={rejection} timezone={rejection.timezone||info?.timezone} busy={busy} onSubmit={async reason => { if (!token || busy) return; const intent=readPunch(token); if (!intent) return; savePunch({...intent,earlyReason:reason,tries:0});setRejection(null);blocked.current=false;await flush(); }} /> : rejection && <div role="status" className={`rounded-md border-2 p-5 space-y-4 ${rejection.reason === 'already_signed_today' ? 'border-success text-success' : 'border-warning text-warning'}`}>
           <h1 className="text-2xl font-bold">{rejection.reason === 'out_of_range' ? `You're ${Math.round(rejection.distance_m ?? 0)}m from ${info?.location_name || 'the site'} (allowed ${rejection.radius_m ?? 300}m)` : rejection.reason === 'no_gps' ? "Couldn't get your location" : 'Already signed in today at this site'}</h1>
           {rejection.reason === 'already_signed_today' ? <p>{rejection.in_at && `In ${t(rejection.in_at)}`} {rejection.out_at && `Out ${t(rejection.out_at)}`}</p> : overriding ? <>
             <Textarea aria-label="Off-site reason" placeholder="Reason (required)" value={overrideReason} maxLength={1000} onChange={e => setOverrideReason(e.target.value)} />

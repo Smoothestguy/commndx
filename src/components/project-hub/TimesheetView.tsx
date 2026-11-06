@@ -1,3 +1,7 @@
+import { useLateStays } from '@/hooks/useLateStays';
+import { localDay } from '@/lib/signinSheets';
+import { maxLate } from '@/lib/lateAttendance';
+import { LateBadge } from '@/components/signin/LateBadge';
 import { Link } from 'react-router-dom';
 import { useNavigationValue } from '@/hooks/useNavigationValue';
 import { NonBillableChip } from '@/components/personnel/NonBillableChip';
@@ -26,7 +30,7 @@ import { toast } from "sonner";
 const fmtH = (n: number) => (Math.round(n * 100) / 100).toFixed(2).replace(/\.00$/, "");
 
 export function TimesheetView({ projectId, projectName, locations, week, setWeek, onPerson, locationScopeId }: {
-  projectId: string; projectName: string; locations: ({ id: string; name: string } & ShiftStarts)[];
+  projectId: string; projectName: string; locations: ({ id: string; name: string; timezone?: string | null } & ShiftStarts)[];
   locationScopeId?: string; week: string; setWeek: (w: string) => void; onPerson: (personnelId: string, weekStart: string) => void;
 }) {
   const agencies = useProjectAgencies(projectId);
@@ -44,6 +48,7 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
   const { entries: allEntries, isLoading } = useWeekTimesheet(projectId, week, p?.day_shift_start, p?.night_shift_start, locationShifts);
   const entries = locationScopeId ? allEntries.filter(e => e.location_id === locationScopeId) : allEntries;
   const { data: editedIds } = useEditedStayIds(entries.map(e => e.id.split(':')[0]));
+  const { data: lateStays = {} } = useLateStays(entries.map(e => e.id.split(':')[0]));
   const [shift, setShift] = useNavigationValue("shift", "all", ["all", "day", "night"]);
   const [filterLoc, setLocId] = useNavigationValue<string>("tsLocation", "");
   const locId = locationScopeId || filterLoc;
@@ -113,13 +118,15 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
                       const c = r.days[d]; const h = cellH(c);
                       const both = shift === "all" && c && c.day > 0 && c.night > 0;
                       const cellStays = staysForCell(entries, r.personnel_id, d, locId || undefined);
+                      const late = maxLate(cellStays.filter(e => localDay(e.in_at, locations.find(l => l.id === e.location_id)?.timezone || 'America/Chicago') === d).map(e => lateStays[e.id.split(':')[0]] || {}));
                       const manual = cellStays.some(e => e.source === 'Manual' || editedIds?.has(e.id.split(':')[0]));
                       return (
-                        <td key={d} className="text-right px-1 whitespace-nowrap">
+                        <td key={d} className={`text-right px-1 whitespace-nowrap ${(late.late_minutes ?? 0) > 0 ? "bg-destructive/10 text-destructive" : ""}`}>
                           {canEdit && cellStays.length > 0 ? <Button variant="ghost" size="sm" className="h-7 px-1 tabular-nums" aria-label={`Edit times for ${r.name} ${d}`} onClick={() => setEdit({ ids: cellStays.map(e => e.id.split(':')[0]), name: r.name, date: d })}>{h > 0 ? fmtH(h) : <Timer className="h-3 w-3 text-warning" aria-label="Still running" />}</Button> : h > 0 && (both ? (
                             <Tooltip><TooltipTrigger asChild><span className="underline decoration-dotted">{fmtH(h)}</span></TooltipTrigger>
                               <TooltipContent>D {fmtH(c.day)} / N {fmtH(c.night)}</TooltipContent></Tooltip>
                           ) : fmtH(h))}
+                          <LateBadge row={late} />
                           {c?.open ? <Timer className="inline h-3 w-3 ml-0.5 text-warning" aria-label="Open punch" /> : null}
                           {manual && <Pencil className="inline h-3 w-3 ml-0.5 text-muted-foreground" aria-label="Manual entry" ><title>Manual entry</title></Pencil>}
                           {canLog && <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 ml-0.5" aria-label={`Log time for ${r.name} ${d}`} onClick={() => setLog({ personnelId: r.personnel_id, personName: r.name, date: d })}><Clock className="h-3 w-3" /></Button></TooltipTrigger><TooltipContent>Log time</TooltipContent></Tooltip>}

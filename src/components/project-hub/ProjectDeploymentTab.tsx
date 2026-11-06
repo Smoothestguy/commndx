@@ -1,3 +1,6 @@
+import { useLateStays } from '@/hooks/useLateStays';
+import { maxLate, lateDayKey, type LateInfo } from '@/lib/lateAttendance';
+import { LateBadge } from '@/components/signin/LateBadge';
 import { DailyTimesheetPanel } from '@/components/signin/DailyTimesheetPanel';
 import { JoinRequests } from './JoinRequests';
 import { CustomerProjectAlerts } from './CustomerProjectAlerts';
@@ -183,9 +186,9 @@ const STYLE: Record<AttendanceStatus, { label: string; cls: string }> = {
   no_show: { label: "N", cls: "bg-destructive text-destructive-foreground border-destructive" },
 };
 
-function AttendanceCell({ status, hours, crewInitial, onTap, onLongPress, label, manual }: {
+function AttendanceCell({ status, hours, crewInitial, onTap, onLongPress, label, manual, late }: {
   status?: AttendanceStatus; hours?: number | null; crewInitial?: string | null;
-  onTap: () => void; onLongPress: () => void; label: string; manual?: boolean;
+  onTap: () => void; onLongPress: () => void; label: string; manual?: boolean; late?: LateInfo;
 }) {
   const timer = useRef<number | null>(null);
   const fired = useRef(false);
@@ -199,7 +202,7 @@ function AttendanceCell({ status, hours, crewInitial, onTap, onLongPress, label,
       variant="outline"
       type="button"
       aria-label={label}
-      title={manual ? 'Manual entry' : undefined}
+      title={late?.late_minutes ? `LATE ${late.late_minutes}m${late.late_reason ? ' — '+late.late_reason : ''}${manual ? ' · Manual entry' : ''}` : manual ? 'Manual entry' : undefined}
       onPointerDown={start}
       onPointerUp={cancel}
       onPointerLeave={cancel}
@@ -207,10 +210,10 @@ function AttendanceCell({ status, hours, crewInitial, onTap, onLongPress, label,
       onClick={() => { if (fired.current) { fired.current = false; return; } onTap(); }}
       className={cn(
         "relative h-10 w-10 rounded-md border flex flex-col items-center justify-center mx-auto select-none touch-manipulation",
-        status ? STYLE[status].cls : "bg-background hover:bg-muted",
+        late?.late_minutes ? "bg-destructive/15 text-destructive border-destructive hover:bg-destructive/20" : status ? STYLE[status].cls : "bg-background hover:bg-muted",
       )}
     >
-      {status && <span className="text-sm font-bold leading-none">{STYLE[status].label}</span>}
+      {late?.late_minutes ? <><span className="text-[8px] font-bold leading-none">LATE</span><span className="text-[9px]">{late.late_minutes}m</span></> : status && <span className="text-sm font-bold leading-none">{STYLE[status].label}</span>}
       {status && hours != null && <span className="text-[9px] leading-none mt-0.5">{hours}h</span>}
       {manual && <Pencil className="absolute bottom-0.5 right-0.5 h-2.5 w-2.5" aria-label="Manual entry" />}
       {crewInitial && (
@@ -314,6 +317,8 @@ function AttendanceGrid({ projectId, locations, crews, defaultHours, canManage }
   const zone = locations.find(l => l.id === locId)?.timezone || 'America/Chicago';
   const { data: trail = [] } = useTrail(projectId, { locationId: locId, from: r.from, to: r.to });
   const { data: notes = {} } = useVisitNotes(trail.map(t => t.visit_id));
+  const { data: lateStays = {} } = useLateStays(trail.map(t => t.visit_personnel_id));
+  const lateCells = useMemo(() => { const m: Record<string, LateInfo> = {}; for (const t of trail) { const key=lateDayKey(t.personnel_id,localDay(t.in_at,zone));m[key]=maxLate([m[key]||{},lateStays[t.visit_personnel_id]||{}]); }return m; },[trail,lateStays,zone]);
   const manualCells = useMemo(() => new Set(trail.filter(t => sourceFromNotes(notes[t.visit_id]) === 'Manual').flatMap(t => {
     const first = localDay(t.in_at, zone), last = localDay(t.out_at || t.in_at, zone);
     return r.dates.filter(d => d >= first && d <= last).map(d => `${t.personnel_id}|${d}`);
@@ -387,6 +392,7 @@ function AttendanceGrid({ projectId, locations, crews, defaultHours, canManage }
                           <AttendanceCell
                             status={c?.status}
                             hours={c?.hours}
+                            late={lateCells[lateDayKey(p.id,d)]}
                             manual={manualCells.has(`${p.id}|${d}`)}
                             crewInitial={c?.crew_id ? crewInitial[c.crew_id] : null}
                             label={`${p.name} ${d} ${c?.status ?? "blank"}`}
@@ -1213,6 +1219,8 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
   const canLog = tAdmin || tManager;
   const { data: project } = useProject(projectId);
   const { data: rawRows = [], isLoading } = useTrail(projectId, { personnelId: personId || null, locationId: locId || null, from, to });
+  const { data: lateStays = {} } = useLateStays(rawRows.map(r => r.visit_personnel_id));
+  const dayLate = (r: TrailRow) => { const zone=locations.find(l=>l.id===r.location_id)?.timezone||'America/Chicago';const day=localDay(r.in_at,zone);return maxLate(rawRows.filter(t=>t.personnel_id===r.personnel_id&&t.location_id===r.location_id&&localDay(t.in_at,zone)===day).map(t=>lateStays[t.visit_personnel_id]||{})); };
   const rows = rawRows.filter(r => agency === "all" || agencies.vendorByPerson[r.personnel_id] === agency);
   // Person options come from the trail itself (unfiltered by person) so the list only shows people who have entries.
   const { data: allRows = [] } = useTrail(projectId, { locationId: locId || null, from, to });
@@ -1302,8 +1310,8 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
             </tr></thead>
             <tbody className="divide-y">
               {rows.map((r) => (
-                <tr key={r.visit_personnel_id}>
-                  <td className="py-1.5 pr-2"><Link to={`/personnel/${r.personnel_id}`} className="font-medium hover:underline text-left">{trailName(r)}</Link>{!r.signature_url && <Badge variant="outline" className="text-warning text-[10px] ml-1">no signature</Badge>}</td>
+                <tr key={r.visit_personnel_id} className={(dayLate(r).late_minutes ?? 0) > 0 ? "bg-destructive/10 text-destructive" : undefined}>
+                  <td className="py-1.5 pr-2"><Link to={`/personnel/${r.personnel_id}`} className="font-medium hover:underline text-left">{trailName(r)}</Link><LateBadge row={dayLate(r)} />{!r.signature_url && <Badge variant="outline" className="text-warning text-[10px] ml-1">no signature</Badge>}</td>
                   <td className="pr-2">{r.location_name ?? "—"}{isManual(r) && <Pencil className="inline h-3 w-3 ml-1 text-muted-foreground" aria-label="Manual entry" />}{canLog && reviewFlags.some(f=>f.id===r.visit_personnel_id&&f.synced_late) && <Badge variant="outline" title="Recorded offline at device time, synced later" className="text-[10px] ml-1">synced late</Badge>}<EarlyInBadge row={reviewFlags.find(f=>f.id===r.visit_personnel_id)||{}} /></td>
                   <td className="pr-2 whitespace-nowrap">{canLog ? <Button variant="ghost" size="sm" className="h-7 px-1" aria-label={`Edit time in for ${trailName(r)}`} onClick={() => setEditStay(r)}>{fmt(r.in_at)}</Button> : fmt(r.in_at)}</td>
                   <td className="pr-2 whitespace-nowrap">{canLog ? <Button variant="ghost" size="sm" className="h-7 px-1" aria-label={`Edit time out for ${trailName(r)}`} onClick={() => setEditStay(r)}>{r.out_at ? fmt(r.out_at) : 'Still running'}</Button> : fmt(r.out_at)}</td>

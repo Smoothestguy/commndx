@@ -1,4 +1,4 @@
-export type PunchIntent = { token: string; lat: number | null; lng: number | null; accuracy?: number | null; overrideReason?: string; earlyReason?: string; effectiveAt?: string; earlyFlagged?: boolean; signatureBase64?: string; committed?: boolean; at: string; tries: number; action: "in" | "out" };
+export type PunchIntent = { token: string; lat: number | null; lng: number | null; accuracy?: number | null; overrideReason?: string; earlyReason?: string; lateReason?: string; lateMinutes?: number; effectiveAt?: string; earlyFlagged?: boolean; signatureBase64?: string; committed?: boolean; at: string; tries: number; action: "in" | "out" };
 const key = (token: string) => `site-punch-pending:${token}`;
 
 export function readPunch(token: string): PunchIntent | null {
