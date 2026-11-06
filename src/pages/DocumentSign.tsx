@@ -36,7 +36,7 @@ export default function DocumentSign() {
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Unable to sign. Please try again.'); }
     finally { setSaving(false); }
   };
-  return <main className="min-h-screen bg-background text-foreground px-4 py-6">
+  return <main className="min-h-screen bg-background text-foreground px-4 py-6"><LangSwitcher />
     <div className="max-w-2xl mx-auto space-y-5">
       <p className="text-sm font-semibold text-primary">Fairfield Response Group</p>
       {error ? <div role="alert" className="space-y-3"><h1 className="text-xl font-semibold">{error}</h1><p>Call the office: <a className="text-primary underline" href="tel:+12817483832">(281) 748-3832</a></p></div> : !info ? <Loader2 className="animate-spin mx-auto" aria-label="Loading document" /> : info.already_signed ? <div className="py-12 text-center space-y-3"><CheckCircle2 className="h-14 w-14 mx-auto text-primary" /><h1 className="text-xl font-semibold">{tr('Signed', 'Firmado')} {info.signed_at ? signatureTime(info.signed_at) : ''} ✓</h1><p className="text-muted-foreground">{tr('Thank you — your signature has been saved.', 'Gracias — su firma ha sido guardada.')}</p><p>{info.title}</p></div> : <>
