@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Pencil, MapPin, Phone, Loader2, Clock } from 'lucide-react';
+import { Pencil, MapPin, Phone, Loader2, Clock, Inbox } from 'lucide-react';
+import { FieldRequestsDialog } from '@/components/project-hub/FieldRequestsDialog';
 import { LogTimeDialog } from '@/components/personnel/lifecycle/LogTimeDialog';
 import { BulkLogTimesDialog } from '@/components/personnel/lifecycle/BulkLogTimesDialog';
 import { useProject } from '@/integrations/supabase/hooks/useProjects';
@@ -46,6 +47,7 @@ export default function LocationDetail() {
   const [params,setParams] = useSearchParams();
   const [edit,setEdit] = useState(false);
   const [logOpen,setLogOpen] = useState(false);
+  const [reqOpen,setReqOpen] = useState(false);
   const [sheet,setSheet] = useState<{location:string;day:string}>();
   useEffect(() => { window.scrollTo(0,0); }, [locationId]);
   useEffect(() => {
@@ -58,7 +60,7 @@ export default function LocationDetail() {
   const address = [location.address,location.city,location.state,location.zip].filter(Boolean).join(', ');
   const summary = staffing?.[location.id];
   const shifts=resolveShifts(location,project);
-  return <PageLayout title={location.name} actions={canWrite&&<><Button variant="outline" size="sm" onClick={()=>setEdit(true)}><Pencil className="h-4 w-4 mr-1"/>Edit</Button><Button variant="outline" size="sm" onClick={()=>setLogOpen(true)}><Clock className="h-4 w-4 mr-1"/>Log time</Button></>}>
+  return <PageLayout title={location.name} actions={canWrite&&<><Button variant="outline" size="sm" onClick={()=>setEdit(true)}><Pencil className="h-4 w-4 mr-1"/>Edit</Button><Button variant="outline" size="sm" onClick={()=>setLogOpen(true)}><Clock className="h-4 w-4 mr-1"/>Log time</Button><Button variant="outline" size="sm" onClick={()=>setReqOpen(true)}><Inbox className="h-4 w-4 mr-1"/>Field requests</Button></>}>
     <SEO title={`${location.name} | Command X`} description={`Location operations for ${project.name}`}/>
     <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-4"><Link className="hover:underline" to="/projects">Projects</Link><span>/</span><Link className="hover:underline" to={`/projects/${projectId}?tab=locations`}>{project.name}</Link><span>/</span><Link className="text-foreground hover:underline" to={`/projects/${projectId}/locations/${location.id}`}>{location.name}</Link></nav>
     <section className="border-b pb-4 space-y-3">
@@ -69,6 +71,7 @@ export default function LocationDetail() {
       <div className="flex flex-wrap items-center gap-2">{canWrite && <><LocationKioskActions location={location} initialOpen={params.get('action')==='kiosk'}/><ProjectJoinLinks projectId={projectId} locationId={location.id}/></>}<DailyTimesheetPanel projectId={projectId} projectName={project.name} locationId={location.id} initialSheet={sheet}/></div>
     </section>
     <div className="mt-4"><LocationAuthorizationPanel projectId={projectId} locationId={location.id} locationName={location.name} timezone={location.timezone}/></div>
+    <FieldRequestsDialog open={reqOpen} onOpenChange={setReqOpen} locationId={location.id} locationName={location.name} canAct={canWrite}/>
     {canWrite && <LogTimeDialog open={logOpen} onOpenChange={setLogOpen} projectId={projectId} locationId={location.id} />}
     {edit && <ProjectLocationsTab projectId={projectId} deploymentMode={!!project.deployment_mode} editTargetId={location.id} onEditClosed={()=>setEdit(false)}/>}
     <Tabs value={tab} onValueChange={v=>{setParams(prev=>{const next=new URLSearchParams(prev);next.set('tab',v);next.delete('sub');next.delete('view');next.delete('action');return next;});}} className="mt-4"><TabsList className="h-auto flex flex-wrap justify-start gap-1">{tabs.map(t=><TabsTrigger value={t} key={t}>{labels[t]}</TabsTrigger>)}</TabsList></Tabs>

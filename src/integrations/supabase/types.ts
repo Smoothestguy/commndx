@@ -4249,6 +4249,56 @@ export type Database = {
           },
         ]
       }
+      location_requests: {
+        Row: {
+          acted_at: string | null
+          acted_by: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          label: string | null
+          location_id: string
+          note: string | null
+          qty: number
+          status: string
+        }
+        Insert: {
+          acted_at?: string | null
+          acted_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: string
+          label?: string | null
+          location_id: string
+          note?: string | null
+          qty?: number
+          status?: string
+        }
+        Update: {
+          acted_at?: string | null
+          acted_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          label?: string | null
+          location_id?: string
+          note?: string | null
+          qty?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_requests_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       location_requirements: {
         Row: {
           bill_rate: number | null
@@ -12032,6 +12082,10 @@ export type Database = {
       }
       is_conversation_member: {
         Args: { conv_id: string; uid: string }
+        Returns: boolean
+      }
+      is_field_member_of_location: {
+        Args: { _location: string }
         Returns: boolean
       }
       is_personnel: { Args: { _user_id: string }; Returns: boolean }

@@ -18,6 +18,8 @@ import { LocationKioskActions } from '@/components/signin/LocationKioskActions';
 import { useEffect, useMemo, useState } from "react";
 import { LayoutGrid, Rows3 } from "lucide-react";
 import { LocationsGrid } from "./LocationsGrid";
+import { LocationsCommandCenter } from "./LocationsCommandCenter";
+import { List } from "lucide-react";
 import { LocationAssets } from "./LocationAssets";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -95,13 +97,14 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
   const { data: staffing } = useLocationStaffingSummary(locations.map((l) => l.id));
   const { data: lastServiced } = useLastServiced(locations.map((l) => l.id), deploymentMode);
 
-  const viewKey = `locations-view:${projectId}`;
-  const [view, setView] = useState<"cards" | "grid" | null>(() => {
-    try { const v = localStorage.getItem(viewKey); return v === "cards" || v === "grid" ? v : null; } catch { return null; }
+  const viewKey = `locations-view2:${projectId}`;
+  type View = "list" | "cards" | "grid";
+  const [view, setView] = useState<View>(() => {
+    try { const v = localStorage.getItem(viewKey); return v === "cards" || v === "grid" ? v : "list"; } catch { return "list"; }
   });
-  const [effectiveView, setUrlView] = useNavigationValue("view", view ?? (locations.length > 4 ? "grid" : "cards"), ["cards", "grid"]);
+  const [effectiveView, setUrlView] = useNavigationValue<View>("view", view, ["list", "cards", "grid"]);
   useLocationScroll(!isLoading && !editTargetId);
-  const chooseView = (v: "cards" | "grid") => { setView(v); setUrlView(v); try { localStorage.setItem(viewKey, v); } catch { /* ignore */ } };
+  const chooseView = (v: View) => { setView(v); setUrlView(v); try { localStorage.setItem(viewKey, v); } catch { /* ignore */ } };
   const [scrollTo, setScrollTo] = useState<string | null>(null);
   const [locationParams]=useSearchParams();
   const targetLocation=locationParams.get('location');
@@ -223,8 +226,9 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
         <div className="flex items-center gap-2">
           {locations.length > 0 && (
             <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="View">
+              <Button size="sm" variant={effectiveView === "list" ? "secondary" : "ghost"} className="h-7 px-2 text-xs" onClick={() => chooseView("list")}><List className="h-3.5 w-3.5 mr-1" />List</Button>
               <Button size="sm" variant={effectiveView === "cards" ? "secondary" : "ghost"} className="h-7 px-2 text-xs" onClick={() => chooseView("cards")}><LayoutGrid className="h-3.5 w-3.5 mr-1" />Cards</Button>
-              <Button size="sm" variant={effectiveView === "grid" ? "secondary" : "ghost"} className="h-7 px-2 text-xs" onClick={() => chooseView("grid")}><Rows3 className="h-3.5 w-3.5 mr-1" />Grid</Button>
+              <Button size="sm" variant={effectiveView === "grid" ? "secondary" : "ghost"} className="h-7 px-2 text-xs" onClick={() => chooseView("grid")}><Rows3 className="h-3.5 w-3.5 mr-1" />Roster</Button>
             </div>
           )}
           {canWrite && <Button size="sm" onClick={openNew}><Plus className="h-4 w-4 mr-1" />Add location</Button>}
@@ -235,6 +239,8 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
         <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin" /></div>
       ) : locations.length === 0 ? (
         <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">No locations yet.</CardContent></Card>
+      ) : effectiveView === "list" ? (
+        <LocationsCommandCenter projectId={projectId} locations={locations} staffing={staffing} canWrite={canWrite} />
       ) : effectiveView === "grid" ? (
         <LocationsGrid projectId={projectId} projectName={projectName} locations={locations} staffing={staffing} lastServiced={lastServiced}
           deploymentMode={deploymentMode} canWrite={canWrite} onOpenCard={(id) => navigate(locationHref(projectId,id))} onEditLocation={openEdit} />
