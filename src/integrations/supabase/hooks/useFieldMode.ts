@@ -518,7 +518,7 @@ export function useLogManualTime(projectId: string | undefined) {
         visit_id: v.id, personnel_id: i.personnel_id, checked_in_at: i.in_at, checked_out_at: i.out_at, checked_in_by: user?.id ?? null,
       });
       if (pErr) throw pErr;
-      await recomputeAttendanceFromVisits(i.location_id, splitAtMidnight(i.in_at, i.out_at).map((s) => s.date));
+      await recomputeAttendanceFromVisits(i.location_id, await visitAttendanceDates(v.id));
     },
     onSuccess: () => {
       inv();
