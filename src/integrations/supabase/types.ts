@@ -4085,6 +4085,41 @@ export type Database = {
           },
         ]
       }
+      location_assignment_roles: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          effective_from: string
+          id: string
+          role_label: string | null
+          set_by: string | null
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          effective_from: string
+          id?: string
+          role_label?: string | null
+          set_by?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          effective_from?: string
+          id?: string
+          role_label?: string | null
+          set_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_assignment_roles_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "location_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       location_assignments: {
         Row: {
           assigned_at: string
@@ -4092,6 +4127,8 @@ export type Database = {
           created_at: string
           id: string
           location_id: string
+          mission_day: string | null
+          mission_note: string | null
           personnel_id: string
           role_label: string | null
           status: string
@@ -4103,6 +4140,8 @@ export type Database = {
           created_at?: string
           id?: string
           location_id: string
+          mission_day?: string | null
+          mission_note?: string | null
           personnel_id: string
           role_label?: string | null
           status?: string
@@ -4114,6 +4153,8 @@ export type Database = {
           created_at?: string
           id?: string
           location_id?: string
+          mission_day?: string | null
+          mission_note?: string | null
           personnel_id?: string
           role_label?: string | null
           status?: string
@@ -10903,6 +10944,9 @@ export type Database = {
           early_out_reason: string | null
           id: string
           in_geofence: boolean | null
+          late_ack_at: string | null
+          late_ack_by: string | null
+          late_ack_reason: string | null
           late_minutes: number | null
           late_reason: string | null
           offsite_approved_at: string | null
@@ -10925,6 +10969,9 @@ export type Database = {
           early_out_reason?: string | null
           id?: string
           in_geofence?: boolean | null
+          late_ack_at?: string | null
+          late_ack_by?: string | null
+          late_ack_reason?: string | null
           late_minutes?: number | null
           late_reason?: string | null
           offsite_approved_at?: string | null
@@ -10947,6 +10994,9 @@ export type Database = {
           early_out_reason?: string | null
           id?: string
           in_geofence?: boolean | null
+          late_ack_at?: string | null
+          late_ack_by?: string | null
+          late_ack_reason?: string | null
           late_minutes?: number | null
           late_reason?: string | null
           offsite_approved_at?: string | null

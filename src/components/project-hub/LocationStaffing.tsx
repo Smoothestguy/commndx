@@ -1,20 +1,15 @@
-import { RoleSelect } from "./RoleSelect";
+import { LocationRoster } from "./LocationRoster";
 import { useLocationAuthorization } from '@/hooks/useLocationAuthorization';
 import { toast } from 'sonner';
 import { JoinRequests } from './JoinRequests';
 import { QuickAddPerson } from './QuickAddPerson';
-import { NonBillableChip } from '@/components/personnel/NonBillableChip';
 import { useProjectAgencies } from '@/hooks/useProjectAgencies';
 import { useUserRole } from '@/hooks/useUserRole';
-import { Link, useSearchParams } from 'react-router-dom';
-import { EntityContextMenu } from '@/components/shared/EntityContextMenu';
 import { LogTimeDialog } from '@/components/personnel/lifecycle/LogTimeDialog';
 import { AddExpenseDialog } from '@/components/personnel/lifecycle/AddExpenseDialog';
-import { AgencyChip } from '@/components/personnel/AgencyChip';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useUpdateAssignmentRole } from "@/integrations/supabase/hooks/useLocationStaffing";
-import { PersonnelStatusButton } from "@/components/personnel/lifecycle/PersonnelStatusButton";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -187,13 +182,11 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
   const [params] = useSearchParams();
   const [logFor,setLogFor] = useState<string>();
   const [expenseFor,setExpenseFor] = useState<string>();
-  const [roleFor,setRoleFor] = useState<(typeof assignments)[number]>();
   const [replacementRole,setReplacementRole]=useState<string|undefined>();
   const invStatus = useInvalidateStatus();
   const agencies = useProjectAgencies(projectId || '');
   const { data: assignments = [] } = useLocationAssignments(locationId);
   const unassign = useUnassignPersonnel();
-  const setRole = useUpdateAssignmentRole();
   const reqRoles = Object.keys(summary?.byRole ?? {});
   const [reqOpen, setReqOpen] = useState(false);
   const [asgOpen, setAsgOpen] = useState(false);
@@ -203,14 +196,14 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
   const assignedIds = useMemo(() => new Set(assignments.map((a) => a.personnel_id)), [assignments]);
   const { data: phones = {} } = useQuery({ queryKey: ['staffing-phones', locationId, [...assignedIds]], enabled: canWrite && assignedIds.size > 0, queryFn: async () => { const { data, error } = await supabase.from('personnel').select('id,phone').in('id', [...assignedIds]); if (error) throw error; return Object.fromEntries(data.map(p => [p.id, p.phone])); } });
   const needed = summary?.needed ?? 0;
-  const assigned = summary?.assigned ?? assignments.length;
+  const assigned = summary?.assigned ?? assignments.filter(a=>!a.demobilized).length;
 
   useEffect(()=>{if(params.get('action')==='assign' && canWrite)setAsgOpen(true); if(params.get('action')==='text')setTextIds(assignments.map(a=>a.personnel_id));},[params,canWrite,assignments]);
   const removePerson = (a: (typeof assignments)[number]) => unassign.mutate({ id:a.id,location_id:locationId }, {onSuccess:async()=>{const result=await authorization.refetch();if(result.data?.[locationId]?.under)toast.success('Under authorized staffing',{action:{label:'Find replacement',onClick:()=>{setReplacementRole(a.role_label||undefined);setAsgOpen(true);}}});}});
   return (
     <div className="pt-2 border-t space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-sm font-medium whitespace-nowrap">Staffed {assigned}/{needed}</span>
+        <span className="text-sm font-medium whitespace-nowrap">Staffed {assigned}/{needed}{assignments.some(a=>a.demobilized)&&<span className="ml-1 text-xs font-normal text-muted-foreground">· {assignments.filter(a=>a.demobilized).length} demobilized not counted</span>}</span>
         {projectId && <JoinRequests projectId={projectId} locationId={locationId} />}
         {canWrite && (
           <div className="flex gap-1">
@@ -228,30 +221,8 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
           ))}
         </div>
       )}
-      {assignments.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {assignments.map((a) => (
-            <EntityContextMenu key={a.id} href={`/personnel/${a.personnel_id}`} person actions={[
-              {label:'Send site text',run:()=>setTextIds([a.personnel_id])},
-              ...(canWrite ? [ {label:'Log time',run:()=>setLogFor(a.personnel_id)}, {label:'Add expense',run:()=>setExpenseFor(a.personnel_id)}, {label:'Change role',run:()=>setRoleFor(a)}, {label:'Unassign',run:()=>removePerson(a),destructive:true} ] : [])
-            ]}><span className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-md border bg-muted/40 pl-2 pr-1 py-0.5 text-xs">
-              <Link to={`/personnel/${a.personnel_id}`} className="font-medium hover:text-primary hover:underline">{[a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(" ") || "Unknown"}</Link><AgencyChip name={agencies.agencyName(a.personnel_id)}/>
-              <NonBillableChip value={agencies.nonBillableByPerson[a.personnel_id]} employer={agencies.employerName(a.personnel_id)} />
-              {canWrite && !phones[a.personnel_id] && <Button asChild variant="link" size="sm" className="h-auto p-0 text-warning text-xs"><Link to={`/personnel/${a.personnel_id}`}>No phone · add phone</Link></Button>}
-              {canWrite
-                ? <span className="text-muted-foreground inline-flex items-center">·<RoleSelect value={a.role_label} canEdit priorityRoles={reqRoles} onChange={(role_label) => setRole.mutate({ id: a.id, location_id: locationId, role_label })} className="max-w-[9rem]" /></span>
-                : a.role_label && <span className="text-muted-foreground">· {a.role_label}</span>}
-              <PersonnelStatusButton personnelId={a.personnel_id} projectId={projectId} locationId={locationId} hideProjectName className="text-[10px] px-1.5 py-0" />
-              <TextedCaption at={texted[`${a.personnel_id}:${locationId}`]} />
-              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Send site text"
-                onClick={() => setTextIds([a.personnel_id])}><MessageSquare className="h-3 w-3" /></Button>
-              {canWrite && (
-                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Unassign" onClick={()=>removePerson(a)}><X className="h-3 w-3"/></Button>
-              )}
-            </span></EntityContextMenu>
-          ))}
-        </div>
-      )}
+      <LocationRoster locationId={locationId} projectId={projectId} timezone={timezone} canWrite={canWrite} assignments={assignments} reqRoles={reqRoles}
+        agencies={agencies} phones={phones} texted={texted} onText={setTextIds} onLog={setLogFor} onExpense={setExpenseFor} onUnassign={removePerson} />
       {canWrite && <RequirementsDialog locationId={locationId} open={reqOpen} onOpenChange={setReqOpen} />}
       {canWrite && (
         <AssignDialog locationId={locationId} open={asgOpen} onOpenChange={v=>{setAsgOpen(v);if(!v)setReplacementRole(undefined);}} assignedIds={assignedIds} defaultRole={replacementRole}
@@ -264,7 +235,6 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
       )}
       <LogTimeDialog open={!!logFor} onOpenChange={v=>{if(!v)setLogFor(undefined);}} projectId={projectId || ''} personnelId={logFor} locationId={locationId}/>
       <AddExpenseDialog open={!!expenseFor} onOpenChange={v=>{if(!v)setExpenseFor(undefined);}} projectId={projectId} personnelId={expenseFor} lockProject/>
-      <Dialog open={!!roleFor} onOpenChange={v=>{if(!v)setRoleFor(undefined);}}><DialogContent><DialogHeader><DialogTitle>Change role</DialogTitle></DialogHeader>{roleFor && <RoleSelect value={roleFor.role_label} canEdit={canWrite} priorityRoles={reqRoles} onChange={role_label=>setRole.mutate({id:roleFor.id,location_id:locationId,role_label})}/>}</DialogContent></Dialog>
       <SendSiteTextDialog open={!!textIds} onOpenChange={(o) => !o && setTextIds(null)} personnelIds={textIds ?? []} locationId={locationId} />
     </div>
   );

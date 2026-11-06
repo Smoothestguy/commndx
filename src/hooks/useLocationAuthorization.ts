@@ -1,3 +1,4 @@
+import { fetchDemobilizedIds } from '@/integrations/supabase/hooks/useLocationStaffing';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { localDay } from '@/lib/signinSheets';
@@ -23,14 +24,16 @@ export function useLocationAuthorization(locations: { id: string; timezone?: str
     if(!managed.length)return out;
     const managedIds=managed.map(d=>d[0]);
     const [people,assets]=await Promise.all([
-      allAuthorizationRows(o=>supabase.from('location_assignments').select('location_id,role_label').in('location_id',managedIds).eq('status','active').is('unassigned_at',null).order('id').range(o,o+499)),
+      allAuthorizationRows(o=>supabase.from('location_assignments').select('location_id,role_label,personnel_id').in('location_id',managedIds).eq('status','active').is('unassigned_at',null).order('id').range(o,o+499)),
       allAuthorizationRows(o=>supabase.from('asset_assignments').select('location_id').in('location_id',managedIds).eq('status','active').is('unassigned_at',null).is('end_at',null).order('id').range(o,o+499)),
     ]);
+    const demob=await fetchDemobilizedIds([...new Set(people.map((p:any)=>p.personnel_id as string))]);
+    const counted=people.filter((p:any)=>!demob.has(p.personnel_id));
     await Promise.all(dates.map(async ([id, day]) => {
       if (!orders.some(o => o.location_id === id && o.effective_date <= day)) return;
       const {data,error} = await supabase.rpc('location_authorized_asof',{p_location:id,p_date:day}); if(error) throw error;
       const levels=data??[], positions=authorizedTotal(levels,'position'), assetTotal=authorizedTotal(levels,'asset');
-      const actual=people.filter(p=>p.location_id===id).length, actualAssets=assets.filter(a=>a.location_id===id).length;
+      const actual=counted.filter((p:any)=>p.location_id===id).length, actualAssets=assets.filter(a=>a.location_id===id).length;
       const gap=authorizationGap(actual,positions), ag=authorizationGap(actualAssets,assetTotal);
       out[id]={levels,positions,assets:assetTotal,actual,actualAssets,...gap,assetUnder:ag.under,assetOver:ag.over};
     })); return out;
