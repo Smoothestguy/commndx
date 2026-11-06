@@ -10,7 +10,9 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useUserRole } from "@/hooks/useUserRole";
-import { useAvailableAssets } from "@/integrations/supabase/hooks/useAssets";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAssets, useCreateAsset } from "@/integrations/supabase/hooks/useAssets";
 import {
   AssetBillingRow, useAssignAssetToLocation, useEndAssetAssignment, useProjectAssetBilling, useUnassignAsset,
 } from "@/integrations/supabase/hooks/useAssetAssignments";
@@ -39,15 +41,37 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
 }) {
   const { isAdmin, isManager } = useUserRole();
   const canBill = isAdmin || isManager;
-  const { data: registry = [] } = useAvailableAssets();
+  const { data: allAssets = [] } = useAssets();
+  const create = useCreateAsset();
   const assign = useAssignAssetToLocation();
-  const projectRows = rows.filter((r) => r.status === "active" && !r.end_at && r.location_id !== locationId);
+  // Open placements anywhere (any project) so assets in use can still be moved here.
+  const placements = useQuery({
+    queryKey: ["asset-assignments", "open-placements"], enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("asset_assignments")
+        .select("asset_id, location_id, project_id, end_at, project_locations(name), projects(name)")
+        .eq("status", "active").is("unassigned_at", null);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const projectRows = rows.filter((r) => r.status === "active" && r.location_id !== locationId);
+  const projectAssetIds = new Set(projectRows.map((r) => r.asset_id));
+  const hereIds = new Set(rows.filter((r) => r.status === "active" && !r.end_at && r.location_id === locationId).map((r) => r.asset_id));
+  const registry = allAssets.filter((a) => a.status !== "retired" && !projectAssetIds.has(a.id) && !hereIds.has(a.id));
+  const elsewhere = (assetId: string) => {
+    const p = (placements.data ?? []).find((x) => x.asset_id === assetId && !x.end_at) as
+      | { project_locations?: { name?: string } | null; projects?: { name?: string } | null } | undefined;
+    return p ? (p.project_locations?.name ?? p.projects?.name ?? "another project") : null;
+  };
+  const [creating, setCreating] = useState(false);
+  const [nw, setNw] = useState({ label: "", type: "vehicle", serial: "" });
   const [pick, setPick] = useState("");
   const [billable, setBillable] = useState(false);
   const [rate, setRate] = useState("");
   const [start, setStart] = useState(format(new Date(), "yyyy-MM-dd"));
   const [lastOpen, setLastOpen] = useState(false);
-  if (open !== lastOpen) { setLastOpen(open); if (open) { setPick(""); setBillable(false); setRate(""); setStart(format(new Date(), "yyyy-MM-dd")); } }
+  if (open !== lastOpen) { setLastOpen(open); if (open) { setCreating(false); setNw({ label: "", type: "vehicle", serial: "" }); setPick(""); setBillable(false); setRate(""); setStart(format(new Date(), "yyyy-MM-dd")); } }
 
   const onPick = (v: string) => {
     setPick(v);
@@ -62,6 +86,12 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
     }
   };
   const isExisting = pick.startsWith("a:");
+  const createAsset = () => {
+    if (!nw.label.trim()) return;
+    create.mutate({ label: nw.label.trim(), type: nw.type, serial_number: nw.serial.trim() || undefined, status: "available" }, {
+      onSuccess: (a) => { setCreating(false); setPick(`r:${a.id}`); setRate(""); },
+    });
+  };
   const submit = () => {
     const n = rate.trim() === "" ? null : Number(rate);
     assign.mutate({
@@ -69,7 +99,7 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
       assignmentId: isExisting ? pick.slice(2) : undefined,
       assetId: !isExisting ? pick.slice(2) : undefined,
       ...(canBill ? { billable, dayRate: n != null && Number.isFinite(n) ? n : null } : {}),
-      startAt: !isExisting ? new Date(`${start}T08:00:00`).toISOString() : undefined,
+      startAt: new Date(`${start}T08:00:00`).toISOString(),
     }, { onSuccess: () => onOpenChange(false) });
   };
 
@@ -88,7 +118,7 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
                     <SelectLabel>On this project</SelectLabel>
                     {projectRows.map((r) => (
                       <SelectItem key={r.id} value={`a:${r.id}`}>
-                        {r.assets?.label ?? "Asset"}{r.location_id ? ` — at ${locationNames?.[r.location_id] ?? "another location"}` : " — project-wide"}
+                        {r.assets?.label ?? "Asset"}{r.location_id ? ` — at ${locationNames?.[r.location_id] ?? "another location"}` : " — project-wide"}{r.end_at ? " (ended)" : ""}
                       </SelectItem>
                     ))}
                   </SelectGroup>
@@ -96,15 +126,35 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
                 {registry.length > 0 && (
                   <SelectGroup>
                     <SelectLabel>From registry (adds to project)</SelectLabel>
-                    {registry.map((a) => <SelectItem key={a.id} value={`r:${a.id}`}>{a.label} · {a.type}</SelectItem>)}
+                    {registry.map((a) => { const w = elsewhere(a.id); return <SelectItem key={a.id} value={`r:${a.id}`}>{a.label} · {a.type}{w ? ` — in use at ${w} (will move)` : ""}</SelectItem>; })}
                   </SelectGroup>
                 )}
                 {projectRows.length === 0 && registry.length === 0 && <div className="p-2 text-sm text-muted-foreground">No assets available.</div>}
               </SelectContent>
             </Select>
           </div>
-          {pick && !isExisting && (
-            <div className="space-y-1.5"><Label>Start date</Label><Input type="date" className="h-11" value={start} onChange={(e) => setStart(e.target.value)} /></div>
+          {creating ? (
+            <div className="space-y-3 rounded-md border p-3">
+              <div className="space-y-1.5"><Label htmlFor="na-label">New asset name</Label><Input id="na-label" className="h-11" value={nw.label} onChange={(e) => setNw({ ...nw, label: e.target.value })} placeholder="e.g. 2024 F-250 #12" /></div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5"><Label>Type</Label>
+                  <Select value={nw.type} onValueChange={(v) => setNw({ ...nw, type: v })}>
+                    <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                    <SelectContent>{["vehicle", "equipment", "tool", "key", "other"].map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5"><Label htmlFor="na-serial">Plate / serial</Label><Input id="na-serial" className="h-11" value={nw.serial} onChange={(e) => setNw({ ...nw, serial: e.target.value })} /></div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setCreating(false)}>Cancel</Button>
+                <Button size="sm" disabled={!nw.label.trim() || create.isPending} onClick={createAsset}>Create asset</Button>
+              </div>
+            </div>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => setCreating(true)}><Plus className="h-3 w-3 mr-1" />Create new asset</Button>
+          )}
+          {pick && (
+            <div className="space-y-1.5"><Label>{isExisting ? "Move effective" : "Start date"}</Label><Input type="date" className="h-11" value={start} onChange={(e) => setStart(e.target.value)} /></div>
           )}
           {pick && canBill && (
             <>
@@ -122,7 +172,7 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button disabled={!pick || assign.isPending} onClick={submit}>{isExisting ? "Move here" : "Assign"}</Button>
+          <Button disabled={!pick || assign.isPending} onClick={submit}>{isExisting || (pick && elsewhere(pick.slice(2))) ? "Move here" : "Assign"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
