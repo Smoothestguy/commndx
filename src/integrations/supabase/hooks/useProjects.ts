@@ -32,6 +32,12 @@ export interface Project {
   standby_rate?: number | null;
   day_shift_start?: string | null;
   night_shift_start?: string | null;
+  reminder_lead_minutes?: number;
+  early_window_minutes?: number;
+  late_grace_minutes?: number;
+  late_max_minutes?: number;
+  auto_close_after_hours?: number;
+  checkout_rounding_minutes?: number;
   created_at: string;
   updated_at: string;
 }

@@ -1,4 +1,4 @@
-export type EarlyRejection = { reason: string; shift_start?: string; early_minutes?: number; minutes_late?: number };
+export type EarlyRejection = { reason: string; shift_start?: string; early_minutes?: number; minutes_late?: number; grace_minutes?: number };
 export const EARLY_REASONS = ['Supervisor asked', 'Prep work', 'Ride arrived early', 'Other'];
 export const EXTENSION_REASONS = ['Finishing task', 'Customer request', 'Waiting on relief', 'Other'];
 export function extensionChoices(now = Date.now(), shiftEnd?: string | null) {

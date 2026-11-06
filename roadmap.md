@@ -1,3 +1,8 @@
+# Project-configurable shift rules
+- [x] Regenerated types; Deployment Project settings separates Billing/Shift rules with all six typed/validated values saved through useUpdateProject, including listed rounding choices.
+- [x] Deployed roster-alerts reading project reminder lead; preshift/no-show/checkout/checkout-ext/supervisor copy and reservation dedupe preserved. Shared punch/kiosk/Field Mode late screen displays returned grace. No schema or scheduling changes.
+- [x] 21 tests and bunx tsgo --noEmit passed, latest preview build OK. Signed-in browser saved/reloaded all six non-default values in an isolated project with inactive location, then archived/soft-deleted the project; phone popover inspected. Live roster-alerts dry-run succeeded with zero sends; returned 20-minute grace UI verified using intercepted response. No production timing changed; no SMS sent.
+
 # Late clock-in and project cleanup
 - [x] Regenerated live types; updated all punch RPC callers, kiosk/Field Mode reason propagation, public durable retries, shared amber late-reason screens and captions. No migrations or schedule changes.
 - [x] Minimal batched staff late metadata, red location/day grid/Trail/Timesheet markers and reason tooltips; token-validated dollar-free customer attendance enrichment; five-minute reminders and bilingual already-registered screen.

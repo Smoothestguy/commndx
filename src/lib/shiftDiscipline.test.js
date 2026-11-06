@@ -13,3 +13,7 @@ it('pending or denied extensions never suppress regular checkout nags',()=>{expe
 it('after-midnight night stay ends at same-day day start',()=>expect(rosterThresholds(Date.parse('2026-11-05T12:30Z'),'America/Chicago','06:00','18:00','2026-11-05T07:00Z').checkout).toBe(true));
 it('early review computes twenty-five minutes in the location timezone',()=>expect(earlyMinutes('2026-11-05T11:35Z','America/Chicago','06:00','18:00')).toBe(25));
 it('0730 shift reminder starts at 0725 not 0715',()=>{expect(preshiftAt(Date.parse('2026-11-06T13:15Z'),'America/Chicago','07:30','19:30')).toBeNull();expect(preshiftAt(Date.parse('2026-11-06T13:24:59Z'),'America/Chicago','07:30','19:30')).toBeNull();expect(preshiftAt(Date.parse('2026-11-06T13:25Z'),'America/Chicago','07:30','19:30')?.time).toBe('07:30');});
+
+it('project-specific twelve minute lead starts at 0718 for 0730',()=>{expect(preshiftAt(Date.parse('2026-11-06T13:17:59Z'),'America/Chicago','07:30','19:30',12)).toBeNull();expect(preshiftAt(Date.parse('2026-11-06T13:18Z'),'America/Chicago','07:30','19:30',12)?.time).toBe('07:30');expect(preshiftAt(Date.parse('2026-11-06T13:30Z'),'America/Chicago','07:30','19:30',12)).toBeNull();});
+it('project-specific night reminder lead retains the target day',()=>expect(preshiftAt(Date.parse('2026-11-06T05:48Z'),'America/Chicago','07:30','00:00',12)?.day).toBe('2026-11-06'));
+it('zero reminder lead does not send before shift',()=>expect(preshiftAt(Date.parse('2026-11-06T13:29Z'),'America/Chicago','07:30','19:30',0)).toBeNull());
