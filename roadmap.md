@@ -1,3 +1,8 @@
+# Project-configurable shift rules
+- [ ] Rename Deployment popover Project settings with Billing/Shift rules and six persisted timing inputs.
+- [ ] Project-specific reminder lead, final per-kind copy/dedupe preserved, late grace copy from rejection; no scheduling/schema changes.
+- [ ] Focused rule tests, signed-in browser save/readback and bunx tsgo --noEmit.
+
 # Late clock-in and project cleanup
 - [x] Regenerated live types; updated all punch RPC callers, kiosk/Field Mode reason propagation, public durable retries, shared amber late-reason screens and captions. No migrations or schedule changes.
 - [x] Minimal batched staff late metadata, red location/day grid/Trail/Timesheet markers and reason tooltips; token-validated dollar-free customer attendance enrichment; five-minute reminders and bilingual already-registered screen.
