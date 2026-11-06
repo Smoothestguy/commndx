@@ -1,6 +1,31 @@
 import type { TimesheetEntry } from "@/integrations/supabase/hooks/useTimekeeping";
 import { pivotTimesheet } from "@/integrations/supabase/hooks/useTimekeeping";
 import { chicagoTime, dayLabel, weekDays } from "@/lib/shifts";
+import { supabase } from "@/integrations/supabase/client";
+import { roleAt, type RolePeriod } from "@/lib/assignmentRoles";
+
+type DetailExtra = { position: string; late: string; lateReason: string; approval: string };
+/** Internal-only enrichment: role in force at check-in (dated history) and late/approval reasons. */
+async function detailExtras(entries: TimesheetEntry[]): Promise<Record<string, DetailExtra>> {
+  const vpIds = [...new Set(entries.map((e) => e.id.split(":")[0]))];
+  const locIds = [...new Set(entries.map((e) => e.location_id))];
+  const pIds = [...new Set(entries.map((e) => e.personnel_id))];
+  const vp: Record<string, { late_minutes: number | null; late_reason: string | null; late_ack_reason: string | null }> = {};
+  for (let i = 0; i < vpIds.length; i += 200) {
+    const { data } = await supabase.from("visit_personnel").select("id,late_minutes,late_reason,late_ack_reason").in("id", vpIds.slice(i, i + 200));
+    for (const r of data ?? []) vp[r.id] = r;
+  }
+  const { data: asg } = locIds.length && pIds.length ? await supabase.from("location_assignments").select("id,location_id,personnel_id,role_label").in("location_id", locIds).in("personnel_id", pIds) : { data: [] };
+  const asgIds = (asg ?? []).map((a) => a.id);
+  const { data: periods } = asgIds.length ? await supabase.from("location_assignment_roles").select("assignment_id,role_label,effective_from").in("assignment_id", asgIds) : { data: [] };
+  const out: Record<string, DetailExtra> = {};
+  for (const e of entries) {
+    const a = (asg ?? []).find((x) => x.location_id === e.location_id && x.personnel_id === e.personnel_id);
+    const v = vp[e.id.split(":")[0]];
+    out[e.id] = { position: a ? roleAt((periods ?? []) as RolePeriod[], a.id, e.in_at, a.role_label) ?? "" : "", late: v?.late_minutes ? `${v.late_minutes}m` : "", lateReason: v?.late_reason ?? "", approval: v?.late_ack_reason ?? "" };
+  }
+  return out;
+}
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 const DETAIL_COLS = ["Person", "Location", "Date", "Shift", "Time In", "Time Out", "Hours", "Source"];
@@ -47,9 +72,10 @@ export async function exportWeekTimesheet(projectName: string, weekStart: string
   matrix("All Hours", "all");
 
   const det = wb.addWorksheet("Detail");
-  det.addRow(DETAIL_COLS).font = { bold: true };
-  [...entries].sort((a, b) => a.name.localeCompare(b.name) || a.in_at.localeCompare(b.in_at)).forEach((e) => det.addRow(detailRow(e)));
-  [28, 24, 11, 8, 11, 11, 9, 14].forEach((w, i) => (det.getColumn(i + 1).width = w));
+  const extras = await detailExtras(entries).catch(() => ({} as Record<string, DetailExtra>));
+  det.addRow([...DETAIL_COLS, "Position", "Late", "Late reason", "Late approval"]).font = { bold: true };
+  [...entries].sort((a, b) => a.name.localeCompare(b.name) || a.in_at.localeCompare(b.in_at)).forEach((e) => { const x = extras[e.id]; det.addRow([...detailRow(e), x?.position ?? "", x?.late ?? "", x?.lateReason ?? "", x?.approval ?? ""]); });
+  [28, 24, 11, 8, 11, 11, 9, 14, 16, 8, 24, 30].forEach((w, i) => (det.getColumn(i + 1).width = w));
   det.getColumn(7).numFmt = "0.00";
 
   const bl = wb.addWorksheet("By Location");
