@@ -665,7 +665,7 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                                     {person.lastName?.[0]}
                                   </span>
                                 }
-                                alt={person.name} <NonBillableChip value={person.nonBillable} />
+                                alt={person.name}
                               />
                             </div>
                             <div className="min-w-0 cursor-pointer" onClick={() => !isUnassigned && navigate(`/personnel/${person.personnelId}`)}>
@@ -845,7 +845,7 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                                         {person.lastName?.[0]}
                                       </span>
                                     }
-                                    alt={person.name} <NonBillableChip value={person.nonBillable} />
+                                    alt={person.name}
                                   />
                                   <div>
                                     <div className="flex items-center gap-2">
