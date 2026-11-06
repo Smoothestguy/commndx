@@ -99,6 +99,13 @@
       "when": 1793986863838,
       "tag": "0013_allow_multiple_visit_stays_per_day",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793987461350,
+      "tag": "0014_location_requests",
+      "breakpoints": true
     }
   ]
 }
