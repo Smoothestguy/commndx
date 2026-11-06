@@ -1,3 +1,8 @@
+# Manual time in/out inside locations
+- [ ] Manager/admin grid time inputs via existing manual-visit saver; retain field-staff status/hours and show manual markers.
+- [ ] Location-locked Log time dialog in header, Attendance toolbar and person-day cells; location-roster picker and date defaults.
+- [ ] Focused time/scope tests and authenticated browser save/readback checks; no database changes.
+
 # White-labeled agency portal
 - [x] Manager logo upload/preview/remove in vendor detail and both editors; token create/copy/revoke/QR on detail, desktop rows and mobile cards. Unique public logo objects and metadata-only removal avoid shared-file deletion; live manager RLS preserved.
 - [x] Token-only light agency portal: date attendance/stats, Mon–Sun weekly hours and XLSX, status-grouped roster including unassigned; agency-first logo/wordmark and customer attribution. Worker punch branding uses info RPC with logo fallback; optional join branding skipped because live join info omits agency fields.
