@@ -3,7 +3,7 @@ export function shiftAt(day:string,time:string,zone:string){const [h,m]=time.spl
 export function rosterThresholds(now:number,zone:string,dayStart:string,nightStart:string,inAt:string|null){const day=dayAt(new Date(now).toISOString(),zone),start=shiftAt(day,dayStart,zone);let end:number|null=null;if(inAt){const inDay=dayAt(inAt,zone);const ds=shiftAt(inDay,dayStart,zone),ns=shiftAt(inDay,nightStart,zone),at=Date.parse(inAt);end=at<ds?ds:at<ns?ns:shiftAt(addDay(inDay),dayStart,zone);}return {day,remind:now>=start+15*60000,supervisor:now>=start+30*60000,checkout:end!=null&&now>=end+30*60000};}
 export function preshiftAt(now:number,zone:string,dayStart:string,nightStart:string){
  const day=dayAt(new Date(now).toISOString(),zone);
- for(const d of [day,addDay(day)])for(const time of [dayStart,nightStart]){const start=shiftAt(d,time,zone);if(now>=start-15*60000&&now<start)return {day:d,time:time.slice(0,5),start};}
+ for(const d of [day,addDay(day)])for(const time of [dayStart,nightStart]){const start=shiftAt(d,time,zone);if(now>=start-5*60000&&now<start)return {day:d,time:time.slice(0,5),start};}
  return null;
 }
 export function checkoutKind(now:number,regularDue:boolean,extension:{status:string;until_at:string}|null){
