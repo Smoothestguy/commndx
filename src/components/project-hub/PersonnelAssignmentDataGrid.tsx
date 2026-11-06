@@ -1,3 +1,4 @@
+import { NonBillableChip } from '@/components/personnel/NonBillableChip';
 import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -138,7 +139,7 @@ export function PersonnelAssignmentDataGrid({
     return data.filter((assignment) => {
       const personnel = assignment.personnel;
       const rateBracket = assignment.project_rate_brackets;
-      const billRate = assignment.bill_rate ?? rateBracket?.bill_rate;
+      const billRate = personnel.non_billable ? 0 : assignment.bill_rate ?? rateBracket?.bill_rate;
 
       // Search filter
       if (filters.search) {
@@ -628,9 +629,10 @@ export function PersonnelAssignmentDataGrid({
               </TableRow>
             ) : (
               sortedData.map((assignment) => {
-                const personnel = assignment.personnel!;
+                const personnel = assignment.personnel;
+                if (!personnel) return null;
                 const rateBracket = assignment.project_rate_brackets;
-                const billRate = assignment.bill_rate ?? rateBracket?.bill_rate;
+                const billRate = personnel.non_billable ? 0 : assignment.bill_rate ?? rateBracket?.bill_rate;
                 const isSelected = selectedIds.includes(assignment.id);
 
                 return (
@@ -666,7 +668,7 @@ export function PersonnelAssignmentDataGrid({
                           />
                           <div>
                             <p className="font-medium">
-                              {personnel.first_name} {personnel.last_name}
+                              {personnel.first_name} {personnel.last_name} <NonBillableChip value={personnel.non_billable} />
                             </p>
                             {columnVisibility.email && (
                               <p className="text-sm text-muted-foreground">
@@ -696,7 +698,7 @@ export function PersonnelAssignmentDataGrid({
                     {columnVisibility.payRate && showPayRate && (
                       <TableCell>
                         {personnel.pay_rate ?? personnel.hourly_rate != null
-                          ? `${formatCurrency(personnel.pay_rate ?? personnel.hourly_rate)}/hr`
+                          ? `${formatCurrency(personnel.non_billable ? 0 : personnel.pay_rate ?? personnel.hourly_rate)}/hr`
                           : "—"}
                       </TableCell>
                     )}
