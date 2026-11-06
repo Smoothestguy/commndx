@@ -56,24 +56,13 @@ export type NavSection = {
 
 export const sections: NavSection[] = [
   {
-    items: [{ name: "Dashboard", href: "/", icon: LayoutDashboard }],
-  },
-  {
     title: "Operations",
     items: [
+      { name: "Dashboard", href: "/", icon: LayoutDashboard },
       { name: "Projects", href: "/projects", icon: FolderKanban },
       { name: "Crew Assignments", href: "/project-assignments", icon: ClipboardList, requiresManager: true },
       { name: "Time Tracking", href: "/time-tracking", icon: Clock },
       { name: "Staffing Map", href: "/staffing/map", icon: Map, requiresManager: true },
-    ],
-  },
-  {
-    title: "Recruiting",
-    requiresManager: true,
-    items: [
-      { name: "Job Postings", href: "/staffing/applications", icon: Send },
-      { name: "Applicant Pool", href: "/staffing/applicants", icon: UserSearch },
-      { name: "Workforce", href: "/workforce", icon: Boxes },
     ],
   },
   {
@@ -83,6 +72,15 @@ export const sections: NavSection[] = [
       { name: "Messages", href: "/messages", icon: MessageSquareText, badge: "unread" },
       { name: "Reimbursements", href: "/reimbursements", icon: Receipt },
       { name: "Team Timesheet", href: "/team-timesheet", icon: CalendarClock },
+    ],
+  },
+  {
+    title: "Recruiting",
+    requiresManager: true,
+    items: [
+      { name: "Job Postings", href: "/staffing/applications", icon: Send },
+      { name: "Applicant Pool", href: "/staffing/applicants", icon: UserSearch },
+      { name: "Workforce", href: "/workforce", icon: Boxes },
     ],
   },
   {
@@ -98,7 +96,7 @@ export const sections: NavSection[] = [
     title: "Purchasing",
     items: [
       { name: "Vendors", href: "/vendors", icon: Truck },
-      { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
+      { name: "Work Orders", href: "/purchase-orders", icon: ShoppingCart },
       { name: "Bills", href: "/vendor-bills", icon: FileCheck2 },
       { name: "Vendor Documents", href: "/vendor-documents", icon: FolderSearch },
       { name: "Completion Reviews", href: "/completion-reviews", icon: CheckSquare, requiresAdmin: true },
