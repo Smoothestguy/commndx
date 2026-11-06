@@ -1,5 +1,5 @@
 import { Time24Input } from '@/components/ui/time24-input';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -22,7 +22,8 @@ export function BulkLogTimesDialog({ projectId, location }: { projectId: string;
   const [selected,setSelected]=useState<string[]>([]),[completed,setCompleted]=useState<string[]>([]);
   const {data:roster=[],isLoading,error:rosterError}=useLocationAssignments(location.id);
   const {data:project}=useProject(projectId),save=useLogManualTime(projectId);
-  useEffect(()=>{if(open){setSelected(roster.map(r=>r.personnel_id));setCompleted([]);setError('');}},[open]);
+  const seeded=useRef(false);
+  useEffect(()=>{if(!open){seeded.current=false;return;}if(!isLoading&&!seeded.current){seeded.current=true;setSelected(roster.map(r=>r.personnel_id));setCompleted([]);setError('');}},[open,isLoading,roster]);
   const range=manualTimeRange(day,tin,tout,zone,outDay);
   return <><Button variant="outline" size="sm" onClick={()=>setOpen(true)}>Bulk log times</Button><Dialog open={open} onOpenChange={v=>{if(!busy)setOpen(v);}}><DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto" onEscapeKeyDown={e=>{if(busy)e.preventDefault();}} onPointerDownOutside={e=>{if(busy)e.preventDefault();}}><DialogHeader><DialogTitle>Bulk log times · {location.name}</DialogTitle></DialogHeader>
     <div><Label htmlFor="bulk-date">Date</Label><Input id="bulk-date" type="date" value={day} disabled={busy||!!completed.length} onChange={e=>{setDay(e.target.value);setOutDay(e.target.value);}}/></div>
