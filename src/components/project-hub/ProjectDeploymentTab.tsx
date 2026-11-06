@@ -26,6 +26,8 @@ import { sourceFromNotes, type TimesheetEntry } from "@/integrations/supabase/ho
 import { exportPersonTimesheet } from "@/utils/timesheetExport";
 import { ProjectRosterCard } from "@/components/personnel/lifecycle/ProjectRosterCard";
 import { LogTimeDialog } from "@/components/personnel/lifecycle/LogTimeDialog";
+import { EditStayTimesDialog } from '@/components/personnel/lifecycle/EditStayTimesDialog';
+import { useEditedStayIds } from '@/hooks/useEditStayTimes';
 import { useMemo, useRef, useState } from "react";
 import { addDays, format } from "date-fns";
 import { Link } from "react-router-dom";
@@ -1206,6 +1208,7 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
   const [pickOpen, setPickOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
+  const [editStay, setEditStay] = useState<TrailRow>();
   const { isAdmin: tAdmin, isManager: tManager } = useUserRole();
   const canLog = tAdmin || tManager;
   const { data: project } = useProject(projectId);
@@ -1221,7 +1224,8 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
   const personName = personId ? (peopleOpts.find(([id]) => id === personId)?.[1] ?? (rows[0] ? trailName(rows[0]) : "Person")) : "";
   const { data: visitNotes = {} } = useVisitNotes(rows.map((r) => r.visit_id));
   const { data: reviewFlags = [] } = useQuery({ queryKey: ['trail-review-flags', projectId, rows.map(r => r.visit_personnel_id)], enabled: rows.length > 0, queryFn: async () => { const flags: {id:string;synced_late:boolean;early_in_reason:string|null;offsite_approved_by:string|null;offsite_approved_at:string|null}[] = []; for (let i = 0; i < rows.length; i += 200) { const { data, error } = await supabase.from('visit_personnel').select('id,synced_late,early_in_reason,offsite_approved_by,offsite_approved_at').in('id', rows.slice(i, i + 200).map(r => r.visit_personnel_id)); if (error) throw error; flags.push(...(data || [])); } return flags; } });
-  const isManual = (r: TrailRow) => /^manual entry/i.test(visitNotes[r.visit_id] ?? "");
+  const { data: editedIds } = useEditedStayIds(rows.map(r => r.visit_personnel_id));
+  const isManual = (r: TrailRow) => /^manual entry/i.test(visitNotes[r.visit_id] ?? "") || editedIds?.has(r.visit_personnel_id);
   const total = rows.reduce((s, r) => s + (r.hours != null ? Number(r.hours) : 0), 0);
   const fmt = (iso: string | null) => (iso ? format(new Date(iso), "M/d HH:mm") : "on site");
 
@@ -1301,8 +1305,8 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
                 <tr key={r.visit_personnel_id}>
                   <td className="py-1.5 pr-2"><Link to={`/personnel/${r.personnel_id}`} className="font-medium hover:underline text-left">{trailName(r)}</Link>{!r.signature_url && <Badge variant="outline" className="text-warning text-[10px] ml-1">no signature</Badge>}</td>
                   <td className="pr-2">{r.location_name ?? "—"}{isManual(r) && <Pencil className="inline h-3 w-3 ml-1 text-muted-foreground" aria-label="Manual entry" />}{canLog && reviewFlags.some(f=>f.id===r.visit_personnel_id&&f.synced_late) && <Badge variant="outline" title="Recorded offline at device time, synced later" className="text-[10px] ml-1">synced late</Badge>}<EarlyInBadge row={reviewFlags.find(f=>f.id===r.visit_personnel_id)||{}} /></td>
-                  <td className="pr-2 whitespace-nowrap">{fmt(r.in_at)}</td>
-                  <td className="pr-2 whitespace-nowrap">{fmt(r.out_at)}</td>
+                  <td className="pr-2 whitespace-nowrap">{canLog ? <Button variant="ghost" size="sm" className="h-7 px-1" aria-label={`Edit time in for ${trailName(r)}`} onClick={() => setEditStay(r)}>{fmt(r.in_at)}</Button> : fmt(r.in_at)}</td>
+                  <td className="pr-2 whitespace-nowrap">{canLog ? <Button variant="ghost" size="sm" className="h-7 px-1" aria-label={`Edit time out for ${trailName(r)}`} onClick={() => setEditStay(r)}>{r.out_at ? fmt(r.out_at) : 'Still running'}</Button> : fmt(r.out_at)}</td>
                   <td className="text-right">{r.hours != null ? Number(r.hours).toFixed(2) : "—"}</td>
                 </tr>
               ))}
@@ -1313,6 +1317,7 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
       {canLog && <LogTimeDialog open={logOpen} onOpenChange={setLogOpen} projectId={projectId}
         locationId={locationScopeId}
         personnelId={personId || null} personName={personName || undefined} />}
+      {canLog && editStay && <EditStayTimesDialog projectId={projectId} ids={[editStay.visit_personnel_id]} personName={trailName(editStay)} onClose={() => setEditStay(undefined)} />}
     </div>
   );
 }
