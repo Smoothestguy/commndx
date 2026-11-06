@@ -9,6 +9,7 @@ import { useAssignmentCountsByProject } from '@/integrations/supabase/hooks/useP
 
 interface Props {
   projectId: string;
+  deploymentMode?: boolean;
 }
 
 function Chip({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
@@ -23,7 +24,7 @@ function Chip({ icon, label, value }: { icon: React.ReactNode; label: string; va
   );
 }
 
-export function ProjectHeaderKpis({ projectId }: Props) {
+export function ProjectHeaderKpis({ projectId, deploymentMode = false }: Props) {
   const { isAdmin, isManager } = useUserRole();
   const { data: jobOrders = [] } = useJobOrdersByProject(projectId);
   const { data: milestones = [] } = useMilestonesByProject(projectId);
@@ -74,7 +75,7 @@ export function ProjectHeaderKpis({ projectId }: Props) {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
-      {(isAdmin || isManager) && <Chip
+      {(isAdmin || isManager) && (!deploymentMode || contractValue > 0) && <Chip
         icon={<DollarSign className="h-4 w-4" />}
         label="Contract Value"
         value={`$${contractValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
@@ -84,16 +85,16 @@ export function ProjectHeaderKpis({ projectId }: Props) {
         label="Crew Assigned"
         value={crewCount}
       />
-      <Chip
+      {(!deploymentMode || (recruiting?.needed ?? 0) > 0 || (recruiting?.filled ?? 0) > 0) && <Chip
         icon={<Briefcase className="h-4 w-4" />}
         label="Recruiting"
         value={recruiting ? `${recruiting.filled} / ${recruiting.needed}` : "—"}
-      />
-      <Chip
+      />}
+      {(!deploymentMode || milestones.length > 0 || jobOrders.length > 0) && <Chip
         icon={<Target className="h-4 w-4" />}
         label="Progress"
         value={`${progressPct}%`}
-      />
+      />}
     </div>
   );
 }

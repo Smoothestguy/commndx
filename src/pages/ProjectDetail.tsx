@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { useProject, useArchiveProject, useUnarchiveProject } from "@/integrations/supabase/hooks/useProjects";
@@ -73,10 +73,17 @@ const ProjectDetail = () => {
   const updateProject = useUpdateProject();
 
   const deploymentMode = !!project?.deployment_mode;
+  const { data: recruitingExists } = useQuery({ queryKey: ['project-recruiting-presence', id], enabled: !!id, queryFn: async () => {
+    const [orders, applications] = await Promise.all([supabase.from('project_task_orders').select('id').eq('project_id', id || '').limit(1),supabase.from('applications').select('id').eq('project_id', id || '').limit(1)]);
+    if (orders.error) throw orders.error; if (applications.error) throw applications.error;
+    return !!orders.data?.length || !!applications.data?.length;
+  } });
+  const showRecruiting = !deploymentMode || recruitingExists !== false;
+
   const tabParam = searchParams.get("tab");
-  const activeTab: TabValue = (TABS as readonly string[]).includes(tabParam || "") && (tabParam !== "deployment" || deploymentMode)
+  const activeTab: TabValue = (TABS as readonly string[]).includes(tabParam || "") && (tabParam !== "deployment" || deploymentMode) && (tabParam !== "recruiting" || showRecruiting) && (tabParam !== "time" || !deploymentMode)
     ? (tabParam as TabValue)
-    : "locations";
+    : tabParam === "time" && deploymentMode ? "deployment" : "locations";
 
   const setActiveTab = (val: string) => {
     const next = new URLSearchParams(searchParams);
@@ -240,17 +247,17 @@ const ProjectDetail = () => {
         </div>
       </div>
 
-      <ProjectHeaderKpis projectId={id} />
+      <ProjectHeaderKpis projectId={id} deploymentMode={deploymentMode} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="overflow-x-auto -mx-1 px-1 mb-4">
           <TabsList className="w-max">
             <TabsTrigger value="locations">Locations{locations.length > 0 ? ` (${locations.length})` : ""}</TabsTrigger>
             {deploymentMode && <TabsTrigger value="deployment">Deployment</TabsTrigger>}
-            <TabsTrigger value="recruiting">Recruiting</TabsTrigger>
+            {showRecruiting && <TabsTrigger value="recruiting">Recruiting</TabsTrigger>}
             <TabsTrigger value="crew">Crew &amp; Logistics</TabsTrigger>
             <TabsTrigger value="financials">Financials</TabsTrigger>
-            <TabsTrigger value="time">Time</TabsTrigger>
+            {!deploymentMode && <TabsTrigger value="time">Time</TabsTrigger>}
             <TabsTrigger value="docs">Docs &amp; Activity</TabsTrigger>
           </TabsList>
         </div>
