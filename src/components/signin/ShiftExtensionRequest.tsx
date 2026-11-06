@@ -1,3 +1,4 @@
+import { usePublicLang } from '@/lib/publicLang';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { EXTENSION_REASONS, extensionChoices } from '@/lib/shiftDiscipline';
 type Extension = { status: string; until_at: string };
 export function ShiftExtensionRequest({ token }: { token: string }) {
+  const { tr } = usePublicLang();
   const [open,setOpen]=useState(false),[choice,setChoice]=useState(''),[text,setText]=useState(''),[until,setUntil]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const [info,setInfo]=useState<{timezone?:string;shift_end?:string;extension?:Extension|null}>({});
   useEffect(() => { let active=true; const load=async()=>{const {data,error}=await supabase.functions.invoke('shift-discipline',{body:{action:'info',token}});if(active&&!error)setInfo(data);};void load();const timer=setInterval(load,60_000);return()=>{active=false;clearInterval(timer);}; },[token]);
