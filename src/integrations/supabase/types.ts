@@ -10873,6 +10873,8 @@ export type Database = {
           early_out_reason: string | null
           id: string
           in_geofence: boolean | null
+          late_minutes: number | null
+          late_reason: string | null
           offsite_approved_at: string | null
           offsite_approved_by: string | null
           offsite_reason: string | null
@@ -10893,6 +10895,8 @@ export type Database = {
           early_out_reason?: string | null
           id?: string
           in_geofence?: boolean | null
+          late_minutes?: number | null
+          late_reason?: string | null
           offsite_approved_at?: string | null
           offsite_approved_by?: string | null
           offsite_reason?: string | null
@@ -10913,6 +10917,8 @@ export type Database = {
           early_out_reason?: string | null
           id?: string
           in_geofence?: boolean | null
+          late_minutes?: number | null
+          late_reason?: string | null
           offsite_approved_at?: string | null
           offsite_approved_by?: string | null
           offsite_reason?: string | null
@@ -11572,6 +11578,7 @@ export type Database = {
               p_at: string
               p_early_reason?: string
               p_lat: number
+              p_late_reason?: string
               p_lng: number
               p_location: string
               p_override_reason: string
@@ -11966,6 +11973,7 @@ export type Database = {
           p_early_reason?: string
           p_kiosk: string
           p_lat?: number
+          p_late_reason?: string
           p_lng?: number
           p_override_reason?: string
         }
@@ -11981,6 +11989,7 @@ export type Database = {
           p_early_reason?: string
           p_kiosk: string
           p_lat?: number
+          p_late_reason?: string
           p_lng?: number
           p_override_reason?: string
           p_personnel: string
@@ -12080,6 +12089,7 @@ export type Database = {
           p_at?: string
           p_early_reason?: string
           p_lat?: number
+          p_late_reason?: string
           p_lng?: number
           p_override_reason?: string
           p_token: string
