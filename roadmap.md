@@ -1,3 +1,9 @@
+# Late clock-in and project cleanup
+- [ ] Update every live punch caller; late-reason screens/captions and durable retries.
+- [ ] Red late-day markers in attendance, Trail, Timesheet and customer token portal; five-minute reminders and bilingual already-registered join screen.
+- [ ] Browser audit project tabs and empty stats; small safe hide-empty cleanup with exact report.
+- [ ] Focused tests, browser verification and bunx tsgo --noEmit; no migrations or cron activation.
+
 # Existing stay corrections
 - [x] Shared manager/admin Edit times dialog from project/location Timesheet cells and Trail In/Out, including running stays, source chips, location-local dates/times and staged per-stay deletion.
 - [x] Per-person writes preserve signatures/source; original/proposed operational and payroll dates guard closed weeks and locked entries, sheet reopening reserves versions, attendance recomputes and audits drive pencil markers. Deleting a stay preserves private storage/audit evidence and zeros its existing financial row; invoiced stays are blocked. Multi-request client guards are not atomic server lock enforcement.
