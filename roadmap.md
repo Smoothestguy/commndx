@@ -1,8 +1,13 @@
+# Join approval correction
+- [ ] Pending-only bilingual public confirmation; no requester punch link.
+- [ ] Shared staff approval lists/badges in Deployment and location/staffing headers with matched-name hints; approve SMS and deny without SMS.
+- [ ] Live flow/role checks, rule tests and bunx tsgo --noEmit; no migrations.
+
 # Project join links
 - [x] Regenerated live types; bilingual anonymous registration, inline validation, office invalid state and personal punch-link success implemented. Actual live join_project returns pending approval, which is displayed truthfully.
 - [x] Manager project menu/location card/mobile+desktop grid actions, scope/employer/NB/role/30-day expiry, copy/QR/SMS shortcut and revocation; project roster/staffing invalidates on focus.
 - [x] 17 rule tests and bunx tsgo --noEmit passed; live authenticated link create/readback → anonymous register/repeat → revoke verified, 390px screens inspected. Test requests denied via live RPC and tokens revoked; no personnel or SMS created. Personal punch success verified with intercepted response only.
-- [ ] Immediate join → roster/name-phone deduplication → personal punch readback blocked: live join_project queues project_join_requests and returns {ok:true,status:'pending'} instead of the stated direct-assignment result. No migrations or replacement RPC applied; server owner must supply the specified live behavior before that flow can be verified.
+- [x] Direct-join discrepancy superseded by user's staff-approval correction; keep live pending-request behavior and build authenticated approval below.
 
 # Daily timesheets and non-billable personnel
 - [x] Built-in location/day customer PDF, linked-template precedence and private approval/lock flow; live populated location PDF downloaded and isolated template-free approval/hash/storage readback verified. Employee signature/footer rendering inspected with synthetic evidence.
