@@ -3,7 +3,7 @@
 - [x] Non-billable editor/labels and money exclusions while retaining attendance and agency hours; distinct from non-billable rate brackets.
 - [x] Manager quick-add/assignment with optional text offer and no-phone guidance; live no-phone/non-billable and phone-supplied offer tested without sending. 390px form inspected; test project archived and personnel inactive, historical approval retained.
 - [x] 31 focused tests, authenticated admin browser verification, requested TypeScript check and healthy preview; no migrations or cron changes. Separate manager login and actual Safari not exercised.
-- [ ] Apply corrected customer employer labels, exclusive editor choices and FRG/agency/customer quick-add; preserve vendor-only agency reports. Live Patriot records already corrected; do not move or duplicate them. Regenerate types, test and verify.
+- [x] Corrected customer employer labels, exclusive editor/inline choices and FRG/agency/customer quick-add; agency filters/reports remain vendor-only. Regenerated live types, deployed minimal employer metadata, 20 tests and bunx tsgo --noEmit passed. Authenticated live customer quick-add/assignment → editor save/reload and 390px form verified; test personnel deactivated/assignment closed, Patriot records unchanged. No migrations or cron changes.
 
 # Kiosk privacy, badges and agency sign-up
 - [x] Search-default, explicit roster/selfie and badge modes with URL mode, bounded live search, selected short-lived profile photos, private token-scoped media, server-enforced selfie prerequisite and shift/geofence safeguards. Private project-documents stores evidence because field-captures is public.
