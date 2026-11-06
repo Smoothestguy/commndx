@@ -5,7 +5,7 @@ import { ensureSheetsOpen, guardStayWeeks } from '@/lib/sheetLocks';
 import { affectedStayDates } from '@/lib/stayEdits';
 import { toast } from 'sonner';
 
-export type StayChange = { id: string; inAt: string; outAt: string | null; remove: boolean };
+export type StayChange = { id: string; inAt: string; outAt: string | null; remove: boolean; note?: string };
 export function useEditedStayIds(ids: string[]) {
   const unique = [...new Set(ids)].sort();
   return useQuery({ queryKey: ['edited-stays', unique], enabled: unique.length > 0, queryFn: async () => {
@@ -53,7 +53,7 @@ export function useEditStayTimes(projectId: string) {
       try {
         for (const s of prepared) {
           const before = { checked_in_at: s.oldIn, checked_out_at: s.oldOut, signature_url: s.stay.signature_url, signed_at: s.stay.signed_at, visit_id: s.stay.visit_id, personnel_id: s.stay.personnel_id };
-          const after = s.remove ? { removed: true } : { checked_in_at: s.inAt, checked_out_at: s.outAt };
+          const after = s.remove ? { removed: true, ...(s.note ? { note: s.note } : {}) } : { checked_in_at: s.inAt, checked_out_at: s.outAt, ...(s.note ? { note: s.note } : {}) };
           const { data: linkedEntries, error: linkedError } = await supabase.from('time_entries').select('id').eq('visit_personnel_id', s.id);
           if (linkedError) throw linkedError;
           const { data: audit, error: ae } = await supabase.from('audit_logs').insert({ user_id: user.id, user_email: user.email || 'unknown', action_type: s.remove ? 'stay_delete' : 'stay_times_edit', resource_type: 'visit_personnel', resource_id: s.id, changes_before: before, changes_after: after, metadata: { project_id: projectId, location_id: s.locationId }, success: false }).select('id').single();
