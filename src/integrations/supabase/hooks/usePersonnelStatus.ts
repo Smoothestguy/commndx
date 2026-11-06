@@ -1,3 +1,5 @@
+import { useProjectAgencies } from '@/hooks/useProjectAgencies';
+import { personnelAmount } from '@/lib/personnelBilling';
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -166,6 +168,7 @@ const daysSince = (iso: string | null) =>
 /** Canonical approved visit/manual time entries feed roster hours; trail is detail only. */
 export function useProjectRoster(projectId?: string, withCosts = false) {
   const hoursQuery = useDeploymentHours(projectId);
+  const billingPeople = useProjectAgencies(projectId || '');
   const { list, isLoading: sLoading } = useCurrentStatuses({ projectId });
   const activatedIds = list.filter((s) => s.status === "activated").map((s) => s.personnel_id);
   const key = activatedIds.slice().sort().join(",");
@@ -224,9 +227,10 @@ export function useProjectRoster(projectId?: string, withCosts = false) {
         }
         laborCost = ok ? cost : null;
       }
+      if (withCosts && billingPeople.nonBillableByPerson[s.personnel_id] !== false) laborCost = personnelAmount(laborCost || 0, true);
       return { ...s, days: daysSince(s.effective_at), hours, laborCost, rateSource };
     });
-  }, [list, detail.data, withCosts]);
+  }, [list, detail.data, withCosts, billingPeople.data]);
 
   return { rows, isLoading: sLoading || detail.isLoading || hoursQuery.isLoading };
 }

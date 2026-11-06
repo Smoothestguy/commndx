@@ -26,7 +26,7 @@ export async function generateDailyTimesheet(rows: SheetRow[], config: { day: st
     const props = pdf.getImageProperties(bytes), scale = Math.min(w / props.width, h / props.height);
     pdf.addImage(bytes, props.fileType, x, y + (h - props.height * scale) / 2, props.width * scale, props.height * scale);
   };
-  const text = (value: string, x: number, y: number, width: number, lines = 2) => { pdf.text(pdf.splitTextToSize(value, width - 8).slice(0, lines), x + 4, y + 11); };
+  const text = (value: string, x: number, y: number, width: number, lines = 3) => { pdf.text(pdf.splitTextToSize(value, width - 8).slice(0, lines), x + 4, y + 11); };
   for (let page = 0; page < Math.max(1, Math.ceil(people.length / capacity)); page++) {
     if (page) pdf.addPage();
     pdf.setFont('helvetica', 'bold'); pdf.setFontSize(14); pdf.text('Fairfield Response Group — Daily Timesheet Report', left, 42);
