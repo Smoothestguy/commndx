@@ -32,7 +32,7 @@ export function DailyTimesheetPanel({ projectId, projectName, locationId, initia
     <Button size="sm" variant="outline" onClick={() => { const l = locations.find(l => l.id === locationId); if (l) setDay(localDay(new Date().toISOString(), l.timezone || 'America/Chicago')); setOpen(true); }}><Download className="h-4 w-4 mr-1" />Daily timesheet (PDF)</Button>
     <Dialog open={open} onOpenChange={v => { if (!busy) setOpen(v); }}><DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Daily Timesheet Report</DialogTitle></DialogHeader>
       <Label htmlFor={`daily-day-${locationId || projectId}`}>Date</Label><Input id={`daily-day-${locationId || projectId}`} type="date" value={day} onChange={e => setDay(e.target.value)} />
-      {isLoading || docsLoading ? <Loader2 className="animate-spin" /> : error || savedError || docsError ? <p role="alert" className="text-destructive">Unable to load sheets. Refresh to try again.</p> : selected.map(location => {
+      {!day ? <p className="text-muted-foreground">Select a date.</p> : isLoading || docsLoading ? <Loader2 className="animate-spin" /> : error || savedError || docsError ? <p role="alert" className="text-destructive">Unable to load sheets. Refresh to try again.</p> : selected.map(location => {
         const template = docs.find(d => d.is_signin_template && (d.location_id === location.id || d.location_ids?.includes(location.id)));
         if (template) return <section key={location.id}><h3 className="font-medium">{location.name}</h3><SigninSheetsPanel doc={template} projectName={projectName} initialSheet={{ location: location.id, day }} /></section>;
         const zone = location.timezone || 'America/Chicago', rows = rowsForDay(stays, location.id, day, zone);
