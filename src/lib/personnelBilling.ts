@@ -1,0 +1,2 @@
+export const personnelAmount = (amount: number, nonBillable: boolean) => nonBillable ? 0 : amount;
+export const quickAddEmail = (first: string, last: string, stamp: number) => `${first}.${last}.${stamp}`.toLowerCase().replace(/[^a-z0-9.]/g, '') + '@quickadd-placeholder.invalid';
