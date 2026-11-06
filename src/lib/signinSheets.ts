@@ -4,7 +4,14 @@ export const localDay = (iso: string, zone: string) => {
   const p = new Intl.DateTimeFormat('en-US', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(iso));
   return `${p.find(x => x.type === 'year')?.value}-${p.find(x => x.type === 'month')?.value}-${p.find(x => x.type === 'day')?.value}`;
 };
-export const localTime = (iso: string | null, zone: string) => iso ? new Intl.DateTimeFormat('en-GB', { timeZone: zone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso)) : '';
+/** Always "HH:mm" (24h). Built from parts so engines that ignore hourCycle or emit "24" still match the HH:mm inputs. */
+export const localTime = (iso: string | null, zone: string) => {
+  if (!iso) return '';
+  const d = new Date(iso); if (!Number.isFinite(d.getTime())) return '';
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: zone, hour: 'numeric', minute: '2-digit', hour12: false }).formatToParts(d);
+  const h = Number(parts.find(p => p.type === 'hour')?.value) % 24, m = parts.find(p => p.type === 'minute')?.value ?? '00';
+  return `${String(Number.isFinite(h) ? h : 0).padStart(2, '0')}:${m.padStart(2, '0')}`;
+};
 export function nextDay(day: string) { return new Date(Date.parse(`${day}T12:00:00Z`) + 86400000).toISOString().slice(0, 10); }
 export function midnight(day: string, zone: string) {
   const target = Date.parse(`${day}T00:00:00Z`); let t = target;
