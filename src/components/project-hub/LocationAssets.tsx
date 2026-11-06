@@ -55,7 +55,7 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
       return data ?? [];
     },
   });
-  const projectRows = rows.filter((r) => r.status === "active" && r.location_id !== locationId);
+  const projectRows = rows.filter((r) => r.status === "active" && (r.location_id !== locationId || !!r.end_at));
   const projectAssetIds = new Set(projectRows.map((r) => r.asset_id));
   const hereIds = new Set(rows.filter((r) => r.status === "active" && !r.end_at && r.location_id === locationId).map((r) => r.asset_id));
   const registry = allAssets.filter((a) => a.status !== "retired" && !projectAssetIds.has(a.id) && !hereIds.has(a.id));

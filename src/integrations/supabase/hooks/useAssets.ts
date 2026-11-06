@@ -119,7 +119,8 @@ export function useAvailableAssets() {
         .from("asset_assignments")
         .select("asset_id")
         .eq("status", "active")
-        .is("unassigned_at", null);
+        .is("unassigned_at", null)
+        .is("end_at", null);
 
       if (assignmentsError) throw assignmentsError;
 
