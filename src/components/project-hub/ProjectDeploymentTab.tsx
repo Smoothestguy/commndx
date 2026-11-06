@@ -1,3 +1,4 @@
+import { shiftRuleDefaults, projectShiftRulesSchema, checkoutRoundingOptions } from '@/lib/projectShiftRules';
 import { useLateStays } from '@/hooks/useLateStays';
 import { maxLate, lateDayKey, type LateInfo } from '@/lib/lateAttendance';
 import { LateBadge } from '@/components/signin/LateBadge';
@@ -887,6 +888,8 @@ function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit
   const [sbRate, setSbRate] = useState("");
   const [dayStartT, setDayStartT] = useState("06:00");
   const [nightStartT, setNightStartT] = useState("18:00");
+  const [rules, setRules] = useState(() => Object.fromEntries(Object.entries(shiftRuleDefaults).map(([k,v]) => [k,String(v)])));
+  const parsedRules = projectShiftRulesSchema.safeParse(Object.fromEntries(Object.entries(rules).map(([k,v]) => [k, v.trim() ? Number(v) : NaN])));
   const [open, setOpen] = useState(false);
 
   const openRef = useRef(false);
@@ -897,6 +900,7 @@ function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit
     setSbRate((project as any)?.standby_rate != null ? String((project as any).standby_rate) : "");
     setDayStartT(String((project as any)?.day_shift_start ?? "06:00").slice(0, 5));
     setNightStartT(String((project as any)?.night_shift_start ?? "18:00").slice(0, 5));
+    setRules(Object.fromEntries(Object.entries(shiftRuleDefaults).map(([k,v]) => [k,String(project?.[k as keyof typeof shiftRuleDefaults] ?? v)])));
   } else if (!open && openRef.current) openRef.current = false;
 
   if (!canEdit) return null;
@@ -904,19 +908,12 @@ function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-1"><Settings2 className="h-4 w-4" />Billing settings</Button>
+        <Button size="sm" variant="outline" className="gap-1"><Settings2 className="h-4 w-4" />Project settings</Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 space-y-3" align="end">
+      <PopoverContent className="w-80 max-w-[calc(100vw-2rem)] max-h-[85dvh] overflow-y-auto space-y-3" align="end">
+        <h3 className="text-sm font-semibold">Billing</h3>
         <div><Label>Default shift hours</Label>
           <Input type="number" inputMode="decimal" min={0} step="0.5" value={hours} onChange={(e) => setHours(e.target.value)} />
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div><Label className="text-xs">Day shift starts</Label>
-            <Input type="time" value={dayStartT} onChange={(e) => setDayStartT(e.target.value)} />
-          </div>
-          <div><Label className="text-xs">Night shift starts</Label>
-            <Input type="time" value={nightStartT} onChange={(e) => setNightStartT(e.target.value)} />
-          </div>
         </div>
         <div><Label>Mileage rate ($/mile, optional)</Label>
           <Input type="number" inputMode="decimal" min={0} step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="e.g. 0.70" />
@@ -924,16 +921,35 @@ function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit
         <div><Label>Standby rate ($/person/day, optional)</Label>
           <Input type="number" inputMode="decimal" min={0} step="0.01" value={sbRate} onChange={(e) => setSbRate(e.target.value)} placeholder="e.g. 150" />
         </div>
+        <section className="border-t pt-3 space-y-3">
+          <h3 className="text-sm font-semibold">Shift rules</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2 grid grid-cols-2 gap-2">
+              <div><Label htmlFor="project-day-start" className="text-xs">Day shift starts</Label><Input id="project-day-start" type="time" value={dayStartT} onChange={e=>setDayStartT(e.target.value)}/></div>
+              <div><Label htmlFor="project-night-start" className="text-xs">Night shift starts</Label><Input id="project-night-start" type="time" value={nightStartT} onChange={e=>setNightStartT(e.target.value)}/></div>
+            </div>
+            {([
+              ['reminder_lead_minutes','Reminder lead (min before shift)'],
+              ['early_window_minutes','Early window (min)'],
+              ['late_grace_minutes','Late grace (min)'],
+              ['late_max_minutes','Max late (min)'],
+              ['auto_close_after_hours','Auto-close after (h)'],
+            ] as const).map(([key,label])=><div key={key}><Label htmlFor={`rule-${key}`} className="text-xs">{label}</Label><Input id={`rule-${key}`} type="number" inputMode={key==='auto_close_after_hours'?'decimal':'numeric'} min={key==='auto_close_after_hours'?0.5:0} step={key==='auto_close_after_hours'?0.5:1} value={rules[key]} onChange={e=>setRules(v=>({...v,[key]:e.target.value}))}/></div>)}
+            <div><Label htmlFor="rule-rounding" className="text-xs">Checkout rounding</Label><Select value={rules.checkout_rounding_minutes} onValueChange={v=>setRules(r=>({...r,checkout_rounding_minutes:v}))}><SelectTrigger id="rule-rounding"><SelectValue/></SelectTrigger><SelectContent>{checkoutRoundingOptions.map(v=><SelectItem key={v} value={String(v)}>{v} min</SelectItem>)}</SelectContent></Select></div>
+          </div>
+          {!parsedRules.success && <p role="alert" className="text-xs text-destructive">Enter non-negative whole minutes, a positive auto-close duration, and a listed rounding interval.</p>}
+        </section>
         <Button
-          size="sm" className="w-full" disabled={update.isPending}
-          onClick={() => update.mutate({
+          size="sm" className="w-full" disabled={update.isPending || !parsedRules.success || !project}
+          onClick={() => { if (!parsedRules.success) return; update.mutate({
             id: projectId,
+            ...parsedRules.data,
             default_shift_hours: hours.trim() ? Number(hours) : 12,
             mileage_rate: rate.trim() ? Number(rate) : null,
             standby_rate: sbRate.trim() ? Number(sbRate) : null,
             day_shift_start: dayStartT || "06:00",
             night_shift_start: nightStartT || "18:00",
-          } as any, { onSuccess: () => setOpen(false) })}
+          }, { onSuccess: () => setOpen(false) }); }}
         >{update.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Save</Button>
       </PopoverContent>
     </Popover>
