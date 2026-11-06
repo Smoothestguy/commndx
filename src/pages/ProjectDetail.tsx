@@ -4,6 +4,7 @@ import { Link, useParams, Navigate, useNavigate, useSearchParams } from "react-r
 import { format } from "date-fns";
 import { useProject, useArchiveProject, useUnarchiveProject } from "@/integrations/supabase/hooks/useProjects";
 import { useUserRole } from "@/hooks/useUserRole";
+import { ProjectCloseout } from "@/components/project-hub/ProjectCloseout";
 import { useCustomer } from "@/integrations/supabase/hooks/useCustomers";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
@@ -171,6 +172,7 @@ const ProjectDetail = () => {
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           {canArchive && <ProjectStatusMenu project={project} />}
           {canArchive && <ProjectJoinLinks projectId={project.id} menu />}
+          {canArchive && <ProjectCloseout project={project as any} />}
           {canArchive && <Button variant="outline" onClick={handleExportPDF}>
             <Download className="h-4 w-4 mr-2" />
             Export PDF
