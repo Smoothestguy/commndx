@@ -1,7 +1,7 @@
 # Task-order refinements
-- [ ] Preserve direct requirements editing with accepted internal ADJ history; no manual sync.
-- [ ] Optional effective time, travel-time and structured demobilization details in staff and token-only customer forms/history; accepted demob Deployment alerts.
-- [ ] Regenerate live types, focused tests, TypeScript and authenticated/public browser verification; no migrations.
+- [x] Shared direct requirements add/change/remove and location-editor saves record accepted internal ADJ deltas without sync; explicit legacy baseline capture maintains authorization consistency. Web Locks and expected-state guards reduce concurrent edits; rejected evidence survives incomplete saves. No atomic multi-request guarantee without a live transactional RPC.
+- [x] Optional effective time, Yes/No travel-time and structured demobilization details in staff and token-only customer forms/history; accepted demob Deployment alerts. New token-validated service wraps existing customer RPCs, which omit the live extra columns; no anonymous table grants.
+- [x] Regenerated types; 34 focused tests, bunx tsgo --noEmit and latest preview build passed. Authenticated admin browser verified direct 0→1→3 and decreases, internal demob save/sync, public pending submission→acceptance→customer readback and Deployment extras, plus 390px staff/customer forms. Test staffing/authorization restored to zero and customer links revoked; historical evidence retained. No migrations/messages/cron changes. Separate manager login, real Safari and failure-injection/concurrent cross-user writes not tested.
 
 # Navigation and location pages
 - [x] Full-width deep-linked location page reuses staffing/requirements/join requests, scoped attendance/trail, visits/status/sheets/countersign, embedded task-order ledger/as-of, lodging, assets and scoped documents/signatures; existing edit/kiosk/QR/join/daily actions remain permission-gated. Scoped sheet cache keys prevent project/location collisions.
