@@ -3,6 +3,7 @@ import { LocationTaskOrders } from './LocationTaskOrders';
 import { AuthorizationBadge } from './AuthorizationBadge';
 import { useLocationAuthorization } from '@/hooks/useLocationAuthorization';
 import { ProjectJoinLinks } from './ProjectJoinLinks';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { useProjectDocuments } from "@/integrations/supabase/hooks/useProjectDocuments";
@@ -95,6 +96,9 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
   const effectiveView = view ?? (locations.length > 4 ? "grid" : "cards");
   const chooseView = (v: "cards" | "grid") => { setView(v); try { localStorage.setItem(viewKey, v); } catch { /* ignore */ } };
   const [scrollTo, setScrollTo] = useState<string | null>(null);
+  const [locationParams]=useSearchParams();
+  const targetLocation=locationParams.get('location');
+  useEffect(()=>{if(targetLocation&&locations.some(l=>l.id===targetLocation)){chooseView('cards');setScrollTo(targetLocation);}},[targetLocation,locations]);
   useEffect(() => {
     if (!scrollTo || effectiveView !== "cards") return;
     const el = document.getElementById(`location-card-${scrollTo}`);

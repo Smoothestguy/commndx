@@ -124,6 +124,14 @@ export function useAssignPersonnel() {
       const { data: { user } } = await supabase.auth.getUser();
       let dupes = 0;
       for (const pid of personnel_ids) {
+        const previous = await db.from('location_assignments').select('id,status').eq('location_id',location_id).eq('personnel_id',pid).maybeSingle();
+        if(previous.error)throw previous.error;
+        if(previous.data){
+          if(previous.data.status==='active'){dupes++;continue;}
+          const restored=await db.from('location_assignments').update({status:'active',unassigned_at:null,assigned_at:new Date().toISOString(),assigned_by:user?.id??null,role_label:role_label||null}).eq('id',previous.data.id);
+          if(restored.error)throw restored.error;
+          continue;
+        }
         const { error } = await db.from("location_assignments").insert({
           location_id, personnel_id: pid, role_label: role_label || null, assigned_by: user?.id ?? null,
         });
