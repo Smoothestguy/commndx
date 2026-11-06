@@ -90,7 +90,9 @@ function useOnSiteBadge(personnelId: string, status: LifecycleStatus, projectNam
   const { data: onSite } = useOnSiteMap();
   const os = onSite?.[personnelId];
   if (!os) return null;
-  const showLoc = !hideLocationId || os.location_id !== hideLocationId;
+  // Scoped to a location row: never blend another site's presence into this location's status.
+  if (hideLocationId && os.location_id !== hideLocationId) return null;
+  const showLoc = !hideLocationId;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
