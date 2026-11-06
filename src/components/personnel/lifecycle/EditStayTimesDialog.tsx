@@ -15,7 +15,7 @@ export function EditStayTimesDialog({ projectId, ids, personName, day, onClose }
   const save = useEditStayTimes(projectId);
   const [drafts, setDrafts] = useState<StayDraft[]>([]);
   const [error, setError] = useState('');
-  const query = useQuery({ queryKey: ['edit-stays', projectId, ids], queryFn: async () => {
+  const query = useQuery({ queryKey: ['edit-stays', projectId, ids], gcTime: 0, refetchOnWindowFocus: false, queryFn: async () => {
     const { data, error } = await supabase.from('personnel_location_trail').select('visit_personnel_id,visit_id,in_at,out_at,location_id,location_name').in('visit_personnel_id', ids).eq('project_id', projectId);
     if (error) throw error;
     const rows = data || [];
