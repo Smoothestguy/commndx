@@ -14,13 +14,12 @@ import { useProjectLocations } from '@/integrations/supabase/hooks/useProjectLoc
 import { useLocationStaffingSummary } from '@/integrations/supabase/hooks/useLocationStaffing';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useNavigationValue } from '@/hooks/useNavigationValue';
-import { useLocationAuthorization } from '@/hooks/useLocationAuthorization';
-import { AuthorizationBadge } from '@/components/project-hub/AuthorizationBadge';
 import { LocationStaffing } from '@/components/project-hub/LocationStaffing';
 import { ProjectLocationsTab } from '@/components/project-hub/ProjectLocationsTab';
 import { LocationLodging } from '@/components/project-hub/LocationLodging';
 import { LocationAssets } from '@/components/project-hub/LocationAssets';
-import { LocationTaskOrders } from '@/components/project-hub/LocationTaskOrders';
+import { LocationAuthorizationPanel } from '@/components/project-hub/LocationAuthorizationPanel';
+import { LocationDayAttendance } from '@/components/project-hub/LocationDayAttendance';
 import { ProjectJoinLinks } from '@/components/project-hub/ProjectJoinLinks';
 import { LocationKioskActions } from '@/components/signin/LocationKioskActions';
 import { DailyTimesheetPanel } from '@/components/signin/DailyTimesheetPanel';
@@ -30,8 +29,9 @@ import { ProjectDocuments } from '@/components/projects/ProjectDocuments';
 import { currentWeekStart, addDays, resolveShifts } from '@/lib/shifts';
 import { formatLocalDate } from '@/lib/dateUtils';
 import { localDay } from '@/lib/signinSheets';
-const tabs = ['staffing','attendance','sheets','taskorders','lodging','assets','documents'] as const;
-const labels = { staffing:'Staffing',attendance:'Attendance',sheets:'Visits & Sheets',taskorders:'Task orders',lodging:'Lodging',assets:'Assets',documents:'Documents' };
+const tabs = ['staffing','attendance','sheets','lodging','assets','documents'] as const;
+const attViews = ['day','detail'] as const;
+const labels = { staffing:'Staffing',attendance:'Attendance',sheets:'Sign-in sheets',lodging:'Lodging',assets:'Assets',documents:'Documents' };
 export default function LocationDetail() {
   const { projectId, locationId } = useParams();
   const { data: project, isLoading: projectLoading, error: projectError } = useProject(projectId);
@@ -40,9 +40,9 @@ export default function LocationDetail() {
   const { isAdmin, isManager } = useUserRole(), canWrite = isAdmin || isManager;
   const { data: staffing } = useLocationStaffingSummary(locationId ? [locationId] : []);
   const scoped = useMemo(() => location ? [location] : [], [location]);
-  const auth = useLocationAuthorization(scoped);
   const [tab,setTab] = useNavigationValue('tab','staffing',tabs);
   const [week,setWeek] = useNavigationValue<string>('week',currentWeekStart());
+  const [attView,setAttView] = useNavigationValue('view','day',attViews);
   const [params,setParams] = useSearchParams();
   const [edit,setEdit] = useState(false);
   const [logOpen,setLogOpen] = useState(false);
@@ -62,20 +62,23 @@ export default function LocationDetail() {
     <SEO title={`${location.name} | Command X`} description={`Location operations for ${project.name}`}/>
     <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-4"><Link className="hover:underline" to="/projects">Projects</Link><span>/</span><Link className="hover:underline" to={`/projects/${projectId}?tab=locations`}>{project.name}</Link><span>/</span><Link className="text-foreground hover:underline" to={`/projects/${projectId}/locations/${location.id}`}>{location.name}</Link></nav>
     <section className="border-b pb-4 space-y-3">
-      <div className="flex flex-wrap gap-2 items-center">{location.project_number && <Badge variant="outline">#{location.project_number}</Badge>}{location.lat != null && location.lng != null ? <Badge variant="outline">Geofenced · {location.geofence_radius_m}m</Badge> : <Badge variant="outline" className="text-muted-foreground">No geofence set</Badge>}<Badge variant={location.status==='active'?'default':'secondary'}>{location.status}</Badge><span className="text-sm font-medium">Staffed {summary?.assigned ?? 0}/{summary?.needed ?? 0}</span><AuthorizationBadge value={auth.data?.[location.id]}/></div>
+      <div className="flex flex-wrap gap-2 items-center">{location.project_number && <Badge variant="outline">#{location.project_number}</Badge>}{location.lat != null && location.lng != null ? <Badge variant="outline">Geofenced · {location.geofence_radius_m}m</Badge> : <Badge variant="outline" className="text-muted-foreground">No geofence set</Badge>}<Badge variant={location.status==='active'?'default':'secondary'}>{location.status}</Badge><span className="text-sm font-medium">Staffed {summary?.assigned ?? 0}/{summary?.needed ?? 0}</span></div>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">{address && <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`} target="_blank" rel="noopener noreferrer" className="text-primary inline-flex gap-1 items-center hover:underline"><MapPin className="h-4 w-4 shrink-0"/>{address}</a>}{location.poc_name && <span>{location.poc_name}</span>}{location.poc_phone && <a href={`tel:${location.poc_phone}`} className="text-primary inline-flex gap-1 items-center hover:underline"><Phone className="h-4 w-4"/>{location.poc_phone}</a>}{location.poc_email && <a className="text-primary hover:underline" href={`mailto:${location.poc_email}`}>{location.poc_email}</a>}<span className="text-muted-foreground">Mobe {location.mobe_date?formatLocalDate(location.mobe_date):'—'} → Demobe {location.demobe_date?formatLocalDate(location.demobe_date):'—'}</span></div>
       {location.scope && <p className="text-sm whitespace-pre-wrap text-muted-foreground">{location.scope}</p>}
       <p className="text-sm text-muted-foreground">Shifts: {shifts.day}–{shifts.dayEnd} / {shifts.night}–{shifts.nightEnd}</p>
       <div className="flex flex-wrap items-center gap-2">{canWrite && <><LocationKioskActions location={location} initialOpen={params.get('action')==='kiosk'}/><ProjectJoinLinks projectId={projectId} locationId={location.id}/></>}<DailyTimesheetPanel projectId={projectId} projectName={project.name} locationId={location.id} initialSheet={sheet}/></div>
     </section>
+    <div className="mt-4"><LocationAuthorizationPanel projectId={projectId} locationId={location.id} locationName={location.name} timezone={location.timezone}/></div>
     {canWrite && <LogTimeDialog open={logOpen} onOpenChange={setLogOpen} projectId={projectId} locationId={location.id} />}
     {edit && <ProjectLocationsTab projectId={projectId} deploymentMode={!!project.deployment_mode} editTargetId={location.id} onEditClosed={()=>setEdit(false)}/>}
-    <Tabs value={tab} onValueChange={v=>{setParams(prev=>{const next=new URLSearchParams(prev);next.set('tab',v);next.delete('sub');next.delete('action');return next;});}} className="mt-4"><TabsList className="h-auto flex flex-wrap justify-start gap-1">{tabs.map(t=><TabsTrigger value={t} key={t}>{labels[t]}</TabsTrigger>)}</TabsList></Tabs>
+    <Tabs value={tab} onValueChange={v=>{setParams(prev=>{const next=new URLSearchParams(prev);next.set('tab',v);next.delete('sub');next.delete('view');next.delete('action');return next;});}} className="mt-4"><TabsList className="h-auto flex flex-wrap justify-start gap-1">{tabs.map(t=><TabsTrigger value={t} key={t}>{labels[t]}</TabsTrigger>)}</TabsList></Tabs>
     <section className="py-4" aria-label={labels[tab]}>
-      {tab==='attendance'&&canWrite&&<div className="mb-3"><BulkLogTimesDialog projectId={projectId} location={location}/></div>}
+      {tab==='attendance' && <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2"><div role="tablist" aria-label="Attendance view" className="inline-flex rounded-md border p-0.5">{attViews.map(v=><Button key={v} role="tab" aria-selected={attView===v} size="sm" variant={attView===v?'secondary':'ghost'} onClick={()=>setAttView(v)}>{v==='day'?'Day':'Trail & weekly timesheet'}</Button>)}</div>{canWrite&&<BulkLogTimesDialog projectId={projectId} location={location}/>}</div>
+        {attView==='day' ? <LocationDayAttendance projectId={projectId} locationId={location.id} timezone={location.timezone} canWrite={canWrite}/> : <><div className="flex items-center gap-2"><label htmlFor="location-week" className="text-sm">Week of</label><Input id="location-week" type="date" className="w-44" value={week} onChange={e=>{if(e.target.value)setWeek(e.target.value);}}/></div><VisitsCard projectId={projectId} locations={scoped} crews={[]} from={week} to={addDays(week,6)} canEdit={canWrite} defaultView="timesheet" locationScopeId={location.id} unframed/></>}
+      </div>}
       {tab==='staffing' && <LocationStaffing locationId={location.id} locationName={location.name} projectId={projectId} timezone={location.timezone} summary={summary} canWrite={canWrite}/>}
-      {(tab==='attendance'||tab==='sheets') && <><div className="flex items-center gap-2 mb-3"><label htmlFor="location-week" className="text-sm">Week of</label><Input id="location-week" type="date" className="w-44" value={week} onChange={e=>{if(e.target.value)setWeek(e.target.value);}}/></div>{tab==='sheets' && <SigninStatusBoard projectId={projectId} locations={scoped} onSelect={(id,day)=>{setSheet({location:id,day});setParams(prev=>{const next=new URLSearchParams(prev);next.set('day',day);return next;});}}/>}<VisitsCard key={tab} projectId={projectId} locations={scoped} crews={[]} from={week} to={addDays(week,6)} canEdit={canWrite} defaultView={tab==='attendance'?'timesheet':'visits'} locationScopeId={location.id} unframed/></>}
-      {tab==='taskorders' && <LocationTaskOrders projectId={projectId} locationId={location.id} locationName={location.name} timezone={location.timezone} inline/>}
+      {tab==='sheets' && <SigninStatusBoard projectId={projectId} locations={scoped} onSelect={(id,day)=>{setSheet({location:id,day});setParams(prev=>{const next=new URLSearchParams(prev);next.set('day',day);return next;});}}/>}
       {tab==='lodging' && <LocationLodging projectId={projectId} locationId={location.id} housingBy={location.housing_provided_by} canWrite={canWrite}/>}
       {tab==='assets' && <LocationAssets projectId={projectId} locationId={location.id} locationName={location.name} canWrite={canWrite} locationNames={Object.fromEntries(locations.map(l=>[l.id,l.name]))}/>}
       {tab==='documents' && <ProjectDocuments projectId={projectId} projectName={project.name} locationScopeId={location.id} unframed/>}
