@@ -155,7 +155,7 @@ export const MobilePersonnelCard = ({
       className={`hover:shadow-md transition-all cursor-pointer active:bg-muted/50 ${
         isSelected ? "ring-2 ring-primary" : ""
       }`}
-      onClick={handleClick}
+      onClick={selectionMode ? handleClick : undefined}
     >
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
@@ -186,7 +186,7 @@ export const MobilePersonnelCard = ({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <h3 className="font-semibold text-sm truncate">
-                    {personnel.first_name} {personnel.last_name}
+                    <Link to={`/personnel/${personnel.id}`} className="hover:underline hover:text-primary">{personnel.first_name} {personnel.last_name}</Link>
                   </h3>
                   <ComplianceBadge personnel={personnel} compact />
                 </div>
@@ -379,7 +379,7 @@ export const MobilePersonnelCard = ({
         cardContent
       ) : (
         <ContextMenu>
-          <ContextMenuTrigger asChild>
+          <ContextMenuTrigger asChild onContextMenuCapture={e=>{if(e.target instanceof Element && e.target.closest('a[href]'))e.stopPropagation();}}>
             {cardContent}
           </ContextMenuTrigger>
           {contextMenuContent}

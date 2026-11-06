@@ -7,6 +7,7 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
+  ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent,
 } from "@/components/ui/context-menu";
 import {
   DropdownMenu,
@@ -14,6 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import {
@@ -112,6 +114,10 @@ function renderMenuItems(
   ItemComp: any,
   SepComp: any,
 ) {
+  const isContext = ItemComp === ContextMenuItem;
+  const Sub = isContext ? ContextMenuSub : DropdownMenuSub;
+  const SubTrigger = isContext ? ContextMenuSubTrigger : DropdownMenuSubTrigger;
+  const SubContent = isContext ? ContextMenuSubContent : DropdownMenuSubContent;
   return (
     <>
       <ItemComp onSelect={a.open}>
@@ -146,7 +152,7 @@ function renderMenuItems(
 
       {a.canManage && a.actions.length > 0 && (
         <>
-          <SepComp />
+          <SepComp /><Sub><SubTrigger>Status</SubTrigger><SubContent>
           {a.actions.includes("complete") && (
             <ItemComp onSelect={() => a.lifecycle.markCompleted(project)}>
               <CheckCircle2 className="h-4 w-4 mr-2 text-success" /> Mark Completed
@@ -167,6 +173,7 @@ function renderMenuItems(
               <XCircle className="h-4 w-4 mr-2" /> Cancel Project
             </ItemComp>
           )}
+          </SubContent></Sub>
         </>
       )}
 

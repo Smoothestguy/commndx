@@ -48,7 +48,7 @@ export default function LocationDetail() {
   useEffect(() => {
     if (!location) return;
     if (params.get('action') === 'edit' && canWrite) setEdit(true);
-    if (params.get('action') === 'daily') setSheet({location:location.id,day:params.get('day') || localDay(new Date().toISOString(),location.timezone || 'America/Chicago')});
+    if (params.get('day') || params.get('action') === 'daily') setSheet({location:location.id,day:params.get('day') || localDay(new Date().toISOString(),location.timezone || 'America/Chicago')});
   }, [location, params, canWrite]);
   if (isLoading || projectLoading) return <PageLayout title="Location"><Loader2 className="animate-spin"/></PageLayout>;
   if (!project || !location || error || projectError || !projectId) return <PageLayout title="Location unavailable"><Button asChild variant="link"><Link to="/projects">Projects</Link></Button></PageLayout>;
