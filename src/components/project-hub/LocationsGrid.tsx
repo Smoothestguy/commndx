@@ -74,7 +74,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
   onOpenCard: (locationId: string) => void; onEditLocation?: (location: ProjectLocation) => void;
 }) {
   const navigate = useNavigate();
-  const [logFor,setLogFor]=useState<string>();
+  const [logFor,setLogFor]=useState<{personnelId:string;locationId:string}>();
   const [expenseFor,setExpenseFor]=useState<string>();
   const [roleFor,setRoleFor]=useState<(typeof assignments)[number]>();
   const { agencyName, employerName, nonBillableByPerson } = useProjectAgencies(projectId);
@@ -154,7 +154,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
   const personActions = (a: (typeof assignments)[number]) => [
     {label:'Send site text',run:()=>setTextFor({locationId:a.location_id,ids:[a.personnel_id]})},
     ...(canWrite ? [
-      {label:'Log time',run:()=>setLogFor(a.personnel_id)},
+      {label:'Log time',run:()=>setLogFor({personnelId:a.personnel_id,locationId:a.location_id})},
       {label:'Add expense',run:()=>setExpenseFor(a.personnel_id)},
       {label:'Change role',run:()=>setRoleFor(a)},
       {label:'Unassign',run:()=>removePerson(a),destructive:true},
@@ -490,7 +490,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
         <AssignLocationAssetDialog open={!!assetFor} onOpenChange={(o) => !o && setAssetFor(null)} projectId={projectId}
           locationId={assetFor} locationName={locationNames[assetFor]} rows={assetRows} locationNames={locationNames} />
       )}
-      <LogTimeDialog open={!!logFor} onOpenChange={v=>{if(!v)setLogFor(undefined);}} projectId={projectId} personnelId={logFor}/>
+      <LogTimeDialog open={!!logFor} onOpenChange={v=>{if(!v)setLogFor(undefined);}} projectId={projectId} personnelId={logFor?.personnelId} locationId={logFor?.locationId}/>
       <AddExpenseDialog open={!!expenseFor} onOpenChange={v=>{if(!v)setExpenseFor(undefined);}} projectId={projectId} personnelId={expenseFor} lockProject/>
       <Dialog open={!!roleFor} onOpenChange={v=>{if(!v)setRoleFor(undefined);}}><DialogContent><DialogHeader><DialogTitle>Change role</DialogTitle></DialogHeader>{roleFor && roleEdit(roleFor,roleFor.location_id)}</DialogContent></Dialog>
       <SendSiteTextDialog open={!!textFor} onOpenChange={(o) => !o && setTextFor(null)} personnelIds={textFor?.ids ?? []} locationId={textFor?.locationId ?? ""} />

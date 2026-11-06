@@ -7,7 +7,7 @@ import { addDays as addCalendarDays, chicagoMidnight, splitAtMidnight } from "@/
 import { localDay, midnight, nextDay, rowsForDay, type SheetStay } from '@/lib/signinSheets';
 import { staleVisitEnd } from '@/lib/deploymentFlow';
 import { signatureImageUrl } from '@/utils/signedDocumentExport';
-import { ensureSheetsOpen, guardVisitDates } from '@/lib/sheetLocks';
+import { ensureSheetsOpen, guardVisitDates, guardStayWeeks } from '@/lib/sheetLocks';
 
 const db = supabase as any;
 const BUCKET = "field-captures";
@@ -507,6 +507,11 @@ export function useLogManualTime(projectId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (i: { personnel_id: string; location_id: string; day: string; in_at: string; out_at: string; note?: string }) => {
+      if (!projectId || Date.parse(i.out_at) <= Date.parse(i.in_at)) throw new Error('Valid project and time out after time in required');
+      const {data: location,error:locationError}=await supabase.from('project_locations').select('project_id,timezone').eq('id',i.location_id).single();
+      if(locationError)throw locationError;
+      if(location.project_id!==projectId)throw new Error('Location does not belong to this project');
+      await guardStayWeeks(projectId,[{id:crypto.randomUUID(),oldIn:i.in_at,oldOut:i.out_at,inAt:i.in_at,outAt:i.out_at,zone:location.timezone||'America/Chicago'}]);
       await guardVisitDates(i.location_id, i.in_at, i.out_at);
       const { data: { user } } = await supabase.auth.getUser();
       const notes = i.note?.trim() ? `Manual entry — ${i.note.trim()}` : "Manual entry";
