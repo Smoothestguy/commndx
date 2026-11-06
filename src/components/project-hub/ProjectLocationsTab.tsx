@@ -255,7 +255,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <Link to={locationHref(projectId,l.id)} className="font-semibold truncate hover:text-primary hover:underline underline-offset-2">{l.name}</Link>
-                      {l.lat != null && l.lng != null && <Badge variant="outline">📍 geofenced</Badge>}
+                      {l.lat != null && l.lng != null ? <Badge variant="outline">📍 geofenced</Badge> : <Badge variant="outline" className="text-muted-foreground">No geofence set</Badge>}
                       {l.project_number && <Badge variant="outline">#{l.project_number}</Badge>}
                       <Badge variant={l.status === "active" ? "default" : "secondary"} className="capitalize">{l.status}</Badge>
                       {l.housing_provided_by === "customer" && <Badge variant="outline">Housing: Customer</Badge>}

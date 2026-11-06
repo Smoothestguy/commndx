@@ -12165,6 +12165,7 @@ export type Database = {
         Returns: Json
       }
       validate_onboarding_token: { Args: { p_token: string }; Returns: Json }
+      verify_cron_secret: { Args: { p_token: string }; Returns: boolean }
     }
     Enums: {
       activity_priority: "low" | "medium" | "high" | "urgent"
