@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Pencil, MapPin, Phone, Loader2 } from 'lucide-react';
+import { Pencil, MapPin, Phone, Loader2, Clock } from 'lucide-react';
+import { LogTimeDialog } from '@/components/personnel/lifecycle/LogTimeDialog';
 import { useProject } from '@/integrations/supabase/hooks/useProjects';
 import { useProjectLocations } from '@/integrations/supabase/hooks/useProjectLocations';
 import { useLocationStaffingSummary } from '@/integrations/supabase/hooks/useLocationStaffing';
@@ -43,6 +44,7 @@ export default function LocationDetail() {
   const [week,setWeek] = useNavigationValue<string>('week',currentWeekStart());
   const [params,setParams] = useSearchParams();
   const [edit,setEdit] = useState(false);
+  const [logOpen,setLogOpen] = useState(false);
   const [sheet,setSheet] = useState<{location:string;day:string}>();
   useEffect(() => { window.scrollTo(0,0); }, [locationId]);
   useEffect(() => {
@@ -61,8 +63,9 @@ export default function LocationDetail() {
       <div className="flex flex-wrap gap-2 items-center">{location.project_number && <Badge variant="outline">#{location.project_number}</Badge>}{location.lat != null && location.lng != null && <Badge variant="outline">Geofenced · {location.geofence_radius_m}m</Badge>}<Badge variant={location.status==='active'?'default':'secondary'}>{location.status}</Badge><span className="text-sm font-medium">Staffed {summary?.assigned ?? 0}/{summary?.needed ?? 0}</span><AuthorizationBadge value={auth.data?.[location.id]}/></div>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">{address && <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`} target="_blank" rel="noopener noreferrer" className="text-primary inline-flex gap-1 items-center hover:underline"><MapPin className="h-4 w-4 shrink-0"/>{address}</a>}{location.poc_name && <span>{location.poc_name}</span>}{location.poc_phone && <a href={`tel:${location.poc_phone}`} className="text-primary inline-flex gap-1 items-center hover:underline"><Phone className="h-4 w-4"/>{location.poc_phone}</a>}{location.poc_email && <a className="text-primary hover:underline" href={`mailto:${location.poc_email}`}>{location.poc_email}</a>}<span className="text-muted-foreground">Mobe {location.mobe_date?formatLocalDate(location.mobe_date):'—'} → Demobe {location.demobe_date?formatLocalDate(location.demobe_date):'—'}</span></div>
       {location.scope && <p className="text-sm whitespace-pre-wrap text-muted-foreground">{location.scope}</p>}
-      <div className="flex flex-wrap items-center gap-2">{canWrite && <><Button variant="outline" size="sm" onClick={()=>setEdit(true)}><Pencil className="h-4 w-4 mr-1"/>Edit</Button><LocationKioskActions location={location} initialOpen={params.get('action')==='kiosk'}/><ProjectJoinLinks projectId={projectId} locationId={location.id}/></>}<DailyTimesheetPanel projectId={projectId} projectName={project.name} locationId={location.id} initialSheet={sheet}/></div>
+      <div className="flex flex-wrap items-center gap-2">{canWrite && <><Button variant="outline" size="sm" onClick={()=>setEdit(true)}><Pencil className="h-4 w-4 mr-1"/>Edit</Button><Button variant="outline" size="sm" onClick={()=>setLogOpen(true)}><Clock className="h-4 w-4 mr-1"/>Log time</Button><LocationKioskActions location={location} initialOpen={params.get('action')==='kiosk'}/><ProjectJoinLinks projectId={projectId} locationId={location.id}/></>}<DailyTimesheetPanel projectId={projectId} projectName={project.name} locationId={location.id} initialSheet={sheet}/></div>
     </section>
+    {canWrite && <LogTimeDialog open={logOpen} onOpenChange={setLogOpen} projectId={projectId} locationId={location.id} />}
     {edit && <ProjectLocationsTab projectId={projectId} deploymentMode={!!project.deployment_mode} editTargetId={location.id} onEditClosed={()=>setEdit(false)}/>}
     <Tabs value={tab} onValueChange={v=>{setParams(prev=>{const next=new URLSearchParams(prev);next.set('tab',v);next.delete('sub');next.delete('action');return next;});}} className="mt-4"><TabsList className="h-auto flex flex-wrap justify-start gap-1">{tabs.map(t=><TabsTrigger value={t} key={t}>{labels[t]}</TabsTrigger>)}</TabsList></Tabs>
     <section className="py-4" aria-label={labels[tab]}>
