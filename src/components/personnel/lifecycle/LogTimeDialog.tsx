@@ -1,3 +1,4 @@
+import { Time24Input } from '@/components/ui/time24-input';
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -71,8 +72,8 @@ export function LogTimeDialog({ open, onOpenChange, projectId, personnelId, pers
           <div><Label htmlFor="manual-date">Date</Label><Input id="manual-date" type="date" className="h-11" value={day} onChange={(e) => { setDay(e.target.value); setOutDay(e.target.value); }} /></div>
           <div className="flex gap-2"><Select value={shift} onValueChange={v=>setShift(v==='night'?'night':'day')}><SelectTrigger aria-label="Scheduled shift"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="day">Day shift</SelectItem><SelectItem value="night">Night shift</SelectItem></SelectContent></Select><Button type="button" variant="outline" disabled={!loc || !day} onClick={()=>{const s=scheduledShift(day,shift,locations.find(l=>l.id===loc),project);setTin(s.timeIn);setTout(s.timeOut);setOutDay(s.outDay);}}>Use shift times</Button></div>
           <div className="grid grid-cols-2 gap-2">
-            <div><Label htmlFor="manual-in">Time in</Label><Input id="manual-in" type="time" step={60} className="h-11" value={tin} onChange={(e) => setTin(e.target.value)} /></div>
-            <div><Label htmlFor="manual-out">Time out</Label><Input id="manual-out" type="time" step={60} className="h-11" value={tout} onChange={(e) => setTout(e.target.value)} /></div>
+            <div><Label htmlFor="manual-in">Time in</Label><Time24Input id="manual-in"  step={60} className="h-11" value={tin} onChange={(e) => setTin(e.target.value)} /></div>
+            <div><Label htmlFor="manual-out">Time out</Label><Time24Input id="manual-out"  step={60} className="h-11" value={tout} onChange={(e) => setTout(e.target.value)} /></div>
           </div>
           <div><Label htmlFor="manual-out-date">Time out date</Label><Input id="manual-out-date" type="date" value={outDay} min={day} onChange={e=>setOutDay(e.target.value)}/></div>
           {range && <p className="text-xs text-muted-foreground">{range.hours.toFixed(2)} hours · {zone}</p>}

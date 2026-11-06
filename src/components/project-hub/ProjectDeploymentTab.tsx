@@ -1,3 +1,4 @@
+import { Time24Input } from '@/components/ui/time24-input';
 import { shiftRuleDefaults, projectShiftRulesSchema, checkoutRoundingOptions } from '@/lib/projectShiftRules';
 import { useLateStays } from '@/hooks/useLateStays';
 import { maxLate, lateDayKey, type LateInfo } from '@/lib/lateAttendance';
@@ -430,8 +431,8 @@ function AttendanceGrid({ projectId, locations, crews, defaultHours, canManage }
                 </Select>
               </div>
               {canManage && <div className="grid grid-cols-2 gap-2">
-                <div><Label htmlFor="attendance-in">Time in</Label><Input id="attendance-in" type="time" step={60} value={edit.timeIn} onChange={e => setEdit({ ...edit, timeIn: e.target.value })} /></div>
-                <div><Label htmlFor="attendance-out">Time out</Label><Input id="attendance-out" type="time" step={60} value={edit.timeOut} onChange={e => setEdit({ ...edit, timeOut: e.target.value })} /></div>
+                <div><Label htmlFor="attendance-in">Time in</Label><Time24Input id="attendance-in"  step={60} value={edit.timeIn} onChange={e => setEdit({ ...edit, timeIn: e.target.value })} /></div>
+                <div><Label htmlFor="attendance-out">Time out</Label><Time24Input id="attendance-out"  step={60} value={edit.timeOut} onChange={e => setEdit({ ...edit, timeOut: e.target.value })} /></div>
               </div>}
               {mode !== 'hours' && <p className="text-xs text-muted-foreground">{zone}</p>}
               {mode === 'incomplete' && <p role="alert" className="text-xs text-destructive">Enter both times, or leave both blank.</p>}
@@ -929,10 +930,10 @@ function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit
           <h3 className="text-sm font-semibold">Shift rules</h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2 grid grid-cols-2 gap-2">
-              <div><Label htmlFor="project-day-start" className="text-xs">Day shift starts</Label><Input id="project-day-start" type="time" value={dayStartT} onChange={e=>setDayStartT(e.target.value)}/></div>
-              <div><Label htmlFor="project-night-start" className="text-xs">Night shift starts</Label><Input id="project-night-start" type="time" value={nightStartT} onChange={e=>setNightStartT(e.target.value)}/></div>
-              <div><Label htmlFor="project-day-end" className="text-xs">Day shift ends</Label><Input id="project-day-end" type="time" value={dayEndT} placeholder={nightStartT} onChange={e=>setDayEndT(e.target.value)}/><span className="text-xs text-muted-foreground">Default: {nightStartT}</span></div>
-              <div><Label htmlFor="project-night-end" className="text-xs">Night shift ends</Label><Input id="project-night-end" type="time" value={nightEndT} placeholder={dayStartT} onChange={e=>setNightEndT(e.target.value)}/><span className="text-xs text-muted-foreground">Default: {dayStartT} next day</span></div>
+              <div><Label htmlFor="project-day-start" className="text-xs">Day shift starts</Label><Time24Input id="project-day-start"  value={dayStartT} onChange={e=>setDayStartT(e.target.value)}/></div>
+              <div><Label htmlFor="project-night-start" className="text-xs">Night shift starts</Label><Time24Input id="project-night-start"  value={nightStartT} onChange={e=>setNightStartT(e.target.value)}/></div>
+              <div><Label htmlFor="project-day-end" className="text-xs">Day shift ends</Label><Time24Input id="project-day-end"  value={dayEndT} placeholder={nightStartT} onChange={e=>setDayEndT(e.target.value)}/><span className="text-xs text-muted-foreground">Default: {nightStartT}</span></div>
+              <div><Label htmlFor="project-night-end" className="text-xs">Night shift ends</Label><Time24Input id="project-night-end"  value={nightEndT} placeholder={dayStartT} onChange={e=>setNightEndT(e.target.value)}/><span className="text-xs text-muted-foreground">Default: {dayStartT} next day</span></div>
             </div>
             {([
               ['reminder_lead_minutes','Reminder lead (min before shift)'],
