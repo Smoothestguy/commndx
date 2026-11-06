@@ -600,7 +600,7 @@ function CrewDialog({ open, onOpenChange, projectId, crew }: {
 function CrewsSection({ projectId, crews, canEdit }: { projectId: string; crews: Crew[]; canEdit: boolean }) {
   const [dialog, setDialog] = useState<{ open: boolean; crew: Crew | null }>({ open: false, crew: null });
   return (
-    <Card className={unframed ? "border-0 shadow-none bg-transparent" : undefined}>
+    <Card>
       <CardHeader className="py-3 flex-row items-center justify-between space-y-0">
         <CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4" />Crews</CardTitle>
         {canEdit && (
@@ -671,7 +671,7 @@ function MileageCard({ crews, locations, from, to, mileageRate, canEdit }: {
   if (crews.length === 0) return null;
 
   return (
-    <Card className={unframed ? "border-0 shadow-none bg-transparent" : undefined}>
+    <Card>
       <CardHeader className="py-3 flex-row items-center justify-between space-y-0">
         <CardTitle className="text-sm flex items-center gap-2"><Truck className="h-4 w-4" />Mileage</CardTitle>
         <Button size="sm" variant="outline" className="gap-1" onClick={() => setOpen(true)}><Plus className="h-4 w-4" />Log miles</Button>

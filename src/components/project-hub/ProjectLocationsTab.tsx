@@ -146,8 +146,8 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
 
   useEffect(() => {
     const target = locations.find(l => l.id === editTargetId);
-    if (target && canWrite) openEdit(target);
-  }, [editTargetId, canWrite]);
+    if (target && canWrite && !editing) openEdit(target);
+  }, [editTargetId, canWrite, locations, editing]);
 
   const save = async () => {
     if (!form.name.trim()) return;
