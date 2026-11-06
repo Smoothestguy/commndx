@@ -74,9 +74,10 @@ const ProjectDetail = () => {
 
   const deploymentMode = !!project?.deployment_mode;
   const { data: recruitingExists } = useQuery({ queryKey: ['project-recruiting-presence', id], enabled: !!id, queryFn: async () => {
-    const [orders, applications] = await Promise.all([supabase.from('project_task_orders').select('id').eq('project_id', id || '').limit(1),supabase.from('applications').select('id').eq('project_id', id || '').limit(1)]);
-    if (orders.error) throw orders.error; if (applications.error) throw applications.error;
-    return !!orders.data?.length || !!applications.data?.length;
+    const { data: orders, error } = await supabase.from('project_task_orders').select('id').eq('project_id', id || '');
+    if (error) throw error;
+    // Keep recruiting available whenever task-order setup exists, even before its first posting.
+    return !!orders?.length;
   } });
   const showRecruiting = !deploymentMode || recruitingExists !== false;
 
