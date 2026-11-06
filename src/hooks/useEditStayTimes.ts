@@ -53,6 +53,8 @@ export function useEditStayTimes(projectId: string) {
         for (const s of prepared) {
           const before = { checked_in_at: s.oldIn, checked_out_at: s.oldOut, signature_url: s.stay.signature_url, signed_at: s.stay.signed_at, visit_id: s.stay.visit_id, personnel_id: s.stay.personnel_id };
           const after = s.remove ? { removed: true } : { checked_in_at: s.inAt, checked_out_at: s.outAt };
+          const { data: linkedEntries, error: linkedError } = await supabase.from('time_entries').select('id').eq('visit_personnel_id', s.id);
+          if (linkedError) throw linkedError;
           const { data: audit, error: ae } = await supabase.from('audit_logs').insert({ user_id: user.id, user_email: user.email || 'unknown', action_type: s.remove ? 'stay_delete' : 'stay_times_edit', resource_type: 'visit_personnel', resource_id: s.id, changes_before: before, changes_after: after, metadata: { project_id: projectId, location_id: s.locationId }, success: false }).select('id').single();
           if (ae) throw ae;
           let query = s.remove ? supabase.from('visit_personnel').delete() : supabase.from('visit_personnel').update({ checked_in_at: s.inAt, checked_out_at: s.outAt });
@@ -68,8 +70,10 @@ export function useEditStayTimes(projectId: string) {
           if (s.remove) {
             // The live FK nullifies visit_personnel_id on deletion; preserve the financial row,
             // but void its accrual instead of leaving detached billable hours behind.
-            const { error: te } = await supabase.from('time_entries').update({ status: 'void', hours: 0, regular_hours: 0, overtime_hours: 0, billable: false }).eq('personnel_id', s.stay.personnel_id).eq('location_id', s.locationId).eq('entry_source', 'visit').eq('clock_in_at', s.oldIn).is('visit_personnel_id', null).or('is_locked.is.null,is_locked.eq.false');
-            if (te) throw te;
+            if (linkedEntries?.length) {
+              const { error: te } = await supabase.from('time_entries').update({ status: 'approved', hours: 0, regular_hours: 0, overtime_hours: 0, billable: false, description: 'Removed site stay — history retained' }).in('id', linkedEntries.map(e => e.id)).or('is_locked.is.null,is_locked.eq.false').is('invoice_id', null);
+              if (te) throw te;
+            }
           }
         }
       } catch (e) {
