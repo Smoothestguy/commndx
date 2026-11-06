@@ -78,6 +78,13 @@
       "when": 1793970307623,
       "tag": "0010_cron_job_secret_private",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793981524667,
+      "tag": "0011_sync_requirements_mirror_task_orders",
+      "breakpoints": true
     }
   ]
 }
