@@ -1,7 +1,7 @@
 # Manual time in/out inside locations
-- [ ] Manager/admin grid time inputs via existing manual-visit saver; retain field-staff status/hours and show manual markers.
-- [ ] Location-locked Log time dialog in header, Attendance toolbar and person-day cells; location-roster picker and date defaults.
-- [ ] Focused time/scope tests and authenticated browser save/readback checks; no database changes.
+- [x] Manager/admin grid time inputs use existing manual-visit saver instead of hours-only writes; blank times retain status/hours, partial/reversed times cannot save, computed hours are read-only and manual cells show pencil markers.
+- [x] Location-locked Log time in header, Attendance toolbar, Trail and person-day cells; picker uses active location roster independently of lifecycle status, per-cell date/person prefill, location-local time conversion and shared cache refresh.
+- [x] Eleven focused tests, bunx tsgo --noEmit and latest preview build passed. Authenticated admin browser saved 8.5 hours from location dialog and 2 hours from press-and-hold grid; trail, attendance and non-billable canonical time_entries readback confirmed. Person/day prefill and pencil markers checked, zero runtime errors. Fixtures inactive/soft-deleted, history retained; no database schema changes or messages. Separate manager/field-user sessions and actual Safari not tested.
 
 # White-labeled agency portal
 - [x] Manager logo upload/preview/remove in vendor detail and both editors; token create/copy/revoke/QR on detail, desktop rows and mobile cards. Unique public logo objects and metadata-only removal avoid shared-file deletion; live manager RLS preserved.
