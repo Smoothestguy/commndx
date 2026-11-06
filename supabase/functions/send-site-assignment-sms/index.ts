@@ -1,6 +1,7 @@
 // Texts site assignment details + a personal self check-in link (/punch/:token) to personnel.
 // Staff-only (admin/manager/user). Creates one site_checkin_tokens row per person.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
+import { sendJoinApproval } from '../_shared/joinApproval.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,7 +23,9 @@ function fmtReport(iso: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
-    const service = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const url = Deno.env.get('SUPABASE_URL'), key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!url || !key) return json({ error: 'Service unavailable' }, 503);
+    const service = createClient(url, key);
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return json({ error: "Unauthorized" }, 401);
     const { data: { user }, error: authErr } = await service.auth.getUser(authHeader.replace("Bearer ", ""));
@@ -31,6 +34,7 @@ Deno.serve(async (req) => {
     if (!roles?.some((r: any) => ["admin", "manager", "user"].includes(r.role))) return json({ error: "Forbidden" }, 403);
 
     const body = await req.json().catch(() => ({}));
+    if (body?.action === 'join_approval') return sendJoinApproval(service, user.id, body);
     const { location_id, personnel_ids, report_at, include = {}, custom_note } = body ?? {};
     if (typeof location_id !== "string" || !UUID.test(location_id)) return json({ error: "location_id required" }, 400);
     if (!Array.isArray(personnel_ids) || personnel_ids.length === 0 || personnel_ids.length > 100 ||

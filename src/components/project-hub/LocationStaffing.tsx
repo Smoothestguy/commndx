@@ -1,4 +1,5 @@
 import { RoleSelect } from "./RoleSelect";
+import { JoinRequests } from './JoinRequests';
 import { QuickAddPerson } from './QuickAddPerson';
 import { NonBillableChip } from '@/components/personnel/NonBillableChip';
 import { useProjectAgencies } from '@/hooks/useProjectAgencies';
@@ -193,8 +194,9 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
 
   return (
     <div className="pt-2 border-t space-y-2">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-medium whitespace-nowrap">Staffed {assigned}/{needed}</span>
+        {projectId && <JoinRequests projectId={projectId} locationId={locationId} />}
         {canWrite && (
           <div className="flex gap-1">
             <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => setReqOpen(true)}><ListChecks className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Requirements</span></Button>
