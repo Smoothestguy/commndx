@@ -1,5 +1,6 @@
 import { DailyTimesheetPanel } from '@/components/signin/DailyTimesheetPanel';
 import { JoinRequests } from './JoinRequests';
+import { CustomerProjectAlerts } from './CustomerProjectAlerts';
 import { useProjectAgencies } from "@/hooks/useProjectAgencies";
 import { useDeploymentHours } from '@/hooks/useDeploymentHours';
 import { routeMiles } from '@/lib/deploymentFlow';
@@ -1342,6 +1343,7 @@ export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
         </div>
       </div>
       <LocationAuthorizationAlerts projectId={projectId} locations={locations} />
+      <CustomerProjectAlerts projectId={projectId} locations={locations}/>
       {canEdit && <DeploymentAlerts projectId={projectId} locations={locations} onView={view => { setAlertView(s => ({view,key:s.key+1})); setTimeout(() => document.getElementById('deployment-visits')?.scrollIntoView({behavior:'smooth'}), 0); }} />}
       <JoinRequests projectId={projectId} strip />
       <ProjectRosterCard projectId={projectId} />

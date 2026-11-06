@@ -42,6 +42,7 @@ import { ProjectDeploymentTab } from "@/components/project-hub/ProjectDeployment
 import { useUpdateProject } from "@/integrations/supabase/hooks/useProjects";
 import { Switch } from "@/components/ui/switch";
 import { ProjectJoinLinks } from '@/components/project-hub/ProjectJoinLinks';
+import { CustomerProjectMessages } from '@/components/project-hub/CustomerProjectMessages';
 
 const TABS = ["locations", "deployment", "recruiting", "crew", "financials", "time", "docs"] as const;
 type TabValue = (typeof TABS)[number];
@@ -56,6 +57,7 @@ const ProjectDetail = () => {
       for (const key of ['project-join-requests', 'location-assignments', 'location-staffing-summary', 'project-roster', 'personnel-project-assignments', 'project-agencies', 'personnel-current-status']) {
         void queryClient.invalidateQueries({ queryKey: [key] });
       }
+      for(const key of ['customer-project-counts','project-customer-messages','location-task-orders','location-authorization'])void queryClient.invalidateQueries({queryKey:[key]});
     };
     window.addEventListener('focus', refresh);
     return () => window.removeEventListener('focus', refresh);
@@ -277,6 +279,7 @@ const ProjectDetail = () => {
         </TabsContent>
         <TabsContent value="docs">
           <div className="space-y-8">
+            <CustomerProjectMessages projectId={id} customerId={project.customer_id}/>
             <ProjectOverviewTab projectId={id} project={project} />
             <ProjectDocuments projectId={id} projectName={project.name} />
             <ProjectActivityTimeline projectId={id} />
