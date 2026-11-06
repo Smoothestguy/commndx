@@ -533,7 +533,7 @@ function CrewDialog({ open, onOpenChange, projectId, crew }: {
                 {crew.members.length === 0 && <p className="p-2 text-xs text-muted-foreground">No members yet.</p>}
                 {crew.members.map((m) => (
                   <div key={m.id} className="flex items-center gap-2 px-2 py-1.5">
-                    <span className="text-sm flex-1 truncate">{fullName(m.personnel)}</span>
+                    <Link to={`/personnel/${m.personnel_id}`} className="text-sm flex-1 truncate hover:underline hover:text-primary">{fullName(m.personnel)}</Link>
                     {crewCanEdit
                       ? <RoleSelect value={m.role_label} canEdit onChange={(role_label) => updateMemberRole.mutate({ id: m.id, role_label })} className="max-w-[9rem] border-border text-[11px]" />
                       : m.role_label && <Badge variant="outline" className="text-[10px]">{m.role_label}</Badge>}
@@ -971,10 +971,10 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
             <TabsTrigger value="visits" className="text-xs">Visits</TabsTrigger>
             <TabsTrigger value="trail" className="text-xs">Trail</TabsTrigger>
             <TabsTrigger value="timesheet" className="text-xs">Timesheet</TabsTrigger>
-            {canEdit && <TabsTrigger value="reconcile" className="text-xs">Reconcile</TabsTrigger>}
+            {canEdit && !locationScopeId && <TabsTrigger value="reconcile" className="text-xs">Reconcile</TabsTrigger>}
           </TabsList>
         </Tabs>
-        {view === "reconcile" && canEdit ? <ReconcileView projectId={projectId} week={tsWeek} setWeek={setTsWeek} /> : view === "timesheet" ? (
+        {view === "reconcile" && canEdit && !locationScopeId ? <ReconcileView projectId={projectId} week={tsWeek} setWeek={setTsWeek} /> : view === "timesheet" ? (
           <TimesheetView projectId={projectId} projectName={projectName} locations={locations} locationScopeId={locationScopeId} week={tsWeek} setWeek={setTsWeek}
             onPerson={(pid, w) => { setTrailPerson(pid); setTrailRange({ from: w, to: addDaysStr(w, 6) }); setView("trail"); }} />
         ) : view === "trail" ? (

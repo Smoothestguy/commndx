@@ -78,7 +78,7 @@ function ScopeText({ text }: { text: string }) {
   );
 }
 
-export function ProjectLocationsTab({ projectId, projectName, deploymentMode = false, editTargetId }: { projectId: string; projectName?: string; deploymentMode?: boolean; editTargetId?: string }) {
+export function ProjectLocationsTab({ projectId, projectName, deploymentMode = false, editTargetId, onEditClosed }: { projectId: string; projectName?: string; deploymentMode?: boolean; editTargetId?: string; onEditClosed?: () => void }) {
   const navigate = useNavigate();
   const { isAdmin, isManager } = useUserRole();
   const canWrite = isAdmin || isManager;
@@ -190,6 +190,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
       qc.invalidateQueries({ queryKey: ["location-staffing-summary"] });
     }
     setOpen(false);
+    onEditClosed?.();
   };
 
   const geocode = async () => {
@@ -302,7 +303,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
       )}
 
       </>}
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={v=>{setOpen(v);if(!v)onEditClosed?.();}}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Edit location" : "Add location"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
@@ -374,7 +375,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => {setOpen(false);onEditClosed?.();}}>Cancel</Button>
             <Button onClick={save} disabled={!form.name.trim() || saving || geocoding}>{saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Save</Button>
           </DialogFooter>
         </DialogContent>
