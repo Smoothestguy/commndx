@@ -1,4 +1,11 @@
 import { RoleSelect } from "./RoleSelect";
+import { QuickAddPerson } from './QuickAddPerson';
+import { NonBillableChip } from '@/components/personnel/NonBillableChip';
+import { useProjectAgencies } from '@/hooks/useProjectAgencies';
+import { useUserRole } from '@/hooks/useUserRole';
+import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { useUpdateAssignmentRole } from "@/integrations/supabase/hooks/useLocationStaffing";
 import { PersonnelStatusButton } from "@/components/personnel/lifecycle/PersonnelStatusButton";
 import { useMemo, useState } from "react";
@@ -101,6 +108,9 @@ export function AssignDialog({ locationId, open, onOpenChange, assignedIds, role
 }) {
   const { data: people = [], isLoading } = useActivePersonnelLite(open);
   const assign = useAssignPersonnel();
+  const { isAdmin, isManager } = useUserRole();
+  const [quick, setQuick] = useState(false);
+  const [quickText, setQuickText] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [role, setRole] = useState(defaultRole ?? "");
@@ -122,8 +132,10 @@ export function AssignDialog({ locationId, open, onOpenChange, assignedIds, role
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) { setSel(new Set()); setQ(""); setRole(defaultRole ?? ""); } onOpenChange(o); }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
         <DialogHeader><DialogTitle>Assign personnel</DialogTitle></DialogHeader>
+        {(isAdmin || isManager) && <Button size="sm" variant="outline" onClick={() => setQuick(v => !v)}><Plus className="h-4 w-4 mr-1" />Quick add</Button>}
+        {quick && <QuickAddPerson locationId={locationId} role={role} onDone={(id, hasPhone) => { setQuick(false); if (hasPhone) setQuickText(id); else { onOpenChange(false); } }} />}
         <Input placeholder="Search name or phone" value={q} onChange={(e) => setQ(e.target.value)} />
         <div className="max-h-[50vh] overflow-y-auto border rounded-md divide-y">
           {isLoading ? <div className="p-4"><Loader2 className="h-4 w-4 animate-spin" /></div> :
@@ -154,6 +166,7 @@ export function AssignDialog({ locationId, open, onOpenChange, assignedIds, role
           </Button>
         </DialogFooter>
       </DialogContent>
+      <SendSiteTextDialog open={!!quickText} onOpenChange={v => { if (!v) { setQuickText(null); onOpenChange(false); } }} personnelIds={quickText ? [quickText] : []} locationId={locationId} />
     </Dialog>
   );
 }
@@ -162,6 +175,7 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
   locationId: string; summary?: LocationStaffingSummary; canWrite: boolean; projectId?: string; locationName?: string;
 }) {
   const invStatus = useInvalidateStatus();
+  const agencies = useProjectAgencies(projectId || '');
   const { data: assignments = [] } = useLocationAssignments(locationId);
   const unassign = useUnassignPersonnel();
   const setRole = useUpdateAssignmentRole();
@@ -172,6 +186,7 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
   const { data: texted = {} } = useLastSiteTexts([locationId]);
   const roles = Object.entries(summary?.byRole ?? {}).filter(([, v]) => v.needed > 0);
   const assignedIds = useMemo(() => new Set(assignments.map((a) => a.personnel_id)), [assignments]);
+  const { data: phones = {} } = useQuery({ queryKey: ['staffing-phones', locationId, [...assignedIds]], enabled: canWrite && assignedIds.size > 0, queryFn: async () => { const { data, error } = await supabase.from('personnel').select('id,phone').in('id', [...assignedIds]); if (error) throw error; return Object.fromEntries(data.map(p => [p.id, p.phone])); } });
   const needed = summary?.needed ?? 0;
   const assigned = summary?.assigned ?? assignments.length;
 
@@ -200,6 +215,8 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
           {assignments.map((a) => (
             <span key={a.id} className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-md border bg-muted/40 pl-2 pr-1 py-0.5 text-xs">
               <span className="font-medium">{[a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(" ") || "Unknown"}</span>
+              <NonBillableChip value={agencies.nonBillableByPerson[a.personnel_id]} agency={agencies.agencyName(a.personnel_id)} />
+              {canWrite && !phones[a.personnel_id] && <Button asChild variant="link" size="sm" className="h-auto p-0 text-warning text-xs"><Link to={`/personnel/${a.personnel_id}`}>No phone · add phone</Link></Button>}
               {canWrite
                 ? <span className="text-muted-foreground inline-flex items-center">·<RoleSelect value={a.role_label} canEdit priorityRoles={reqRoles} onChange={(role_label) => setRole.mutate({ id: a.id, location_id: locationId, role_label })} className="max-w-[9rem]" /></span>
                 : a.role_label && <span className="text-muted-foreground">· {a.role_label}</span>}
