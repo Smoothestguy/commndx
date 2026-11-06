@@ -1,6 +1,7 @@
-import { it, expect } from 'bun:test';
-import { clearWhitePixels } from './signatureInk';
-it('removes only near-white paper and retains dark ink and existing transparency', () => {
-  const pixels = new Uint8ClampedArray([255,255,255,255,236,240,250,255,26,26,166,255,235,255,255,255,20,20,20,80]);
-  expect([...clearWhitePixels(pixels)]).toEqual([255,255,255,0,236,240,250,0,26,26,166,255,235,255,255,255,20,20,20,80]);
+import { expect, test } from 'bun:test';
+import { inkBounds, clearWhitePixels } from './signatureInk';
+const img = (w, h, ink) => { const p = new Uint8ClampedArray(w * h * 4).fill(255); for (const [x, y] of ink) p.set([0, 0, 0, 255], (y * w + x) * 4); return clearWhitePixels(p); };
+test('white paper becomes transparent and the crop hugs the ink', () => {
+  expect(inkBounds(img(100, 50, [[40, 20], [60, 30]]), 100, 50, 2)).toEqual({ x: 38, y: 18, width: 25, height: 15 });
 });
+test('blank pad has no ink', () => { expect(inkBounds(img(10, 10, []), 10, 10)).toBeNull(); });
