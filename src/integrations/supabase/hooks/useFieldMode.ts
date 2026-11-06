@@ -522,6 +522,7 @@ export function useLogManualTime(projectId: string | undefined) {
     },
     onSuccess: () => {
       inv();
+      qc.invalidateQueries({ queryKey: ["location-attendance"] });
       qc.invalidateQueries({ queryKey: ["personnel-trail"] });
       qc.invalidateQueries({ queryKey: ["project-roster"] });
       toast.success("Time logged");
