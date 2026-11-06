@@ -1,5 +1,6 @@
 import { it, expect } from 'bun:test';
 import { PDFDocument } from 'pdf-lib';
+it('fits legacy oversized fields to row bands and clones before page overflow',async()=>{const pdf=await PDFDocument.create();pdf.addPage([612,792]);const row={...stay,day:'2026-11-05',hours:4};const result=await generateSigninSheet((await pdf.save()).buffer,[{id:'f',page:1,x_pct:0.1,y_pct:0.94,w_pct:0.2,h_pct:0.03,kind:'name',scope:'row'}],[row,{...row,id:'2'},{...row,id:'3'},{...row,id:'4'}],{rowsPerPage:41,rowHeight:0.0189,zone:'America/New_York',day:row.day,project:'FRG',mission:'',location:'Site',address:''},async()=>{throw new Error('not used');});expect((await PDFDocument.load(result)).getPageCount()).toBe(2);});
 import { localDay, localTime, midnight, rowsForDay, generateSigninSheet } from './signinSheets';
 const stay = { id: 'stay', personnelId: 'person', locationId: 'location', name: 'Test Person', position: 'Labor', inAt: '2026-11-05T04:00:00Z', outAt: '2026-11-05T08:00:00Z', signature: null, offsite: true };
 it('uses location timezone rather than Chicago for local date', () => { expect(localDay('2026-11-05T04:00:00Z', 'America/New_York')).toBe('2026-11-04'); expect(localDay('2026-11-05T04:00:00Z', 'Asia/Tokyo')).toBe('2026-11-05'); });

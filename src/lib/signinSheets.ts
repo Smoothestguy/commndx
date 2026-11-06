@@ -39,8 +39,10 @@ export async function generateSigninSheet(original: ArrayBuffer, fields: SignFie
   const images = new Map<string, Awaited<ReturnType<typeof output.embedPng>>>();
   const ordered = [...rows].sort((a,b) => a.inAt.localeCompare(b.inAt) || a.id.localeCompare(b.id));
   const rowFields = fields.filter(f => f.scope === 'row');
-  if (rowFields.some(f => (f.h_pct ?? Math.min(config.rowHeight, 0.04)) > config.rowHeight)) throw new Error('Row field height exceeds row spacing. Resize the fields before generating.');
-  const capacity = Math.min(config.rowsPerPage, ...rowFields.map(f => Math.floor((1 - f.y_pct - (f.h_pct ?? Math.min(config.rowHeight, 0.04)) + 0.000001) / config.rowHeight) + 1));
+  // Legacy placed boxes may be taller than their row band: fit the ink/text inside
+  // the band's height without moving the saved top-left or changing source fields.
+  const fieldHeight=(f:SignField)=>f.scope==='row'?Math.min(f.h_pct ?? config.rowHeight,config.rowHeight):f.h_pct ?? 0.04;
+  const capacity = Math.min(config.rowsPerPage, ...rowFields.map(f => Math.floor((1 - f.y_pct - fieldHeight(f) + 0.000001) / config.rowHeight) + 1));
   if (capacity < 1) throw new Error('No template rows fit on the page');
   const chunks = Math.max(1, Math.ceil(ordered.length / capacity));
   for (let chunk = 0; chunk < chunks; chunk++) {
@@ -53,7 +55,7 @@ export async function generateSigninSheet(original: ArrayBuffer, fields: SignFie
       const matrix: [number, number, number, number, number, number] = angle === 90 ? [0, 1, -1, 0, crop.x + crop.width, crop.y] : angle === 180 ? [-1, 0, 0, -1, crop.x + crop.width, crop.y + crop.height] : angle === 270 ? [0, -1, 1, 0, crop.x, crop.y + crop.height] : [1, 0, 0, 1, crop.x, crop.y];
       const band = field.scope === 'row' ? ordered.slice(chunk * capacity, (chunk + 1) * capacity) : [null];
       for (let i = 0; i < band.length; i++) {
-        const row = band[i], yPct = field.y_pct + (row ? i * config.rowHeight : 0), hPct = field.h_pct ?? Math.min(config.rowHeight, 0.04);
+        const row = band[i], yPct = field.y_pct + (row ? i * config.rowHeight : 0), hPct = fieldHeight(field);
         if (![field.x_pct, yPct, field.w_pct, hPct].every(Number.isFinite) || field.x_pct < 0 || field.w_pct <= 0 || hPct <= 0 || yPct < 0 || field.x_pct + field.w_pct > 1.00001 || yPct + hPct > 1.00001) throw new Error('Fields or row bands extend beyond the page');
         const values: Record<string, string> = { date: config.day, project_name: config.project, mission_number: config.mission, location_name: config.location, location_address: config.address, employee_name: row?.name ?? '', name: row?.name ?? '', position: row?.position ?? '', time_in: row ? localTime(row.inAt, config.zone) : '', time_out: row ? localTime(row.outAt, config.zone) : '', total_hours: row?.hours == null ? '' : row.hours.toFixed(2) };
         page.pushOperators(pushGraphicsState(), concatTransformationMatrix(...matrix));

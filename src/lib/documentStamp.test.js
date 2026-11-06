@@ -1,4 +1,5 @@
 import { expect, it } from 'bun:test';
+import './canvasTestSupport';
 import { PDFDocument, PDFName, degrees } from 'pdf-lib';
 import { newSignField, stampRect, stampDocument, stampedDate } from './documentStamp';
 const png = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64')).buffer;
