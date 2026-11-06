@@ -47,21 +47,25 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
     return { l, name: l.name, severity, gaps, worst, authorized, actual, a, o, openReqs, notChecked: Math.max(0, (s?.assigned ?? 0) - (o?.checkedToday ?? 0)) };
   })), [locations, staffing, auth.data, ops.data, reqs.data]);
 
+  const live = useMemo(() => rows.filter(r => r.l.status !== 'closed'), [rows]);
+  const closedRows = useMemo(() => rows.filter(r => r.l.status === 'closed').sort((a, b) => a.name.localeCompare(b.name)), [rows]);
+  const [showClosed, setShowClosed] = useState(false);
   const totals = useMemo(() => ({
-    crew: rows.reduce((n, r) => n + (staffing?.[r.l.id]?.assigned ?? 0), 0),
-    under: rows.filter(r => r.gaps.some(g => g.under > 0)).length,
-    over: rows.filter(r => r.gaps.some(g => g.over > 0)).length,
-    assets: rows.reduce((n, r) => n + (r.a?.assetUnder ?? 0), 0),
-    join: rows.reduce((n, r) => n + (r.o?.joinPending ?? 0), 0),
-    punches: rows.reduce((n, r) => n + (r.o?.openPunches ?? 0), 0),
-    tos: rows.reduce((n, r) => n + (r.o?.pendingTOs ?? 0), 0),
-    ext: rows.reduce((n, r) => n + (r.o?.extPending ?? 0), 0),
-    late: rows.reduce((n, r) => n + (r.o?.late ?? 0), 0),
-    requests: rows.reduce((n, r) => n + r.openReqs.filter(q => q.status === 'open').length, 0),
-    attention: rows.filter(r => r.severity !== 'ok').length,
-  }), [rows, staffing]);
+    crew: live.reduce((n, r) => n + (staffing?.[r.l.id]?.assigned ?? 0), 0),
+    under: live.filter(r => r.gaps.some(g => g.under > 0)).length,
+    over: live.filter(r => r.gaps.some(g => g.over > 0)).length,
+    assets: live.reduce((n, r) => n + (r.a?.assetUnder ?? 0), 0),
+    join: live.reduce((n, r) => n + (r.o?.joinPending ?? 0), 0),
+    punches: live.reduce((n, r) => n + (r.o?.openPunches ?? 0), 0),
+    tos: live.reduce((n, r) => n + (r.o?.pendingTOs ?? 0), 0),
+    ext: live.reduce((n, r) => n + (r.o?.extPending ?? 0), 0),
+    late: live.reduce((n, r) => n + (r.o?.late ?? 0), 0),
+    requests: live.reduce((n, r) => n + r.openReqs.filter(q => q.status === 'open').length, 0),
+    attention: live.filter(r => r.severity !== 'ok').length,
+  }), [live, staffing]);
 
   const match = (r: (typeof rows)[number]) => {
+    if (r.l.status === 'closed') return false;
     if (status === 'active' && r.l.status !== 'active') return false;
     if (status === 'inactive' && r.l.status === 'active') return false;
     switch (filter) {
@@ -139,7 +143,7 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
       <Link to={locationHref(projectId, r.l.id)} onClick={e => e.stopPropagation()} className="font-semibold truncate hover:underline hover:text-primary">{r.l.name}</Link>
       {r.l.project_number && <span className="text-xs text-muted-foreground shrink-0">#{r.l.project_number}</span>}
       {r.l.lat != null && r.l.lng != null ? <MapPin className="h-3.5 w-3.5 text-success shrink-0" aria-label="Geofenced" /> : <MapPinOff className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-label="No geofence" />}
-      <Badge variant={r.l.status === 'active' ? 'default' : 'secondary'} className="px-1.5 py-0 text-[10px] capitalize shrink-0">{r.l.status === 'active' ? 'Active' : 'Inactive'}</Badge>
+      <Badge variant={r.l.status === 'active' ? 'default' : 'secondary'} className="px-1.5 py-0 text-[10px] capitalize shrink-0">{r.l.status === 'active' ? 'Active' : r.l.status === 'closed' ? 'Closed' : 'Inactive'}</Badge>
     </div>
   );
   const ReqButton = ({ r }: { r: (typeof rows)[number] }) => (
@@ -148,13 +152,13 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
     </Button>
   );
 
-  const openRequests = (reqs.data ?? []).filter(r => r.status === 'open');
+  const openRequests = (reqs.data ?? []).filter(r => r.status === 'open' && locations.find(l => l.id === r.location_id)?.status !== 'closed');
   return (
     <TooltipProvider delayDuration={150}>
       <div className="space-y-3">
         <div className="rounded-lg border bg-card p-2.5 space-y-2" aria-label="Needs across locations">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="inline-flex items-center gap-1 text-xs font-semibold mr-1"><Users className="h-3.5 w-3.5 text-primary" />{totals.crew} crew · {pl(locations.length, 'location')}</span>
+            <span className="inline-flex items-center gap-1 text-xs font-semibold mr-1"><Users className="h-3.5 w-3.5 text-primary" />{totals.crew} crew · {pl(live.length, 'location')}</span>
             {chips.filter(c => c.n > 0).map(c => (
               <button key={c.key} type="button" onClick={() => toggle(c.key)} aria-pressed={filter === c.key}
                 className={cn('rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors', c.sev === 'ok' ? 'text-foreground' : tone[c.sev], filter === c.key && 'ring-2 ring-primary')}>{c.text}</button>
@@ -221,6 +225,14 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
           ))}
           {visible.length === 0 && <p className="text-center text-muted-foreground text-sm py-6">No locations match.</p>}
         </div>
+
+        {closedRows.length > 0 && <div className="border rounded-md" aria-label="Closed locations">
+          <button type="button" className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium" aria-expanded={showClosed} onClick={() => setShowClosed(v => !v)}>
+            <span>Closed <span className="text-muted-foreground font-normal">({closedRows.length})</span></span><span className="text-xs text-muted-foreground">{showClosed ? 'Hide' : 'Show'}</span></button>
+          {showClosed && <ul className="divide-y border-t">{closedRows.map(r => <li key={r.l.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 text-sm text-muted-foreground">
+            <Link to={locationHref(projectId, r.l.id)} className="hover:underline hover:text-primary">{r.l.name}</Link>
+            <span className="text-xs">Closed{r.l.closeout_date ? ` ${r.l.closeout_date}` : ''} · <Dates l={r.l} /></span></li>)}</ul>}
+        </div>}
       </div>
       {reqFor && <FieldRequestsDialog open onOpenChange={v => { if (!v) setReqFor(null); }} locationId={reqFor.id} locationName={reqFor.name} canAct={canWrite} />}
     </TooltipProvider>
