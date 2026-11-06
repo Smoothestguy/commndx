@@ -127,7 +127,7 @@ function renderMenuItems(
       {a.canManage && a.onEdit && (
         <>
           <SepComp />
-          <ItemComp onSelect={() => a.onEdit!(project)}>
+          <ItemComp onSelect={() => a.onEdit?.(project)}>
             <Edit className="h-4 w-4 mr-2" /> Edit
           </ItemComp>
           <ItemComp onSelect={a.duplicate}>
@@ -244,7 +244,7 @@ export function ProjectContextMenu({
   return (
     <>
       <ContextMenu>
-        <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+        <ContextMenuTrigger asChild onContextMenu={e => { if (e.target instanceof Element && e.target.closest('a[href]')) e.preventDefault(); }}>{children}</ContextMenuTrigger>
         <ContextMenuContent className="w-56">
           {renderMenuItems(a, project, ContextMenuItem, ContextMenuSeparator)}
         </ContextMenuContent>

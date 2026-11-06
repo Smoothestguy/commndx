@@ -1,4 +1,5 @@
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Edit, Trash2, Calendar, User, ChevronRight, Users } from "lucide-react";
@@ -55,7 +56,6 @@ export function ProjectCard({
     return (
       <div
         className={`glass rounded-lg p-2.5 transition-all hover:border-primary/30 cursor-pointer group border-l-4 ${statusColorMap[project.status]} min-w-0 flex items-center gap-2 ${selected ? "ring-2 ring-primary" : ""}`}
-        onClick={onClick}
       >
         {selectable && (
           <input
@@ -68,7 +68,7 @@ export function ProjectCard({
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 min-w-0">
-            <span className="font-medium text-sm truncate">{project.name}</span>
+            <Link to={`/projects/${project.id}`} className="font-medium text-sm truncate hover:text-primary hover:underline">{project.name}</Link>
             {stale && (
               <Badge variant="outline" title="No updates in 90+ days" className="text-[9px] px-1 py-0 border-amber-500/60 text-amber-600 dark:text-amber-400 flex-shrink-0">
                 Stale
@@ -92,7 +92,6 @@ export function ProjectCard({
   return (
     <div
       className={`glass rounded-xl p-3 sm:p-4 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 cursor-pointer group animate-fade-in border-l-4 ${statusColorMap[project.status]} min-w-0 overflow-hidden ${selected ? "ring-2 ring-primary" : ""}`}
-      onClick={onClick}
     >
       <div className="flex items-start justify-between gap-2 mb-1.5 min-w-0">
         <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -106,7 +105,7 @@ export function ProjectCard({
             />
           )}
           <h3 className="font-heading text-sm sm:text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 min-w-0 flex-1">
-            {project.name}
+            <Link to={`/projects/${project.id}`} className="hover:underline">{project.name}</Link>
           </h3>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
@@ -137,7 +136,7 @@ export function ProjectCard({
       <div className="hidden sm:flex items-center justify-end mt-2 pt-2 border-t border-border/30 gap-2">
         {extraActions && <div onClick={(e) => e.stopPropagation()}>{extraActions}</div>}
         <div className="flex items-center gap-1 text-[10px] text-muted-foreground group-hover:text-primary transition-colors">
-          <span>View details</span>
+          <Link to={`/projects/${project.id}`} className="hover:underline">View details</Link>
           <ChevronRight className="h-3.5 w-3.5" />
         </div>
       </div>
