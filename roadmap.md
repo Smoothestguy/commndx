@@ -1,7 +1,7 @@
 # White-labeled agency portal
-- [ ] Agency manager logo upload/remove and portal token create/copy/revoke/QR on vendor detail and rows.
-- [ ] Token-only light agency portal: date attendance/stats, Mon–Sun weekly hours and XLSX, status-grouped roster; worker punch branding.
-- [ ] Regenerate live types; privacy/rule tests, requested TypeScript check and browser verification. No migrations.
+- [x] Manager logo upload/preview/remove in vendor detail and both editors; token create/copy/revoke/QR on detail, desktop rows and mobile cards. Unique public logo objects and metadata-only removal avoid shared-file deletion; live manager RLS preserved.
+- [x] Token-only light agency portal: date attendance/stats, Mon–Sun weekly hours and XLSX, status-grouped roster including unassigned; agency-first logo/wordmark and customer attribution. Worker punch branding uses info RPC with logo fallback; optional join branding skipped because live join info omits agency fields.
+- [x] Regenerated live types; 8 privacy/week/export/120-day/role tests and bunx tsgo --noEmit passed; latest preview build OK. Live admin upload/readback/remove, token create/copy/QR/revoke, anonymous vendor isolation, populated 11.64-hour attendance/weekly XLSX and workbook contents verified; 390px views inspected, zero runtime errors. Punch branding checked with intercepted info only, no punches. Temporary fixtures soft-deleted and links revoked; no migrations/messages/cron changes. Separate manager login and actual Safari not exercised.
 
 # Task-order refinements
 - [x] Shared direct requirements add/change/remove and location-editor saves record accepted internal ADJ deltas without sync; explicit legacy baseline capture maintains authorization consistency. Web Locks and expected-state guards reduce concurrent edits; rejected evidence survives incomplete saves. No atomic multi-request guarantee without a live transactional RPC.
