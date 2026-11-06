@@ -36,4 +36,4 @@
 - Project Locations command center derives per-location needs on read from batched dollar-free queries (authorization, trail, join/TO/extension/request statuses); field requests live in location_requests with manager ALL and location-member insert/select, status stamps set by trigger.
 - Close-out: `project_locations.status='closed'` (not inactive); triggers enforce manager close (blocked by open punches/requests), admin reopen, closed-site writes and all-closed project close. Ends assignments, zeroes authorization via demob TO or manual saver; history kept.
 - Live production app: verification-only rows (projects, locations, people, visits, tokens, requests) are deleted in the same run; destructive flows never touch owner data.
-- Missing timesheet signatures: manager-checked `timesheet-signature` requests, one pending per person/location/day; token signing fills that day's first unsigned stay; audit omits links.
+- Missing timesheet signatures: manager `timesheet-signature` requests (one pending per person/site/day); token signing fills that day's first unsigned stay.
