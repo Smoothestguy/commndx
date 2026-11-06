@@ -44,7 +44,7 @@ export function LocationAuthorizationPanel({ projectId, locationId, locationName
       return { hasOrders: (orders.data ?? []).length > 0, levels: (levels.data ?? []) as Level[], assets: assets.data?.length ?? 0, onSite: onSite.size, after };
     },
   });
-  const byRole = useMemo(() => { const m: Record<string, number> = {}; for (const a of roster) { const r = a.role_label || 'Unassigned role'; m[r] = (m[r] || 0) + 1; } return m; }, [roster]);
+  const byRole = useMemo(() => { const m: Record<string, number> = {}; for (const a of roster) { if (a.demobilized) continue; const r = a.role_label || 'Unassigned role'; m[r] = (m[r] || 0) + 1; } return m; }, [roster]);
   const actualFor = (l: { line_kind: string; label: string }) => l.line_kind === 'asset' ? (data.data?.assets ?? 0) : (byRole[l.label] ?? 0);
   const d = data.data;
   const levels = d?.levels ?? [];
