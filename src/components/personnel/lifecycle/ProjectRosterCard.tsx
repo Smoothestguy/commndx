@@ -1,5 +1,4 @@
 import { NonBillableChip } from '@/components/personnel/NonBillableChip';
-import { personnelAmount } from '@/lib/personnelBilling';
 import { useProjectAgencies } from "@/hooks/useProjectAgencies";
 import { AgencyChip } from "@/components/personnel/AgencyChip";
 import { PersonnelBadgeActions } from '@/components/personnel/PersonnelBadgeActions';

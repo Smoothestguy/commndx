@@ -28,6 +28,7 @@ export interface PersonnelWithAssignment {
   status: string | null;
   vendor_id: string | null;
   linked_vendor_id: string | null;
+  non_billable?: boolean;
 }
 
 export interface AssignmentWithDetails extends PersonnelProjectAssignment {
@@ -108,7 +109,8 @@ export function usePersonnelByProject(projectId: string | undefined) {
             phone,
             status,
             vendor_id,
-            linked_vendor_id
+            linked_vendor_id,
+            non_billable
           ),
           project_rate_brackets (
             id,

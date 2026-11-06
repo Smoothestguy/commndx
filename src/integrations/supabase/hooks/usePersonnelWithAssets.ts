@@ -22,6 +22,7 @@ export interface PersonnelWithAssets {
   phone: string | null;
   city: string | null;
   state: string | null;
+  nonBillable: boolean;
   payRate: number | null;
   rateBracket: string | null;
   rateBracketId: string | null;
@@ -81,7 +82,8 @@ export function usePersonnelWithAssets(
             state,
             pay_rate,
             status,
-            onboarding_status
+            onboarding_status,
+            non_billable
           ),
           project_rate_brackets (
             id,
@@ -161,6 +163,7 @@ export function usePersonnelWithAssets(
           pay_rate: number | null;
           status: string;
           onboarding_status: string | null;
+          non_billable: boolean;
         };
         const rateBracket = a.project_rate_brackets as {
           id: string;
@@ -181,10 +184,11 @@ export function usePersonnelWithAssets(
           phone: personnel.phone,
           city: personnel.city,
           state: personnel.state,
-          payRate: payRate,
+          nonBillable: personnel.non_billable,
+          payRate: personnel.non_billable ? 0 : payRate,
           rateBracket: rateBracket?.name || null,
           rateBracketId: a.rate_bracket_id,
-          billRate: a.bill_rate ?? rateBracket?.bill_rate ?? null,
+          billRate: personnel.non_billable ? 0 : a.bill_rate ?? rateBracket?.bill_rate ?? null,
           assignedAt: a.assigned_at,
           onboardingStatus: personnel.onboarding_status,
           assets: personnelAssetsMap.get(a.personnel_id) || [],
@@ -226,7 +230,8 @@ export function usePersonnelWithAssetsForExport(projectId: string | undefined, i
             state,
             pay_rate,
             status,
-            onboarding_status
+            onboarding_status,
+            non_billable
           ),
           project_rate_brackets (
             id,
@@ -328,6 +333,7 @@ export function usePersonnelWithAssetsForExport(projectId: string | undefined, i
           pay_rate: number | null;
           status: string;
           onboarding_status: string | null;
+          non_billable: boolean;
         };
         const rateBracket = a.project_rate_brackets as {
           id: string;
@@ -348,10 +354,11 @@ export function usePersonnelWithAssetsForExport(projectId: string | undefined, i
           phone: personnel.phone,
           city: personnel.city,
           state: personnel.state,
-          payRate: payRate,
+          nonBillable: personnel.non_billable,
+          payRate: personnel.non_billable ? 0 : payRate,
           rateBracket: rateBracket?.name || null,
           rateBracketId: a.rate_bracket_id,
-          billRate: a.bill_rate ?? rateBracket?.bill_rate ?? null,
+          billRate: personnel.non_billable ? 0 : a.bill_rate ?? rateBracket?.bill_rate ?? null,
           assignedAt: a.assigned_at,
           onboardingStatus: personnel.onboarding_status,
           assets: personnelAssetsMap.get(a.personnel_id) || [],

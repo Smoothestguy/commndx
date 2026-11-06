@@ -51,8 +51,8 @@ export function transformAssignmentToExportRow(
     email: personnel?.email || "",
     phone: personnel?.phone || "",
     rateBracket: rateBracket?.name || "",
-    billRate,
-    payRate: personnel?.pay_rate ?? personnel?.hourly_rate ?? null,
+    billRate: personnel?.non_billable ? 0 : billRate,
+    payRate: personnel?.non_billable ? 0 : personnel?.pay_rate ?? personnel?.hourly_rate ?? null,
     assignedAt: assignment.assigned_at
       ? new Date(assignment.assigned_at).toLocaleDateString()
       : "",
