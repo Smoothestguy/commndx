@@ -25,7 +25,7 @@ interface BottomNavProps {
   onMoreClick?: () => void;
 }
 
-const PUBLIC_ROUTES = ["/auth", "/accept-invitation", "/approve-estimate", "/apply", "/onboard", "/contractor"];
+const PUBLIC_ROUTES = ["/auth", "/accept-invitation", "/approve-estimate", "/apply", "/onboard", "/contractor", "/join"];
 const PORTAL_ROUTES = ["/portal", "/vendor", "/subcontractor"];
 
 export function BottomNav({ onMoreClick }: BottomNavProps) {
