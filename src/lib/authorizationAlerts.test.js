@@ -1,0 +1,7 @@
+import {it,expect} from 'bun:test';
+import {authorizationAlerts,authorizationAlertId} from '../../supabase/functions/_shared/authorizationAlerts';
+it('location shortfall uses only under_auth in-app kind',()=>expect(authorizationAlerts([{line_kind:'position',authorized:5}],3,0)).toEqual([{kind:'under_auth',detail:'2 under authorized'}]));
+it('location excess uses only over_auth in-app kind',()=>expect(authorizationAlerts([{line_kind:'position',authorized:5}],6,0)).toEqual([{kind:'over_auth',detail:'1 over authorized'}]));
+it('asset shortfall can coexist with personnel excess',()=>expect(authorizationAlerts([{line_kind:'position',authorized:5},{line_kind:'asset',authorized:2}],6,0).map(a=>a.kind)).toEqual(['under_auth','over_auth']));
+it('balanced locations have no authorization alerts',()=>expect(authorizationAlerts([{line_kind:'position',authorized:5}],5,0)).toEqual([]));
+it('once-per-location-kind-local-day key is stable with no personnel',async()=>{expect(await authorizationAlertId('location','2026-11-06','under_auth')).toBe(await authorizationAlertId('location','2026-11-06','under_auth'));expect(await authorizationAlertId('location','2026-11-06','under_auth')).not.toBe(await authorizationAlertId('location','2026-11-07','under_auth'));});
