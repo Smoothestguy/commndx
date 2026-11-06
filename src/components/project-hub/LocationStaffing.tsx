@@ -66,21 +66,22 @@ function RequirementsDialog({ locationId, open, onOpenChange }: { locationId: st
   const add = useAddLocationRequirement();
   const upd = useUpdateLocationRequirement();
   const del = useDeleteLocationRequirement();
+  const saving = add.isPending || upd.isPending || del.isPending;
   const [role, setRole] = useState("");
   const [count, setCount] = useState(1);
   const [rate, setRate] = useState("");
   const options = [...ROLE_TAGS] as string[];
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={v=>{if(!saving)onOpenChange(v);}}>
       <DialogContent className="max-w-lg">
         <DialogHeader><DialogTitle>Staffing requirements</DialogTitle></DialogHeader>
-        <div className="space-y-2">
+        <fieldset disabled={saving} className="space-y-2">
           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : reqs.length === 0 && <p className="text-sm text-muted-foreground">No requirements yet.</p>}
           {reqs.map((r) => (
             <div key={r.id} className="flex items-center gap-2">
               <span className="flex-1 text-sm truncate">{r.role_label}</span>
-              <Input type="number" min={0} defaultValue={r.headcount_needed} className="h-9 w-20"
+              <Input aria-label={`${r.role_label} headcount`} type="number" min={0} defaultValue={r.headcount_needed} className="h-9 w-20"
                 onBlur={(e) => {
                   const n = Math.max(0, parseInt(e.target.value) || 0);
                   if (n !== r.headcount_needed) upd.mutate({ id: r.id, location_id: locationId, headcount_needed: n });
@@ -103,8 +104,8 @@ function RequirementsDialog({ locationId, open, onOpenChange }: { locationId: st
               add.mutate({ location_id: locationId, role_label: role.trim(), headcount_needed: count, bill_rate: rate.trim() ? Number(rate) : null }, { onSuccess: () => { setRole(""); setCount(1); setRate(""); } });
             }}><Plus className="h-4 w-4 mr-1" />Add</Button>
           </div>
-        </div>
-        <DialogFooter><Button variant="outline" onClick={() => onOpenChange(false)}>Done</Button></DialogFooter>
+        </fieldset>
+        <DialogFooter><Button disabled={saving} variant="outline" onClick={() => onOpenChange(false)}>Done</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );

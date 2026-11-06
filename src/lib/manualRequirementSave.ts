@@ -4,6 +4,10 @@ import { localDay } from './signinSheets';
 export type RequirementRow={id?:string;role_label:string;headcount_needed:number;bill_rate?:number|null;notes?:string|null};
 // No atomic RPC exists: stage rejected evidence, guard current-state writes, then accept; failures retain evidence.
 export async function saveManualRequirements(locationId:string, rows:RequirementRow[], expected?:RequirementRow[]) {
+  if (navigator.locks) return navigator.locks.request(`requirements-${locationId}`,()=>save(locationId,rows,expected));
+  return save(locationId,rows,expected);
+}
+async function save(locationId:string, rows:RequirementRow[], expected?:RequirementRow[]) {
   const {data:before,error}=await supabase.from('location_requirements').select('*').eq('location_id',locationId);if(error)throw error;
   if(expected&&JSON.stringify((before||[]).map(r=>[r.id,r.role_label,r.headcount_needed,r.bill_rate]).sort())!==JSON.stringify(expected.map(r=>[r.id,r.role_label,r.headcount_needed,r.bill_rate??null]).sort()))throw new Error('Requirements changed. Reopen the editor before saving.');
   if(rows.some(r=>!r.role_label.trim()||!Number.isSafeInteger(r.headcount_needed)||r.headcount_needed<0))throw new Error('Enter valid roles and whole-number headcounts');
