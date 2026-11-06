@@ -1,3 +1,4 @@
+import { NonBillableChip } from '@/components/personnel/NonBillableChip';
 import { useProjectAgencies } from "@/hooks/useProjectAgencies";
 import { AgencyChip } from "@/components/personnel/AgencyChip";
 import { LocationKioskActions } from '@/components/signin/LocationKioskActions';
@@ -62,7 +63,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
   canWrite: boolean;
   onOpenCard: (locationId: string) => void;
 }) {
-  const { agencyName } = useProjectAgencies(projectId);
+  const { agencyName, nonBillableByPerson } = useProjectAgencies(projectId);
   const locIds = useMemo(() => locations.map((l) => l.id), [locations]);
   const { data: assignments = [] } = useLocationsAssignments(locIds);
   const { data: texted = {} } = useLastSiteTexts(locIds);
@@ -257,7 +258,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                 return (
                   <div key={a.id} className="border-t px-2 py-1.5 pl-6">
                     <div className="flex items-center gap-2 min-w-0">
-                      <Link to={`/personnel/${a.personnel_id}`} className="font-medium truncate flex-1 min-w-0 hover:underline">{nameOf(a)} <AgencyChip name={agencyName(a.personnel_id)} /></Link>
+                      <Link to={`/personnel/${a.personnel_id}`} className="font-medium truncate flex-1 min-w-0 hover:underline">{nameOf(a)} <AgencyChip name={agencyName(a.personnel_id)} /> <NonBillableChip value={nonBillableByPerson[a.personnel_id]} agency={agencyName(a.personnel_id)} /></Link>
                       <PersonnelStatusButton personnelId={a.personnel_id} projectId={projectId} locationId={l.id} hideProjectName className="text-[10px] px-1.5 py-0 max-w-[9rem] shrink-0" />
                     </div>
                     <div className="flex items-center gap-2 min-w-0">
@@ -365,7 +366,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                     return (
                       <tr key={a.id} className="border-t hover:bg-muted/30">
                         <td className="px-2 py-1 pl-7 font-medium truncate">
-                          <Link to={`/personnel/${a.personnel_id}`} className="hover:underline underline-offset-2" title={nameOf(a)}>{nameOf(a)}</Link> <AgencyChip name={agencyName(a.personnel_id)} />
+                          <Link to={`/personnel/${a.personnel_id}`} className="hover:underline underline-offset-2" title={nameOf(a)}>{nameOf(a)}</Link> <AgencyChip name={agencyName(a.personnel_id)} /> <NonBillableChip value={nonBillableByPerson[a.personnel_id]} agency={agencyName(a.personnel_id)} />
                         </td>
                         <td className="px-1 py-0.5 text-muted-foreground truncate" title={a.role_label ?? undefined}>{roleEdit(a, l.id, "max-w-full")}</td>
                         <td className="px-2 py-1 overflow-hidden">

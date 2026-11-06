@@ -310,6 +310,7 @@ export const useUpdatePersonnel = () => {
       queryClient.invalidateQueries({ queryKey: ["personnel-by-project"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-by-vendor"] });
       queryClient.invalidateQueries({ queryKey: ["project-agencies"] });
+      for (const key of ['project-time-entry-costs', 'project-roster', 'staffing-phones', 'locations-grid-phones', 'personnel-lite-active']) queryClient.invalidateQueries({ queryKey: [key] });
       // Force refetch time entries so rate changes reflect immediately
       queryClient.invalidateQueries({ 
         queryKey: ["all-time-entries"],

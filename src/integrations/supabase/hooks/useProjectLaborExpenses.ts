@@ -20,7 +20,7 @@ export function useProjectTimeEntryCosts(projectId: string | undefined, overtime
           overtime_hours,
           hourly_rate,
           is_holiday,
-          personnel:personnel_id (hourly_rate)
+          personnel:personnel_id (hourly_rate,non_billable)
         `)
         .eq('project_id', projectId);
       
@@ -34,7 +34,7 @@ export function useProjectTimeEntryCosts(projectId: string | undefined, overtime
       
       for (const entry of entries || []) {
         // Use snapshotted rate from entry, fallback to personnel's current rate
-        const rate = entry.hourly_rate || (entry.personnel as any)?.hourly_rate || 0;
+        const rate = (entry.personnel as any)?.non_billable ? 0 : entry.hourly_rate || (entry.personnel as any)?.hourly_rate || 0;
         const entryHours = entry.hours || 0;
         const isHoliday = (entry as any).is_holiday === true;
         
