@@ -1,5 +1,5 @@
 import {it,expect} from 'bun:test';
-import {portalOverview,portalOrders,portalMessages,portalOrderForm,portalCounts,portalClock,portalExpiry,customerPortalUrl} from './customerPortal';
+import {portalOverview,portalOrders,portalMessages,portalOrderForm,portalCounts,portalClock,portalExpiry,customerPortalUrl,canManageCustomerPortal,customerMessagesToRead} from './customerPortal';
 it('portal links default to 120 days',()=>expect(portalExpiry(undefined,new Date('2026-11-06T00:00:00Z'))).toBe('2027-03-06T00:00:00.000Z'));
 it('portal link uses published domain',()=>expect(customerPortalUrl('x','http://localhost:8080')).toBe('https://fairfieldrg.com/customer/x'));
 const p={name:'Person',role:'Operator',in_at:null,out_at:null,status:'no_show'};
@@ -12,3 +12,5 @@ const f={location:'550e8400-e29b-41d4-a716-446655440000',number:'TO-1',kind:'ini
 it('customer submission requires at least one nonzero line',()=>{expect(portalOrderForm.safeParse({...f,lines:[]}).success).toBe(false);expect(portalOrderForm.safeParse({...f,lines:[{...f.lines[0],qty:0}]}).success).toBe(false);});
 it('customer line quantities respect live 500 bound and 20-line maximum',()=>{expect(portalOrderForm.safeParse({...f,lines:[{...f.lines[0],qty:501}]}).success).toBe(false);expect(portalOrderForm.safeParse({...f,lines:Array(21).fill(f.lines[0])}).success).toBe(false);});
 it('customer reference and name are required',()=>{expect(portalOrderForm.safeParse({...f,number:''}).success).toBe(false);expect(portalOrderForm.safeParse({...f,name:''}).success).toBe(false);});
+it('only admin and manager may review task orders or manage portal',()=>{expect(canManageCustomerPortal('admin')).toBe(true);expect(canManageCustomerPortal('manager')).toBe(true);expect(canManageCustomerPortal('user')).toBe(false);expect(canManageCustomerPortal('vendor')).toBe(false);expect(canManageCustomerPortal(null)).toBe(false);});
+it('view marks only selected customer messages read, never FRG or another customer',()=>{expect(customerMessagesToRead([{id:'one',customer_id:'a',sender:'customer',read_at:null},{id:'two',customer_id:'b',sender:'customer',read_at:null},{id:'three',customer_id:'a',sender:'frg',read_at:null},{id:'four',customer_id:'a',sender:'customer',read_at:'2026-11-06'}],'a')).toEqual(['one']);});

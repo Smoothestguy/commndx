@@ -1,7 +1,8 @@
 # Customer portal
-- [ ] Anonymous light-theme attendance/history, submitted task orders and token-only messages, no financial fields.
-- [ ] Manager project portal create/list/revoke, submitted-order acceptance/rejection and FRG messages/read status.
-- [ ] Deployment pending/unread badges, tests, TypeScript and live anonymous-to-staff verification.
+- [x] Regenerated types; isolated light-theme token-only attendance/history, grouped counts/24h times, submitted TO form/history and 60s messages with remembered name. Recursive allow-list parsers strip unexpected financial metadata; anonymous browser made only the five customer RPC requests and no table reads.
+- [x] Manager header-menu portal create/list/revoke/copy/QR with 120d default, location submitted-order accept/reject guards and requirement sync-only retries, customer-scoped Docs/Activity threads, FRG replies using profile name and read_at updates only for viewed customer messages.
+- [x] Deployment submitted/unread links verified; live anonymous submission remains unauthorized until staff accepts, sync headcount 5 and customer status/authorization readback, rejection leaves 5, customer message→FRG reply→public readback, read marker, name persistence/history arrow/cross-location denial and revocation→office state passed. 390px list/form and desktop inspected; fixtures archived/inactive and portal revoked, no migrations/SMS/cron changes. Separate manager/user login, Safari, full 60-minute rate-limit and actual on-site/done stay examples not exercised.
+- [x] 34 focused tests and bunx tsgo --noEmit passed; preview healthy. Backend overview omits location timezone and queries currently active assignments for historical dates; portal explicitly shows Central Time fallback rather than inventing timezone/history data. Existing unrestricted authorization RPC risk below is unchanged under no-migrations restriction.
 
 # Location customer task orders
 - [x] Regenerated live types; manager card/grid creation/history with customer reference, signed position/asset lines, effective dates, notes, private document picker/upload and creator; historical RPC totals and explicit requirement sync with sync-only retry. Live initial +5 Operator/+2 Pump, decrease -2, increase +2, demobilization -5 and net-zero requirement readback verified.

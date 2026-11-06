@@ -14,3 +14,5 @@ export function portalExpiry(days=120,now=new Date()){if(!Number.isInteger(days)
 export function customerPortalUrl(token:string,origin=window.location.origin){const host=new URL(origin).hostname;return `${host==='localhost'||host.endsWith('.lovable.app')?'https://fairfieldrg.com':origin}/customer/${token}`;}
 export function portalClock(value:string|null,zone='America/Chicago'){if(!value)return '—';try{return new Intl.DateTimeFormat('en-GB',{timeZone:zone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(value));}catch{return '—';}}
 export const portalNameKey='frg-customer-composer-name';
+export function canManageCustomerPortal(role:string|null|undefined){return role==='admin'||role==='manager';}
+export function customerMessagesToRead<T extends {id:string;customer_id:string;sender:string;read_at:string|null}>(messages:T[],customer:string){return messages.filter(m=>m.customer_id===customer&&m.sender==='customer'&&!m.read_at).map(m=>m.id);}
