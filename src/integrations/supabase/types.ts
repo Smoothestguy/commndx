@@ -7265,6 +7265,10 @@ export type Database = {
         Row: {
           address: string | null
           city: string | null
+          closed_at: string | null
+          closed_by: string | null
+          closeout_date: string | null
+          closeout_notes: string | null
           created_at: string
           day_shift_end: string | null
           day_shift_start: string | null
@@ -7296,6 +7300,10 @@ export type Database = {
         Insert: {
           address?: string | null
           city?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          closeout_date?: string | null
+          closeout_notes?: string | null
           created_at?: string
           day_shift_end?: string | null
           day_shift_start?: string | null
@@ -7327,6 +7335,10 @@ export type Database = {
         Update: {
           address?: string | null
           city?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          closeout_date?: string | null
+          closeout_notes?: string | null
           created_at?: string
           day_shift_end?: string | null
           day_shift_start?: string | null
@@ -7701,6 +7713,9 @@ export type Database = {
           auto_close_after_hours: number
           checkout_rounding_minutes: number
           city: string | null
+          closed_at: string | null
+          closed_by: string | null
+          closeout_summary: Json | null
           created_at: string
           customer_field_supervisor_email: string | null
           customer_field_supervisor_name: string | null
@@ -7754,6 +7769,9 @@ export type Database = {
           auto_close_after_hours?: number
           checkout_rounding_minutes?: number
           city?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          closeout_summary?: Json | null
           created_at?: string
           customer_field_supervisor_email?: string | null
           customer_field_supervisor_name?: string | null
@@ -7807,6 +7825,9 @@ export type Database = {
           auto_close_after_hours?: number
           checkout_rounding_minutes?: number
           city?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          closeout_summary?: Json | null
           created_at?: string
           customer_field_supervisor_email?: string | null
           customer_field_supervisor_name?: string | null
