@@ -1,7 +1,7 @@
 /** Shift classification + Monday-start week helpers, all in America/Chicago local time. */
 export const SHIFT_TZ = "America/Chicago";
 export type Shift = "day" | "night";
-export type ShiftStarts = { day_shift_start?: string | null; night_shift_start?: string | null };
+export type ShiftStarts = { day_shift_start?: string | null; night_shift_start?: string | null; day_shift_end?: string | null; night_shift_end?: string | null };
 export type LocationShiftMap = Record<string, ShiftStarts>;
 
 export function resolveShiftStarts(location?: ShiftStarts, project?: ShiftStarts) {
@@ -9,6 +9,11 @@ export function resolveShiftStarts(location?: ShiftStarts, project?: ShiftStarts
     day: location?.day_shift_start ?? project?.day_shift_start ?? "06:00",
     night: location?.night_shift_start ?? project?.night_shift_start ?? "18:00",
   };
+}
+
+export function resolveShifts(location?: ShiftStarts, project?: ShiftStarts) {
+  const starts = resolveShiftStarts(location, project);
+  return { day: starts.day.slice(0,5), night: starts.night.slice(0,5), dayEnd: (location?.day_shift_end || project?.day_shift_end || starts.night).slice(0,5), nightEnd: (location?.night_shift_end || project?.night_shift_end || starts.day).slice(0,5) };
 }
 
 const fmt = new Intl.DateTimeFormat("en-CA", {

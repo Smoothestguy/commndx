@@ -34,7 +34,7 @@ export function SignaturePad({
     if (!canvas) return null;
     const ctx = canvas.getContext("2d");
     if (ctx) {
-      ctx.strokeStyle = "#000";
+      ctx.strokeStyle = "#1a1aa6";
       ctx.lineWidth = 2;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
@@ -51,11 +51,10 @@ export function SignaturePad({
     canvas.width = rect.width;
     canvas.height = rect.height;
     
-    // Fill with white background
+    // Signature pixels remain transparent outside the ink.
     const ctx = getContext();
     if (ctx) {
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
   }, [getContext]);
 
@@ -116,8 +115,7 @@ export function SignaturePad({
     if (!canvas) return;
     const ctx = getContext();
     if (ctx) {
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
     setHasSignature(false);
   };
@@ -145,7 +143,7 @@ export function SignaturePad({
       )}
 
       {value ? (
-        <div className="border rounded-lg p-2 bg-white relative">
+        <div className="border rounded-lg p-2 bg-card relative">
           <img
             src={value}
             alt="Signature"
@@ -181,7 +179,7 @@ export function SignaturePad({
             <DialogTitle>Draw your signature</DialogTitle>
           </DialogHeader>
           
-          <div className="border rounded-lg overflow-hidden bg-white">
+          <div className="border rounded-lg overflow-hidden bg-card">
             <canvas
               ref={canvasRef}
               className="w-full h-48 touch-none cursor-crosshair"

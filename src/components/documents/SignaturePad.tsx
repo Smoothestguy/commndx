@@ -19,9 +19,7 @@ export function SignaturePad({ name, onSave, onSkip, saving, required = false, c
     const ctx = canvas.getContext("2d");
     if (ctx) {
       ctx.scale(2, 2);
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, rect.width, rect.height);
-      ctx.strokeStyle = "#000";
+      ctx.strokeStyle = "#1a1aa6";
       ctx.lineWidth = 3;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
@@ -54,8 +52,7 @@ export function SignaturePad({ name, onSave, onSkip, saving, required = false, c
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (canvas && ctx) {
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
     setHasInk(false);
   };

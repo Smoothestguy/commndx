@@ -1,7 +1,8 @@
 import { localDay, localTime } from './signinSheets';
+import { stripWhiteBackground } from './signatureInk';
 export async function countersignSheet(bytes: Uint8Array, signature: ArrayBuffer, name: string, at: string, zone: string, builtIn = false) {
   const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
-  const pdf = await PDFDocument.load(bytes); const font = await pdf.embedFont(StandardFonts.Helvetica); const image = await pdf.embedPng(signature);
+  const pdf = await PDFDocument.load(bytes); const font = await pdf.embedFont(StandardFonts.Helvetica); const image = await pdf.embedPng(await stripWhiteBackground(signature));
   const cleanName = (s: string) => Array.from(s).map(c => { try { font.encodeText(c); return c; } catch { return '?'; } }).join('').slice(0, 32);
   if (builtIn) for (const original of pdf.getPages()) {
     original.drawRectangle({ x: 36, y: 60, width: 540, height: 28, color: rgb(1, 1, 1) });

@@ -1,5 +1,6 @@
 import { localTime, type SheetRow } from './signinSheets';
 import { formatLocalDate } from './dateUtils';
+import { stripWhiteBackground } from './signatureInk';
 
 // Customer daily sheets aggregate people; uploaded templates retain their original stay-row semantics.
 export function dailyPeople(rows: SheetRow[]): SheetRow[] {
@@ -22,7 +23,7 @@ export async function generateDailyTimesheet(rows: SheetRow[], config: { day: st
   const headers = ['Employee Name', 'Signature', 'Position', 'Time In', 'Time Out', 'Total Hours', 'Location'];
   const images = new Map<string, Uint8Array>();
   const image = async (path: string, x: number, y: number, w: number, h: number) => {
-    let bytes = images.get(path); if (!bytes) { bytes = new Uint8Array(await loadSignature(path)); images.set(path, bytes); }
+    let bytes = images.get(path); if (!bytes) { bytes = await stripWhiteBackground(await loadSignature(path)); images.set(path, bytes); }
     const props = pdf.getImageProperties(bytes), scale = Math.min(w / props.width, h / props.height);
     pdf.addImage(bytes, props.fileType, x, y + (h - props.height * scale) / 2, props.width * scale, props.height * scale);
   };
