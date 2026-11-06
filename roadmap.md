@@ -1,3 +1,10 @@
+# Polish and fix batch
+- [ ] Transparent signature stamping/capture; ordered template overflow; customer and FRG downloads.
+- [ ] Reproduce/fix location manual time; manager bulk roster backfill and shift prefill.
+- [ ] Persist optional location/project shift ends; checkout reminder/default integration; 24h sweep.
+- [ ] Admin construction module preferences; sidebar/project visibility and operations-first grouping.
+- [ ] Light header/layout alignment; dark/light laptop/phone before/after browser checks, focused tests and TypeScript.
+
 # Project-configurable shift rules
 - [x] Regenerated types; Deployment Project settings separates Billing/Shift rules with all six typed/validated values saved through useUpdateProject, including listed rounding choices.
 - [x] Deployed roster-alerts reading project reminder lead; preshift/no-show/checkout/checkout-ext/supervisor copy and reservation dedupe preserved. Shared punch/kiosk/Field Mode late screen displays returned grace. No schema or scheduling changes.
