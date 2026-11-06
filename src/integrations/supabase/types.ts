@@ -7601,6 +7601,8 @@ export type Database = {
           address: string | null
           archived_at: string | null
           archived_by: string | null
+          auto_close_after_hours: number
+          checkout_rounding_minutes: number
           city: string | null
           created_at: string
           customer_field_supervisor_email: string | null
@@ -7617,9 +7619,12 @@ export type Database = {
           deleted_by: string | null
           deployment_mode: boolean
           description: string | null
+          early_window_minutes: number
           end_date: string | null
           geofence_radius_miles: number | null
           id: string
+          late_grace_minutes: number
+          late_max_minutes: number
           mandatory_payroll: boolean | null
           mileage_rate: number | null
           name: string
@@ -7628,6 +7633,7 @@ export type Database = {
           poc_email: string | null
           poc_name: string | null
           poc_phone: string | null
+          reminder_lead_minutes: number
           require_clock_location: boolean | null
           site_geocoded_at: string | null
           site_lat: number | null
@@ -7646,6 +7652,8 @@ export type Database = {
           address?: string | null
           archived_at?: string | null
           archived_by?: string | null
+          auto_close_after_hours?: number
+          checkout_rounding_minutes?: number
           city?: string | null
           created_at?: string
           customer_field_supervisor_email?: string | null
@@ -7662,9 +7670,12 @@ export type Database = {
           deleted_by?: string | null
           deployment_mode?: boolean
           description?: string | null
+          early_window_minutes?: number
           end_date?: string | null
           geofence_radius_miles?: number | null
           id?: string
+          late_grace_minutes?: number
+          late_max_minutes?: number
           mandatory_payroll?: boolean | null
           mileage_rate?: number | null
           name: string
@@ -7673,6 +7684,7 @@ export type Database = {
           poc_email?: string | null
           poc_name?: string | null
           poc_phone?: string | null
+          reminder_lead_minutes?: number
           require_clock_location?: boolean | null
           site_geocoded_at?: string | null
           site_lat?: number | null
@@ -7691,6 +7703,8 @@ export type Database = {
           address?: string | null
           archived_at?: string | null
           archived_by?: string | null
+          auto_close_after_hours?: number
+          checkout_rounding_minutes?: number
           city?: string | null
           created_at?: string
           customer_field_supervisor_email?: string | null
@@ -7707,9 +7721,12 @@ export type Database = {
           deleted_by?: string | null
           deployment_mode?: boolean
           description?: string | null
+          early_window_minutes?: number
           end_date?: string | null
           geofence_radius_miles?: number | null
           id?: string
+          late_grace_minutes?: number
+          late_max_minutes?: number
           mandatory_payroll?: boolean | null
           mileage_rate?: number | null
           name?: string
@@ -7718,6 +7735,7 @@ export type Database = {
           poc_email?: string | null
           poc_name?: string | null
           poc_phone?: string | null
+          reminder_lead_minutes?: number
           require_clock_location?: boolean | null
           site_geocoded_at?: string | null
           site_lat?: number | null
