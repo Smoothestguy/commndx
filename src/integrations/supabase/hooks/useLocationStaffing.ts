@@ -19,6 +19,10 @@ export interface LocationAssignment {
   role_label: string | null;
   status: string;
   assigned_at: string | null;
+  mission_day?: string | null;
+  mission_note?: string | null;
+  /** Current lifecycle status is Demobilized: assignment and history stay, but not counted as staffed. */
+  demobilized?: boolean;
   personnel: { first_name: string | null; last_name: string | null; status: string | null; phone: string | null } | null;
 }
 
@@ -29,6 +33,18 @@ export interface LocationStaffingSummary {
 }
 
 const db = supabase as any;
+
+/** Personnel whose current lifecycle status is demobilized (still assigned, not counted). */
+export async function fetchDemobilizedIds(ids: string[]): Promise<Set<string>> {
+  if (!ids.length) return new Set();
+  const out = new Set<string>();
+  for (let i = 0; i < ids.length; i += 300) {
+    const { data, error } = await db.from("personnel_current_status").select("personnel_id").eq("status", "demobilized").in("personnel_id", ids.slice(i, i + 300));
+    if (error) throw error;
+    for (const r of data ?? []) out.add(r.personnel_id);
+  }
+  return out;
+}
 const reqKey = (id?: string) => ["location-requirements", id];
 const asgKey = (id?: string) => ["location-assignments", id];
 
@@ -100,7 +116,7 @@ export function useLocationAssignments(locationId?: string) {
     enabled: !!locationId,
     queryFn: async () => {
       const { data, error } = await db.from("location_assignments")
-        .select("id, location_id, personnel_id, role_label, status, assigned_at")
+        .select("id, location_id, personnel_id, role_label, status, assigned_at, mission_day, mission_note")
         .eq("location_id", locationId).eq("status", "active").order("assigned_at", { ascending: true });
       if (error) throw error;
       const rows = (data ?? []) as Omit<LocationAssignment, "personnel">[];
@@ -113,8 +129,62 @@ export function useLocationAssignments(locationId?: string) {
         if (dErr) throw dErr;
         for (const r of dir ?? []) names[r.id] = { first_name: r.first_name, last_name: r.last_name };
       }
-      return rows.map((r) => ({ ...r, personnel: names[r.personnel_id] ?? null })) as LocationAssignment[];
+      const demob = await fetchDemobilizedIds(ids);
+      return rows.map((r) => ({ ...r, demobilized: demob.has(r.personnel_id), personnel: names[r.personnel_id] ?? null })) as LocationAssignment[];
     },
+  });
+}
+
+export function useAssignmentRolePeriods(assignmentIds: string[]) {
+  const ids = [...new Set(assignmentIds)].sort();
+  return useQuery({
+    queryKey: ["assignment-role-periods", ids],
+    enabled: ids.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("location_assignment_roles").select("assignment_id,role_label,effective_from").in("assignment_id", ids);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+/** Dated role change: appends a history period; the stored current label only moves when the change is already in effect. */
+export function useChangeAssignmentRole() {
+  const inv = useInvalidate();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ assignment, role_label, effective_from }: { assignment: { id: string; location_id: string; role_label: string | null; assigned_at: string | null }; role_label: string | null; effective_from: string }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const existing = await supabase.from("location_assignment_roles").select("id").eq("assignment_id", assignment.id).limit(1);
+      if (existing.error) throw existing.error;
+      if (!existing.data?.length) {
+        const base = await supabase.from("location_assignment_roles").insert({ assignment_id: assignment.id, role_label: assignment.role_label, effective_from: "1970-01-01T00:00:00Z", set_by: user?.id ?? null });
+        if (base.error) throw base.error;
+      }
+      const ins = await supabase.from("location_assignment_roles").insert({ assignment_id: assignment.id, role_label, effective_from, set_by: user?.id ?? null });
+      if (ins.error) throw ins.error;
+      if (Date.parse(effective_from) <= Date.now()) {
+        const { error } = await db.from("location_assignments").update({ role_label }).eq("id", assignment.id);
+        if (error) throw error;
+      }
+      return assignment.location_id;
+    },
+    onSuccess: (lid) => { inv(lid); qc.invalidateQueries({ queryKey: ["assignment-role-periods"] }); toast.success("Role changed"); },
+    onError: (e: any) => toast.error(e?.message ?? "Failed to change role"),
+  });
+}
+
+/** Mark a person as sent on an off-site mission for one location-local day (null clears). */
+export function useSetMission() {
+  const inv = useInvalidate();
+  return useMutation({
+    mutationFn: async ({ id, location_id, day, note }: { id: string; location_id: string; day: string | null; note: string | null }) => {
+      const { error } = await db.from("location_assignments").update({ mission_day: day, mission_note: day ? note : null }).eq("id", id);
+      if (error) throw error;
+      return location_id;
+    },
+    onSuccess: inv,
+    onError: (e: any) => toast.error(e?.message ?? "Failed to save mission"),
   });
 }
 
@@ -194,10 +264,11 @@ export function useLocationStaffingSummary(locationIds: string[]) {
     queryFn: async () => {
       const [r, a] = await Promise.all([
         db.from("location_requirements").select("location_id, role_label, headcount_needed, bill_rate").in("location_id", ids),
-        db.from("location_assignments").select("location_id, role_label").eq("status", "active").in("location_id", ids),
+        db.from("location_assignments").select("location_id, role_label, personnel_id").eq("status", "active").in("location_id", ids),
       ]);
       if (r.error) throw r.error;
       if (a.error) throw a.error;
+      const demob = await fetchDemobilizedIds([...new Set<string>((a.data ?? []).map((x: any) => x.personnel_id))]);
       const out: Record<string, LocationStaffingSummary> = {};
       const get = (id: string) => (out[id] ??= { needed: 0, assigned: 0, byRole: {} });
       for (const row of r.data ?? []) {
@@ -209,6 +280,7 @@ export function useLocationStaffingSummary(locationIds: string[]) {
         if (row.bill_rate != null && b.rate == null) b.rate = Number(row.bill_rate);
       }
       for (const row of a.data ?? []) {
+        if (demob.has(row.personnel_id)) continue;
         const s = get(row.location_id);
         s.assigned += 1;
         if (row.role_label) {
