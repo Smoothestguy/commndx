@@ -1,3 +1,9 @@
+# Daily timesheets and non-billable personnel
+- [ ] Built-in location/day customer PDF, template precedence and existing private approval/lock flow.
+- [ ] Non-billable editor/labels and money exclusions while retaining attendance and agency hours.
+- [ ] Manager quick-add/assignment with optional text offer and no-phone guidance for existing Patriot personnel.
+- [ ] Focused rule tests, authenticated browser verification and requested TypeScript check; no migrations.
+
 # Kiosk privacy, badges and agency sign-up
 - [x] Search-default, explicit roster/selfie and badge modes with URL mode, bounded live search, selected short-lived profile photos, private token-scoped media, server-enforced selfie prerequisite and shift/geofence safeguards. Private project-documents stores evidence because field-captures is public.
 - [x] Manager badge issue/replacement/revoke, individual and selected/all roster PDFs and Field Mode scanner through authenticated signature-aware punch flow. Live individual issue/PDF (3.5×2.25 in), kiosk badge and Field Mode same-day copy-forward verified. Bulk PDF and physical-camera QR capture not exercised.
