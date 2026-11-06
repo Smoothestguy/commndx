@@ -1,3 +1,8 @@
+# Customer portal
+- [ ] Anonymous light-theme attendance/history, submitted task orders and token-only messages, no financial fields.
+- [ ] Manager project portal create/list/revoke, submitted-order acceptance/rejection and FRG messages/read status.
+- [ ] Deployment pending/unread badges, tests, TypeScript and live anonymous-to-staff verification.
+
 # Location customer task orders
 - [x] Regenerated live types; manager card/grid creation/history with customer reference, signed position/asset lines, effective dates, notes, private document picker/upload and creator; historical RPC totals and explicit requirement sync with sync-only retry. Live initial +5 Operator/+2 Pump, decrease -2, increase +2, demobilization -5 and net-zero requirement readback verified.
 - [x] Staff authorized/actual indicators, location-linked Deployment strip and deterministic once-per-location/kind/local-day in-app alert_log reservations deployed in roster-alerts; no authorization SMS. Live unassign → replacement preselected Operator → assign/readback verified; unassign preserves rows and reassign restores live unique pair. Daily job dry-run passed with one authorization banner and zero sends; cron remains paused.
