@@ -4198,6 +4198,89 @@ export type Database = {
           },
         ]
       }
+      location_task_order_lines: {
+        Row: {
+          id: string
+          label: string
+          line_kind: string
+          qty_delta: number
+          task_order_id: string
+        }
+        Insert: {
+          id?: string
+          label: string
+          line_kind: string
+          qty_delta: number
+          task_order_id: string
+        }
+        Update: {
+          id?: string
+          label?: string
+          line_kind?: string
+          qty_delta?: number
+          task_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_task_order_lines_task_order_id_fkey"
+            columns: ["task_order_id"]
+            isOneToOne: false
+            referencedRelation: "location_task_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      location_task_orders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          document_id: string | null
+          effective_date: string
+          id: string
+          kind: string
+          location_id: string
+          notes: string | null
+          to_number: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          document_id?: string | null
+          effective_date?: string
+          id?: string
+          kind: string
+          location_id: string
+          notes?: string | null
+          to_number: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          document_id?: string | null
+          effective_date?: string
+          id?: string
+          kind?: string
+          location_id?: string
+          notes?: string | null
+          to_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_task_orders_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "project_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_task_orders_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       location_visits: {
         Row: {
           auto_closed: boolean
@@ -11718,6 +11801,14 @@ export type Database = {
         }
         Returns: Json
       }
+      location_authorized_asof: {
+        Args: { p_date?: string; p_location: string }
+        Returns: {
+          authorized: number
+          label: string
+          line_kind: string
+        }[]
+      }
       log_application_attempt_error: {
         Args: {
           _job_posting_id: string
@@ -11808,6 +11899,10 @@ export type Database = {
           p_token: string
         }
         Returns: Json
+      }
+      sync_requirements_from_task_orders: {
+        Args: { p_location: string }
+        Returns: undefined
       }
       sync_visit_time_entry: { Args: { p_vp: string }; Returns: undefined }
       update_applicant_geo: {

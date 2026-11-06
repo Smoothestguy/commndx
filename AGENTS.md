@@ -1,5 +1,7 @@
 # Architecture rules
 
+- Project join registration uses only live anonymous RPCs; never write personnel or employer attribution from the public page. Link management relies on existing manager RLS and exclusive employer normalization, while public success reflects the actual RPC result (pending approval is not roster confirmation). Keep join tokens and returned personal punch links out of logs/storage.
+
 - Staff applicant locations use the shared applicant location formatter and a view-level cached ZIP batch lookup; preserve applicant fields and resolve fallbacks only for display to avoid per-row requests and unnecessary writes.
 - Equipment per-diem billing is derived on read from `asset_assignments` (location_id, billable, day_rate ?? assets.default_day_rate) via `src/lib/assetBilling.ts`; never store accrued totals, so project, location and financial views stay consistent.
 - Use Chicago midnight segmentation for payroll timesheets; operational attendance/visits use location-local days and cached location shift overrides, keeping payroll detail separate from server-owned time-entry accrual.

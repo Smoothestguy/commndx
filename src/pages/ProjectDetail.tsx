@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { useQueryClient } from '@tanstack/react-query';
 import { useParams, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { useProject, useArchiveProject, useUnarchiveProject } from "@/integrations/supabase/hooks/useProjects";
@@ -40,6 +41,7 @@ import { ProjectRosterCard } from "@/components/personnel/lifecycle/ProjectRoste
 import { ProjectDeploymentTab } from "@/components/project-hub/ProjectDeploymentTab";
 import { useUpdateProject } from "@/integrations/supabase/hooks/useProjects";
 import { Switch } from "@/components/ui/switch";
+import { ProjectJoinLinks } from '@/components/project-hub/ProjectJoinLinks';
 
 const TABS = ["locations", "deployment", "recruiting", "crew", "financials", "time", "docs"] as const;
 type TabValue = (typeof TABS)[number];
@@ -48,6 +50,16 @@ const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const refresh = () => {
+      for (const key of ['location-assignments', 'location-staffing-summary', 'project-roster', 'personnel-project-assignments', 'project-agencies', 'personnel-current-status']) {
+        void queryClient.invalidateQueries({ queryKey: [key] });
+      }
+    };
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
+  }, [id, queryClient]);
 
   const { data: project, isLoading: projectLoading } = useProject(id);
   const { data: customer } = useCustomer(project?.customer_id);
@@ -149,6 +161,7 @@ const ProjectDetail = () => {
       actions={
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           {canArchive && <ProjectStatusMenu project={project} />}
+          {canArchive && <ProjectJoinLinks projectId={project.id} menu />}
           {canArchive && <Button variant="outline" onClick={handleExportPDF}>
             <Download className="h-4 w-4 mr-2" />
             Export PDF

@@ -1,0 +1,11 @@
+import { it, expect } from 'bun:test';
+import { joinExpiry, joinFormSchema, joinResultSchema, joinToken, publicJoinUrl } from './projectJoin';
+it('join links default to a 30-day lifetime', () => { expect(joinExpiry(30, new Date('2026-11-06T00:00:00Z'))).toBe('2026-12-06T00:00:00.000Z'); });
+it('join expiry must be a positive whole day count', () => { expect(() => joinExpiry(0)).toThrow(); expect(() => joinExpiry(1.5)).toThrow(); });
+const form = { first: 'Patrick', last: 'Ricci', phone: '2815550100', email: '' };
+it('first and last names are required', () => { expect(joinFormSchema.safeParse({ ...form, first: '' }).success).toBe(false); expect(joinFormSchema.safeParse({ ...form, last: '' }).success).toBe(false); });
+it('mobile phone is required and allows US country prefix', () => { expect(joinFormSchema.safeParse({ ...form, phone: '' }).success).toBe(false); expect(joinFormSchema.safeParse({ ...form, phone: '+1 (281) 555-0100' }).success).toBe(true); });
+it('email is optional but validates when supplied', () => { expect(joinFormSchema.safeParse(form).success).toBe(true); expect(joinFormSchema.safeParse({ ...form, email: 'invalid' }).success).toBe(false); });
+it('success accepts personal punch link or actual pending approval without inventing a link', () => { expect(joinResultSchema.parse({ ok: true, status: 'pending' }).punch_token).toBeUndefined(); expect(joinResultSchema.parse({ ok: true, first_name: 'Patrick', punch_token: '550e8400-e29b-41d4-a716-446655440000' }).punch_token).toBe('550e8400-e29b-41d4-a716-446655440000'); });
+it('join token must be a UUID before public info request', () => { expect(joinToken.safeParse('not-a-token').success).toBe(false); });
+it('shared links use published domain rather than preview', () => { expect(publicJoinUrl('test', 'http://localhost:8080')).toBe('https://fairfieldrg.com/join/test'); });

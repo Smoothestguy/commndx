@@ -1,4 +1,5 @@
 import { NonBillableChip } from '@/components/personnel/NonBillableChip';
+import { ProjectJoinLinks } from './ProjectJoinLinks';
 import { useProjectAgencies } from "@/hooks/useProjectAgencies";
 import { AgencyChip } from "@/components/personnel/AgencyChip";
 import { LocationKioskActions } from '@/components/signin/LocationKioskActions';
@@ -243,6 +244,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                   </button>
                   <span className={cn("font-medium shrink-0 tabular-nums", full ? "text-success" : "text-warning")}>{s?.assigned ?? 0}/{s?.needed ?? 0}</span>
                   <span className="flex items-center shrink-0">
+                    {canWrite && <ProjectJoinLinks projectId={projectId} locationId={l.id} iconOnly />}
                     {canWrite && <IconBtn label="Assign people" onClick={() => setAssignFor({ locationId: l.id })}><UserPlus className="h-4 w-4" /></IconBtn>}
                     {canWrite && <IconBtn label="Assign asset" onClick={() => setAssetFor(l.id)}><Package className="h-4 w-4" /></IconBtn>}
                     <IconBtn label="Open location card" onClick={() => onOpenCard(l.id)}><ExternalLink className="h-4 w-4" /></IconBtn>
@@ -351,6 +353,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                         {l.demobe_date && <span className="text-muted-foreground shrink-0">{l.mobe_date ? `${formatLocalDate(l.mobe_date, "M/d")}–` : "Demobe "}{formatLocalDate(l.demobe_date, "M/d")}</span>}
                         {deploymentMode && lastServiced?.[l.id] && <span className="hidden md:inline text-muted-foreground shrink-0">Svc {formatLocalDate(lastServiced[l.id], "M/d")}</span>}
                         <span className="ml-auto flex items-center gap-0.5 shrink-0">
+                          {canWrite && <ProjectJoinLinks projectId={projectId} locationId={l.id} iconOnly />}
                           {locHrs > 0 && <span className="mr-1 text-muted-foreground" title="Total hours this week">{locHrs.toFixed(1)} h</span>}
                           {canWrite && <IconBtn label="Assign people" onClick={() => setAssignFor({ locationId: l.id })}><UserPlus className="h-3.5 w-3.5" /></IconBtn>}
                           {canWrite && <IconBtn label="Assign asset" onClick={() => setAssetFor(l.id)}><Package className="h-3.5 w-3.5" /></IconBtn>}
