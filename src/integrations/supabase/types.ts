@@ -6658,6 +6658,76 @@ export type Database = {
           },
         ]
       }
+      project_join_requests: {
+        Row: {
+          decided_at: string | null
+          decided_by: string | null
+          email: string | null
+          first_name: string
+          id: string
+          last_name: string
+          location_id: string | null
+          matched_personnel_id: string | null
+          phone: string
+          project_id: string
+          requested_at: string
+          status: string
+          token_id: string
+        }
+        Insert: {
+          decided_at?: string | null
+          decided_by?: string | null
+          email?: string | null
+          first_name: string
+          id?: string
+          last_name: string
+          location_id?: string | null
+          matched_personnel_id?: string | null
+          phone: string
+          project_id: string
+          requested_at?: string
+          status?: string
+          token_id: string
+        }
+        Update: {
+          decided_at?: string | null
+          decided_by?: string | null
+          email?: string | null
+          first_name?: string
+          id?: string
+          last_name?: string
+          location_id?: string | null
+          matched_personnel_id?: string | null
+          phone?: string
+          project_id?: string
+          requested_at?: string
+          status?: string
+          token_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_join_requests_matched_personnel_id_fkey"
+            columns: ["matched_personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_join_requests_matched_personnel_id_fkey"
+            columns: ["matched_personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_join_requests_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "project_join_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_join_tokens: {
         Row: {
           active: boolean
@@ -11298,6 +11368,7 @@ export type Database = {
         Args: { _applicant_id: string }
         Returns: boolean
       }
+      approve_join_request: { Args: { p_request: string }; Returns: Json }
       check_returning_contact: { Args: { _contact: string }; Returns: boolean }
       complete_personnel_onboarding:
         | {
@@ -11444,6 +11515,7 @@ export type Database = {
         Args: { p_personnel_id: string }
         Returns: string
       }
+      deny_join_request: { Args: { p_request: string }; Returns: Json }
       expire_old_invitations: { Args: never; Returns: undefined }
       find_applicant_id_by_contact: {
         Args: { _email: string; _phone?: string }
