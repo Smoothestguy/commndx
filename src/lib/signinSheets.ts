@@ -27,12 +27,17 @@ export type SheetStay = { id: string; personnelId: string; locationId: string; n
 export type SheetRow = SheetStay & { day: string; hours: number | null };
 export function rowsForDay(stays: SheetStay[], locationId: string, day: string, zone: string, now = Date.now()): SheetRow[] {
   const start = midnight(day, zone), end = midnight(nextDay(day), zone);
+  // Each person's first signed check-in of this local day at this location signs all of their rows that day.
+  const firstSigned = new Map<string, string>();
+  for (const s of [...stays].filter(s => s.locationId === locationId && localDay(s.inAt, zone) === day && (s.signature || s.signaturesByDay?.[day])).sort((a, b) => a.inAt.localeCompare(b.inAt)))
+    if (!firstSigned.has(s.personnelId)) firstSigned.set(s.personnelId, (s.signature || s.signaturesByDay?.[day])!);
   return stays.filter(s => s.locationId === locationId && Date.parse(s.inAt) < end && (s.outAt ? Date.parse(s.outAt) : now) > start).map(s => {
     const from = Math.max(start, Date.parse(s.inAt));
     const to = Math.min(end, s.outAt ? Date.parse(s.outAt) : now);
     const closed = !!s.outAt || end <= now;
     const signature = day === localDay(s.inAt, zone) ? s.signature || s.signaturesByDay?.[day] || null : s.signaturesByDay?.[day] || null;
-    return { ...s, signature, day, inAt: new Date(from).toISOString(), outAt: closed ? new Date(to).toISOString() : null, hours: closed ? Math.max(0, (to - from) / 3600000) : null };
+    const daySignature = signature || firstSigned.get(s.personnelId) || null;
+    return { ...s, signature: daySignature, day, inAt: new Date(from).toISOString(), outAt: closed ? new Date(to).toISOString() : null, hours: closed ? Math.max(0, (to - from) / 3600000) : null };
   }).sort((a, b) => a.inAt.localeCompare(b.inAt) || a.id.localeCompare(b.id));
 }
 export const sheetFileName = (location: string, day: string) => `${location.replace(/[^\p{L}\p{N} ._-]/gu, '').trim() || 'location'}-${day}.pdf`;
@@ -70,7 +75,8 @@ export async function generateSigninSheet(original: ArrayBuffer, fields: SignFie
         if ((field.binding || field.kind) === 'signature' && row?.signature) {
           let image = images.get(row.signature);
           if (!image) { image = await output.embedPng(await stripWhiteBackground(await loadSignature(row.signature))); images.set(row.signature, image); }
-          const size = image.scaleToFit(w, h); page.drawImage(image, { x, y: bottom + (h - size.height) / 2, ...size });
+          // Inset 1pt inside the field and sit on the row baseline so ink never crosses into neighbouring rows/columns.
+          const size = image.scaleToFit(Math.max(1, w - 2), Math.max(1, h - 2)); page.drawImage(image, { x: x + 1, y: bottom + 1, ...size });
         } else {
           const text = clean(values[field.binding || field.kind] ?? '');
           if (text) { const size = Math.min(10, h * 0.75, Math.max(1,w-4) / Math.max(1, font.widthOfTextAtSize(text, 1))); page.drawText(text, { x, y: bottom + (h - size) / 2, font, size }); }
