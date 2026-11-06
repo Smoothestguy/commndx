@@ -923,7 +923,7 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
   const [delId, setDelId] = useState<VisitRow | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [view, setView] = useNavigationValue("sub", defaultView, ["visits", "trail", "timesheet", "reconcile"]);
-  const [trailPerson, setTrailPerson] = useNavigationValue("person", "");
+  const [trailPerson, setTrailPerson] = useNavigationValue<string>("person", "");
   const [trailRange, setTrailRange] = useState<{ from: string; to: string } | null>(null);
   const [tsWeek, setTsWeek] = useNavigationValue("week", currentWeekStart());
   const openTrail = (pid: string) => { setTrailPerson(pid); setTrailRange(null); setView("trail"); };
@@ -1171,9 +1171,9 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
   projectId: string; projectName: string; locations: ProjectLocation[]; from: string; to: string;
   personId: string; setPersonId: (id: string) => void; locationScopeId?: string;
 }) {
-  const [filterLoc, setLocId] = useNavigationValue("trailLocation", "");
+  const [filterLoc, setLocId] = useNavigationValue<string>("trailLocation", "");
   const locId = locationScopeId || filterLoc;
-  const [agency, setAgency] = useNavigationValue("trailAgency", "all");
+  const [agency, setAgency] = useNavigationValue<string>("trailAgency", "all");
   const agencies = useProjectAgencies(projectId);
   const [pickOpen, setPickOpen] = useState(false);
   const [busy, setBusy] = useState(false);

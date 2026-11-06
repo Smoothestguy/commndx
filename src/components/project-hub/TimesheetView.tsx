@@ -25,7 +25,7 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
   locationScopeId?: string; week: string; setWeek: (w: string) => void; onPerson: (personnelId: string, weekStart: string) => void;
 }) {
   const agencies = useProjectAgencies(projectId);
-  const [agency, setAgency] = useNavigationValue("agency", "all");
+  const [agency, setAgency] = useNavigationValue<string>("agency", "all");
   const [agencyExportOpen, setAgencyExportOpen] = useState(false);
   const [exportVendor, setExportVendor] = useState("");
   const { data: project } = useProject(projectId);
@@ -34,9 +34,9 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
   const { entries: allEntries, isLoading } = useWeekTimesheet(projectId, week, p?.day_shift_start, p?.night_shift_start, locationShifts);
   const entries = locationScopeId ? allEntries.filter(e => e.location_id === locationScopeId) : allEntries;
   const [shift, setShift] = useNavigationValue("shift", "all", ["all", "day", "night"]);
-  const [filterLoc, setLocId] = useNavigationValue("tsLocation", "");
+  const [filterLoc, setLocId] = useNavigationValue<string>("tsLocation", "");
   const locId = locationScopeId || filterLoc;
-  const [q, setQ] = useNavigationValue("q", "");
+  const [q, setQ] = useNavigationValue<string>("q", "");
   const [busy, setBusy] = useState(false);
   const days = weekDays(week);
 
