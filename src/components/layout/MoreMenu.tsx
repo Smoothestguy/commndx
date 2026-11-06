@@ -5,6 +5,7 @@ import {
   LucideIcon
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAppModules } from '@/hooks/useAppModules';
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
@@ -83,6 +84,7 @@ const menuSections: MenuSection[] = [
 ];
 
 export function MoreMenu({ open, onOpenChange }: MoreMenuProps) {
+  const modules=useAppModules();
   const navigate = useNavigate();
   const { isAdmin, isManager } = useUserRole();
   const { signOut } = useAuth();
@@ -108,6 +110,7 @@ export function MoreMenu({ open, onOpenChange }: MoreMenuProps) {
           {menuSections.map((section) => {
             // Filter items based on role requirements
             const visibleItems = section.items.filter(item => {
+              if(!modules.visible(item.path))return false;
               if (item.requiresManager && !isAdmin && !isManager) return false;
               if (item.requiresAdmin && !isAdmin) return false;
               return true;

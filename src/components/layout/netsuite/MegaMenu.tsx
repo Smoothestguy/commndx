@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAppModules } from '@/hooks/useAppModules';
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -173,6 +174,7 @@ interface MegaMenuSectionProps {
 }
 
 function MegaMenuSection({ sections, isOpen, menuTextColor }: MegaMenuSectionProps) {
+  const modules=useAppModules();
   const { isAdmin, isManager } = useUserRole();
   const location = useLocation();
 
@@ -180,6 +182,7 @@ function MegaMenuSection({ sections, isOpen, menuTextColor }: MegaMenuSectionPro
     <div className="grid gap-3 p-4 w-[500px] lg:w-[600px] grid-cols-2">
       {sections.map((section) => {
         const filteredItems = section.items.filter((item) => {
+          if(!modules.visible(item.href))return false;
           if (item.requiresAdmin && !isAdmin) return false;
           if (item.requiresManager && !isAdmin && !isManager) return false;
           return true;

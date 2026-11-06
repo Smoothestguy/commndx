@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAppModules } from '@/hooks/useAppModules';
 import { useNavigate, useLocation } from "react-router-dom";
 import { Home, ClipboardList, Wallet, Grid2X2, Plus, X, FileText, Receipt, ShoppingCart, UserPlus, MessageCircle } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -29,6 +30,7 @@ const PUBLIC_ROUTES = ["/auth", "/accept-invitation", "/approve-estimate", "/app
 const PORTAL_ROUTES = ["/portal", "/vendor", "/subcontractor"];
 
 export function BottomNav({ onMoreClick }: BottomNavProps) {
+  const modules=useAppModules();
   const [isExpanded, setIsExpanded] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -77,7 +79,7 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
       {isExpanded && (
         <div className="fixed bottom-24 left-1/2 z-50 animate-quick-actions-in">
           <div className="flex flex-col gap-3 items-center">
-            {quickActions.map((action, index) => {
+            {quickActions.filter(a=>modules.visible(a.path)).map((action, index) => {
               const Icon = action.icon;
               return (
                 <button
@@ -133,7 +135,8 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
             );
           }
 
-          const Icon = tab.icon!;
+          const Icon = tab.icon;
+          if(!Icon)return null;
           const active = isActive(tab.path);
 
           return (

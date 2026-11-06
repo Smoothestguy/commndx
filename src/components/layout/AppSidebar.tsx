@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { useAppModules } from '@/hooks/useAppModules';
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import {
@@ -45,6 +46,7 @@ function SidebarNavItem({ item, isActive, unreadCount }: { item: Item; isActive:
 }
 
 export function AppSidebar() {
+  const modules=useAppModules();
   const { pathname } = useLocation();
   const { isAdmin, isManager } = useUserRole();
   const { data: unreadCount = 0 } = useTotalUnreadCount();
@@ -63,7 +65,7 @@ export function AppSidebar() {
           if (!isSectionVisible(section, isAdmin, isManager)) return null;
 
 
-          const visibleItems = section.items.filter((i) => isItemVisible(i, isAdmin, isManager));
+          const visibleItems = section.items.filter((i) => isItemVisible(i, isAdmin, isManager) && modules.visible(i.href));
           if (visibleItems.length === 0) return null;
 
           if (section.collapsible) {

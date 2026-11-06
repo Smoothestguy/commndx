@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAppModules } from '@/hooks/useAppModules';
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -62,6 +63,7 @@ const staffingNavigation = [
 ];
 
 export function Sidebar() {
+  const modules=useAppModules();
   const location = useLocation();
   const { signOut, user } = useAuth();
   const { isAdmin, isManager, isAccounting } = useUserRole();
@@ -87,7 +89,7 @@ export function Sidebar() {
       <div className="flex h-full flex-col">
         {/* Navigation */}
         <nav className="flex-1 space-y-0.5 px-3 py-4 overflow-y-auto">
-          {navigation.map((item) => {
+          {navigation.filter(i=>modules.visible(i.href)).map((item) => {
             const isActive = location.pathname === item.href;
             return (
               <Link
@@ -126,7 +128,7 @@ export function Sidebar() {
                 />
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-0.5 mt-1">
-                {vendorsNavigation.map((item) => {
+                {vendorsNavigation.filter(i=>modules.visible(i.href)).map((item) => {
                   const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + "/");
                   return (
                     <Link

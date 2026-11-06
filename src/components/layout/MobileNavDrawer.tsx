@@ -1,4 +1,5 @@
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useAppModules } from '@/hooks/useAppModules';
 import { useState } from "react";
 import { ChevronDown, LogOut, User } from "lucide-react";
 import {
@@ -28,6 +29,7 @@ interface MobileNavDrawerProps {
 }
 
 export function MobileNavDrawer({ open, onOpenChange }: MobileNavDrawerProps) {
+  const modules=useAppModules();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -63,7 +65,7 @@ export function MobileNavDrawer({ open, onOpenChange }: MobileNavDrawerProps) {
             {sections.map((section, idx) => {
               if (!isSectionVisible(section, isAdmin, isManager)) return null;
               const visibleItems = section.items.filter((i) =>
-                isItemVisible(i, isAdmin, isManager),
+                isItemVisible(i, isAdmin, isManager) && modules.visible(i.href),
               );
               if (visibleItems.length === 0) return null;
 
