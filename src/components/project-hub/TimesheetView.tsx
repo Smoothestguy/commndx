@@ -7,7 +7,9 @@ import { exportAgencyHours } from "@/utils/agencyHoursExport";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Download, Loader2, Timer } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Download, Loader2, Pencil, Timer } from "lucide-react";
+import { useUserRole } from '@/hooks/useUserRole';
+import { LogTimeDialog } from '@/components/personnel/lifecycle/LogTimeDialog';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -25,6 +27,9 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
   locationScopeId?: string; week: string; setWeek: (w: string) => void; onPerson: (personnelId: string, weekStart: string) => void;
 }) {
   const agencies = useProjectAgencies(projectId);
+  const { isAdmin, isManager } = useUserRole();
+  const canLog = !!locationScopeId && (isAdmin || isManager);
+  const [log, setLog] = useState<{ personnelId?: string; personName?: string; date?: string } | null>(null);
   const [agency, setAgency] = useNavigationValue<string>("agency", "all");
   const [agencyExportOpen, setAgencyExportOpen] = useState(false);
   const [exportVendor, setExportVendor] = useState("");
@@ -75,6 +80,7 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
         </Select>
         <Input value={q} onChange={(e) => setQ(e.target.value,true)} placeholder="Search person…" className="h-8 flex-1 min-w-0 sm:flex-none sm:w-[160px]" />
         <AgencyFilter value={agency} onChange={setAgency} vendors={agencies.vendors} />
+        {canLog && <Button variant="outline" size="sm" className="h-8 gap-1" onClick={() => setLog({})}><Clock className="h-3.5 w-3.5" />Log time</Button>}
         <DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" variant="outline" className="h-8 gap-1 ml-auto" disabled={busy || !entries.length}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}Download</Button></DropdownMenuTrigger><DropdownMenuContent align="end">
           <DropdownMenuItem onClick={async () => { setBusy(true); try { await exportWeekTimesheet(projectName, week, entries); } catch (e) { toast.error(e instanceof Error ? e.message : "Export failed"); } finally { setBusy(false); } }}>Full week (XLSX)</DropdownMenuItem>
           <DropdownMenuItem disabled={agencies.isLoading || !!agencies.error || !agencies.vendors.length} onClick={() => { setExportVendor(agency !== "all" ? agency : agencies.vendors[0]?.id || ""); setAgencyExportOpen(true); }}>Agency hours (XLSX)</DropdownMenuItem>
@@ -100,6 +106,7 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
                     {days.map((d) => {
                       const c = r.days[d]; const h = cellH(c);
                       const both = shift === "all" && c && c.day > 0 && c.night > 0;
+                      const manual = filtered.some(e => e.personnel_id === r.personnel_id && e.date === d && e.source === 'Manual');
                       return (
                         <td key={d} className="text-right px-1 whitespace-nowrap">
                           {h > 0 && (both ? (
@@ -107,6 +114,8 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
                               <TooltipContent>D {fmtH(c.day)} / N {fmtH(c.night)}</TooltipContent></Tooltip>
                           ) : fmtH(h))}
                           {c?.open ? <Timer className="inline h-3 w-3 ml-0.5 text-warning" aria-label="Open punch" /> : null}
+                          {manual && <Pencil className="inline h-3 w-3 ml-0.5 text-muted-foreground" aria-label="Manual entry" ><title>Manual entry</title></Pencil>}
+                          {canLog && <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 ml-0.5" aria-label={`Log time for ${r.name} ${d}`} onClick={() => setLog({ personnelId: r.personnel_id, personName: r.name, date: d })}><Clock className="h-3 w-3" /></Button></TooltipTrigger><TooltipContent>Log time</TooltipContent></Tooltip>}
                         </td>
                       );
                     })}
@@ -129,6 +138,7 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
         <p className="text-xs text-muted-foreground">{monthDay(week)} – {monthDay(addDays(week, 6))}</p>
         <Button disabled={busy || !exportVendor || exportVendor === "all"} onClick={async () => { const vendor = agencies.vendors.find(v => v.id === exportVendor); if (!vendor) return; setBusy(true); try { await exportAgencyHours(vendor, week, entries, agencies.vendorByPerson); setAgencyExportOpen(false); } catch (e) { toast.error(e instanceof Error ? e.message : "Export failed"); } finally { setBusy(false); } }}>Download agency hours</Button>
       </DialogContent></Dialog>
+      {canLog && <LogTimeDialog open={!!log} onOpenChange={open => { if (!open) setLog(null); }} projectId={projectId} locationId={locationScopeId} personnelId={log?.personnelId} personName={log?.personName} defaultDate={log?.date} />}
     </div>
   );
 }

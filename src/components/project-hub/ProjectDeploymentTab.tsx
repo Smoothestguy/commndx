@@ -5,6 +5,7 @@ import { useProjectAgencies } from "@/hooks/useProjectAgencies";
 import { useDeploymentHours } from '@/hooks/useDeploymentHours';
 import { routeMiles } from '@/lib/deploymentFlow';
 import { localDay } from '@/lib/signinSheets';
+import { attendanceSaveMode, manualTimeRange } from '@/lib/manualTime';
 import { useProjectDocuments } from '@/integrations/supabase/hooks/useProjectDocuments';
 import { SigninSheetsPanel } from '@/components/documents/SigninSheetsPanel';
 import { SigninStatusBoard } from '@/components/signin/SigninStatusBoard';
@@ -59,7 +60,7 @@ import {
   useUpdateCrewMemberRole,
 } from "@/integrations/supabase/hooks/useCrews";
 import {
-  useDeleteVisit, useTodayReceiptsTotal, useUpdateVisit, useVisitsWindow, VisitRow, useOnSiteNow, useTrail, TrailRow, useVisitNotes,
+  useLogManualTime, useDeleteVisit, useTodayReceiptsTotal, useUpdateVisit, useVisitsWindow, VisitRow, useOnSiteNow, useTrail, TrailRow, useVisitNotes,
 } from "@/integrations/supabase/hooks/useFieldMode";
 import { generateSignInSheetPDF } from "@/utils/signInSheetPdf";
 import { generateTimeLogPDF } from "@/utils/timeLogPdf";
@@ -180,9 +181,9 @@ const STYLE: Record<AttendanceStatus, { label: string; cls: string }> = {
   no_show: { label: "N", cls: "bg-destructive text-destructive-foreground border-destructive" },
 };
 
-function AttendanceCell({ status, hours, crewInitial, onTap, onLongPress, label }: {
+function AttendanceCell({ status, hours, crewInitial, onTap, onLongPress, label, manual }: {
   status?: AttendanceStatus; hours?: number | null; crewInitial?: string | null;
-  onTap: () => void; onLongPress: () => void; label: string;
+  onTap: () => void; onLongPress: () => void; label: string; manual?: boolean;
 }) {
   const timer = useRef<number | null>(null);
   const fired = useRef(false);
@@ -192,9 +193,11 @@ function AttendanceCell({ status, hours, crewInitial, onTap, onLongPress, label 
   };
   const cancel = () => { if (timer.current) window.clearTimeout(timer.current); timer.current = null; };
   return (
-    <button
+    <Button
+      variant="outline"
       type="button"
       aria-label={label}
+      title={manual ? 'Manual entry' : undefined}
       onPointerDown={start}
       onPointerUp={cancel}
       onPointerLeave={cancel}
@@ -207,12 +210,13 @@ function AttendanceCell({ status, hours, crewInitial, onTap, onLongPress, label 
     >
       {status && <span className="text-sm font-bold leading-none">{STYLE[status].label}</span>}
       {status && hours != null && <span className="text-[9px] leading-none mt-0.5">{hours}h</span>}
+      {manual && <Pencil className="absolute bottom-0.5 right-0.5 h-2.5 w-2.5" aria-label="Manual entry" />}
       {crewInitial && (
         <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[8px] font-bold flex items-center justify-center border border-background">
           {crewInitial}
         </span>
       )}
-    </button>
+    </Button>
   );
 }
 
@@ -298,13 +302,24 @@ function MarkCrewDialog({ open, onOpenChange, crews, locations, defaultLocationI
   );
 }
 
-function AttendanceGrid({ locations, crews, defaultHours }: { locations: ProjectLocation[]; crews: Crew[]; defaultHours: number }) {
+function AttendanceGrid({ projectId, locations, crews, defaultHours, canManage }: { projectId: string; locations: ProjectLocation[]; crews: Crew[]; defaultHours: number; canManage: boolean }) {
   const [locId, setLocId] = useState<string>(locations[0]?.id ?? "");
   const r = useDateRange();
   const { data: assigned = [] } = useLocationAssignments(locId || undefined);
   const { data: att = [], isLoading } = useLocationAttendance(locId || undefined, r.from, r.to);
   const setAtt = useSetAttendance();
-  const [edit, setEdit] = useState<{ pid: string; name: string; date: string; status: AttendanceStatus | "none"; hours: string } | null>(null);
+  const logTime = useLogManualTime(projectId);
+  const zone = locations.find(l => l.id === locId)?.timezone || 'America/Chicago';
+  const { data: trail = [] } = useTrail(projectId, { locationId: locId, from: r.from, to: r.to });
+  const { data: notes = {} } = useVisitNotes(trail.map(t => t.visit_id));
+  const manualCells = useMemo(() => new Set(trail.filter(t => sourceFromNotes(notes[t.visit_id]) === 'Manual').flatMap(t => {
+    const first = localDay(t.in_at, zone), last = localDay(t.out_at || t.in_at, zone);
+    return r.dates.filter(d => d >= first && d <= last).map(d => `${t.personnel_id}|${d}`);
+  })), [trail, notes, zone, r.dates]);
+  const [edit, setEdit] = useState<{ pid: string; name: string; date: string; status: AttendanceStatus | "none"; hours: string; timeIn: string; timeOut: string } | null>(null);
+  const mode = attendanceSaveMode(canManage, edit?.timeIn || '', edit?.timeOut || '');
+  const range = edit && mode === 'manual' ? manualTimeRange(edit.date, edit.timeIn, edit.timeOut, zone) : null;
+  const busy = setAtt.isPending || logTime.isPending;
   const [markCrewOpen, setMarkCrewOpen] = useState(false);
 
   const crewInitial = useMemo(() => {
@@ -370,10 +385,11 @@ function AttendanceGrid({ locations, crews, defaultHours }: { locations: Project
                           <AttendanceCell
                             status={c?.status}
                             hours={c?.hours}
+                            manual={manualCells.has(`${p.id}|${d}`)}
                             crewInitial={c?.crew_id ? crewInitial[c.crew_id] : null}
                             label={`${p.name} ${d} ${c?.status ?? "blank"}`}
                             onTap={() => setAtt.mutate({ location_id: locId, personnel_id: p.id, att_date: d, status: NEXT[c?.status ?? "none"] })}
-                            onLongPress={() => setEdit({ pid: p.id, name: p.name, date: d, status: c?.status ?? "worked", hours: c?.hours != null ? String(c.hours) : "" })}
+                            onLongPress={() => setEdit({ pid: p.id, name: p.name, date: d, status: c?.status ?? "worked", hours: c?.hours != null ? String(c.hours) : "", timeIn: '', timeOut: '' })}
                           />
                         </td>
                       );
@@ -387,13 +403,13 @@ function AttendanceGrid({ locations, crews, defaultHours }: { locations: Project
         </div>
       )}
 
-      <Dialog open={!!edit} onOpenChange={(o) => !o && setEdit(null)}>
-        <DialogContent className="max-w-xs">
+      <Dialog open={!!edit} onOpenChange={(o) => { if (!o && !busy) setEdit(null); }}>
+        <DialogContent className="max-w-xs max-h-[90dvh] overflow-y-auto">
           <DialogHeader><DialogTitle className="text-base">{edit?.name} · {edit && formatLocalDate(edit.date, "EEE M/d")}</DialogTitle></DialogHeader>
           {edit && (
             <div className="space-y-3">
               <div><Label>Status</Label>
-                <Select value={edit.status} onValueChange={(v) => setEdit({ ...edit, status: v as AttendanceStatus | "none" })}>
+                <Select value={mode !== 'hours' ? 'worked' : edit.status} disabled={mode !== 'hours'} onValueChange={(v) => setEdit({ ...edit, status: v as AttendanceStatus | "none" })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Blank</SelectItem>
@@ -403,22 +419,34 @@ function AttendanceGrid({ locations, crews, defaultHours }: { locations: Project
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Hours (optional)</Label>
-                <Input type="number" inputMode="decimal" min={0} step="0.25" value={edit.hours} onChange={(e) => setEdit({ ...edit, hours: e.target.value })} disabled={edit.status === "none"} />
+              {canManage && <div className="grid grid-cols-2 gap-2">
+                <div><Label htmlFor="attendance-in">Time in</Label><Input id="attendance-in" type="time" step={60} value={edit.timeIn} onChange={e => setEdit({ ...edit, timeIn: e.target.value })} /></div>
+                <div><Label htmlFor="attendance-out">Time out</Label><Input id="attendance-out" type="time" step={60} value={edit.timeOut} onChange={e => setEdit({ ...edit, timeOut: e.target.value })} /></div>
+              </div>}
+              {mode !== 'hours' && <p className="text-xs text-muted-foreground">{zone}</p>}
+              {mode === 'incomplete' && <p role="alert" className="text-xs text-destructive">Enter both times, or leave both blank.</p>}
+              {mode === 'manual' && !range && <p role="alert" className="text-xs text-destructive">Enter valid times with time out after time in.</p>}
+              <div><Label htmlFor="attendance-hours">Hours (optional)</Label>
+                <Input id="attendance-hours" type="number" inputMode="decimal" min={0} step="0.25" value={mode === 'manual' ? (range?.hours.toFixed(2) || '') : edit.hours} readOnly={mode === 'manual'} onChange={(e) => setEdit({ ...edit, hours: e.target.value })} disabled={mode === 'hours' && edit.status === "none"} />
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEdit(null)}>Cancel</Button>
-            <Button onClick={() => {
-              if (!edit) return;
+            <Button variant="outline" disabled={busy} onClick={() => setEdit(null)}>Cancel</Button>
+            <Button disabled={busy || mode === 'incomplete' || (mode === 'manual' && !range)} onClick={() => {
+              if (!edit || busy) return;
+              if (mode === 'manual') {
+                if (!range) return;
+                logTime.mutate({ personnel_id: edit.pid, location_id: locId, day: edit.date, in_at: range.inAt, out_at: range.outAt }, { onSuccess: () => setEdit(null) });
+                return;
+              }
+              if (mode !== 'hours') return;
               setAtt.mutate({
                 location_id: locId, personnel_id: edit.pid, att_date: edit.date,
                 status: edit.status === "none" ? null : edit.status,
                 hours: edit.hours.trim() ? Number(edit.hours) : null,
-              });
-              setEdit(null);
-            }}>Save</Button>
+              }, { onSuccess: () => setEdit(null) });
+            }}>{busy && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1283,6 +1311,7 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
         </div>
       )}
       {canLog && <LogTimeDialog open={logOpen} onOpenChange={setLogOpen} projectId={projectId}
+        locationId={locationScopeId}
         personnelId={personId || null} personName={personName || undefined} />}
     </div>
   );
@@ -1363,7 +1392,7 @@ export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
           <TabsTrigger value="attendance">Attendance</TabsTrigger>
         </TabsList>
         <TabsContent value="service"><ServiceGrid locations={locations} /></TabsContent>
-        <TabsContent value="attendance"><AttendanceGrid locations={locations} crews={crews} defaultHours={defaultHours} /></TabsContent>
+        <TabsContent value="attendance"><AttendanceGrid projectId={projectId} locations={locations} crews={crews} defaultHours={defaultHours} canManage={canEdit} /></TabsContent>
       </Tabs>
     </div>
   );
