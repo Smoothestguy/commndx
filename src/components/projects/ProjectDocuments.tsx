@@ -24,10 +24,13 @@ import type { ProjectDocument } from "@/integrations/supabase/hooks/useProjectDo
 interface ProjectDocumentsProps {
   projectId: string;
   projectName?: string;
+  locationScopeId?: string;
+  unframed?: boolean;
 }
 
-export const ProjectDocuments = ({ projectId, projectName = "Project" }: ProjectDocumentsProps) => {
-  const { data: documents, isLoading } = useProjectDocuments(projectId);
+export const ProjectDocuments = ({ projectId, projectName = "Project", locationScopeId, unframed=false }: ProjectDocumentsProps) => {
+  const { data: allDocuments, isLoading } = useProjectDocuments(projectId);
+  const documents = locationScopeId ? allDocuments?.filter(d => d.location_id === locationScopeId || d.location_ids?.includes(locationScopeId)) : allDocuments;
   const { isAdmin, isManager, isUser } = useUserRole();
   const canManage = isAdmin || isManager;
   const canSend = canManage || isUser;
@@ -66,8 +69,8 @@ export const ProjectDocuments = ({ projectId, projectName = "Project" }: Project
     if (uploadInFlight.current) return;
     setSelectedFile(null);
     setRequiresSignature(false);
-    setLocationId("project");
-    setNotes(""); setIsSigninTemplate(false); setIsReusableTemplate(false); setLocationIds([]);
+    setLocationId(locationScopeId || "project");
+    setNotes(""); setIsSigninTemplate(false); setIsReusableTemplate(false); setLocationIds(locationScopeId ? [locationScopeId] : []);
     uploadDocument.reset();
     setUploadOpen(open);
   };
@@ -138,7 +141,7 @@ export const ProjectDocuments = ({ projectId, projectName = "Project" }: Project
 
   return (
     <>
-      <Card className="glass border-border">
+      <Card className={unframed ? "border-0 shadow-none bg-transparent" : "glass border-border"}>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="font-heading flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
