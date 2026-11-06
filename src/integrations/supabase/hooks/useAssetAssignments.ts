@@ -194,6 +194,7 @@ export function useAssignAsset() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["asset-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["location-authorization"] });
       queryClient.invalidateQueries({ queryKey: ["assets"] });
       toast.success("Asset assigned successfully");
     },
@@ -249,6 +250,7 @@ export function useUnassignAsset() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["asset-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["location-authorization"] });
       queryClient.invalidateQueries({ queryKey: ["assets"] });
       toast.success("Asset unassigned successfully");
     },
@@ -305,6 +307,7 @@ export function useBulkUnassignAssets() {
     },
     onSuccess: ({ count }) => {
       queryClient.invalidateQueries({ queryKey: ["asset-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["location-authorization"] });
       queryClient.invalidateQueries({ queryKey: ["assets"] });
       toast.success(`${count} asset(s) unassigned successfully`);
     },
@@ -355,6 +358,7 @@ export function useUpdateAssetAssignment() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["asset-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["location-authorization"] });
       toast.success("Assignment updated successfully");
     },
     onError: (error: Error) => {
@@ -418,6 +422,7 @@ export function useAssignAssetToLocation() {
     },
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ["asset-assignments"] });
+      qc.invalidateQueries({ queryKey: ["location-authorization"] });
       qc.invalidateQueries({ queryKey: ["assets"] });
       toast.success(v.assignmentId ? "Asset updated" : "Asset assigned");
     },
@@ -435,6 +440,7 @@ export function useEndAssetAssignment() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["asset-assignments"] });
+      qc.invalidateQueries({ queryKey: ["location-authorization"] });
       toast.success("Asset assignment ended");
     },
     onError: (e: Error) => toast.error(`Failed to end assignment: ${e.message}`),
