@@ -91,8 +91,11 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
     if (inAt && outAt && outAt <= inAt) outAt = locationTimeIso(new Date(Date.parse(`${bulk.date}T12:00:00Z`) + 864e5).toISOString().slice(0, 10), bulk.outTime, tz); // overnight
     const note = bulk.note.trim() || undefined;
     const changes: StayChange[] = []; const create: { id: string; name: string }[] = []; const skipped: string[] = [];
+    // Only stays that STARTED on this day are touched. Never fall back to open punches from
+    // other days: that once moved today's running check-ins into the previous day.
+    if (bulk.date !== day) { toast.error('Bulk times apply to the day being viewed'); return; }
     for (const r of rows.filter(r => sel.has(r.id))) {
-      const stays = r.stays.length ? r.stays : (q.data?.openStays ?? []).filter(s => s.personnel_id === r.id);
+      const stays = r.stays.filter(s => localDay(s.in_at, tz) === bulk.date);
       if (!stays.length) { if (inAt && outAt) create.push(r); else skipped.push(r.name); continue; }
       const first = stays[0], last = stays[stays.length - 1];
       if (stays.length === 1) { const nIn = inAt ?? first.in_at, nOut = outAt ?? first.out_at; if (nOut && Date.parse(nOut) <= Date.parse(nIn)) { skipped.push(r.name); continue; } changes.push({ id: first.id, inAt: nIn, outAt: nOut, remove: false, note }); continue; }
@@ -171,7 +174,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
     <Dialog open={!!bulk} onOpenChange={o => !o && !busy && setBulk(null)}><DialogContent className="max-w-sm max-h-[90dvh] overflow-y-auto">
       <DialogHeader><DialogTitle>Set times · {sel.size} selected</DialogTitle></DialogHeader>
       {bulk && <div className="space-y-3">
-        <div><Label htmlFor="bulk-date">Date</Label><Input id="bulk-date" type="date" value={bulk.date} onChange={e => setBulk({ ...bulk, date: e.target.value })} /></div>
+        <div><Label htmlFor="bulk-date">Date</Label><Input id="bulk-date" type="date" value={bulk.date} readOnly disabled aria-describedby="bulk-date-help" /><p id="bulk-date-help" className="text-xs text-muted-foreground mt-1">Change the day above to edit another date. Running punches from other days are never changed here.</p></div>
         <div className="grid grid-cols-2 gap-2">
           <div><Label htmlFor="bulk-in">Time in (24h)</Label><Time24Input id="bulk-in" value={bulk.inTime} onChange={e => setBulk({ ...bulk, inTime: e.target.value })} /></div>
           <div><Label htmlFor="bulk-out">Time out (24h)</Label><Time24Input id="bulk-out" value={bulk.outTime} onChange={e => setBulk({ ...bulk, outTime: e.target.value })} /></div>
