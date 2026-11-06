@@ -1,3 +1,4 @@
+import { roleAt, type RolePeriod } from './assignmentRoles';
 import { supabase } from '@/integrations/supabase/client';
 import { loadDocumentFields, saveDocumentFields } from './documentSignFields';
 import { localDay, type SheetStay } from './signinSheets';
@@ -46,7 +47,10 @@ export async function loadSheetStays(projectId: string, locations: ProjectLocati
   const ids = trail.flatMap(r => r.visit_personnel_id ? [r.visit_personnel_id] : []), locIds = locations.map(l => l.id);
   const flags = new Map<string, { in_geofence: boolean | null; signature_url: string | null }>();
   for (let i = 0; i < ids.length; i += 200) { const { data, error } = await supabase.from('visit_personnel').select('id,in_geofence,signature_url').in('id', ids.slice(i, i + 200)); if (error) throw error; for (const r of data ?? []) flags.set(r.id, r); }
-  const assignments = locIds.length ? await allRows((a, b) => supabase.from('location_assignments').select('location_id,personnel_id,role_label,assigned_at,unassigned_at').in('location_id', locIds).order('assigned_at').order('id').range(a, b)) : [];
+  const assignments = locIds.length ? await allRows((a, b) => supabase.from('location_assignments').select('id,location_id,personnel_id,role_label,assigned_at,unassigned_at').in('location_id', locIds).order('assigned_at').order('id').range(a, b)) : [];
+  const asgIds = assignments.map((a: { id: string }) => a.id);
+  const rolePeriods: RolePeriod[] = [];
+  for (let i = 0; i < asgIds.length; i += 200) { const { data, error } = await supabase.from('location_assignment_roles').select('assignment_id,role_label,effective_from').in('assignment_id', asgIds.slice(i, i + 200)); if (error) throw error; rolePeriods.push(...(data ?? [])); }
   const crewIds = [...new Set(trail.flatMap(r => r.crew_id ? [r.crew_id] : []))];
   const members = crewIds.length ? await allRows((a, b) => supabase.from('crew_members').select('crew_id,personnel_id,role_label,joined_on,left_on').in('crew_id', crewIds).order('id').range(a, b)) : [];
   const signatures = await allRows((a, b) => supabase.from('document_signatures').select('personnel_id,signed_at,signature_url,project_documents!inner(project_id)').eq('project_documents.project_id', projectId).eq('status', 'signed').gte('signed_at', lower).lt('signed_at', upper).order('signed_at', { ascending: false }).order('id').range(a, b));
@@ -60,7 +64,7 @@ export async function loadSheetStays(projectId: string, locations: ProjectLocati
     const fallback = signatures.find(s => s.personnel_id === r.personnel_id && s.signed_at && localDay(s.signed_at, zone) === day);
     const signaturesByDay: Record<string, string> = {};
     for (const s of signatures) if (s.personnel_id === r.personnel_id && s.signed_at && s.signature_url) { const key = localDay(s.signed_at, zone); if (!signaturesByDay[key]) signaturesByDay[key] = s.signature_url; }
-    return [{ id: r.visit_personnel_id, personnelId: r.personnel_id, locationId: r.location_id, name: [r.first_name, r.last_name].filter(Boolean).join(' '), position: role?.role_label || member?.role_label || '', inAt: r.in_at, outAt: r.out_at, signature: flag?.signature_url || r.signature_url || fallback?.signature_url || null, signaturesByDay, offsite: flag?.in_geofence === false }];
+    return [{ id: r.visit_personnel_id, personnelId: r.personnel_id, locationId: r.location_id, name: [r.first_name, r.last_name].filter(Boolean).join(' '), position: (role ? roleAt(rolePeriods, role.id, r.in_at, role.role_label) : null) || member?.role_label || '', inAt: r.in_at, outAt: r.out_at, signature: flag?.signature_url || r.signature_url || fallback?.signature_url || null, signaturesByDay, offsite: flag?.in_geofence === false }];
   });
 }
 export async function loadSheetSignature(path: string) {
