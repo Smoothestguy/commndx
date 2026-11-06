@@ -29,7 +29,7 @@ export function EditStayTimesDialog({ projectId, ids, personName, day, onClose }
   } });
   useEffect(() => { if (query.data) setDrafts(query.data.map(s => draftStay(s.id, s.inAt, s.outAt, s.zone, day))); }, [query.data, day]);
   const update = (id: string, values: Partial<StayDraft>) => setDrafts(prev => prev.map(d => d.id === id ? { ...d, ...values } : d));
-  const valid = drafts.length > 0 && drafts.every(d => d.removed || !!stayRange(d, query.data?.find(s => s.id === d.id)?.zone || 'America/Chicago'));
+  const valid = drafts.length > 0 && drafts.every(d => { const s = query.data?.find(s => s.id === d.id); return d.removed || (!!stayRange(d, s?.zone || 'America/Chicago') && (!s?.outAt || !!d.outTime)); });
   return <Dialog open onOpenChange={open => { if (!open && !save.isPending) onClose(); }}><DialogContent className="max-w-xl max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Edit times · {personName}</DialogTitle></DialogHeader>
     {query.isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
     {query.error && <p role="alert" className="text-sm text-destructive">Unable to load stays.</p>}
@@ -39,6 +39,7 @@ export function EditStayTimesDialog({ projectId, ids, personName, day, onClose }
         {!s.outAt && !d.outTime && <div className="flex items-center justify-between"><span className="text-sm text-warning">Still running</span><Button variant="outline" size="sm" onClick={() => document.getElementById(`${d.id}-out`)?.focus()}><Clock className="h-4 w-4 mr-1" />Set time out</Button></div>}
         <div className="grid grid-cols-2 gap-3"><div className="space-y-1"><Label htmlFor={`${d.id}-in`}>Time in</Label><Input type="time" step={60} id={`${d.id}-in`} value={d.inTime} onChange={e => update(d.id, { inTime: e.target.value })} /><Input aria-label="Time in date" type="date" value={d.inDate} onChange={e => update(d.id, { inDate: e.target.value })} /></div><div className="space-y-1"><Label htmlFor={`${d.id}-out`}>Time out</Label><Input type="time" step={60} id={`${d.id}-out`} value={d.outTime} onChange={e => update(d.id, { outTime: e.target.value })} /><Input aria-label="Time out date" type="date" value={d.outDate} onChange={e => update(d.id, { outDate: e.target.value })} /></div></div>
         <p className="text-xs text-muted-foreground">{s.zone}</p>{!stayRange(d, s.zone) && <p className="text-xs text-destructive">Time out must be after time in.</p>}
+        {s.outAt && !d.outTime && <p className="text-xs text-destructive">A closed stay needs a time out.</p>}
       </>}
     </div>; })}</div>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}

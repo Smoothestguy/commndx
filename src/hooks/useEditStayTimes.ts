@@ -41,6 +41,7 @@ export function useEditStayTimes(projectId: string) {
         if (le) throw le;
         if (location.project_id !== projectId) throw new Error('Stay is not part of this project');
         const oldIn = stay.checked_in_at || visit.check_in_at, oldOut = stay.checked_out_at || visit.check_out_at;
+        if (!change.remove && oldOut && !change.outAt) throw new Error('A closed stay needs a time out');
         const zone = location.timezone || 'America/Chicago';
         prepared.push({ ...change, stay, locationId: location.id, oldIn, oldOut, zone, dates: affectedStayDates(oldIn, oldOut, change.inAt, change.outAt, zone) });
       }

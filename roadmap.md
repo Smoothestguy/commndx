@@ -1,7 +1,7 @@
 # Existing stay corrections
-- [ ] Shared manager/admin Edit times dialog from project/location Timesheet cells and Trail times, including running stays and per-stay deletion.
-- [ ] Per-person writes, original/proposed date lock checks, sheet version reopening, attendance recompute and pencil audit markers; preserve private evidence and financial history.
-- [ ] Tests, live authenticated correction/readback, lock blocking, mobile inspection and requested TypeScript check; no schema changes.
+- [x] Shared manager/admin Edit times dialog from project/location Timesheet cells and Trail In/Out, including running stays, source chips, location-local dates/times and staged per-stay deletion.
+- [x] Per-person writes preserve signatures/source; original/proposed operational and payroll dates guard closed weeks and locked entries, sheet reopening reserves versions, attendance recomputes and audits drive pencil markers. Deleting a stay preserves private storage/audit evidence and zeros its existing financial row; invoiced stays are blocked. Multi-request client guards are not atomic server lock enforcement.
+- [x] Eighteen tests, bunx tsgo --noEmit and preview build passed. Live admin browser verified project and location open-stay close → 9h, Trail in correction → 8h, sheet cancel unchanged, reasoned version reopening → 7h, locked-time-entry rejection, pencil marker and deletion → zero attendance/canonical hours with financial row retained; 390px dialog inspected, no runtime errors. Test people/locations inactive, financial history retained at zero. Separate manager/field-user accounts, actual Safari and live week_closeouts row creation not exercised; closed-week/date-boundary rules covered by source/test checks. No schema changes/messages.
 
 # Manual time in/out inside locations
 - [x] Manager/admin grid time inputs use existing manual-visit saver instead of hours-only writes; blank times retain status/hours, partial/reversed times cannot save, computed hours are read-only and manual cells show pencil markers.
