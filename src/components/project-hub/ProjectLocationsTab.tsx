@@ -184,10 +184,12 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
       await saveLocationRequirements(locationId, clean, editing ? existingReqs ?? [] : []);
     } catch (e: any) {
       toast.error(`Location saved, but positions failed: ${e?.message ?? e}`);
+      return;
     } finally {
       setSavingReqs(false);
       qc.invalidateQueries({ queryKey: ["location-requirements", locationId] });
       qc.invalidateQueries({ queryKey: ["location-staffing-summary"] });
+      for(const key of ["location-task-orders","location-task-orders-asof","location-authorization","customer-project-counts","deployment-alerts"])qc.invalidateQueries({queryKey:[key]});
     }
     setOpen(false);
     onEditClosed?.();
