@@ -227,6 +227,8 @@ export function useUnassignAsset() {
           unassigned_by: user?.id || null,
         })
         .eq("id", assignmentId);
+      // Stop the per-diem clock at return time unless it was already ended earlier.
+      if (!error) await supabase.from("asset_assignments").update({ end_at: new Date().toISOString() }).eq("id", assignmentId).is("end_at", null);
 
       if (error) throw error;
 
@@ -252,6 +254,8 @@ export function useUnassignAsset() {
       queryClient.invalidateQueries({ queryKey: ["asset-assignments"] });
       queryClient.invalidateQueries({ queryKey: ["location-authorization"] });
       queryClient.invalidateQueries({ queryKey: ["assets"] });
+      queryClient.invalidateQueries({ queryKey: ["location-roster-assets"] });
+      queryClient.invalidateQueries({ queryKey: ["location-command-center"] });
       toast.success("Asset unassigned successfully");
     },
     onError: (error: Error) => {
@@ -399,32 +403,59 @@ export interface AssignToLocationInput {
   startAt?: string;
 }
 
+const ASSET_KEYS = ["asset-assignments", "location-authorization", "assets", "location-roster-assets", "location-command-center"];
+const invalidateAssetViews = (qc: ReturnType<typeof useQueryClient>) => ASSET_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+
+/**
+ * Place an asset at a location (or project-wide). Moving to a different location never rewrites
+ * the old row: it is closed as "transferred" (end_at = move time) and a new row is inserted, so
+ * per-diem history and location billing stay intact. Same-location calls only update billing.
+ */
 export function useAssignAssetToLocation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (i: AssignToLocationInput) => {
-      const billing = i.billable === undefined ? {} : { billable: i.billable, day_rate: i.dayRate ?? null };
-      if (i.assignmentId) {
-        const { error } = await supabase.from("asset_assignments")
-          .update({ location_id: i.locationId, ...billing, ...(i.startAt ? { start_at: i.startAt } : {}) })
-          .eq("id", i.assignmentId);
-        if (error) throw error;
-        return;
-      }
-      if (!i.assetId) throw new Error("Pick an asset");
+    mutationFn: async (i: AssignToLocationInput): Promise<"updated" | "moved" | "assigned"> => {
       const { data: { user } } = await supabase.auth.getUser();
+      const billing = i.billable === undefined ? {} : { billable: i.billable, day_rate: i.dayRate ?? null };
+      const at = i.startAt ?? new Date().toISOString();
+      let assetId = i.assetId;
+      let carry: { billable: boolean; day_rate: number | null } | null = null;
+      if (i.assignmentId) {
+        const { data: cur, error } = await supabase.from("asset_assignments")
+          .select("id, asset_id, location_id, project_id, billable, day_rate, end_at, status").eq("id", i.assignmentId).single();
+        if (error) throw error;
+        const open = cur.status === "active" && !cur.end_at;
+        if (open && cur.location_id === i.locationId && cur.project_id === i.projectId) {
+          const { error: e } = await supabase.from("asset_assignments").update(billing).eq("id", cur.id);
+          if (e) throw e;
+          return "updated";
+        }
+        assetId = cur.asset_id;
+        carry = { billable: !!cur.billable, day_rate: cur.day_rate };
+      }
+      if (!assetId) throw new Error("Pick an asset");
+      // Close every open placement of this asset (any project/location) before the new one starts.
+      const { data: openRows, error: oe } = await supabase.from("asset_assignments")
+        .select("id, end_at").eq("asset_id", assetId).eq("status", "active").is("unassigned_at", null);
+      if (oe) throw oe;
+      for (const r of openRows ?? []) {
+        const { error: ce } = await supabase.from("asset_assignments").update({
+          status: "transferred", unassigned_at: at, unassigned_by: user?.id ?? null,
+          unassigned_reason: "transferred", end_at: r.end_at ?? at,
+        }).eq("id", r.id);
+        if (ce) throw ce;
+      }
       const { error } = await supabase.from("asset_assignments").insert({
-        project_id: i.projectId, asset_id: i.assetId, location_id: i.locationId,
-        assigned_by: user?.id ?? null, start_at: i.startAt ?? new Date().toISOString(), ...billing,
+        project_id: i.projectId, asset_id: assetId, location_id: i.locationId,
+        assigned_by: user?.id ?? null, start_at: at, ...(carry ?? {}), ...billing,
       });
       if (error) throw error;
-      await supabase.from("assets").update({ status: "assigned" }).eq("id", i.assetId);
+      await supabase.from("assets").update({ status: "assigned" }).eq("id", assetId);
+      return (openRows?.length ?? 0) > 0 ? "moved" : "assigned";
     },
-    onSuccess: (_d, v) => {
-      qc.invalidateQueries({ queryKey: ["asset-assignments"] });
-      qc.invalidateQueries({ queryKey: ["location-authorization"] });
-      qc.invalidateQueries({ queryKey: ["assets"] });
-      toast.success(v.assignmentId ? "Asset updated" : "Asset assigned");
+    onSuccess: (r) => {
+      invalidateAssetViews(qc);
+      toast.success(r === "updated" ? "Asset updated" : r === "moved" ? "Asset moved" : "Asset assigned");
     },
     onError: (e: Error) => toast.error(`Failed to assign asset: ${e.message}`),
   });
@@ -440,7 +471,7 @@ export function useEndAssetAssignment() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["asset-assignments"] });
-      qc.invalidateQueries({ queryKey: ["location-authorization"] });
+      invalidateAssetViews(qc);
       toast.success("Asset assignment ended");
     },
     onError: (e: Error) => toast.error(`Failed to end assignment: ${e.message}`),
