@@ -71,9 +71,9 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   });
   const rows = useMemo(() => {
     const stays = q.data?.dayStays ?? [];
-    const people = new Map<string, { id: string; name: string; role: string | null; stays: Stay[] }>();
+    const people = new Map<string, { id: string; name: string; role: string | null; stays: Stay[]; offRoster?: boolean }>();
     for (const a of roster) people.set(a.personnel_id, { id: a.personnel_id, name: [a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(' '), role: a.role_label, stays: [] });
-    for (const s of stays) { const p = people.get(s.personnel_id) ?? { id: s.personnel_id, name: s.name, role: null, stays: [] }; p.stays.push(s); people.set(s.personnel_id, p); }
+    for (const s of stays) { const p = people.get(s.personnel_id) ?? { id: s.personnel_id, name: s.name, role: null, stays: [], offRoster: true }; p.stays.push(s); people.set(s.personnel_id, p); }
     return [...people.values()].map(p => ({ ...p, stays: p.stays.sort((a, b) => a.in_at.localeCompare(b.in_at)) })).sort((a, b) => (a.stays[0]?.in_at ?? 'z').localeCompare(b.stays[0]?.in_at ?? 'z') || a.name.localeCompare(b.name));
   }, [roster, q.data]);
   const today = localDay(new Date().toISOString(), tz);
@@ -147,6 +147,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
             <span className="tabular-nums"><span className="sm:hidden text-muted-foreground">Out </span>{last ? (last.out_at ? hm(last.out_at, tz) : <span className="text-warning">open</span>) : '—'}</span>
             <span className="col-span-3 sm:col-span-1 flex flex-wrap gap-1">
               {!first && <Badge variant="outline" className="text-muted-foreground">Not signed in</Badge>}
+              {r.offRoster && <Badge variant="outline" className="bg-muted text-muted-foreground" title="Has time here this day but was not assigned to this site on this date">Not on roster this day</Badge>}
               {late ? <Badge variant="outline" className={cn(late.late_ack_reason ? 'text-warning border-warning/40' : 'text-destructive border-destructive/40')} title={lateTip || undefined}>LATE {late.late_minutes}m{late.late_reason ? ` · ${late.late_reason}` : ''}{late.late_ack_reason ? ' · approved' : ''}</Badge> : first && <Badge variant="outline" className="text-success border-success/40">On time</Badge>}
               {late && canWrite && <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs" onClick={() => setAck({ stay: late, preset: '', text: '' })}><CheckCircle2 className="h-3 w-3 mr-1" />{late.late_ack_reason ? 'Change approval' : 'Approve late'}</Button>}
               {r.stays.some(s => s.in_geofence === false || s.offsite_reason) ? <Badge variant="outline" className="text-warning border-warning/40" title={r.stays.find(s => s.offsite_reason)?.offsite_reason || undefined}>Off-site</Badge> : r.stays.some(s => s.in_geofence) ? <Badge variant="outline">In geofence</Badge> : null}
