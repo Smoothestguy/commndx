@@ -47,7 +47,7 @@ function JoinExperience({ token }: { token: string }) {
     finally { submitting.current = false; setBusy(false); }
   };
   return <main className="min-h-dvh bg-background text-foreground px-5 py-10 flex flex-col items-center justify-center">
-    <ForceDarkTheme /><SEO title="Join project" description="Register for your Fairfield Response Group project." noindex />
+    <ForceDarkTheme /><SEO title="Join project" description="Register for your Fairfield Response Group project." noIndex />
     <div className="w-full max-w-md space-y-7">
       <p className="text-sm font-semibold text-muted-foreground">FAIRFIELD RESPONSE GROUP</p>
       {!validToken || invalid || (info.data && !info.data.valid) ? <div className="space-y-5 text-center">
