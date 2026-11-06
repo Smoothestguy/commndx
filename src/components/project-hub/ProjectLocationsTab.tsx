@@ -1,4 +1,7 @@
 import { DailyTimesheetPanel } from '@/components/signin/DailyTimesheetPanel';
+import { LocationTaskOrders } from './LocationTaskOrders';
+import { AuthorizationBadge } from './AuthorizationBadge';
+import { useLocationAuthorization } from '@/hooks/useLocationAuthorization';
 import { ProjectJoinLinks } from './ProjectJoinLinks';
 import { supabase } from "@/integrations/supabase/client";
 import { FunctionsHttpError } from "@supabase/supabase-js";
@@ -75,6 +78,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
   const canWrite = isAdmin || isManager;
   const { data: project } = useProject(projectId);
   const { data: locations = [], isLoading } = useProjectLocations(projectId);
+  const authorization = useLocationAuthorization(locations);
   const { data: documents = [] } = useProjectDocuments(projectId);
   const { data: signatures = [] } = useDocumentSignatures(projectId);
   const locationNames = useMemo(() => Object.fromEntries(locations.map((l) => [l.id, l.name])), [locations]);
@@ -238,6 +242,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
                   </div>
                   {canWrite && (
                     <div className="flex shrink-0">
+                      <LocationTaskOrders projectId={projectId} locationId={l.id} locationName={l.name} timezone={l.timezone} iconOnly />
                       <ProjectJoinLinks projectId={projectId} locationId={l.id} iconOnly />
                       <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => openEdit(l)} aria-label="Edit location"><Pencil className="h-4 w-4" /></Button>
                       <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => setToDelete(l)} aria-label="Delete location"><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -263,7 +268,8 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
                 <DailyTimesheetPanel projectId={projectId} projectName={project?.name || projectName || 'Project'} locationId={l.id} />
                 <LocationDocumentsLine projectId={projectId} locationId={l.id} documents={documents} signatures={signatures} />
                 {canWrite && <LocationKioskActions location={l} />}
-                <LocationStaffing locationId={l.id} summary={staffing?.[l.id]} canWrite={canWrite} projectId={l.project_id} locationName={l.name} />
+                <AuthorizationBadge value={authorization.data?.[l.id]} />
+                <LocationStaffing locationId={l.id} summary={staffing?.[l.id]} canWrite={canWrite} projectId={l.project_id} locationName={l.name} timezone={l.timezone} />
                 <LocationAssets projectId={l.project_id} locationId={l.id} locationName={l.name} canWrite={canWrite} locationNames={locationNames} />
                 <LocationLodging projectId={projectId} locationId={l.id} housingBy={l.housing_provided_by} canWrite={canWrite} />
               </CardContent>

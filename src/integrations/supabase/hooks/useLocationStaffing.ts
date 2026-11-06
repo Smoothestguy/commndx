@@ -37,6 +37,7 @@ function useInvalidate() {
     qc.invalidateQueries({ queryKey: reqKey(locationId) });
     qc.invalidateQueries({ queryKey: asgKey(locationId) });
     qc.invalidateQueries({ queryKey: ["location-staffing-summary"] });
+    qc.invalidateQueries({ queryKey: ["location-authorization"] });
   };
 }
 
@@ -167,7 +168,7 @@ export function useUnassignPersonnel() {
   const inv = useInvalidate();
   return useMutation({
     mutationFn: async ({ id, location_id }: { id: string; location_id: string }) => {
-      const { error } = await db.from("location_assignments").delete().eq("id", id);
+      const { error } = await db.from("location_assignments").update({status:'unassigned',unassigned_at:new Date().toISOString()}).eq("id", id);
       if (error) throw error;
       return location_id;
     },

@@ -15,7 +15,7 @@ export function dailyPeople(rows: SheetRow[]): SheetRow[] {
   }
   return [...people.values()].sort((a, b) => a.inAt.localeCompare(b.inAt));
 }
-export async function generateDailyTimesheet(rows: SheetRow[], config: { day: string; zone: string; projectNumber: string; mission: string; location: string; approval?: { name: string | null; signature: string | null; at: string | null } }, loadSignature: (path: string) => Promise<ArrayBuffer>) {
+export async function generateDailyTimesheet(rows: SheetRow[], config: { day: string; zone: string; projectNumber: string; mission: string; location: string; authorized?: number; approval?: { name: string | null; signature: string | null; at: string | null } }, loadSignature: (path: string) => Promise<ArrayBuffer>) {
   const { jsPDF } = await import('jspdf');
   const pdf = new jsPDF({ unit: 'pt', format: 'letter', orientation: 'portrait' });
   const people = dailyPeople(rows), widths = [112, 92, 67, 49, 49, 49, 122], left = 36, top = 106, rowH = 30, capacity = 18;
@@ -31,7 +31,7 @@ export async function generateDailyTimesheet(rows: SheetRow[], config: { day: st
     if (page) pdf.addPage();
     pdf.setFont('helvetica', 'bold'); pdf.setFontSize(14); pdf.text('Fairfield Response Group — Daily Timesheet Report', left, 42);
     pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9);
-    pdf.text(`Date: ${formatLocalDate(config.day, 'M/d/yyyy')} | Project: ${config.projectNumber}`, left, 65);
+    pdf.text(`Date: ${formatLocalDate(config.day, 'M/d/yyyy')} | Project: ${config.projectNumber}${config.authorized !== undefined ? ` | Authorized: ${config.authorized}` : ''}`, left, 65);
     pdf.text(pdf.splitTextToSize(`Mission Number: ${config.mission}`, 540).slice(0, 2), left, 82);
     pdf.setFontSize(8); pdf.setLineWidth(0.5);
     let x = left; for (let c = 0; c < widths.length; c++) { pdf.rect(x, top, widths[c], 26); text(headers[c], x, top, widths[c]); x += widths[c]; }
