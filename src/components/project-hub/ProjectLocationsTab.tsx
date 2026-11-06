@@ -3,7 +3,11 @@ import { LocationTaskOrders } from './LocationTaskOrders';
 import { AuthorizationBadge } from './AuthorizationBadge';
 import { useLocationAuthorization } from '@/hooks/useLocationAuthorization';
 import { ProjectJoinLinks } from './ProjectJoinLinks';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigationValue } from '@/hooks/useNavigationValue';
+import { useLocationScroll } from '@/hooks/useLocationScroll';
+import { EntityContextMenu } from '@/components/shared/EntityContextMenu';
+import { locationHref } from '@/lib/navigationState';
 import { supabase } from "@/integrations/supabase/client";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { useProjectDocuments } from "@/integrations/supabase/hooks/useProjectDocuments";
@@ -74,7 +78,8 @@ function ScopeText({ text }: { text: string }) {
   );
 }
 
-export function ProjectLocationsTab({ projectId, projectName, deploymentMode = false }: { projectId: string; projectName?: string; deploymentMode?: boolean }) {
+export function ProjectLocationsTab({ projectId, projectName, deploymentMode = false, editTargetId, onEditClosed }: { projectId: string; projectName?: string; deploymentMode?: boolean; editTargetId?: string; onEditClosed?: () => void }) {
+  const navigate = useNavigate();
   const { isAdmin, isManager } = useUserRole();
   const canWrite = isAdmin || isManager;
   const { data: project } = useProject(projectId);
@@ -93,8 +98,9 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
   const [view, setView] = useState<"cards" | "grid" | null>(() => {
     try { const v = localStorage.getItem(viewKey); return v === "cards" || v === "grid" ? v : null; } catch { return null; }
   });
-  const effectiveView = view ?? (locations.length > 4 ? "grid" : "cards");
-  const chooseView = (v: "cards" | "grid") => { setView(v); try { localStorage.setItem(viewKey, v); } catch { /* ignore */ } };
+  const [effectiveView, setUrlView] = useNavigationValue("view", view ?? (locations.length > 4 ? "grid" : "cards"), ["cards", "grid"]);
+  useLocationScroll(!isLoading && !editTargetId);
+  const chooseView = (v: "cards" | "grid") => { setView(v); setUrlView(v); try { localStorage.setItem(viewKey, v); } catch { /* ignore */ } };
   const [scrollTo, setScrollTo] = useState<string | null>(null);
   const [locationParams]=useSearchParams();
   const targetLocation=locationParams.get('location');
@@ -138,6 +144,11 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
     setOpen(true);
   };
 
+  useEffect(() => {
+    const target = locations.find(l => l.id === editTargetId);
+    if (target && canWrite && !editing) openEdit(target);
+  }, [editTargetId, canWrite, locations, editing]);
+
   const save = async () => {
     if (!form.name.trim()) return;
     if (form.poc_email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.poc_email.trim())) { toast.error('Enter a valid POC email'); return; }
@@ -179,6 +190,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
       qc.invalidateQueries({ queryKey: ["location-staffing-summary"] });
     }
     setOpen(false);
+    onEditClosed?.();
   };
 
   const geocode = async () => {
@@ -201,7 +213,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      {!editTargetId && <><div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-muted-foreground whitespace-nowrap">Sites / Locations</h3>
         <div className="flex items-center gap-2">
           {locations.length > 0 && (
@@ -220,16 +232,24 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
         <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">No locations yet.</CardContent></Card>
       ) : effectiveView === "grid" ? (
         <LocationsGrid projectId={projectId} projectName={projectName} locations={locations} staffing={staffing} lastServiced={lastServiced}
-          deploymentMode={deploymentMode} canWrite={canWrite} onOpenCard={(id) => { chooseView("cards"); setScrollTo(id); }} />
+          deploymentMode={deploymentMode} canWrite={canWrite} onOpenCard={(id) => navigate(locationHref(projectId,id))} onEditLocation={openEdit} />
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
           {locations.map((l) => (
-            <Card key={l.id} id={`location-card-${l.id}`} className="scroll-mt-20 transition-shadow min-w-0">
+            <EntityContextMenu key={l.id} href={locationHref(projectId,l.id)} actions={canWrite ? [
+              {label:'Edit location',run:()=>openEdit(l)},
+              {label:'Assign people',run:()=>navigate(`${locationHref(projectId,l.id)}?tab=staffing&action=assign`)},
+              {label:'Send site text',run:()=>navigate(`${locationHref(projectId,l.id)}?tab=staffing&action=text`)},
+              {label:'Kiosk link',run:()=>navigate(`${locationHref(projectId,l.id)}?action=kiosk`)},
+              {label:'Daily timesheet PDF',run:()=>navigate(`${locationHref(projectId,l.id)}?tab=sheets&action=daily`)},
+              {label:'Task orders',run:()=>navigate(locationHref(projectId,l.id,'taskorders'))},
+            ] : [{label:'Daily timesheet PDF',run:()=>navigate(`${locationHref(projectId,l.id)}?tab=sheets&action=daily`)}]}>
+            <Card id={`location-card-${l.id}`} className="scroll-mt-20 transition-shadow hover:shadow-md hover:border-primary/30 min-w-0">
               <CardContent className="p-3 sm:p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold truncate">{l.name}</span>
+                      <Link to={locationHref(projectId,l.id)} className="font-semibold truncate hover:text-primary hover:underline underline-offset-2">{l.name}</Link>
                       {l.lat != null && l.lng != null && <Badge variant="outline">📍 geofenced</Badge>}
                       {l.project_number && <Badge variant="outline">#{l.project_number}</Badge>}
                       <Badge variant={l.status === "active" ? "default" : "secondary"} className="capitalize">{l.status}</Badge>
@@ -277,12 +297,13 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
                 <LocationAssets projectId={l.project_id} locationId={l.id} locationName={l.name} canWrite={canWrite} locationNames={locationNames} />
                 <LocationLodging projectId={projectId} locationId={l.id} housingBy={l.housing_provided_by} canWrite={canWrite} />
               </CardContent>
-            </Card>
+            </Card></EntityContextMenu>
           ))}
         </div>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      </>}
+      <Dialog open={open} onOpenChange={v=>{setOpen(v);if(!v)onEditClosed?.();}}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Edit location" : "Add location"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
@@ -354,7 +375,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => {setOpen(false);onEditClosed?.();}}>Cancel</Button>
             <Button onClick={save} disabled={!form.name.trim() || saving || geocoding}>{saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Save</Button>
           </DialogFooter>
         </DialogContent>

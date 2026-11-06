@@ -589,11 +589,7 @@ export function PersonnelTable({
           tableId="personnel"
           data={personnel}
           columns={columns}
-          onRowClick={(person) => {
-            if (!selectionMode) {
-              navigate(`/personnel/${person.id}`);
-            }
-          }}
+          rowHref={person => `/personnel/${person.id}`}
         />
       </div>
 

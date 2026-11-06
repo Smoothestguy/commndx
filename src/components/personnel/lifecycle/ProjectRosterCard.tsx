@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+import { EntityContextMenu } from '@/components/shared/EntityContextMenu';
 import { NonBillableChip } from '@/components/personnel/NonBillableChip';
 import { useProjectAgencies } from "@/hooks/useProjectAgencies";
 import { AgencyChip } from "@/components/personnel/AgencyChip";
@@ -56,11 +58,15 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
   const toggle = (id: string) => setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
   const Row = ({ r }: { r: RosterRow }) => (
-    <div className="flex items-center gap-1 sm:gap-2 py-2 border-b last:border-0">
+    <EntityContextMenu href={`/personnel/${r.personnel_id}`} person actions={[
+      {label:'Send site text',run:()=>setTextFor(r.personnel_id)},
+      ...(showCosts ? [{label:'Log time',run:()=>setLogFor(r)}] : []),
+      {label:'Add expense',run:()=>setExpFor(r.personnel_id)},
+    ]}><div className="flex items-center gap-1 sm:gap-2 py-2 border-b last:border-0">
       {showCosts && <Checkbox aria-label={`Select badge for ${nm(r)}`} checked={badgeSelection.includes(r.personnel_id)} onCheckedChange={checked => setBadgeSelection(ids => checked ? [...ids, r.personnel_id] : ids.filter(id => id !== r.personnel_id))} />}
       {showCosts && r.status === "standby" && <Checkbox checked={sel.includes(r.personnel_id)} onCheckedChange={() => toggle(r.personnel_id)} aria-label="Select" />}
       <div className="min-w-0 flex-1">
-        <div className="font-medium text-sm truncate">{nm(r)} <AgencyChip name={agencyName(r.personnel_id)} /> <NonBillableChip value={nonBillableByPerson[r.personnel_id]} employer={employerName(r.personnel_id)} /></div>
+        <div className="font-medium text-sm truncate"><Link to={`/personnel/${r.personnel_id}`} className="hover:underline hover:text-primary">{nm(r)}</Link> <AgencyChip name={agencyName(r.personnel_id)} /> <NonBillableChip value={nonBillableByPerson[r.personnel_id]} employer={employerName(r.personnel_id)} /></div>
         <div className="text-xs text-muted-foreground">
           since {r.effective_at ? format(new Date(r.effective_at), "MMM d") : "—"} · {r.days}d
           {showCosts && nonBillableByPerson[r.personnel_id] === false && r.status === "standby" && (standbyRate != null ? <> · accrued {money(r.days * standbyRate)}</> : <> · set standby rate</>)}
@@ -72,7 +78,7 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
       <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Send site text" onClick={() => setTextFor(r.personnel_id)}><MessageSquare className="h-4 w-4" /></Button>
       {showCosts && <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Log time" onClick={() => setLogFor(r)}><Clock className="h-4 w-4" /></Button>}
       <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Add expense" onClick={() => setExpFor(r.personnel_id)}><Receipt className="h-4 w-4" /></Button>
-    </div>
+    </div></EntityContextMenu>
   );
 
   return (

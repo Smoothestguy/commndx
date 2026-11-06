@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from 'react-router-dom';
 import {
   DndContext,
   closestCenter,
@@ -49,6 +50,7 @@ interface EnhancedDataTableProps<T> {
   data: T[];
   columns: EnhancedColumn<T>[];
   onRowClick?: (item: T) => void;
+  rowHref?: (item: T) => string;
   selectable?: boolean;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
@@ -109,6 +111,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   data,
   columns,
   onRowClick,
+  rowHref,
   selectable = false,
   selectedIds = new Set(),
   onSelectionChange,
@@ -377,11 +380,11 @@ export function EnhancedDataTable<T extends { id: string | number }>({
               return (
                 <TableRow
                   key={item.id}
-                  onClick={() => onRowClick?.(item)}
+                  onClick={rowHref ? undefined : e => { if (e.target instanceof Element && e.target.closest('a,button,input,[role="button"]')) return; if (!e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) onRowClick?.(item); }}
                   className={cn(
                     "border-b border-table-border transition-colors duration-75",
                     index % 2 === 1 && "bg-table-stripe",
-                    onRowClick && "cursor-pointer hover:bg-muted/50",
+                    (onRowClick || rowHref) && "hover:bg-muted/50",
                     isSelected && "bg-primary/5",
                     isUltraCompact && "h-6",
                     isCondensed && "h-7"
@@ -403,7 +406,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                       />
                     </TableCell>
                   )}
-                  {visibleColumns.map((column) => (
+                  {visibleColumns.map((column, columnIndex) => (
                     <TableCell
                       key={String(column.key)}
                       className={cn(
@@ -416,7 +419,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                       )}
                     >
                       <div className="truncate">
-                        {column.render
+                        {rowHref && !column.render && columnIndex === 0 ? <Link to={rowHref(item)} className="hover:text-primary hover:underline">{String(item[column.key as keyof T] ?? '')}</Link> : column.render
                           ? column.render(item)
                           : String(item[column.key as keyof T] ?? "")}
                       </div>

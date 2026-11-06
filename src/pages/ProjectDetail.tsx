@@ -80,9 +80,8 @@ const ProjectDetail = () => {
 
   const setActiveTab = (val: string) => {
     const next = new URLSearchParams(searchParams);
-    if (val === "locations") next.delete("tab");
-    else next.set("tab", val);
-    setSearchParams(next, { replace: true });
+    next.set("tab", val);
+    setSearchParams(next);
   };
 
   const addressLine = useMemo(() => {

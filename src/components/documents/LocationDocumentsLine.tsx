@@ -8,5 +8,5 @@ export function LocationDocumentsLine({ projectId, locationId, documents, signat
   if (!docs.length) return null;
   const ids = new Set(docs.filter(d => d.requires_signature).map(d => d.id));
   const rows = signatures.filter(s => ids.has(s.document_id));
-  return <Link to={`/projects/${projectId}?tab=docs&location=${locationId}`} className="flex flex-wrap items-center gap-2 text-xs text-primary hover:underline"><FileText className="h-3.5 w-3.5" />Documents ({docs.length}){ids.size > 0 && <Badge variant="outline" className="text-xs">Signatures {rows.filter(s => s.status === 'signed').length}/{rows.length}</Badge>}</Link>;
+  return <Link to={`/projects/${projectId}/locations/${locationId}?tab=documents`} className="flex flex-wrap items-center gap-2 text-xs text-primary hover:underline"><FileText className="h-3.5 w-3.5" />Documents ({docs.length}){ids.size > 0 && <Badge variant="outline" className="text-xs">Signatures {rows.filter(s => s.status === 'signed').length}/{rows.length}</Badge>}</Link>;
 }

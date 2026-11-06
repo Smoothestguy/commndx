@@ -11,7 +11,12 @@ import { RoleSelect } from "./RoleSelect";
 import { useUpdateAssignmentRole } from "@/integrations/supabase/hooks/useLocationStaffing";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { endOfWeek, format, startOfWeek } from "date-fns";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { EntityContextMenu } from "@/components/shared/EntityContextMenu";
+import { locationHref } from "@/lib/navigationState";
+import { LogTimeDialog } from "@/components/personnel/lifecycle/LogTimeDialog";
+import { AddExpenseDialog } from "@/components/personnel/lifecycle/AddExpenseDialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery } from "@tanstack/react-query";
 import { Download, ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, ExternalLink, MessageSquare, Phone, Search, UserPlus, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -49,7 +54,7 @@ function IconBtn({ label, onClick, children }: { label: string; onClick: () => v
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={label} onClick={onClick}>{children}</button>
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" aria-label={label} onClick={onClick}>{children}</Button>
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
@@ -58,7 +63,7 @@ function IconBtn({ label, onClick, children }: { label: string; onClick: () => v
 
 const fmtRate = (r: number | null) => (r != null ? ` · $${Number(r).toLocaleString(undefined, { maximumFractionDigits: 2 })}/hr` : "");
 
-export function LocationsGrid({ projectId, projectName, locations, staffing, lastServiced, deploymentMode, canWrite, onOpenCard }: {
+export function LocationsGrid({ projectId, projectName, locations, staffing, lastServiced, deploymentMode, canWrite, onOpenCard, onEditLocation }: {
   projectId: string;
   projectName?: string;
   locations: ProjectLocation[];
@@ -66,8 +71,12 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
   lastServiced?: Record<string, string>;
   deploymentMode: boolean;
   canWrite: boolean;
-  onOpenCard: (locationId: string) => void;
+  onOpenCard: (locationId: string) => void; onEditLocation?: (location: ProjectLocation) => void;
 }) {
+  const navigate = useNavigate();
+  const [logFor,setLogFor]=useState<string>();
+  const [expenseFor,setExpenseFor]=useState<string>();
+  const [roleFor,setRoleFor]=useState<(typeof assignments)[number]>();
   const { agencyName, employerName, nonBillableByPerson } = useProjectAgencies(projectId);
   const authorization = useLocationAuthorization(locations);
   const locIds = useMemo(() => locations.map((l) => l.id), [locations]);
@@ -133,6 +142,24 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
 
   const search = q.trim().toLowerCase();
   const nameOf = (a: (typeof assignments)[number]) => [a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(" ") || "Unknown";
+
+  const locationActions = (l: ProjectLocation) => canWrite ? [
+    {label:'Edit location',run:()=>onEditLocation?.(l)},
+    {label:'Assign people',run:()=>setAssignFor({locationId:l.id})},
+    {label:'Send site text',run:()=>setTextFor({locationId:l.id,ids:(byLoc[l.id]||[]).map(a=>a.personnel_id)})},
+    {label:'Kiosk link',run:()=>navigate(`${locationHref(projectId,l.id)}?action=kiosk`)},
+    {label:'Daily timesheet PDF',run:()=>navigate(`${locationHref(projectId,l.id)}?tab=sheets&action=daily`)},
+    {label:'Task orders',run:()=>navigate(locationHref(projectId,l.id,'taskorders'))},
+  ] : [];
+  const personActions = (a: (typeof assignments)[number]) => [
+    {label:'Send site text',run:()=>setTextFor({locationId:a.location_id,ids:[a.personnel_id]})},
+    ...(canWrite ? [
+      {label:'Log time',run:()=>setLogFor(a.personnel_id)},
+      {label:'Add expense',run:()=>setExpenseFor(a.personnel_id)},
+      {label:'Change role',run:()=>setRoleFor(a)},
+      {label:'Unassign',run:()=>removePerson(a),destructive:true},
+    ] : []),
+  ];
 
   const rankOf = (a: (typeof assignments)[number], locId: string) => {
     const os = onSite[a.personnel_id];
@@ -245,12 +272,9 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
           ].filter(Boolean) as string[];
           return (
             <div key={l.id} className="text-xs">
-              <div className="bg-muted/40 px-2 py-1.5">
+              <EntityContextMenu href={locationHref(projectId,l.id)} actions={locationActions(l)}><div className="bg-muted/40 px-2 py-1.5">
                 <div className="flex items-center gap-2 min-w-0">
-                  <button type="button" onClick={() => toggle(l.id)} className="flex items-center gap-1 font-semibold min-w-0 flex-1 text-left" aria-expanded={isOpen}>
-                    {isOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
-                    <span className="truncate">{l.name}</span>{l.lat != null && l.lng != null && <Badge variant="outline">📍 geofenced</Badge>}
-                  </button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={()=>toggle(l.id)} aria-label={`Toggle ${l.name}`} aria-expanded={isOpen}>{isOpen ? <ChevronDown className="h-3.5 w-3.5"/> : <ChevronRight className="h-3.5 w-3.5"/>}</Button><Link to={locationHref(projectId,l.id)} className="font-semibold truncate flex-1 hover:underline hover:text-primary">{l.name}</Link>
                   <span className={cn("font-medium shrink-0 tabular-nums", full ? "text-success" : "text-warning")}>{s?.assigned ?? 0}/{s?.needed ?? 0}</span>
                   <span className="flex items-center shrink-0">
                     {canWrite && <LocationTaskOrders projectId={projectId} locationId={l.id} locationName={l.name} timezone={l.timezone} iconOnly />}
@@ -264,13 +288,13 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                 <JoinRequests projectId={projectId} locationId={l.id} />
                 <AuthorizationBadge value={authorization.data?.[l.id]} />
                 {canWrite && isOpen && <LocationKioskActions location={l} />}
-              </div>
+              </div></EntityContextMenu>
               {isOpen && rows.map((a) => {
                 const k = `${a.personnel_id}:${l.id}`;
                 const h = hours[k];
                 const line2 = [texted[k] && `texted ${format(new Date(texted[k]), "M/d")}`, h ? `${h.toFixed(1)} h` : null].filter(Boolean).join(" · ");
                 return (
-                  <div key={a.id} className="border-t px-2 py-1.5 pl-6">
+                  <EntityContextMenu key={a.id} href={`/personnel/${a.personnel_id}`} person actions={personActions(a)}><div className="border-t px-2 py-1.5 pl-6">
                     <div className="flex items-center gap-2 min-w-0">
                       <Link to={`/personnel/${a.personnel_id}`} className="font-medium truncate flex-1 min-w-0 hover:underline">{nameOf(a)} <AgencyChip name={agencyName(a.personnel_id)} /> <NonBillableChip value={nonBillableByPerson[a.personnel_id]} employer={employerName(a.personnel_id)} /></Link>
                       <PersonnelStatusButton personnelId={a.personnel_id} projectId={projectId} locationId={l.id} hideProjectName className="text-[10px] px-1.5 py-0 max-w-[9rem] shrink-0" />
@@ -289,7 +313,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                         {canWrite && <IconBtn label="Unassign" onClick={() => removePerson(a)}><X className="h-4 w-4" /></IconBtn>}
                       </span>
                     </div>
-                  </div>
+                  </div></EntityContextMenu>
                 );
               })}
               {isOpen && !search && locAssets.map((r) => (
@@ -314,7 +338,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
         })}
       </div>
 
-      <div className="hidden sm:block border rounded-md overflow-auto max-h-[75vh]">
+      <div data-location-grid-scroll className="hidden sm:block border rounded-md overflow-auto max-h-[75vh]">
         <table className="w-full table-fixed text-xs tabular-nums min-w-[600px]">
           <colgroup>
             <col />
@@ -349,13 +373,10 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
               const full = (s?.needed ?? 0) > 0 && (s?.assigned ?? 0) >= (s?.needed ?? 0);
               return (
                 <Fragment key={l.id}>
-                  <tr className="border-t bg-muted/40 hover:bg-muted/60">
+                  <EntityContextMenu href={locationHref(projectId,l.id)} actions={locationActions(l)}><tr className="border-t bg-muted/40 hover:bg-muted/60">
                     <td colSpan={cols} className="px-2 py-1">
                       <div className="flex items-center gap-2 whitespace-nowrap min-w-0">
-                        <button type="button" onClick={() => toggle(l.id)} className="flex items-center gap-1 font-semibold min-w-0 flex-1 sm:flex-initial text-left" aria-expanded={isOpen} title={l.name}>
-                          {isOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
-                          <span className="truncate">{l.name}</span>{l.lat != null && l.lng != null && <Badge variant="outline">📍 geofenced</Badge>}
-                        </button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={()=>toggle(l.id)} aria-label={`Toggle ${l.name}`} aria-expanded={isOpen}>{isOpen ? <ChevronDown className="h-3.5 w-3.5"/> : <ChevronRight className="h-3.5 w-3.5"/>}</Button><Link to={locationHref(projectId,l.id)} className="font-semibold truncate hover:underline hover:text-primary">{l.name}</Link>{l.lat != null && l.lng != null && <Badge variant="outline">📍 geofenced</Badge>}
                         {l.project_number && <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">#{l.project_number}</Badge>}
                         <JoinRequests projectId={projectId} locationId={l.id} />
                         <span className={cn("font-medium shrink-0", full ? "text-success" : "text-warning")}>{s?.assigned ?? 0}/{s?.needed ?? 0}</span>
@@ -376,13 +397,13 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                         </span>
                       </div>
                     </td>
-                  </tr>
+                  </tr></EntityContextMenu>
                   {canWrite && isOpen && <tr><td colSpan={cols} className="px-2 py-1"><LocationKioskActions location={l} /></td></tr>}
                   {isOpen && rows.map((a) => {
                     const k = `${a.personnel_id}:${l.id}`;
                     const h = hours[k];
                     return (
-                      <tr key={a.id} className="border-t hover:bg-muted/30">
+                      <EntityContextMenu key={a.id} href={`/personnel/${a.personnel_id}`} person actions={personActions(a)}><tr className="border-t hover:bg-muted/30">
                         <td className="px-2 py-1 pl-7 font-medium truncate">
                           <Link to={`/personnel/${a.personnel_id}`} className="hover:underline underline-offset-2" title={nameOf(a)}>{nameOf(a)}</Link> <AgencyChip name={agencyName(a.personnel_id)} /> <NonBillableChip value={nonBillableByPerson[a.personnel_id]} employer={employerName(a.personnel_id)} />
                         </td>
@@ -405,7 +426,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                           <IconBtn label="Send site text" onClick={() => setTextFor({ locationId: l.id, ids: [a.personnel_id] })}><MessageSquare className="h-3.5 w-3.5" /></IconBtn>
                           {canWrite && <IconBtn label="Unassign" onClick={() => removePerson(a)}><X className="h-3.5 w-3.5" /></IconBtn>}
                         </td>
-                      </tr>
+                      </tr></EntityContextMenu>
                     );
                   })}
                   {isOpen && !search && locAssets.map((r) => (
@@ -469,6 +490,9 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
         <AssignLocationAssetDialog open={!!assetFor} onOpenChange={(o) => !o && setAssetFor(null)} projectId={projectId}
           locationId={assetFor} locationName={locationNames[assetFor]} rows={assetRows} locationNames={locationNames} />
       )}
+      <LogTimeDialog open={!!logFor} onOpenChange={v=>{if(!v)setLogFor(undefined);}} projectId={projectId} personnelId={logFor}/>
+      <AddExpenseDialog open={!!expenseFor} onOpenChange={v=>{if(!v)setExpenseFor(undefined);}} projectId={projectId} personnelId={expenseFor} lockProject/>
+      <Dialog open={!!roleFor} onOpenChange={v=>{if(!v)setRoleFor(undefined);}}><DialogContent><DialogHeader><DialogTitle>Change role</DialogTitle></DialogHeader>{roleFor && roleEdit(roleFor,roleFor.location_id)}</DialogContent></Dialog>
       <SendSiteTextDialog open={!!textFor} onOpenChange={(o) => !o && setTextFor(null)} personnelIds={textFor?.ids ?? []} locationId={textFor?.locationId ?? ""} />
     </div>
   );

@@ -79,7 +79,7 @@ export const PersonnelCard = ({
       className={`hover:shadow-md transition-all cursor-pointer ${
         isSelected ? "ring-2 ring-primary" : ""
       }`}
-      onClick={handleClick}
+      onClick={selectionMode ? handleClick : undefined}
     >
       <CardContent className="p-4 sm:p-6">
         <div className="flex items-start gap-3 sm:gap-4">
@@ -109,7 +109,7 @@ export const PersonnelCard = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-base sm:text-lg truncate">
-                    {personnel.first_name} {personnel.last_name}
+                    <Link to={`/personnel/${personnel.id}`} className="hover:underline hover:text-primary">{personnel.first_name} {personnel.last_name}</Link>
                   </h3>
                   <ComplianceBadge personnel={personnel} compact />
                 </div>
@@ -172,7 +172,7 @@ export const PersonnelCard = ({
 
   return (
     <ContextMenu>
-      <ContextMenuTrigger asChild>
+      <ContextMenuTrigger asChild onContextMenuCapture={e=>{if(e.target instanceof Element && e.target.closest('a[href]'))e.stopPropagation();}}>
         {cardContent}
       </ContextMenuTrigger>
       <ContextMenuContent className="w-48">

@@ -39,6 +39,7 @@ import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
+import LocationDetail from './pages/LocationDetail';
 import ProjectJoin from './pages/ProjectJoin';
 import CustomerPortal from './pages/CustomerPortal';
 import FieldMode from "./pages/FieldMode";
@@ -430,6 +431,7 @@ const App = () => {
                       />
                       <Route path="/projects" element={<Projects />} />
                       <Route path="/projects/:id" element={<ProjectDetail />} />
+                      <Route path="/projects/:projectId/locations/:locationId" element={<LocationDetail />} />
                       <Route path="/field/:projectId" element={<FieldMode />} />
                       <Route path="/vendors" element={<Vendors />} />
                       <Route path="/vendors/:id" element={<VendorDetail />} />
