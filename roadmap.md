@@ -1,8 +1,8 @@
 # Navigation and location pages
-- [ ] Full-width deep-linked location page with reused location-filtered tabs and quick actions.
-- [ ] Native entity links and existing-action context menus for locations, project cards and personnel rows.
-- [ ] URL tab/view/deployment/week/filter state, history and location scroll restoration.
-- [ ] TypeScript, navigation tests and live click/modifier/middle/right-click/Back browser checks.
+- [x] Full-width deep-linked location page reuses staffing/requirements/join requests, scoped attendance/trail, visits/status/sheets/countersign, embedded task-order ledger/as-of, lodging, assets and scoped documents/signatures; existing edit/kiosk/QR/join/daily actions remain permission-gated. Scoped sheet cache keys prevent project/location collisions.
+- [x] Real location titles/grid names, project card titles and personnel staffing/roster/trail/timesheet/mobile names; native anchor right-click retained. Card/grid/person context actions reuse edit/assign/text/kiosk/daily/taskorder and log/expense/role/unassign handlers. Project cards retain archive and gain Status submenu. Actions absent from a surface remain omitted rather than invented.
+- [x] Project tab, Cards/Grid, Deployment sub/week, Timesheet shift/location/agency/search and Trail filters persist in URL; choices push and typing replaces. Verified Back returns to Cards/Grid and restores nested grid scroll 190→190. Local storage remains the view default.
+- [x] bunx tsgo --noEmit, 41 focused tests and latest preview build passed. Authenticated admin browser verified plain/Ctrl/middle click, native anchor context event, card/grid/person menus, log-time opening, direct taskorders, scoped attendance, location document upload opening, repeated edit opening, deployment week/filter history, project Status submenu and 390px layout; no runtime errors. No database changes, messages, fixtures or cron changes. Actual Safari/Cmd on macOS and write submissions were not exercised; no new kiosk tokens were minted during checks.
 
 # Customer portal
 - [x] Regenerated types; isolated light-theme token-only attendance/history, grouped counts/24h times, submitted TO form/history and 60s messages with remembered name. Recursive allow-list parsers strip unexpected financial metadata; anonymous browser made only the five customer RPC requests and no table reads.
