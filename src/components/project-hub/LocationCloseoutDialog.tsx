@@ -16,8 +16,7 @@ import { loadLocationAuthorization } from '@/hooks/useLocationAuthorization';
 import { saveManualRequirements } from '@/lib/manualRequirementSave';
 import { demobLines, closeoutBlocked } from '@/lib/closeout';
 import { closeBlockers } from '@/hooks/useReconciliation';
-import { localDay } from '@/lib/signinSheets';
-import { midnight, nextDay } from '@/lib/shifts';
+import { localDay, midnight, nextDay } from '@/lib/signinSheets';
 import { weekStart } from '@/lib/shifts';
 import type { ProjectLocation } from '@/integrations/supabase/hooks/useProjectLocations';
 
