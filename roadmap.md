@@ -1,3 +1,8 @@
+# Task-order refinements
+- [ ] Preserve direct requirements editing with accepted internal ADJ history; no manual sync.
+- [ ] Optional effective time, travel-time and structured demobilization details in staff and token-only customer forms/history; accepted demob Deployment alerts.
+- [ ] Regenerate live types, focused tests, TypeScript and authenticated/public browser verification; no migrations.
+
 # Navigation and location pages
 - [x] Full-width deep-linked location page reuses staffing/requirements/join requests, scoped attendance/trail, visits/status/sheets/countersign, embedded task-order ledger/as-of, lodging, assets and scoped documents/signatures; existing edit/kiosk/QR/join/daily actions remain permission-gated. Scoped sheet cache keys prevent project/location collisions.
 - [x] Real location titles/grid names, project card titles and personnel staffing/roster/trail/timesheet/mobile names; native anchor right-click retained. Card/grid/person context actions reuse edit/assign/text/kiosk/daily/taskorder and log/expense/role/unassign handlers. Project cards retain archive and gain Status submenu. Actions absent from a surface remain omitted rather than invented.
