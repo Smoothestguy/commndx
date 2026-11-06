@@ -92,7 +92,7 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
               <tbody className="divide-y">
                 {rows.map((r) => (
                   <tr key={r.personnel_id} className="hover:bg-muted/50 cursor-pointer" onClick={() => onPerson(r.personnel_id, week)}>
-                    <td className="sticky left-0 z-10 bg-card py-1.5 pr-2 font-medium whitespace-nowrap max-w-[8.5rem] truncate sm:max-w-none">{r.name} <NonBillableChip value={agencies.nonBillableByPerson[r.personnel_id]} agency={agencies.agencyName(r.personnel_id)} /></td>
+                    <td className="sticky left-0 z-10 bg-card py-1.5 pr-2 font-medium whitespace-nowrap max-w-[8.5rem] truncate sm:max-w-none">{r.name} <NonBillableChip value={agencies.nonBillableByPerson[r.personnel_id]} employer={agencies.employerName(r.personnel_id)} /></td>
                     {days.map((d) => {
                       const c = r.days[d]; const h = cellH(c);
                       const both = shift === "all" && c && c.day > 0 && c.night > 0;

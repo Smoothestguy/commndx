@@ -11,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAddPersonnel, useUpdatePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
+import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
+import { employerIds } from '@/lib/personnelEmployer';
 import { PhotoUpload } from "./PhotoUpload";
 import { Switch } from '@/components/ui/switch';
 import type { Database } from "@/integrations/supabase/types";
@@ -39,6 +41,7 @@ const personnelSchema = z.object({
   everify_case_number: z.string().optional(),
   notes: z.string().optional(),
   vendor_id: z.string().optional(),
+  employer_customer_id: z.string().optional(),
   portal_required: z.boolean().optional(),
   non_billable: z.boolean().default(false),
 });
@@ -60,6 +63,7 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
   const addMutation = useAddPersonnel();
   const updateMutation = useUpdatePersonnel();
   const { data: vendors } = useVendors();
+  const { data: customers = [] } = useCustomers();
 
   // Auto-save photo for existing personnel
   const handlePhotoSaved = async (url: string) => {
@@ -100,7 +104,8 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
       everify_status: (personnel?.everify_status as any) || "pending",
       everify_case_number: personnel?.everify_case_number || "",
       notes: personnel?.notes || "",
-      vendor_id: (personnel as any)?.vendor_id || defaultVendorId || "",
+      vendor_id: personnel?.employer_customer_id ? "" : personnel?.vendor_id || defaultVendorId || "",
+      employer_customer_id: personnel?.employer_customer_id || "",
       portal_required: (personnel as any)?.portal_required ?? true,
       non_billable: personnel?.non_billable ?? false,
     },
@@ -114,7 +119,7 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
       ...data,
       photo_url: photoUrl,
       personnel_number: personnel?.personnel_number || "",
-      vendor_id: data.vendor_id || null,
+      ...employerIds(data.employer_customer_id, data.vendor_id),
       // Convert empty date strings to null for PostgreSQL
       date_of_birth: data.date_of_birth || null,
       work_auth_expiry: data.work_auth_expiry || null,
@@ -404,9 +409,12 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
                 <Label htmlFor="vendor_id">Agency / Vendor</Label>
                 <Select
                   value={watch("vendor_id") || "__none__"}
-                  onValueChange={(value) => setValue("vendor_id", value === "__none__" ? "" : value)}
+                  onValueChange={(value) => {
+                    setValue("vendor_id", value === "__none__" ? "" : value);
+                    if (value !== "__none__") setValue("employer_customer_id", "");
+                  }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="vendor_id">
                     <SelectValue placeholder="Select agency / vendor (optional)" />
                   </SelectTrigger>
                   <SelectContent>
@@ -416,6 +424,20 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
                         {vendor.name}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="employer_customer_id">Employer (customer)</Label>
+                <Select value={watch("employer_customer_id") || "__none__"} onValueChange={value => {
+                  setValue("employer_customer_id", value === "__none__" ? "" : value);
+                  if (value !== "__none__") setValue("vendor_id", "");
+                }}>
+                  <SelectTrigger id="employer_customer_id"><SelectValue placeholder="Select customer (optional)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">No customer employer</SelectItem>
+                    {customers.map(customer => <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

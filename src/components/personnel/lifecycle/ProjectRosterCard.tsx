@@ -23,7 +23,7 @@ const money = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDi
 const nm = (r: RosterRow) => [r.first_name, r.last_name].filter(Boolean).join(" ") || "Unknown";
 
 export function ProjectRosterCard({ projectId }: { projectId: string }) {
-  const { agencyName, nonBillableByPerson } = useProjectAgencies(projectId);
+  const { agencyName, employerName, nonBillableByPerson } = useProjectAgencies(projectId);
   const { isAdmin, isManager } = useUserRole();
   const showCosts = isAdmin || isManager;
   const { data: project } = useProject(projectId);
@@ -60,7 +60,7 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
       {showCosts && <Checkbox aria-label={`Select badge for ${nm(r)}`} checked={badgeSelection.includes(r.personnel_id)} onCheckedChange={checked => setBadgeSelection(ids => checked ? [...ids, r.personnel_id] : ids.filter(id => id !== r.personnel_id))} />}
       {showCosts && r.status === "standby" && <Checkbox checked={sel.includes(r.personnel_id)} onCheckedChange={() => toggle(r.personnel_id)} aria-label="Select" />}
       <div className="min-w-0 flex-1">
-        <div className="font-medium text-sm truncate">{nm(r)} <AgencyChip name={agencyName(r.personnel_id)} /> <NonBillableChip value={nonBillableByPerson[r.personnel_id]} agency={agencyName(r.personnel_id)} /></div>
+        <div className="font-medium text-sm truncate">{nm(r)} <AgencyChip name={agencyName(r.personnel_id)} /> <NonBillableChip value={nonBillableByPerson[r.personnel_id]} employer={employerName(r.personnel_id)} /></div>
         <div className="text-xs text-muted-foreground">
           since {r.effective_at ? format(new Date(r.effective_at), "MMM d") : "—"} · {r.days}d
           {showCosts && nonBillableByPerson[r.personnel_id] === false && r.status === "standby" && (standbyRate != null ? <> · accrued {money(r.days * standbyRate)}</> : <> · set standby rate</>)}

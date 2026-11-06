@@ -1,4 +1,7 @@
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
+import { useCustomers } from '@/integrations/supabase/hooks/useCustomers';
+import { employerIds } from '@/lib/personnelEmployer';
+import { NonBillableChip } from '@/components/personnel/NonBillableChip';
 import { PersonnelBadgeActions } from '@/components/personnel/PersonnelBadgeActions';
 import { useUserRole } from "@/hooks/useUserRole";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -62,6 +65,7 @@ const PersonnelDetail = () => {
   const defaultTab = searchParams.get("tab") || "overview";
   const { isAdmin, isManager } = useUserRole();
   const { data: agencies = [] } = useVendors();
+  const { data: customers = [] } = useCustomers();
   const { data: personnel, isLoading } = usePersonnelById(id);
   const { data: existingInvitation } = usePersonnelInvitationCheck(id);
   const resendOnboardingEmail = useResendOnboardingEmail();
@@ -384,8 +388,13 @@ const PersonnelDetail = () => {
                       Out of Compliance
                     </Badge>
                   )}
-                  {(isAdmin || isManager) && <Select value={personnel.vendor_id || "__none__"} onValueChange={v => updatePersonnel.mutate({ id: personnel.id, updates: { vendor_id: v === "__none__" ? null : v } })} disabled={updatePersonnel.isPending}><SelectTrigger aria-label="Agency / Vendor" className="h-8 w-48"><SelectValue placeholder="Agency / Vendor" /></SelectTrigger><SelectContent><SelectItem value="__none__">No agency / vendor</SelectItem>{agencies.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent></Select>}
-                  {personnel.vendor_id && (
+                  {(isAdmin || isManager) && <>
+                    <Select value={personnel.employer_customer_id ? "__none__" : personnel.vendor_id || "__none__"} onValueChange={v => updatePersonnel.mutate({ id: personnel.id, updates: v === "__none__" ? { vendor_id: null } : employerIds(null, v) })} disabled={updatePersonnel.isPending}><SelectTrigger aria-label="Agency / Vendor" className="h-8 w-full sm:w-48"><SelectValue placeholder="Agency / Vendor" /></SelectTrigger><SelectContent><SelectItem value="__none__">No agency / vendor</SelectItem>{agencies.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent></Select>
+                    <Select value={personnel.employer_customer_id || "__none__"} onValueChange={v => updatePersonnel.mutate({ id: personnel.id, updates: v === "__none__" ? { employer_customer_id: null } : employerIds(v, null) })} disabled={updatePersonnel.isPending}><SelectTrigger aria-label="Employer (customer)" className="h-8 w-full sm:w-64"><SelectValue placeholder="Employer (customer)" /></SelectTrigger><SelectContent><SelectItem value="__none__">No customer employer</SelectItem>{customers.map(customer => <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>)}</SelectContent></Select>
+                  </>}
+                  <NonBillableChip value={personnel.non_billable} employer={personnel.employer_customer_id ? (customers.find(c => c.id === personnel.employer_customer_id)?.name ? `${customers.find(c => c.id === personnel.employer_customer_id)?.name} (customer)` : undefined) : agencies.find(v => v.id === personnel.vendor_id)?.name} />
+                  {personnel.employer_customer_id && <Badge variant="outline" className="text-muted-foreground font-normal">{customers.find(c => c.id === personnel.employer_customer_id)?.name || 'Employer'} (customer)</Badge>}
+                  {!personnel.employer_customer_id && personnel.vendor_id && (
                     <Link to={`/vendors/${personnel.vendor_id}`}>
                       <Badge variant="outline" className="gap-1 cursor-pointer hover:bg-accent">
                         <Building2 className="h-3 w-3" />

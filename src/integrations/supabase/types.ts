@@ -4563,6 +4563,7 @@ export type Database = {
           direct_deposit_signature: string | null
           direct_deposit_signed_at: string | null
           email: string
+          employer_customer_id: string | null
           everify_case_number: string | null
           everify_expiry: string | null
           everify_status: Database["public"]["Enums"]["everify_status"] | null
@@ -4639,6 +4640,7 @@ export type Database = {
           direct_deposit_signature?: string | null
           direct_deposit_signed_at?: string | null
           email: string
+          employer_customer_id?: string | null
           everify_case_number?: string | null
           everify_expiry?: string | null
           everify_status?: Database["public"]["Enums"]["everify_status"] | null
@@ -4715,6 +4717,7 @@ export type Database = {
           direct_deposit_signature?: string | null
           direct_deposit_signed_at?: string | null
           email?: string
+          employer_customer_id?: string | null
           everify_case_number?: string | null
           everify_expiry?: string | null
           everify_status?: Database["public"]["Enums"]["everify_status"] | null
@@ -4775,6 +4778,13 @@ export type Database = {
             columns: ["applicant_id"]
             isOneToOne: false
             referencedRelation: "applicants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_employer_customer_id_fkey"
+            columns: ["employer_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
           {
@@ -6644,6 +6654,147 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_join_requests: {
+        Row: {
+          decided_at: string | null
+          decided_by: string | null
+          email: string | null
+          first_name: string
+          id: string
+          last_name: string
+          location_id: string | null
+          matched_personnel_id: string | null
+          phone: string
+          project_id: string
+          requested_at: string
+          status: string
+          token_id: string
+        }
+        Insert: {
+          decided_at?: string | null
+          decided_by?: string | null
+          email?: string | null
+          first_name: string
+          id?: string
+          last_name: string
+          location_id?: string | null
+          matched_personnel_id?: string | null
+          phone: string
+          project_id: string
+          requested_at?: string
+          status?: string
+          token_id: string
+        }
+        Update: {
+          decided_at?: string | null
+          decided_by?: string | null
+          email?: string | null
+          first_name?: string
+          id?: string
+          last_name?: string
+          location_id?: string | null
+          matched_personnel_id?: string | null
+          phone?: string
+          project_id?: string
+          requested_at?: string
+          status?: string
+          token_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_join_requests_matched_personnel_id_fkey"
+            columns: ["matched_personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_join_requests_matched_personnel_id_fkey"
+            columns: ["matched_personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_join_requests_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "project_join_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_join_tokens: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          employer_customer_id: string | null
+          expires_at: string
+          id: string
+          location_id: string | null
+          non_billable: boolean
+          project_id: string
+          role_label: string | null
+          vendor_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          employer_customer_id?: string | null
+          expires_at?: string
+          id?: string
+          location_id?: string | null
+          non_billable?: boolean
+          project_id: string
+          role_label?: string | null
+          vendor_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          employer_customer_id?: string | null
+          expires_at?: string
+          id?: string
+          location_id?: string | null
+          non_billable?: boolean
+          project_id?: string
+          role_label?: string | null
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_join_tokens_employer_customer_id_fkey"
+            columns: ["employer_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_join_tokens_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_join_tokens_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_join_tokens_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -11217,6 +11368,7 @@ export type Database = {
         Args: { _applicant_id: string }
         Returns: boolean
       }
+      approve_join_request: { Args: { p_request: string }; Returns: Json }
       check_returning_contact: { Args: { _contact: string }; Returns: boolean }
       complete_personnel_onboarding:
         | {
@@ -11363,6 +11515,7 @@ export type Database = {
         Args: { p_personnel_id: string }
         Returns: string
       }
+      deny_join_request: { Args: { p_request: string }; Returns: Json }
       expire_old_invitations: { Args: never; Returns: undefined }
       find_applicant_id_by_contact: {
         Args: { _email: string; _phone?: string }
@@ -11452,6 +11605,7 @@ export type Database = {
         Returns: string
       }
       generate_vendor_bill_number: { Args: never; Returns: string }
+      get_join_info: { Args: { p_token: string }; Returns: Json }
       get_kiosk_info: { Args: { p_kiosk: string }; Returns: Json }
       get_my_banking_info: {
         Args: never
@@ -11526,6 +11680,16 @@ export type Database = {
       }
       is_personnel: { Args: { _user_id: string }; Returns: boolean }
       is_vendor: { Args: { _user_id: string }; Returns: boolean }
+      join_project: {
+        Args: {
+          p_email?: string
+          p_first: string
+          p_last: string
+          p_phone: string
+          p_token: string
+        }
+        Returns: Json
+      }
       kiosk_badge_punch: {
         Args: {
           p_accuracy?: number
