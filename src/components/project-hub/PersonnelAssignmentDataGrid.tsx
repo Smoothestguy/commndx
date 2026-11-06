@@ -1,4 +1,5 @@
 import { NonBillableChip } from '@/components/personnel/NonBillableChip';
+import { useProjectAgencies } from '@/hooks/useProjectAgencies';
 import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -104,6 +105,7 @@ export function PersonnelAssignmentDataGrid({
   onRemove,
   showPayRate = false,
 }: PersonnelAssignmentDataGridProps) {
+  const { employerName } = useProjectAgencies(data[0]?.project_id || '');
   const navigate = useNavigate();
   
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
@@ -668,7 +670,7 @@ export function PersonnelAssignmentDataGrid({
                           />
                           <div>
                             <p className="font-medium">
-                              {personnel.first_name} {personnel.last_name} <NonBillableChip value={personnel.non_billable} />
+                              {personnel.first_name} {personnel.last_name} <NonBillableChip value={personnel.non_billable} employer={employerName(personnel.id)} />
                             </p>
                             {columnVisibility.email && (
                               <p className="text-sm text-muted-foreground">
