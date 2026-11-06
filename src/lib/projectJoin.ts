@@ -1,7 +1,13 @@
 import { z } from 'zod';
 export const joinToken = z.string().uuid();
 export const joinInfoSchema = z.object({ valid: z.boolean(), project_name: z.string().optional(), location_name: z.string().nullable().optional(), role_label: z.string().nullable().optional() });
-export const joinResultSchema = z.object({ ok: z.boolean(), reason: z.string().optional(), status: z.string().optional(), first_name: z.string().optional(), punch_token: z.string().uuid().nullable().optional() });
+// Strip unexpected identity/link fields: public registration never exposes approval evidence.
+export const joinResultSchema = z.object({ ok: z.boolean(), reason: z.string().optional(), status: z.literal('pending').optional() });
+export const joinApprovalSchema = z.object({ ok: z.boolean(), reason: z.string().optional(), personnel_id: z.string().uuid().optional(), punch_token: z.string().uuid().nullable().optional(), phone: z.string().optional(), first_name: z.string().optional() });
+export const canReviewJoinRequests = (role: string | null | undefined) => ['admin', 'manager', 'user'].includes(role || '');
+export function pendingJoinRequests<T extends { status: string; location_id: string | null }>(rows: T[], locationId?: string) {
+  return rows.filter(r => r.status === 'pending' && (!locationId || r.location_id === locationId));
+}
 export const joinFormSchema = z.object({
   first: z.string().trim().min(2, 'Enter your first name / Escribe tu nombre').max(60),
   last: z.string().trim().min(2, 'Enter your last name / Escribe tu apellido').max(60),

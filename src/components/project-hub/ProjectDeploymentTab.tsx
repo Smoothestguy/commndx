@@ -1,4 +1,5 @@
 import { DailyTimesheetPanel } from '@/components/signin/DailyTimesheetPanel';
+import { JoinRequests } from './JoinRequests';
 import { useProjectAgencies } from "@/hooks/useProjectAgencies";
 import { useDeploymentHours } from '@/hooks/useDeploymentHours';
 import { routeMiles } from '@/lib/deploymentFlow';
@@ -1323,7 +1324,7 @@ export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
 
   if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin" /></div>;
   if (locations.length === 0) {
-    return <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">Add locations first to track daily service and attendance.</CardContent></Card>;
+    return <div className="space-y-3"><JoinRequests projectId={projectId} strip /><Card><CardContent className="py-8 text-center text-sm text-muted-foreground">Add locations first to track daily service and attendance.</CardContent></Card></div>;
   }
 
   const defaultHours = Number((project as any)?.default_shift_hours ?? 12) || 12;
@@ -1341,6 +1342,7 @@ export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
         </div>
       </div>
       {canEdit && <DeploymentAlerts projectId={projectId} locations={locations} onView={view => { setAlertView(s => ({view,key:s.key+1})); setTimeout(() => document.getElementById('deployment-visits')?.scrollIntoView({behavior:'smooth'}), 0); }} />}
+      <JoinRequests projectId={projectId} strip />
       <ProjectRosterCard projectId={projectId} />
       <SigninStatusBoard projectId={projectId} locations={locations} onSelect={(location, day) => setSheetSelection({ doc: '', location, day })} />
       {canEdit && <ReusableSigninPicker projectId={projectId} />}

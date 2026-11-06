@@ -1,11 +1,13 @@
 import { it, expect } from 'bun:test';
-import { joinExpiry, joinFormSchema, joinResultSchema, joinToken, publicJoinUrl } from './projectJoin';
+import { canReviewJoinRequests, pendingJoinRequests, joinExpiry, joinFormSchema, joinResultSchema, joinToken, publicJoinUrl } from './projectJoin';
 it('join links default to a 30-day lifetime', () => { expect(joinExpiry(30, new Date('2026-11-06T00:00:00Z'))).toBe('2026-12-06T00:00:00.000Z'); });
 it('join expiry must be a positive whole day count', () => { expect(() => joinExpiry(0)).toThrow(); expect(() => joinExpiry(1.5)).toThrow(); });
 const form = { first: 'Patrick', last: 'Ricci', phone: '2815550100', email: '' };
 it('first and last names are required', () => { expect(joinFormSchema.safeParse({ ...form, first: '' }).success).toBe(false); expect(joinFormSchema.safeParse({ ...form, last: '' }).success).toBe(false); });
 it('mobile phone is required and allows US country prefix', () => { expect(joinFormSchema.safeParse({ ...form, phone: '' }).success).toBe(false); expect(joinFormSchema.safeParse({ ...form, phone: '+1 (281) 555-0100' }).success).toBe(true); });
 it('email is optional but validates when supplied', () => { expect(joinFormSchema.safeParse(form).success).toBe(true); expect(joinFormSchema.safeParse({ ...form, email: 'invalid' }).success).toBe(false); });
-it('success accepts personal punch link or actual pending approval without inventing a link', () => { expect(joinResultSchema.parse({ ok: true, status: 'pending' }).punch_token).toBeUndefined(); expect(joinResultSchema.parse({ ok: true, first_name: 'Patrick', punch_token: '550e8400-e29b-41d4-a716-446655440000' }).punch_token).toBe('550e8400-e29b-41d4-a716-446655440000'); });
+it('public response discards personal punch links even if unexpectedly returned', () => { expect(joinResultSchema.parse({ ok: true, status: 'pending', punch_token: '550e8400-e29b-41d4-a716-446655440000', personnel_id: 'private' })).toEqual({ ok: true, status: 'pending' }); });
+it('field supervisors can review alongside admin and manager only', () => { expect(canReviewJoinRequests('user')).toBe(true); expect(canReviewJoinRequests('admin')).toBe(true); expect(canReviewJoinRequests('manager')).toBe(true); expect(canReviewJoinRequests('personnel')).toBe(false); expect(canReviewJoinRequests('vendor')).toBe(false); expect(canReviewJoinRequests(null)).toBe(false); });
+it('pending badges scope to location without including approved or denied requests', () => { const rows = [{ status: 'pending', location_id: 'a' }, { status: 'pending', location_id: 'b' }, { status: 'pending', location_id: null }, { status: 'approved', location_id: 'a' }, { status: 'denied', location_id: 'a' }]; expect(pendingJoinRequests(rows, 'a')).toEqual([{ status: 'pending', location_id: 'a' }]); expect(pendingJoinRequests(rows).length).toBe(3); });
 it('join token must be a UUID before public info request', () => { expect(joinToken.safeParse('not-a-token').success).toBe(false); });
 it('shared links use published domain rather than preview', () => { expect(publicJoinUrl('test', 'http://localhost:8080')).toBe('https://fairfieldrg.com/join/test'); });

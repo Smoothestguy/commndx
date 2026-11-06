@@ -53,7 +53,7 @@ const ProjectDetail = () => {
   const queryClient = useQueryClient();
   useEffect(() => {
     const refresh = () => {
-      for (const key of ['location-assignments', 'location-staffing-summary', 'project-roster', 'personnel-project-assignments', 'project-agencies', 'personnel-current-status']) {
+      for (const key of ['project-join-requests', 'location-assignments', 'location-staffing-summary', 'project-roster', 'personnel-project-assignments', 'project-agencies', 'personnel-current-status']) {
         void queryClient.invalidateQueries({ queryKey: [key] });
       }
     };

@@ -1,5 +1,6 @@
 import { NonBillableChip } from '@/components/personnel/NonBillableChip';
 import { ProjectJoinLinks } from './ProjectJoinLinks';
+import { JoinRequests } from './JoinRequests';
 import { useProjectAgencies } from "@/hooks/useProjectAgencies";
 import { AgencyChip } from "@/components/personnel/AgencyChip";
 import { LocationKioskActions } from '@/components/signin/LocationKioskActions';
@@ -251,6 +252,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                   </span>
                 </div>
                 {isOpen && meta.length > 0 && <div className="pl-5 mt-0.5 text-[11px] text-muted-foreground">{meta.join(" · ")}</div>}
+                <JoinRequests projectId={projectId} locationId={l.id} />
                 {canWrite && isOpen && <LocationKioskActions location={l} />}
               </div>
               {isOpen && rows.map((a) => {
@@ -345,6 +347,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                           <span className="truncate">{l.name}</span>{l.lat != null && l.lng != null && <Badge variant="outline">📍 geofenced</Badge>}
                         </button>
                         {l.project_number && <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">#{l.project_number}</Badge>}
+                        <JoinRequests projectId={projectId} locationId={l.id} />
                         <span className={cn("font-medium shrink-0", full ? "text-success" : "text-warning")}>{s?.assigned ?? 0}/{s?.needed ?? 0}</span>
                         {locAssets.length > 0 && <span className="text-muted-foreground shrink-0">· {locAssets.length} asset{locAssets.length === 1 ? "" : "s"}</span>}
                         {l.housing_provided_by === "customer" && <Badge variant="outline" className="hidden md:inline-flex text-[10px] px-1.5 py-0 shrink-0">Housing: Cust</Badge>}
