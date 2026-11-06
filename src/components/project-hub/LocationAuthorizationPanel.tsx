@@ -61,7 +61,7 @@ export function LocationAuthorizationPanel({ projectId, locationId, locationName
       {canWrite && <Button size="sm" onClick={() => { setOpen(true); setNewSignal(n => n + 1); }}><Plus className="h-4 w-4 mr-1" />New task order</Button>}
     </div>
     {data.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : data.error ? <p role="alert" className="text-sm text-destructive">Authorization could not be loaded.</p> : !d?.hasOrders ? <p className="text-sm text-muted-foreground">No accepted task orders. Staffing follows the requirements set on this location.</p> : <>
-      <p className="text-lg sm:text-xl font-semibold leading-snug">Today: {roster.length} staffed · {d.onSite} on site · Authorized {lines.map(l => `${l.authorized} ${l.label}`).join(' / ') || 'none'}</p>
+      <p className="text-lg sm:text-xl font-semibold leading-snug">Today: {roster.filter(a => !a.demobilized).length} staffed · {d.onSite} on site · Authorized {lines.map(l => `${l.authorized} ${l.label}`).join(' / ') || 'none'}</p>
       <p className="text-xs text-muted-foreground">{positions} positions authorized{assetAuthorized ? ` + ${assetAuthorized} assets` : ''} · compared with active assignments and active equipment.</p>
       <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {lines.map(l => { const a = actualFor(l); return <li key={key(l)} className="flex items-center justify-between gap-2 rounded-md border px-3 py-2"><span className="text-sm"><span className="font-medium">{l.label}</span> <span className="tabular-nums">{a}/{l.authorized}</span></span><Diff actual={a} authorized={l.authorized} /></li>; })}
