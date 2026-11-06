@@ -1,0 +1,16 @@
+import {z} from 'zod';
+export const portalToken=z.string().uuid();
+const person=z.object({name:z.string(),role:z.string().nullable(),in_at:z.string().nullable(),out_at:z.string().nullable(),status:z.enum(['no_show','on_site','done'])});
+export const portalOverview=z.object({valid:z.boolean(),customer_name:z.string().optional(),project_name:z.string().optional(),date:z.string().optional(),locations:z.array(z.object({location_id:z.string(),name:z.string(),project_number:z.string().nullable(),authorized:z.number(),people:z.array(person),timezone:z.string().optional()})).optional()});
+export const portalOrders=z.object({valid:z.boolean(),task_orders:z.array(z.object({id:z.string(),to_number:z.string(),kind:z.enum(['initial','increase','decrease','demobilization']),status:z.enum(['submitted','accepted','rejected']),effective_date:z.string(),notes:z.string().nullable(),location:z.string(),submitted_by:z.string().nullable(),created_at:z.string(),lines:z.array(z.object({line_kind:z.enum(['position','asset']),label:z.string(),qty:z.number()}))})).optional()});
+export const portalMessages=z.object({valid:z.boolean(),messages:z.array(z.object({sender:z.enum(['customer','frg']),sender_name:z.string().nullable(),body:z.string(),at:z.string()})).optional()});
+export const portalResult=z.object({ok:z.boolean(),reason:z.string().optional(),status:z.string().optional()});
+export const portalOrderForm=z.object({location:z.string().uuid(),number:z.string().trim().min(1).max(60),kind:z.enum(['initial','increase','decrease','demobilization']),effective:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),notes:z.string().max(1000),name:z.string().trim().min(1).max(80),lines:z.array(z.object({line_kind:z.enum(['position','asset']),label:z.string().trim().min(1).max(60),qty:z.number().int().min(1).max(500)})).min(1).max(20)});
+export const portalMessageForm=z.object({name:z.string().trim().min(1).max(80),body:z.string().trim().min(1).max(4000)});
+export function portalCounts(locations:z.infer<typeof portalOverview>['locations']) {
+  const count={on_site:0,done:0,no_show:0};for(const l of locations??[])for(const p of l.people)count[p.status]++;return count;
+}
+export function portalExpiry(days=120,now=new Date()){if(!Number.isInteger(days)||days<1)throw new Error('Choose a positive whole number of days');return new Date(now.getTime()+days*86400000).toISOString();}
+export function customerPortalUrl(token:string,origin=window.location.origin){const host=new URL(origin).hostname;return `${host==='localhost'||host.endsWith('.lovable.app')?'https://fairfieldrg.com':origin}/customer/${token}`;}
+export function portalClock(value:string|null,zone='America/Chicago'){if(!value)return '—';try{return new Intl.DateTimeFormat('en-GB',{timeZone:zone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(value));}catch{return '—';}}
+export const portalNameKey='frg-customer-composer-name';

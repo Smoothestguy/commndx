@@ -1,0 +1,7 @@
+import {useEffect,useRef} from 'react';
+import {cn} from '@/lib/utils';
+export type CustomerMessage={sender:string;sender_name:string|null;body:string;at:string};
+export function CustomerThread({messages,customerRight=true}:{messages:CustomerMessage[];customerRight?:boolean}) {
+ const end=useRef<HTMLDivElement>(null);useEffect(()=>{end.current?.scrollIntoView({block:'nearest'});},[messages.length]);
+ return <div className="space-y-3 max-h-[55dvh] overflow-y-auto py-3" aria-label="Customer message thread">{!messages.length&&<p className="text-sm text-muted-foreground py-5">No messages yet.</p>}{messages.map((m,i)=>{const right=customerRight?m.sender==='customer':m.sender==='frg';return <div key={`${m.at}:${i}`} className={cn('flex',right?'justify-end':'justify-start')}><div className={cn('max-w-[85%] rounded-md border px-3 py-2',right?'bg-primary/10 border-primary/20':'bg-card')}><div className="flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground"><strong className="text-foreground">{m.sender==='frg'?'FRG · ':''}{m.sender_name||'Customer'}</strong><time>{new Date(m.at).toLocaleString()}</time></div><p className="text-sm whitespace-pre-wrap break-words mt-1">{m.body}</p></div></div>;})}<div ref={end}/></div>;
+}
