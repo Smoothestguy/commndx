@@ -1,3 +1,9 @@
+# Navigation and location pages
+- [ ] Full-width deep-linked location page with reused location-filtered tabs and quick actions.
+- [ ] Native entity links and existing-action context menus for locations, project cards and personnel rows.
+- [ ] URL tab/view/deployment/week/filter state, history and location scroll restoration.
+- [ ] TypeScript, navigation tests and live click/modifier/middle/right-click/Back browser checks.
+
 # Customer portal
 - [x] Regenerated types; isolated light-theme token-only attendance/history, grouped counts/24h times, submitted TO form/history and 60s messages with remembered name. Recursive allow-list parsers strip unexpected financial metadata; anonymous browser made only the five customer RPC requests and no table reads.
 - [x] Manager header-menu portal create/list/revoke/copy/QR with 120d default, location submitted-order accept/reject guards and requirement sync-only retries, customer-scoped Docs/Activity threads, FRG replies using profile name and read_at updates only for viewed customer messages.
