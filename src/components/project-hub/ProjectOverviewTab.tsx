@@ -89,7 +89,7 @@ export function ProjectOverviewTab({ projectId, project }: Props) {
 
   return (
     <div className="space-y-6">
-      <Card className="glass border-border">
+      {(!project.deployment_mode || milestones.length > 0 || jobOrders.length > 0) && <Card className="glass border-border">
         <CardHeader>
           <CardTitle className="font-heading flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" />
