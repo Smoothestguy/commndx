@@ -1,7 +1,8 @@
 # Location customer task orders
-- [ ] Task-order creation/history/documents, as-of authorization and requirement sync using live schema only.
-- [ ] Authorized/actual indicators, Deployment and daily in-app alerts (no SMS), replacement action.
-- [ ] Daily PDF authorization header, focused rules tests, TypeScript and authenticated browser verification.
+- [x] Regenerated live types; manager card/grid creation/history with customer reference, signed position/asset lines, effective dates, notes, private document picker/upload and creator; historical RPC totals and explicit requirement sync with sync-only retry. Live initial +5 Operator/+2 Pump, decrease -2, increase +2, demobilization -5 and net-zero requirement readback verified.
+- [x] Staff authorized/actual indicators, location-linked Deployment strip and deterministic once-per-location/kind/local-day in-app alert_log reservations deployed in roster-alerts; no authorization SMS. Live unassign → replacement preselected Operator → assign/readback verified; unassign preserves rows and reassign restores live unique pair. Daily job dry-run passed with one authorization banner and zero sends; cron remains paused.
+- [x] Historical daily PDF header Authorized: 5 verified in downloaded PDF; locked evidence unchanged. 390px list/editor and desktop inspected, 32 focused tests and bunx tsgo --noEmit passed, preview build OK. Fixtures archived/location inactive/person inactive/assignment closed; historical TOs/doc retained. Actual asset assignment count changes, separate manager/user login and Safari not exercised.
+- [ ] Existing live authorization RPC security: both SECURITY DEFINER functions allow anonymous EXECUTE and lack in-code caller checks; requirement sync also lacks manager authorization. Needs live-server owner hardening (staff-only read, manager-only mutation) because migrations/schema changes are explicitly prohibited in this task. No grant/function changes made.
 
 # Join approval correction
 - [x] Pending-only bilingual confirmation; public result parser discards unexpected punch/identity fields and requester never sees a punch link.
