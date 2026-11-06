@@ -39,7 +39,8 @@ export function LogTimeDialog({ open, onOpenChange, projectId, personnelId, pers
 
   const zone = locations.find(l => l.id === loc)?.timezone || 'America/Chicago';
   const range = manualTimeRange(day, tin, tout, zone);
-  const scopedPeople = locationRosterPeople(people, locationId, roster);
+  const rosterPeople = roster.map(p => ({ personnel_id: p.personnel_id, first_name: p.personnel?.first_name ?? null, last_name: p.personnel?.last_name ?? null }));
+  const scopedPeople = locationRosterPeople(locationId ? rosterPeople : people, locationId, roster);
   const valid = !!pid && !!loc && !!day && !!range && (!locationId || roster.some(p => p.personnel_id === pid));
   const sortedPeople = [...scopedPeople].sort((a, b) => nm(a).localeCompare(nm(b)));
 
@@ -50,7 +51,7 @@ export function LogTimeDialog({ open, onOpenChange, projectId, personnelId, pers
         <div className="space-y-3">
           <div><Label>Person</Label>
             {personnelId ? <p className="text-sm font-medium py-2">{personName ?? "Selected person"}</p> : (
-              <Select value={pid} onValueChange={setPid} disabled={rosterLoading}>
+              <Select value={pid} onValueChange={setPid} disabled={!!locationId && rosterLoading}>
                 <SelectTrigger className="h-11"><SelectValue placeholder="Select person" /></SelectTrigger>
                 <SelectContent>{sortedPeople.map((p) => <SelectItem key={p.personnel_id} value={p.personnel_id}>{nm(p)}</SelectItem>)}</SelectContent>
               </Select>
