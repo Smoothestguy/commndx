@@ -28,6 +28,7 @@ import { LogTimeDialog } from "@/components/personnel/lifecycle/LogTimeDialog";
 import { useMemo, useRef, useState } from "react";
 import { addDays, format } from "date-fns";
 import { Link } from "react-router-dom";
+import { useNavigationValue } from '@/hooks/useNavigationValue';
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -599,7 +600,7 @@ function CrewDialog({ open, onOpenChange, projectId, crew }: {
 function CrewsSection({ projectId, crews, canEdit }: { projectId: string; crews: Crew[]; canEdit: boolean }) {
   const [dialog, setDialog] = useState<{ open: boolean; crew: Crew | null }>({ open: false, crew: null });
   return (
-    <Card>
+    <Card className={unframed ? "border-0 shadow-none bg-transparent" : undefined}>
       <CardHeader className="py-3 flex-row items-center justify-between space-y-0">
         <CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4" />Crews</CardTitle>
         {canEdit && (
@@ -670,7 +671,7 @@ function MileageCard({ crews, locations, from, to, mileageRate, canEdit }: {
   if (crews.length === 0) return null;
 
   return (
-    <Card>
+    <Card className={unframed ? "border-0 shadow-none bg-transparent" : undefined}>
       <CardHeader className="py-3 flex-row items-center justify-between space-y-0">
         <CardTitle className="text-sm flex items-center gap-2"><Truck className="h-4 w-4" />Mileage</CardTitle>
         <Button size="sm" variant="outline" className="gap-1" onClick={() => setOpen(true)}><Plus className="h-4 w-4" />Log miles</Button>
@@ -908,9 +909,9 @@ function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit
 const visitHours = (v: VisitRow) =>
   v.check_out_at ? Math.round(((new Date(v.check_out_at).getTime() - new Date(v.check_in_at).getTime()) / 3_600_000) * 10) / 10 : null;
 
-export function VisitsCard({ projectId, locations, crews, from, to, canEdit, defaultView = "visits" }: {
+export function VisitsCard({ projectId, locations, crews, from, to, canEdit, defaultView = "visits", locationScopeId, unframed=false }: {
   projectId: string; locations: ProjectLocation[]; crews: Crew[]; from: string; to: string; canEdit: boolean;
-  defaultView?: "visits" | "trail" | "timesheet" | "reconcile";
+  defaultView?: "visits" | "trail" | "timesheet" | "reconcile"; locationScopeId?: string; unframed?: boolean;
 }) {
   const locIds = locations.map((l) => l.id);
   const { data, isLoading } = useVisitsWindow(locIds, from, to);
@@ -921,10 +922,10 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
   const [edit, setEdit] = useState<{ id: string; location_id: string; inAt: string; outAt: string } | null>(null);
   const [delId, setDelId] = useState<VisitRow | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
-  const [view, setView] = useState<"visits" | "trail" | "timesheet" | "reconcile">(defaultView);
-  const [trailPerson, setTrailPerson] = useState<string>("");
+  const [view, setView] = useNavigationValue("sub", defaultView, ["visits", "trail", "timesheet", "reconcile"]);
+  const [trailPerson, setTrailPerson] = useNavigationValue("person", "");
   const [trailRange, setTrailRange] = useState<{ from: string; to: string } | null>(null);
-  const [tsWeek, setTsWeek] = useState(() => currentWeekStart());
+  const [tsWeek, setTsWeek] = useNavigationValue("week", currentWeekStart());
   const openTrail = (pid: string) => { setTrailPerson(pid); setTrailRange(null); setView("trail"); };
 
   const locName = useMemo(() => Object.fromEntries(locations.map((l) => [l.id, l.name])), [locations]);
@@ -954,7 +955,7 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
   };
 
   return (
-    <Card>
+    <Card className={unframed ? "border-0 shadow-none bg-transparent" : undefined}>
       <CardHeader className="py-3 flex-row items-center justify-between space-y-0 gap-2 flex-wrap">
         <CardTitle className="text-sm flex items-center gap-2"><Smartphone className="h-4 w-4" />Visits</CardTitle>
         <Button size="sm" variant="outline" className="gap-1" disabled={pdfBusy || !visits.length} onClick={() => makePdf()}>
@@ -964,7 +965,7 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
       </CardHeader>
       <CardContent className="pt-0 space-y-1">
         {canEdit && <ShiftReviews projectId={projectId} locations={locations} />}
-        <OnSiteNowBoard projectId={projectId} onPerson={openTrail} />
+        <OnSiteNowBoard projectId={projectId} locationId={locationScopeId} onPerson={openTrail} />
         <Tabs value={view} onValueChange={(v) => { setView(v as any); if (v !== "trail") setTrailRange(null); }} className="pt-2">
           <TabsList className="h-8">
             <TabsTrigger value="visits" className="text-xs">Visits</TabsTrigger>
@@ -974,7 +975,7 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
           </TabsList>
         </Tabs>
         {view === "reconcile" && canEdit ? <ReconcileView projectId={projectId} week={tsWeek} setWeek={setTsWeek} /> : view === "timesheet" ? (
-          <TimesheetView projectId={projectId} projectName={projectName} locations={locations} week={tsWeek} setWeek={setTsWeek}
+          <TimesheetView projectId={projectId} projectName={projectName} locations={locations} locationScopeId={locationScopeId} week={tsWeek} setWeek={setTsWeek}
             onPerson={(pid, w) => { setTrailPerson(pid); setTrailRange({ from: w, to: addDaysStr(w, 6) }); setView("trail"); }} />
         ) : view === "trail" ? (
           <>
@@ -982,7 +983,7 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
               <p className="text-[11px] text-muted-foreground pt-1">Week {formatLocalDate(trailRange.from, "M/d")}–{formatLocalDate(trailRange.to, "M/d")} ·{" "}
                 <button type="button" className="underline" onClick={() => setTrailRange(null)}>use page dates</button></p>
             )}
-            <TrailView projectId={projectId} projectName={projectName} locations={locations} from={trailRange?.from ?? from} to={trailRange?.to ?? to}
+            <TrailView projectId={projectId} projectName={projectName} locations={locations} locationScopeId={locationScopeId} from={trailRange?.from ?? from} to={trailRange?.to ?? to}
               personId={trailPerson} setPersonId={setTrailPerson} />
           </>
         ) : isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : visits.length === 0 ? (
@@ -1002,7 +1003,7 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
                 >
                   <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label={`${isOpen ? "Collapse" : "Expand"} visit at ${locName[v.location_id] ?? "Site"}`} onClick={() => setExpanded(isOpen ? null : v.id)}><ChevronDown className={cn("h-4 w-4 transition-transform", !isOpen && "-rotate-90")} /></Button>
                   <div className="flex-1 min-w-0">
-                    <Button variant="link" className="h-auto p-0 font-medium text-sm text-foreground whitespace-normal text-left" onClick={() => setExpanded(isOpen ? null : v.id)}>{locName[v.location_id] ?? "Site"}</Button>
+                    <Link className="font-medium text-sm hover:underline hover:text-primary" to={`/projects/${projectId}/locations/${v.location_id}?tab=sheets`}>{locName[v.location_id] ?? "Site"}</Link>
                     {/self check-in/i.test((v as any).notes ?? "") && <Phone className="inline h-3 w-3 ml-1 text-muted-foreground" aria-label="Self check-in via text" />}
                     <GeoTag lat={v.check_in_lat} lng={v.check_in_lng} />
                     {!geoCoordinates(v.check_in_lat, v.check_in_lng) && <GeoTag lat={v.check_out_lat} lng={v.check_out_lng} label="Geo-tagged check-out" />}
@@ -1037,7 +1038,7 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
                       <div className="flex flex-wrap gap-2">
                         {vPeople.map((p) => (
                           <span key={p.personnel_id} className="inline-flex items-center gap-1.5 border rounded-full px-2 py-0.5 text-xs">
-                            <button type="button" className="hover:underline" onClick={() => openTrail(p.personnel_id)}>{fullName(p.personnel)}</button>
+                            <Link to={`/personnel/${p.personnel_id}`} className="hover:underline">{fullName(p.personnel)}</Link>
                             {p.checked_out_at && <span className="text-muted-foreground">left {format(new Date(p.checked_out_at), "HH:mm")}</span>}
                             {canEdit && p.synced_late && <Badge variant="outline" title="Recorded offline at device time, synced later" className="text-[10px]">synced late</Badge>}
                             <EarlyInBadge row={p} />
@@ -1141,8 +1142,9 @@ const sinceLabel = (iso: string) => {
 };
 const trailName = (r: TrailRow) => [r.first_name, r.last_name].filter(Boolean).join(" ") || "Unknown";
 
-function OnSiteNowBoard({ projectId, onPerson }: { projectId: string; onPerson: (pid: string) => void }) {
-  const { data = [], isLoading } = useOnSiteNow(projectId);
+function OnSiteNowBoard({ projectId, locationId, onPerson }: { projectId: string; locationId?: string; onPerson: (pid: string) => void }) {
+  const { data: allData = [], isLoading } = useOnSiteNow(projectId);
+  const data = locationId ? allData.filter(r => r.location_id === locationId) : allData;
   return (
     <div className="rounded-md border p-2">
       <p className="text-[10px] uppercase text-muted-foreground mb-1 flex items-center gap-1">
@@ -1154,7 +1156,7 @@ function OnSiteNowBoard({ projectId, onPerson }: { projectId: string; onPerson: 
         <div className="divide-y">
           {data.map((r) => (
             <div key={r.visit_personnel_id} className="flex items-center gap-2 py-1 text-sm flex-wrap">
-              <button type="button" className="font-medium hover:underline" onClick={() => onPerson(r.personnel_id)}>{trailName(r)}</button>
+              <Link to={`/personnel/${r.personnel_id}`} className="font-medium hover:underline">{trailName(r)}</Link>
               <span className="text-muted-foreground">@ {r.location_name ?? "Site"}</span>
               <span className="ml-auto text-xs text-muted-foreground">{sinceLabel(r.in_at)}</span>
             </div>
@@ -1165,12 +1167,13 @@ function OnSiteNowBoard({ projectId, onPerson }: { projectId: string; onPerson: 
   );
 }
 
-function TrailView({ projectId, projectName, locations, from, to, personId, setPersonId }: {
+function TrailView({ projectId, projectName, locations, from, to, personId, setPersonId, locationScopeId }: {
   projectId: string; projectName: string; locations: ProjectLocation[]; from: string; to: string;
-  personId: string; setPersonId: (id: string) => void;
+  personId: string; setPersonId: (id: string) => void; locationScopeId?: string;
 }) {
-  const [locId, setLocId] = useState<string>("");
-  const [agency, setAgency] = useState("all");
+  const [filterLoc, setLocId] = useNavigationValue("trailLocation", "");
+  const locId = locationScopeId || filterLoc;
+  const [agency, setAgency] = useNavigationValue("trailAgency", "all");
   const agencies = useProjectAgencies(projectId);
   const [pickOpen, setPickOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -1216,7 +1219,7 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
             <TrailPersonSearch opts={peopleOpts} onPick={(id) => { setPersonId(id); setPickOpen(false); }} />
           </PopoverContent>
         </Popover>
-        <Select value={locId || "all"} onValueChange={(v) => setLocId(v === "all" ? "" : v)}>
+        <Select disabled={!!locationScopeId} value={locId || "all"} onValueChange={(v) => setLocId(v === "all" ? "" : v)}>
           <SelectTrigger className="h-8 w-[180px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All locations</SelectItem>
@@ -1268,7 +1271,7 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
             <tbody className="divide-y">
               {rows.map((r) => (
                 <tr key={r.visit_personnel_id}>
-                  <td className="py-1.5 pr-2"><button type="button" className="font-medium hover:underline text-left" onClick={() => setPersonId(r.personnel_id)}>{trailName(r)}</button>{!r.signature_url && <Badge variant="outline" className="text-warning text-[10px] ml-1">no signature</Badge>}</td>
+                  <td className="py-1.5 pr-2"><Link to={`/personnel/${r.personnel_id}`} className="font-medium hover:underline text-left">{trailName(r)}</Link>{!r.signature_url && <Badge variant="outline" className="text-warning text-[10px] ml-1">no signature</Badge>}</td>
                   <td className="pr-2">{r.location_name ?? "—"}{isManual(r) && <Pencil className="inline h-3 w-3 ml-1 text-muted-foreground" aria-label="Manual entry" />}{canLog && reviewFlags.some(f=>f.id===r.visit_personnel_id&&f.synced_late) && <Badge variant="outline" title="Recorded offline at device time, synced later" className="text-[10px] ml-1">synced late</Badge>}<EarlyInBadge row={reviewFlags.find(f=>f.id===r.visit_personnel_id)||{}} /></td>
                   <td className="pr-2 whitespace-nowrap">{fmt(r.in_at)}</td>
                   <td className="pr-2 whitespace-nowrap">{fmt(r.out_at)}</td>
@@ -1313,6 +1316,7 @@ function useProjectName(projectId: string) {
 // ---------- Tab root ----------
 
 export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
+  const [urlSub, setUrlSub] = useNavigationValue("sub", "visits", ["visits", "trail", "timesheet", "reconcile"]);
   const [alertView, setAlertView] = useState<{view: 'visits' | 'trail' | 'reconcile'; key: number}>({view:'visits',key:0});
   const [sheetSelection, setSheetSelection] = useState<{ doc: string; location: string; day: string }>();
   const { data: documents = [] } = useProjectDocuments(projectId);
@@ -1344,14 +1348,14 @@ export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
       </div>
       <LocationAuthorizationAlerts projectId={projectId} locations={locations} />
       <CustomerProjectAlerts projectId={projectId} locations={locations}/>
-      {canEdit && <DeploymentAlerts projectId={projectId} locations={locations} onView={view => { setAlertView(s => ({view,key:s.key+1})); setTimeout(() => document.getElementById('deployment-visits')?.scrollIntoView({behavior:'smooth'}), 0); }} />}
+      {canEdit && <DeploymentAlerts projectId={projectId} locations={locations} onView={view => { setUrlSub(view); setAlertView(s => ({view,key:s.key+1})); setTimeout(() => document.getElementById('deployment-visits')?.scrollIntoView({behavior:'smooth'}), 0); }} />}
       <JoinRequests projectId={projectId} strip />
       <ProjectRosterCard projectId={projectId} />
       <SigninStatusBoard projectId={projectId} locations={locations} onSelect={(location, day) => setSheetSelection({ doc: '', location, day })} />
       {canEdit && <ReusableSigninPicker projectId={projectId} />}
       <section className="space-y-2"><h3 className="text-sm font-semibold">Customer sign-in sheets</h3><DailyTimesheetPanel projectId={projectId} projectName={project?.name || 'Project'} initialSheet={sheetSelection} /></section>
       <CrewsSection projectId={projectId} crews={crews} canEdit={canEdit} />
-      <div id="deployment-visits"><VisitsCard key={alertView.key} defaultView={alertView.view} projectId={projectId} locations={locations} crews={crews} from={r.from} to={r.to} canEdit={canEdit} /></div>
+      <div id="deployment-visits"><VisitsCard key={alertView.key} defaultView={urlSub} projectId={projectId} locations={locations} crews={crews} from={r.from} to={r.to} canEdit={canEdit} /></div>
       <MileageCard crews={crews} locations={locations} from={r.from} to={r.to} mileageRate={mileageRate} canEdit={canEdit} />
       <Tabs defaultValue="service">
         <TabsList>
