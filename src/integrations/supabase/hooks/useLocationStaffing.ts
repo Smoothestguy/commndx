@@ -34,17 +34,30 @@ export interface LocationStaffingSummary {
 
 const db = supabase as any;
 
-/** Personnel whose current lifecycle status is demobilized (still assigned, not counted). */
-export async function fetchDemobilizedIds(ids: string[]): Promise<Set<string>> {
+/** Demobilized pairs "personnel_id:project_id" — a demobilization only applies to the project it was recorded for,
+ *  so the same person/site under another project never inherits it. */
+export async function fetchDemobilizedKeys(ids: string[]): Promise<Set<string>> {
   if (!ids.length) return new Set();
   const out = new Set<string>();
   for (let i = 0; i < ids.length; i += 300) {
-    const { data, error } = await db.from("personnel_current_status").select("personnel_id").eq("status", "demobilized").in("personnel_id", ids.slice(i, i + 300));
+    const { data, error } = await db.from("personnel_current_status").select("personnel_id,project_id").eq("status", "demobilized").in("personnel_id", ids.slice(i, i + 300));
     if (error) throw error;
-    for (const r of data ?? []) out.add(r.personnel_id);
+    for (const r of data ?? []) if (r.project_id) out.add(`${r.personnel_id}:${r.project_id}`);
   }
   return out;
 }
+/** location_id -> project_id, so every roster lookup is scoped by project + location id (never name/address). */
+export async function fetchLocationProjects(locationIds: string[]): Promise<Record<string, string>> {
+  if (!locationIds.length) return {};
+  const { data, error } = await db.from("project_locations").select("id,project_id").in("id", locationIds);
+  if (error) throw error;
+  return Object.fromEntries((data ?? []).map((l: any) => [l.id, l.project_id]));
+}
+export async function demobilizedFilter(rows: { personnel_id: string; location_id: string }[]) {
+  const [keys, projects] = await Promise.all([fetchDemobilizedKeys([...new Set(rows.map(r => r.personnel_id))]), fetchLocationProjects([...new Set(rows.map(r => r.location_id))])]);
+  return (r: { personnel_id: string; location_id: string }) => keys.has(`${r.personnel_id}:${projects[r.location_id]}`);
+}
+
 const reqKey = (id?: string) => ["location-requirements", id];
 const asgKey = (id?: string) => ["location-assignments", id];
 
@@ -129,8 +142,8 @@ export function useLocationAssignments(locationId?: string) {
         if (dErr) throw dErr;
         for (const r of dir ?? []) names[r.id] = { first_name: r.first_name, last_name: r.last_name };
       }
-      const demob = await fetchDemobilizedIds(ids);
-      return rows.map((r) => ({ ...r, demobilized: demob.has(r.personnel_id), personnel: names[r.personnel_id] ?? null })) as LocationAssignment[];
+      const isDemob = await demobilizedFilter(rows);
+      return rows.map((r) => ({ ...r, demobilized: isDemob(r), personnel: names[r.personnel_id] ?? null })) as LocationAssignment[];
     },
   });
 }
@@ -268,7 +281,7 @@ export function useLocationStaffingSummary(locationIds: string[]) {
       ]);
       if (r.error) throw r.error;
       if (a.error) throw a.error;
-      const demob = await fetchDemobilizedIds([...new Set<string>((a.data ?? []).map((x: any) => x.personnel_id))]);
+      const isDemob = await demobilizedFilter(a.data ?? []);
       const out: Record<string, LocationStaffingSummary> = {};
       const get = (id: string) => (out[id] ??= { needed: 0, assigned: 0, byRole: {} });
       for (const row of r.data ?? []) {
@@ -280,7 +293,7 @@ export function useLocationStaffingSummary(locationIds: string[]) {
         if (row.bill_rate != null && b.rate == null) b.rate = Number(row.bill_rate);
       }
       for (const row of a.data ?? []) {
-        if (demob.has(row.personnel_id)) continue;
+        if (isDemob(row)) continue;
         const s = get(row.location_id);
         s.assigned += 1;
         if (row.role_label) {
