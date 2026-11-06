@@ -1,3 +1,8 @@
+# Existing stay corrections
+- [ ] Shared manager/admin Edit times dialog from project/location Timesheet cells and Trail times, including running stays and per-stay deletion.
+- [ ] Per-person writes, original/proposed date lock checks, sheet version reopening, attendance recompute and pencil audit markers; preserve private evidence and financial history.
+- [ ] Tests, live authenticated correction/readback, lock blocking, mobile inspection and requested TypeScript check; no schema changes.
+
 # Manual time in/out inside locations
 - [x] Manager/admin grid time inputs use existing manual-visit saver instead of hours-only writes; blank times retain status/hours, partial/reversed times cannot save, computed hours are read-only and manual cells show pencil markers.
 - [x] Location-locked Log time in header, Attendance toolbar, Trail and person-day cells; picker uses active location roster independently of lifecycle status, per-cell date/person prefill, location-local time conversion and shared cache refresh.
