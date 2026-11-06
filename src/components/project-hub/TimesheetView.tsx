@@ -10,6 +10,9 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Clock, Download, Loader2, Pencil, Timer } from "lucide-react";
 import { useUserRole } from '@/hooks/useUserRole';
 import { LogTimeDialog } from '@/components/personnel/lifecycle/LogTimeDialog';
+import { EditStayTimesDialog } from '@/components/personnel/lifecycle/EditStayTimesDialog';
+import { staysForCell } from '@/lib/stayEdits';
+import { useEditedStayIds } from '@/hooks/useEditStayTimes';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -29,6 +32,8 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
   const agencies = useProjectAgencies(projectId);
   const { isAdmin, isManager } = useUserRole();
   const canLog = !!locationScopeId && (isAdmin || isManager);
+  const canEdit = isAdmin || isManager;
+  const [edit, setEdit] = useState<{ ids: string[]; name: string; date: string }>();
   const [log, setLog] = useState<{ personnelId?: string; personName?: string; date?: string } | null>(null);
   const [agency, setAgency] = useNavigationValue<string>("agency", "all");
   const [agencyExportOpen, setAgencyExportOpen] = useState(false);
@@ -38,6 +43,7 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
   const locationShifts = useMemo(() => Object.fromEntries(locations.map((l) => [l.id, l])), [locations]);
   const { entries: allEntries, isLoading } = useWeekTimesheet(projectId, week, p?.day_shift_start, p?.night_shift_start, locationShifts);
   const entries = locationScopeId ? allEntries.filter(e => e.location_id === locationScopeId) : allEntries;
+  const { data: editedIds } = useEditedStayIds(entries.map(e => e.id.split(':')[0]));
   const [shift, setShift] = useNavigationValue("shift", "all", ["all", "day", "night"]);
   const [filterLoc, setLocId] = useNavigationValue<string>("tsLocation", "");
   const locId = locationScopeId || filterLoc;
@@ -106,10 +112,11 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
                     {days.map((d) => {
                       const c = r.days[d]; const h = cellH(c);
                       const both = shift === "all" && c && c.day > 0 && c.night > 0;
-                      const manual = filtered.some(e => e.personnel_id === r.personnel_id && e.date === d && e.source === 'Manual');
+                      const cellStays = staysForCell(entries, r.personnel_id, d, locId || undefined);
+                      const manual = cellStays.some(e => e.source === 'Manual' || editedIds?.has(e.id.split(':')[0]));
                       return (
                         <td key={d} className="text-right px-1 whitespace-nowrap">
-                          {h > 0 && (both ? (
+                          {canEdit && cellStays.length > 0 ? <Button variant="ghost" size="sm" className="h-7 px-1 tabular-nums" aria-label={`Edit times for ${r.name} ${d}`} onClick={() => setEdit({ ids: cellStays.map(e => e.id.split(':')[0]), name: r.name, date: d })}>{h > 0 ? fmtH(h) : <Timer className="h-3 w-3 text-warning" aria-label="Still running" />}</Button> : h > 0 && (both ? (
                             <Tooltip><TooltipTrigger asChild><span className="underline decoration-dotted">{fmtH(h)}</span></TooltipTrigger>
                               <TooltipContent>D {fmtH(c.day)} / N {fmtH(c.night)}</TooltipContent></Tooltip>
                           ) : fmtH(h))}
@@ -139,6 +146,7 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
         <Button disabled={busy || !exportVendor || exportVendor === "all"} onClick={async () => { const vendor = agencies.vendors.find(v => v.id === exportVendor); if (!vendor) return; setBusy(true); try { await exportAgencyHours(vendor, week, entries, agencies.vendorByPerson); setAgencyExportOpen(false); } catch (e) { toast.error(e instanceof Error ? e.message : "Export failed"); } finally { setBusy(false); } }}>Download agency hours</Button>
       </DialogContent></Dialog>
       {canLog && <LogTimeDialog open={!!log} onOpenChange={open => { if (!open) setLog(null); }} projectId={projectId} locationId={locationScopeId} personnelId={log?.personnelId} personName={log?.personName} defaultDate={log?.date} />}
+      {canEdit && edit && <EditStayTimesDialog projectId={projectId} ids={edit.ids} personName={edit.name} day={edit.date} onClose={() => setEdit(undefined)} />}
     </div>
   );
 }

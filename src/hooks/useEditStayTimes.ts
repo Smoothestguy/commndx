@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { recomputeAttendanceFromVisits } from '@/integrations/supabase/hooks/useFieldMode';
 import { ensureSheetsOpen, guardStayWeeks } from '@/lib/sheetLocks';
@@ -6,10 +6,22 @@ import { affectedStayDates } from '@/lib/stayEdits';
 import { toast } from 'sonner';
 
 export type StayChange = { id: string; inAt: string; outAt: string | null; remove: boolean };
+export function useEditedStayIds(ids: string[]) {
+  const unique = [...new Set(ids)].sort();
+  return useQuery({ queryKey: ['edited-stays', unique], enabled: unique.length > 0, queryFn: async () => {
+    const edited = new Set<string>();
+    for (let i = 0; i < unique.length; i += 200) {
+      const { data, error } = await supabase.from('audit_logs').select('resource_id').eq('resource_type', 'visit_personnel').eq('action_type', 'stay_times_edit').eq('success', true).in('resource_id', unique.slice(i, i + 200));
+      if (error) throw error;
+      for (const r of data || []) if (r.resource_id) edited.add(r.resource_id);
+    }
+    return edited;
+  } });
+}
 export function useEditStayTimes(projectId: string) {
   const qc = useQueryClient();
   const refresh = () => {
-    for (const key of ['personnel-trail','week-timesheet','visit-notes','visits-window','today-visits','on-site-now','location-attendance','location-attendance-batch','time-entries','all-time-entries','deployment-hours','project-time-entries','project-roster','signin-sheet-days','signin-reconciliation']) qc.invalidateQueries({ queryKey: [key] });
+    for (const key of ['edited-stays','personnel-trail','week-timesheet','visit-notes','visits-window','today-visits','on-site-now','location-attendance','location-attendance-batch','time-entries','all-time-entries','deployment-hours','project-time-entries','project-roster','signin-sheet-days','signin-reconciliation']) qc.invalidateQueries({ queryKey: [key] });
   };
   return useMutation({
     mutationFn: async (changes: StayChange[]) => {
@@ -51,11 +63,12 @@ export function useEditStayTimes(projectId: string) {
           if (we) throw we;
           if (!written?.length) throw new Error('Stay changed; refresh and retry');
           saved++;
-          await supabase.from('audit_logs').update({ success: true }).eq('id', audit.id);
+          const { error: completeError } = await supabase.from('audit_logs').insert({ user_id: user.id, action_type: s.remove ? 'stay_delete' : 'stay_times_edit', resource_type: 'visit_personnel', resource_id: s.id, changes_before: before, changes_after: after, metadata: { project_id: projectId, location_id: s.locationId, attempt_id: audit.id }, success: true });
+          if (completeError) throw completeError;
           if (s.remove) {
             // The live FK nullifies visit_personnel_id on deletion; preserve the financial row,
             // but void its accrual instead of leaving detached billable hours behind.
-            const { error: te } = await supabase.from('time_entries').update({ status: 'void', hours: 0, regular_hours: 0, overtime_hours: 0, billable: false }).eq('personnel_id', s.stay.personnel_id).eq('location_id', s.locationId).eq('entry_source', 'visit').eq('clock_in_at', s.oldIn).is('visit_personnel_id', null).neq('is_locked', true);
+            const { error: te } = await supabase.from('time_entries').update({ status: 'void', hours: 0, regular_hours: 0, overtime_hours: 0, billable: false }).eq('personnel_id', s.stay.personnel_id).eq('location_id', s.locationId).eq('entry_source', 'visit').eq('clock_in_at', s.oldIn).is('visit_personnel_id', null).or('is_locked.is.null,is_locked.eq.false');
             if (te) throw te;
           }
         }
