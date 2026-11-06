@@ -192,5 +192,15 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
       <DialogFooter><Button variant="outline" onClick={() => setMissionDlg(null)}>Cancel</Button>
         <Button disabled={!missionDlg?.note.trim() || setMission.isPending} onClick={() => missionDlg && setMission.mutate({ id: missionDlg.a.id, location_id: locationId, day: today, note: missionDlg.note.trim() }, { onSuccess: () => setMissionDlg(null) })}>Save</Button></DialogFooter>
     </DialogContent></Dialog>
+    <Dialog open={!!endDlg} onOpenChange={o => !o && setEndDlg(null)}><DialogContent className="max-w-sm">
+      <DialogHeader><DialogTitle>{endDlg?.demob ? 'Demobilize' : 'Remove from site'}{endDlg ? ` · ${[endDlg.a.personnel?.first_name, endDlg.a.personnel?.last_name].filter(Boolean).join(' ')}` : ''}</DialogTitle></DialogHeader>
+      {endDlg && <div className="space-y-2">
+        <Label htmlFor="end-date">Last day on site</Label>
+        <Input id="end-date" type="date" max={today} value={endDlg.date} onChange={e => setEndDlg({ ...endDlg, date: e.target.value })} />
+        <p className="text-xs text-muted-foreground">From the next day on they stop counting toward staffing and drop off attendance lists, rosters and shift texts. All time through this day stays on timesheets. Backdating is allowed.</p>
+      </div>}
+      <DialogFooter><Button variant="outline" onClick={() => setEndDlg(null)}>Cancel</Button>
+        <Button variant="destructive" disabled={!endDlg?.date || endAssignment.isPending || setStatus.isPending} onClick={() => void runEnd()}>{(endAssignment.isPending || setStatus.isPending) && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Confirm</Button></DialogFooter>
+    </DialogContent></Dialog>
   </div>;
 }
