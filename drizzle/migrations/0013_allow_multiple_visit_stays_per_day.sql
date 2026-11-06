@@ -1,0 +1,3 @@
+ALTER TABLE public.time_entries DROP CONSTRAINT time_entries_personnel_project_date_unique;
+CREATE UNIQUE INDEX time_entries_personnel_project_date_nonvisit_unique ON public.time_entries (personnel_id, project_id, entry_date) WHERE visit_personnel_id IS NULL;
+COMMENT ON INDEX public.time_entries_personnel_project_date_nonvisit_unique IS 'One hours-only ledger row per person/project/day; visit-backed stays may repeat per day (one row per visit_personnel_id).';

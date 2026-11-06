@@ -17,8 +17,8 @@ import { NonBillableChip } from '@/components/personnel/NonBillableChip';
 import { TextedCaption } from './SendSiteTextDialog';
 import { RoleSelect } from './RoleSelect';
 import { useOnSiteMap, useSetStatus } from '@/integrations/supabase/hooks/usePersonnelStatus';
-import { type LocationAssignment, useChangeAssignmentRole, useSetMission } from '@/integrations/supabase/hooks/useLocationStaffing';
-import { localDay, localTime } from '@/lib/signinSheets';
+import { type LocationAssignment, useChangeAssignmentRole, useSetMission, useEndAssignment } from '@/integrations/supabase/hooks/useLocationStaffing';
+import { localDay, localTime, midnight, nextDay } from '@/lib/signinSheets';
 import { locationTimeIso } from '@/lib/manualTime';
 import { isHHmm, todayStatus, type TodayStatus } from '@/lib/assignmentRoles';
 import { cn } from '@/lib/utils';
@@ -52,6 +52,15 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
   const [roleDlg, setRoleDlg] = useState<{ a: LocationAssignment; role: string | null; date: string; time: string } | null>(null);
   const [missionDlg, setMissionDlg] = useState<{ a: LocationAssignment; note: string } | null>(null);
   const [demobOpen, setDemobOpen] = useState(false);
+  const endAssignment = useEndAssignment();
+  const [endDlg, setEndDlg] = useState<{ a: LocationAssignment; date: string; demob: boolean } | null>(null);
+  const runEnd = async () => {
+    if (!endDlg || !/^\d{4}-\d{2}-\d{2}$/.test(endDlg.date)) return;
+    const endAt = new Date(midnight(nextDay(endDlg.date), tz)).toISOString();
+    if (endDlg.demob && projectId) await setStatus.mutateAsync({ personnelIds: [endDlg.a.personnel_id], status: 'demobilized', project_id: projectId, note: `Demobilized from location roster · last day ${endDlg.date}` });
+    await endAssignment.mutateAsync({ id: endDlg.a.id, location_id: locationId, endAt });
+    setEndDlg(null);
+  };
 
   // Attendance for THIS location only (never other sites).
   const stays = useQuery({
@@ -103,6 +112,7 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
       ...(canWrite ? [
         { label: 'Log time', run: () => onLog(a.personnel_id) },
         { label: 'Add expense', run: () => onExpense(a.personnel_id) },
+        { label: 'Remove from site as of…', run: () => setEndDlg({ a, date: today, demob: false }) },
         { label: 'Unassign', run: () => onUnassign(a), destructive: true },
       ] : []),
     ];
@@ -131,7 +141,8 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
               <DropdownMenuSeparator />
               {a.demobilized
                 ? <DropdownMenuItem disabled={!projectId} onClick={() => projectId && setStatus.mutate({ personnelIds: [a.personnel_id], status: 'activated', project_id: projectId, note: 'Reactivated from location roster' })}>Reactivate</DropdownMenuItem>
-                : <DropdownMenuItem disabled={!projectId} onClick={() => projectId && setStatus.mutate({ personnelIds: [a.personnel_id], status: 'demobilized', project_id: projectId!, note: 'Demobilized from location roster' })}>Demobilize (keeps history)</DropdownMenuItem>}
+                : <DropdownMenuItem disabled={!projectId} onClick={() => setEndDlg({ a, date: today, demob: true })}>Demobilize as of…</DropdownMenuItem>}
+              <DropdownMenuItem onClick={() => setEndDlg({ a, date: today, demob: false })}>Remove from site as of…</DropdownMenuItem>
               <DropdownMenuItem className="text-destructive" onClick={() => onUnassign(a)}>Unassign…</DropdownMenuItem>
             </DropdownMenuContent></DropdownMenu>}
         </div>
@@ -180,6 +191,16 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
       {missionDlg && <div><Label htmlFor="mission-note">Where / what</Label><Input id="mission-note" maxLength={200} value={missionDlg.note} onChange={e => setMissionDlg({ ...missionDlg, note: e.target.value })} placeholder="e.g. Supply run to Lakeland depot" /></div>}
       <DialogFooter><Button variant="outline" onClick={() => setMissionDlg(null)}>Cancel</Button>
         <Button disabled={!missionDlg?.note.trim() || setMission.isPending} onClick={() => missionDlg && setMission.mutate({ id: missionDlg.a.id, location_id: locationId, day: today, note: missionDlg.note.trim() }, { onSuccess: () => setMissionDlg(null) })}>Save</Button></DialogFooter>
+    </DialogContent></Dialog>
+    <Dialog open={!!endDlg} onOpenChange={o => !o && setEndDlg(null)}><DialogContent className="max-w-sm">
+      <DialogHeader><DialogTitle>{endDlg?.demob ? 'Demobilize' : 'Remove from site'}{endDlg ? ` · ${[endDlg.a.personnel?.first_name, endDlg.a.personnel?.last_name].filter(Boolean).join(' ')}` : ''}</DialogTitle></DialogHeader>
+      {endDlg && <div className="space-y-2">
+        <Label htmlFor="end-date">Last day on site</Label>
+        <Input id="end-date" type="date" max={today} value={endDlg.date} onChange={e => setEndDlg({ ...endDlg, date: e.target.value })} />
+        <p className="text-xs text-muted-foreground">From the next day on they stop counting toward staffing and drop off attendance lists, rosters and shift texts. All time through this day stays on timesheets. Backdating is allowed.</p>
+      </div>}
+      <DialogFooter><Button variant="outline" onClick={() => setEndDlg(null)}>Cancel</Button>
+        <Button variant="destructive" disabled={!endDlg?.date || endAssignment.isPending || setStatus.isPending} onClick={() => void runEnd()}>{(endAssignment.isPending || setStatus.isPending) && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Confirm</Button></DialogFooter>
     </DialogContent></Dialog>
   </div>;
 }

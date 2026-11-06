@@ -92,6 +92,13 @@
       "when": 1793985335317,
       "tag": "0012_location_roles_missions_late_ack",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793986863838,
+      "tag": "0013_allow_multiple_visit_stays_per_day",
+      "breakpoints": true
     }
   ]
 }

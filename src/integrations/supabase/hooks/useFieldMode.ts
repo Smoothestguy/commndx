@@ -511,10 +511,10 @@ export function useLogManualTime(projectId: string | undefined) {
       const {data: location,error:locationError}=await supabase.from('project_locations').select('project_id,timezone').eq('id',i.location_id).single();
       if(locationError)throw locationError;
       if(location.project_id!==projectId)throw new Error('Location does not belong to this project');
-      const payrollDates=splitAtMidnight(i.in_at,i.out_at).map(s=>s.date);
-      const {data:existing,error:existingError}=await supabase.from('time_entries').select('id').eq('project_id',projectId).eq('personnel_id',i.personnel_id).in('entry_date',payrollDates).limit(1);
-      if(existingError)throw existingError;
-      if(existing?.length)throw new Error('This person already has time for this project day. Edit the existing Timesheet hours or Trail time instead; the live daily ledger does not accept a second stay.');
+      // Managers may add extra stays the same day; only overlapping stays (double-counted hours) are refused.
+      const {data:overlap,error:overlapError}=await supabase.from('personnel_location_trail').select('visit_personnel_id,in_at,out_at').eq('personnel_id',i.personnel_id).lt('in_at',i.out_at).gt('in_at',new Date(Date.parse(i.in_at)-2*864e5).toISOString()).limit(50);
+      if(overlapError)throw overlapError;
+      if((overlap??[]).some(r=>r.out_at?Date.parse(r.out_at)>Date.parse(i.in_at):Date.parse(r.in_at!)>Date.parse(i.in_at)-16*3600e3))throw new Error('This overlaps another stay for this person. Pick times that do not overlap, or edit the existing stay.');
       await guardStayWeeks(projectId,[{id:crypto.randomUUID(),oldIn:i.in_at,oldOut:i.out_at,inAt:i.in_at,outAt:i.out_at,zone:location.timezone||'America/Chicago'}]);
       await guardVisitDates(i.location_id, i.in_at, i.out_at);
       const { data: { user } } = await supabase.auth.getUser();

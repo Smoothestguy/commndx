@@ -30,7 +30,9 @@ export function EditStayTimesDialog({ projectId, ids, personName, day, onClose }
   } });
   useEffect(() => { if (query.data) setDrafts(query.data.map(s => draftStay(s.id, s.inAt, s.outAt, s.zone, day))); }, [query.data, day]);
   const update = (id: string, values: Partial<StayDraft>) => setDrafts(prev => prev.map(d => d.id === id ? { ...d, ...values } : d));
-  const valid = drafts.length > 0 && drafts.every(d => { const s = query.data?.find(s => s.id === d.id); return d.removed || (!!stayRange(d, s?.zone || 'America/Chicago') && (!s?.outAt || !!d.outTime)); });
+  // Blank (untouched/cleared) fields keep the stored value, so editing one side never blocks on the other.
+  const eff = (d: StayDraft): StayDraft => { const s = query.data?.find(s => s.id === d.id); if (!s) return d; const o = draftStay(s.id, s.inAt, s.outAt, s.zone, day); return { ...d, inTime: d.inTime.trim() || o.inTime, inDate: d.inDate || o.inDate, outTime: d.outTime.trim() || (s.outAt ? o.outTime : ''), outDate: d.outDate || o.outDate }; };
+  const valid = drafts.length > 0 && drafts.every(d => { const s = query.data?.find(s => s.id === d.id); return d.removed || !!stayRange(eff(d), s?.zone || 'America/Chicago'); });
   return <Dialog open onOpenChange={open => { if (!open && !save.isPending) onClose(); }}><DialogContent className="max-w-xl max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Edit times · {personName}</DialogTitle></DialogHeader>
     {query.isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
     {query.error && <p role="alert" className="text-sm text-destructive">Unable to load stays.</p>}
@@ -39,14 +41,13 @@ export function EditStayTimesDialog({ projectId, ids, personName, day, onClose }
       {d.removed ? <p className="text-sm text-destructive">Stay will be deleted when saved.</p> : <>
         {!s.outAt && !d.outTime && <div className="flex items-center justify-between"><span className="text-sm text-warning">Still running</span><Button variant="outline" size="sm" onClick={() => document.getElementById(`${d.id}-out`)?.focus()}><Clock className="h-4 w-4 mr-1" />Set time out</Button></div>}
         <div className="grid grid-cols-2 gap-3"><div className="space-y-1"><Label htmlFor={`${d.id}-in`}>Time in</Label><Time24Input  step={60} id={`${d.id}-in`} value={d.inTime} onChange={e => update(d.id, { inTime: e.target.value })} /><Input aria-label="Time in date" type="date" value={d.inDate} onChange={e => update(d.id, { inDate: e.target.value })} /></div><div className="space-y-1"><Label htmlFor={`${d.id}-out`}>Time out</Label><Time24Input  step={60} id={`${d.id}-out`} value={d.outTime} onChange={e => update(d.id, { outTime: e.target.value })} /><Input aria-label="Time out date" type="date" value={d.outDate} onChange={e => update(d.id, { outDate: e.target.value })} /></div></div>
-        <p className="text-xs text-muted-foreground">{s.zone}</p>{!stayRange(d, s.zone) && <p className="text-xs text-destructive">Time out must be after time in.</p>}
-        {s.outAt && !d.outTime && <p className="text-xs text-destructive">A closed stay needs a time out.</p>}
+        <p className="text-xs text-muted-foreground">{s.zone}</p>{!stayRange(eff(d), s.zone) && <p className="text-xs text-destructive">{[eff(d).inTime, eff(d).outTime].some(t => t && !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) ? 'Use 24h HH:mm, e.g. 07:30.' : 'Time out must be after time in.'}</p>}
       </>}
     </div>; })}</div>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     <DialogFooter><Button variant="outline" disabled={save.isPending} onClick={onClose}>Cancel</Button><Button disabled={!valid || save.isPending} onClick={async () => {
       setError('');
-      const changes = drafts.flatMap(d => { const s = query.data?.find(s => s.id === d.id); if (!s) return []; const r = stayRange(d, s.zone); if (d.removed) return [{ id: d.id, inAt: s.inAt, outAt: s.outAt, remove: true }]; if (!r || (Date.parse(r.inAt) === Date.parse(s.inAt) && (r.outAt ? Date.parse(r.outAt) : null) === (s.outAt ? Date.parse(s.outAt) : null))) return []; return [{ id: d.id, ...r, remove: false }]; });
+      const changes = drafts.flatMap(d => { const s = query.data?.find(s => s.id === d.id); if (!s) return []; const r = stayRange(eff(d), s.zone); if (d.removed) return [{ id: d.id, inAt: s.inAt, outAt: s.outAt, remove: true }]; if (!r || (Date.parse(r.inAt) === Date.parse(s.inAt) && (r.outAt ? Date.parse(r.outAt) : null) === (s.outAt ? Date.parse(s.outAt) : null))) return []; return [{ id: d.id, ...r, remove: false }]; });
       if (!changes.length) { onClose(); return; }
       try { await save.mutateAsync(changes); onClose(); } catch (e) { setError(e instanceof Error ? e.message : 'Unable to save times'); }
     }}>{save.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Save</Button></DialogFooter>

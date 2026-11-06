@@ -11,12 +11,11 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Time24Input } from '@/components/ui/time24-input';
 import { Loader2, Pencil, Plus, AlertTriangle, Clock, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useLocationAssignments } from '@/integrations/supabase/hooks/useLocationStaffing';
 import { useLogManualTime } from '@/integrations/supabase/hooks/useFieldMode';
 import { useEditStayTimes, type StayChange } from '@/hooks/useEditStayTimes';
 import { EditStayTimesDialog } from '@/components/personnel/lifecycle/EditStayTimesDialog';
 import { LogTimeDialog } from '@/components/personnel/lifecycle/LogTimeDialog';
-import { localDay, localTime } from '@/lib/signinSheets';
+import { localDay, localTime, midnight, nextDay } from '@/lib/signinSheets';
 import { locationTimeIso } from '@/lib/manualTime';
 import { isHHmm } from '@/lib/assignmentRoles';
 import { LATE_ACK_PRESETS, lateAckText } from '@/lib/lateAck';
@@ -38,7 +37,19 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   const [busy, setBusy] = useState(false);
   const editTimes = useEditStayTimes(projectId);
   const logTime = useLogManualTime(projectId);
-  const { data: roster = [] } = useLocationAssignments(locationId);
+  // Roster AS OF the chosen day: assignment period must cover that local day (removed/added people respect their dates).
+  const { data: roster = [] } = useQuery({
+    queryKey: ['location-assignments', 'as-of', locationId, day],
+    queryFn: async () => {
+      const start = new Date(midnight(day, tz)).toISOString(), end = new Date(midnight(nextDay(day), tz)).toISOString();
+      const { data, error } = await supabase.from('location_assignments').select('personnel_id,role_label,assigned_at,unassigned_at').eq('location_id', locationId).lt('assigned_at', end).or(`unassigned_at.is.null,unassigned_at.gt.${start}`);
+      if (error) throw error;
+      const ids = [...new Set((data ?? []).map(r => r.personnel_id))];
+      const dir = ids.length ? await supabase.from('personnel_directory').select('id,first_name,last_name').in('id', ids) : { data: [], error: null };
+      if (dir.error) throw dir.error;
+      return (data ?? []).map(r => { const d = dir.data?.find(x => x.id === r.personnel_id); return { personnel_id: r.personnel_id, role_label: r.role_label, personnel: { first_name: d?.first_name ?? null, last_name: d?.last_name ?? null } }; });
+    },
+  });
   const q = useQuery({
     queryKey: ['visits-window', 'location-day', locationId, day], refetchInterval: 60000,
     queryFn: async () => {
@@ -60,9 +71,9 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   });
   const rows = useMemo(() => {
     const stays = q.data?.dayStays ?? [];
-    const people = new Map<string, { id: string; name: string; role: string | null; stays: Stay[] }>();
+    const people = new Map<string, { id: string; name: string; role: string | null; stays: Stay[]; offRoster?: boolean }>();
     for (const a of roster) people.set(a.personnel_id, { id: a.personnel_id, name: [a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(' '), role: a.role_label, stays: [] });
-    for (const s of stays) { const p = people.get(s.personnel_id) ?? { id: s.personnel_id, name: s.name, role: null, stays: [] }; p.stays.push(s); people.set(s.personnel_id, p); }
+    for (const s of stays) { const p = people.get(s.personnel_id) ?? { id: s.personnel_id, name: s.name, role: null, stays: [], offRoster: true }; p.stays.push(s); people.set(s.personnel_id, p); }
     return [...people.values()].map(p => ({ ...p, stays: p.stays.sort((a, b) => a.in_at.localeCompare(b.in_at)) })).sort((a, b) => (a.stays[0]?.in_at ?? 'z').localeCompare(b.stays[0]?.in_at ?? 'z') || a.name.localeCompare(b.name));
   }, [roster, q.data]);
   const today = localDay(new Date().toISOString(), tz);
@@ -136,6 +147,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
             <span className="tabular-nums"><span className="sm:hidden text-muted-foreground">Out </span>{last ? (last.out_at ? hm(last.out_at, tz) : <span className="text-warning">open</span>) : '—'}</span>
             <span className="col-span-3 sm:col-span-1 flex flex-wrap gap-1">
               {!first && <Badge variant="outline" className="text-muted-foreground">Not signed in</Badge>}
+              {r.offRoster && <Badge variant="outline" className="bg-muted text-muted-foreground" title="Has time here this day but was not assigned to this site on this date">Not on roster this day</Badge>}
               {late ? <Badge variant="outline" className={cn(late.late_ack_reason ? 'text-warning border-warning/40' : 'text-destructive border-destructive/40')} title={lateTip || undefined}>LATE {late.late_minutes}m{late.late_reason ? ` · ${late.late_reason}` : ''}{late.late_ack_reason ? ' · approved' : ''}</Badge> : first && <Badge variant="outline" className="text-success border-success/40">On time</Badge>}
               {late && canWrite && <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs" onClick={() => setAck({ stay: late, preset: '', text: '' })}><CheckCircle2 className="h-3 w-3 mr-1" />{late.late_ack_reason ? 'Change approval' : 'Approve late'}</Button>}
               {r.stays.some(s => s.in_geofence === false || s.offsite_reason) ? <Badge variant="outline" className="text-warning border-warning/40" title={r.stays.find(s => s.offsite_reason)?.offsite_reason || undefined}>Off-site</Badge> : r.stays.some(s => s.in_geofence) ? <Badge variant="outline">In geofence</Badge> : null}
@@ -143,9 +155,14 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
               {r.stays.some(s => s.synced_late) && <Badge variant="outline">synced late</Badge>}
             </span>
             <span className="tabular-nums sm:text-right">{first ? hrs.toFixed(2) : '—'}</span>
-            {canWrite && <span className="col-span-2 sm:col-span-1 text-right">{first
-              ? <Button size="sm" variant="ghost" onClick={() => setEdit({ ids: r.stays.map(s => s.id), name: r.name, day })} aria-label={`Edit times for ${r.name}`}><Pencil className="h-4 w-4 mr-1" />Edit</Button>
-              : <Button size="sm" variant="ghost" onClick={() => setLog({ id: r.id, name: r.name })} aria-label={`Set arrival for ${r.name}`}><Plus className="h-4 w-4 mr-1" />Arrival</Button>}</span>}
+            {canWrite && <span className="col-span-2 sm:col-span-1 flex justify-end gap-0.5">
+              {r.stays.length === 1 && <Button size="sm" variant="ghost" className="px-2" onClick={() => setEdit({ ids: [first.id], name: r.name, day })} aria-label={`Edit times for ${r.name}`}><Pencil className="h-4 w-4" /></Button>}
+              <Button size="sm" variant="ghost" className="px-2" onClick={() => setLog({ id: r.id, name: r.name })} aria-label={first ? `Add entry for ${r.name}` : `Set arrival for ${r.name}`} title={first ? 'Add another stay' : 'Set arrival'}><Plus className="h-4 w-4" />{!first && <span className="ml-1">Arrival</span>}</Button></span>}
+            {r.stays.length > 1 && <ul className="col-span-full divide-y border-l-2 border-muted ml-1 sm:ml-8" aria-label={`Stays for ${r.name}`}>{r.stays.map((st, i) => <li key={st.id} className="flex items-center gap-3 py-1 pl-3 text-xs tabular-nums">
+              <span className="text-muted-foreground w-12">Stay {i + 1}</span><span>{hm(st.in_at, tz)} → {st.out_at ? hm(st.out_at, tz) : <span className="text-warning">open</span>}</span>
+              <span className="ml-auto">{st.out_at ? (Number(st.hours) || 0).toFixed(2) + ' h' : '—'}</span>
+              {canWrite && <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEdit({ ids: [st.id], name: `${r.name} · stay ${i + 1}`, day })} aria-label={`Edit stay ${i + 1} for ${r.name}`}><Pencil className="h-3.5 w-3.5" /></Button>}
+            </li>)}</ul>}
           </div>; })}
       </div>}
     {edit && <EditStayTimesDialog projectId={projectId} ids={edit.ids} personName={edit.name} day={edit.day} onClose={() => { setEdit(null); void q.refetch(); }} />}

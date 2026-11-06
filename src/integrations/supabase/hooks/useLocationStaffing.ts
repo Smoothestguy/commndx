@@ -269,6 +269,20 @@ export function useUnassignPersonnel() {
   });
 }
 
+/** Effective-dated removal: the person stays on the roster through `endAt` (exclusive), history untouched. */
+export function useEndAssignment() {
+  const inv = useInvalidate();
+  return useMutation({
+    mutationFn: async ({ id, location_id, endAt }: { id: string; location_id: string; endAt: string }) => {
+      const { error } = await db.from("location_assignments").update({ status: 'unassigned', unassigned_at: endAt }).eq("id", id);
+      if (error) throw error;
+      return location_id;
+    },
+    onSuccess: (lid) => { inv(lid); toast.success("Removed from site"); },
+    onError: (e: any) => toast.error(e?.message ?? "Failed to remove from site"),
+  });
+}
+
 export function useLocationStaffingSummary(locationIds: string[]) {
   const ids = [...locationIds].sort();
   return useQuery({
