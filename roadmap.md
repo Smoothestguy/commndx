@@ -151,3 +151,6 @@
 # Location attendance + staffing refinements
 - [x] 24h section, bulk audited time edits, late approval reasons (row tooltip + internal Detail export)
 - [x] Demobilized excluded from counts/collapsed group; dated position changes; derived single today badge with off-site missions; no cross-location blending; grouped aligned roster with assets
+
+# Locations command center
+- [x] List default (Cards/Roster secondary), needs strip with filtering chips, field requests table + dialog, header KPIs hidden on Locations tab. Browser verified desktop/phone on Florida Floods; test request accepted.

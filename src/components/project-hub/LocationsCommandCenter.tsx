@@ -32,7 +32,7 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
   const recon = useReconciliation(projectId, currentWeekStart(), canWrite);
   const blocks = recon.data ? closeBlockers(recon.data.rows, recon.data.resolutions).length : 0;
   const [filter, setFilter] = useState<FilterKey | null>(null);
-  const [status, setStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [status, setStatus] = useState<'all' | 'active' | 'inactive'>('active');
   const [reqFor, setReqFor] = useState<ProjectLocation | null>(null);
 
   const rows = useMemo(() => sortByAttention(locations.map(l => {
@@ -177,7 +177,7 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
 
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="Status filter">
-            {(['all', 'active', 'inactive'] as const).map(s => <Button key={s} size="sm" variant={status === s ? 'secondary' : 'ghost'} className="h-7 px-2 text-xs capitalize" onClick={() => setStatus(s)}>{s}</Button>)}
+            {(['active', 'inactive', 'all'] as const).map(s => <Button key={s} size="sm" variant={status === s ? 'secondary' : 'ghost'} className="h-7 px-2 text-xs capitalize" onClick={() => setStatus(s)}>{s}</Button>)}
           </div>
           <Button size="sm" variant={filter === 'attention' ? 'secondary' : 'outline'} className="h-7 px-2 text-xs" onClick={() => toggle('attention')} aria-pressed={filter === 'attention'}>Needs attention ({totals.attention})</Button>
           {filter && filter !== 'attention' && <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setFilter(null)}>Clear filter</Button>}
