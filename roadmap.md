@@ -1,7 +1,7 @@
 # Join approval correction
-- [ ] Pending-only bilingual public confirmation; no requester punch link.
-- [ ] Shared staff approval lists/badges in Deployment and location/staffing headers with matched-name hints; approve SMS and deny without SMS.
-- [ ] Live flow/role checks, rule tests and bunx tsgo --noEmit; no migrations.
+- [x] Pending-only bilingual confirmation; public result parser discards unexpected punch/identity fields and requester never sees a punch link.
+- [x] Shared project-batched staff approval lists in Deployment and location/grid staffing headers, matched directory names, live approve/deny RPCs, roster invalidation and server-derived SMS action. Existing message IDs reserve one send per request; failed-text retries never reapprove and uncertain delivery is not automatically replayed.
+- [x] 19 tests and bunx tsgo --noEmit passed. Live anonymous pending → authenticated matched-placeholder approve → phone filled/no duplicate → staffing readback → deny verified; deployed SMS dry-run validated committed token/assignment and invalid auth rejected. 390px confirmation inspected, test fixtures archived/inactive, tokens expired/revoked; no real SMS, migrations or cron changes. Separate user login and actual provider delivery not exercised.
 
 # Project join links
 - [x] Regenerated live types; bilingual anonymous registration, inline validation, office invalid state and personal punch-link success implemented. Actual live join_project returns pending approval, which is displayed truthfully.
