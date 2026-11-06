@@ -1,3 +1,4 @@
+import { DailyTimesheetPanel } from '@/components/signin/DailyTimesheetPanel';
 import { supabase } from "@/integrations/supabase/client";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { useProjectDocuments } from "@/integrations/supabase/hooks/useProjectDocuments";
@@ -257,6 +258,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
                   </div>
                 )}
                 {l.scope && <ScopeText text={l.scope} />}
+                <DailyTimesheetPanel projectId={projectId} projectName={project?.name || projectName || 'Project'} locationId={l.id} />
                 <LocationDocumentsLine projectId={projectId} locationId={l.id} documents={documents} signatures={signatures} />
                 {canWrite && <LocationKioskActions location={l} />}
                 <LocationStaffing locationId={l.id} summary={staffing?.[l.id]} canWrite={canWrite} projectId={l.project_id} locationName={l.name} />
