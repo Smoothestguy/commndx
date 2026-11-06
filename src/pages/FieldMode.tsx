@@ -1,3 +1,4 @@
+import { LateCheckIn } from '@/components/signin/LateCheckIn';
 import { EarlyCheckIn } from '@/components/signin/EarlyCheckIn';
 import { FieldBadgeCheckIn } from '@/components/signin/FieldBadgeCheckIn';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -64,7 +65,8 @@ function CheckInSheet({ location, crew, projectId, locationIds, onClose }: {
   const [rejection,setRejection]=useState<EarlyRejection|null>(null);
   const [overrideReason,setOverrideReason]=useState('');
   const [crewPrompt,setCrewPrompt]=useState<string|null>(null);
-  const finishCheckIn=async(signatures:Record<string,Blob>,earlyReason?:string,override?:string)=>{setDrawn(signatures);const {lat,lng}=await getCoords();checkIn.mutate({location_id:location.id,crew_id:crew?.id??null,memberIds:[...selected],lat,lng,signatures,earlyReason,overrideReason:override},{onError:(e)=>{const r=(e as Error & {rejection?:EarlyRejection}).rejection;if(r){setSigQueue([]);setRejection(r);}},onSuccess:({visitId})=>{setRejection(null);setSigQueue([]);if(earlyReason)toast.success('Early check-in — pending supervisor approval');if(needsCrew([...selected],allCrews))setCrewPrompt(visitId);else onClose();}});};
+  const reasonRef=useRef<{early?:string;late?:string;override?:string}>({});
+  const finishCheckIn=async(signatures:Record<string,Blob>,earlyReason=reasonRef.current.early,override=reasonRef.current.override,lateReason=reasonRef.current.late)=>{reasonRef.current={early:earlyReason,late:lateReason,override};setDrawn(signatures);const {lat,lng}=await getCoords();checkIn.mutate({location_id:location.id,crew_id:crew?.id??null,memberIds:[...selected],lat,lng,signatures,earlyReason,lateReason,overrideReason:override},{onError:(e)=>{const r=(e as Error & {rejection?:EarlyRejection}).rejection;if(r){setSigQueue([]);setRejection(r);}},onSuccess:({visitId})=>{setRejection(null);setSigQueue([]);if(earlyReason)toast.success('Early check-in — pending supervisor approval');if(needsCrew([...selected],allCrews))setCrewPrompt(visitId);else onClose();}});};
 
 
   const toggle = (id: string) => {
@@ -93,6 +95,7 @@ function CheckInSheet({ location, crew, projectId, locationIds, onClose }: {
   };
 
 
+  if(rejection?.reason==='late')return <LateCheckIn rejection={rejection} timezone={location.timezone||undefined} busy={checkIn.isPending} onSubmit={r=>finishCheckIn(drawn,undefined,undefined,r)}/>;
   if(rejection?.reason==='before_shift')return <EarlyCheckIn rejection={rejection} timezone={location.timezone||undefined} busy={checkIn.isPending} onSubmit={r=>finishCheckIn(drawn,r,overrideReason||undefined)}/>;
   if(rejection)return <section className="p-4 space-y-4"><p className="text-warning">{rejection.reason==='no_gps'?"Couldn't get your location":rejection.reason==='out_of_range'?"You're outside the site geofence":'Check-in unavailable — ask your supervisor'}</p>{['no_gps','out_of_range'].includes(rejection.reason)&&<><Textarea aria-label="Off-site reason" placeholder="Reason (required)" value={overrideReason} onChange={e=>setOverrideReason(e.target.value)} maxLength={1000}/><Button disabled={checkIn.isPending||!overrideReason.trim()} onClick={()=>finishCheckIn(drawn,undefined,overrideReason.trim())}>I'M ON SITE ANYWAY</Button></>}</section>;
   if(crewPrompt)return <SaveCrewPrompt projectId={projectId} ids={[...selected]} visitId={crewPrompt} onDone={onClose}/>;
@@ -230,7 +233,7 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, peopl
   }, [directory, addSearch, presentIds]);
   const [addRejection,setAddRejection]=useState<EarlyRejection|null>(null);
   const [addReason,setAddReason]=useState('');
-  const retryAdd=(earlyReason?:string,overrideReason?:string)=>{const vars=addPerson.variables;if(!vars)return;addPerson.mutate({...vars,earlyReason,overrideReason},{onSuccess:()=>{setAddRejection(null);setSigFor(null);setMode('menu');},onError:e=>setAddRejection((e as Error & {rejection?:EarlyRejection}).rejection||null)});};
+  const retryAdd=(earlyReason?:string,overrideReason?:string,lateReason?:string)=>{const vars=addPerson.variables;if(!vars)return;addPerson.mutate({...vars,earlyReason:earlyReason??vars.earlyReason,overrideReason:overrideReason??vars.overrideReason,lateReason:lateReason??vars.lateReason},{onSuccess:()=>{setAddRejection(null);setSigFor(null);setMode('menu');},onError:e=>setAddRejection((e as Error & {rejection?:EarlyRejection}).rejection||null)});};
   const [addedName, setAddedName] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [amount, setAmount] = useState("");
@@ -270,6 +273,7 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, peopl
 
   const failedAdd=(addPerson.error as (Error & {rejection?:EarlyRejection})|null)?.rejection;
   const currentRejection=addRejection||failedAdd;
+  if(currentRejection?.reason==='late')return <LateCheckIn rejection={currentRejection} timezone={location.timezone||undefined} busy={addPerson.isPending} onSubmit={r=>retryAdd(undefined,undefined,r)}/>;
   if(currentRejection?.reason==='before_shift')return <EarlyCheckIn rejection={currentRejection} timezone={location.timezone||undefined} busy={addPerson.isPending} onSubmit={r=>retryAdd(r,addReason||undefined)}/>;
   if(currentRejection&&['no_gps','out_of_range'].includes(currentRejection.reason))return <section className="p-4 space-y-4"><p className="text-warning">Location unavailable or outside the geofence</p><Textarea aria-label="Off-site reason" placeholder="Reason (required)" value={addReason} onChange={e=>setAddReason(e.target.value)} maxLength={1000}/><Button disabled={!addReason.trim()||addPerson.isPending} onClick={()=>retryAdd(undefined,addReason.trim())}>I'M ON SITE ANYWAY</Button></section>;
   if (sigFor) {
