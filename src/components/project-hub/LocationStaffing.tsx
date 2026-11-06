@@ -136,7 +136,7 @@ export function AssignDialog({ locationId, open, onOpenChange, assignedIds, role
         <DialogHeader><DialogTitle>Assign personnel</DialogTitle></DialogHeader>
         {(isAdmin || isManager) && <Button size="sm" variant="outline" onClick={() => setQuick(v => !v)}><Plus className="h-4 w-4 mr-1" />Quick add</Button>}
         {quick && <QuickAddPerson locationId={locationId} role={role} onDone={(id, hasPhone) => { setQuick(false); if (hasPhone) setQuickText(id); else { onOpenChange(false); } }} />}
-        <Input placeholder="Search name or phone" value={q} onChange={(e) => setQ(e.target.value)} />
+        {!quick && <><Input placeholder="Search name or phone" value={q} onChange={(e) => setQ(e.target.value)} />
         <div className="max-h-[50vh] overflow-y-auto border rounded-md divide-y">
           {isLoading ? <div className="p-4"><Loader2 className="h-4 w-4 animate-spin" /></div> :
             filtered.length === 0 ? <p className="p-4 text-sm text-muted-foreground">No matches.</p> :
@@ -151,19 +151,20 @@ export function AssignDialog({ locationId, open, onOpenChange, assignedIds, role
               );
             })}
         </div>
+        </>}
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground shrink-0">Role</span>
           <RolePicker value={role} onChange={setRole} options={opts} allowNone />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button disabled={sel.size === 0 || assign.isPending} onClick={() => {
+          {!quick && <Button disabled={sel.size === 0 || assign.isPending} onClick={() => {
             assign.mutate({ location_id: locationId, personnel_ids: [...sel], role_label: role.trim() || null }, {
               onSuccess: () => { const ids = [...sel]; setSel(new Set()); onOpenChange(false); onAssigned?.(ids); },
             });
           }}>
             {assign.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Assign {sel.size || ""}
-          </Button>
+          </Button>}
         </DialogFooter>
       </DialogContent>
       <SendSiteTextDialog open={!!quickText} onOpenChange={v => { if (!v) { setQuickText(null); onOpenChange(false); } }} personnelIds={quickText ? [quickText] : []} locationId={locationId} />
