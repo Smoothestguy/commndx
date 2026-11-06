@@ -159,6 +159,7 @@ import SitePunch from "./pages/SitePunch";
 import Kiosk from "./pages/Kiosk";
 import { SheetReopenDialog } from '@/components/signin/SheetReopenDialog';
 import DocumentSign from "./pages/DocumentSign";
+import TimesheetSign from "./pages/TimesheetSign";
 import QuickApply from "./pages/QuickApply";
 import MasterApplicants from "./pages/MasterApplicants";
 import Workforce from "./pages/Workforce";
@@ -269,6 +270,7 @@ const App = () => {
                     <Route path="/agency/:token" element={<AgencyPortal />} />
                     <Route path="/kiosk/:token" element={<Kiosk />} />
                     <Route path="/sign/:token" element={<DocumentSign />} />
+                    <Route path="/timesheet-sign/:token" element={<TimesheetSign />} />
                     <Route path="/quick-apply/:token" element={<QuickApply />} />
                     {/* Onboarding Routes */}
                     <Route
