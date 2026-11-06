@@ -22,7 +22,7 @@ function AgencyExperience({token}:{token:string}) {
  const [date,setDate]=useState(''),[tab,setTab]=useState('today'),[weeklyStart,setWeeklyStart]=useState(''),[downloading,setDownloading]=useState(false),[logoFailed,setLogoFailed]=useState(false);
  const valid=portalToken.safeParse(token).success;
  const overview=useQuery({queryKey:['agency-overview',token,date],enabled:valid,retry:1,refetchInterval:60000,queryFn:async()=>{const {data,error}=await supabase.rpc('agency_portal_overview',{p_token:token,...(date?{p_date:date}:{})});if(error)throw error;return agencyOverview.parse(data);}});
- const start=weeklyStart||weekStart(date||overview.data?.date||currentWeekStart());
+ const start=(tab==='weekly'?weeklyStart:'')||weekStart(date||overview.data?.date||currentWeekStart());
  const week=useQuery({queryKey:['agency-week',token,start],enabled:valid&&overview.data?.valid===true,retry:1,refetchInterval:60000,queryFn:async()=>{const {data,error}=await supabase.rpc('agency_portal_week',{p_token:token,p_week_start:start});if(error)throw error;return agencyWeek.parse(data);}});
  const data=overview.data,people=data?.people||[],rows=week.data?.rows||[],matrix=agencyMatrix(rows,start),days=weekDays(start);
  const counts={on_site:0,done:0,no_show:0,unassigned:0};people.forEach(p=>counts[p.status]++);
