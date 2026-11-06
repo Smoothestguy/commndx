@@ -132,7 +132,7 @@ export function LocationCloseoutDialog({ projectId, location, open, onOpenChange
           <Step n={2} title={`Pending requests (${d.requests.length + d.joins})`} ok={!d.requests.length && !d.joins}>
             {d.requests.map(r => <div key={r.id} className="flex items-center justify-between gap-2"><span>{KIND_LABEL[r.kind]} · {r.qty} × {r.label || '—'} <Badge variant="outline" className="ml-1 capitalize">{r.status}</Badge></span>
               <span className="flex gap-1">{r.status === 'open' && <Button size="sm" variant="ghost" disabled={act.isPending} onClick={() => act.mutate({ id: r.id, status: 'denied' }, { onSettled: () => void q.refetch() })}>Deny</Button>}<Button size="sm" variant="outline" disabled={act.isPending} onClick={() => act.mutate({ id: r.id, status: 'done' }, { onSettled: () => void q.refetch() })}>Mark done</Button></span></div>)}
-            {d.joins > 0 && <p>{d.joins} pending join request{d.joins === 1 ? '' : 's'} — approve or deny on the <Link className="text-primary underline" to={`/projects/${projectId}?tab=deployment`}>project join requests</Link>.</p>}
+            {d.joins > 0 && <p>{d.joins} pending join request{d.joins === 1 ? '' : 's'} — approve or deny on the <Link className="text-primary underline" to={`${base}?tab=staffing`} onClick={() => onOpenChange(false)}>Staffing tab</Link>.</p>}
             {!d.requests.length && !d.joins && <p className="text-muted-foreground">No pending field or join requests.</p>}
           </Step>
           <Step n={3} title="Times reconciled" ok={!variances.length} optional>
