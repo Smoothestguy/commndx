@@ -34,12 +34,12 @@ Deno.serve(async req => {
   ]);
   const {data:crews,error:crewError}=await caller.from('crews').select('id').eq('project_id',pid);if(crewError)throw crewError;
   if(crews?.length)await add(caller.from('crew_members').select('personnel_id').in('crew_id',crews.map(c=>c.id)));
-  const people:{id:string;vendor_id:string}[]=[];
+  const people:{id:string;vendor_id:string|null;non_billable:boolean}[]=[];
   const list=[...ids];
-  for(let i=0;i<list.length;i+=200){const {data,error}=await db.from('personnel').select('id,vendor_id').in('id',list.slice(i,i+200)).not('vendor_id','is',null);if(error)throw error;people.push(...(data||[]));}
-  const vendorIds=[...new Set(people.map(p=>p.vendor_id))];
+  for(let i=0;i<list.length;i+=200){const {data,error}=await db.from('personnel').select('id,vendor_id,non_billable').in('id',list.slice(i,i+200));if(error)throw error;people.push(...(data||[]));}
+  const vendorIds=[...new Set(people.flatMap(p=>p.vendor_id?[p.vendor_id]:[]))];
   const vendors:{id:string;name:string}[]=[];
   for(let i=0;i<vendorIds.length;i+=200){const {data,error}=await db.from('vendors').select('id,name').in('id',vendorIds.slice(i,i+200));if(error)throw error;vendors.push(...(data||[]));}
-  return json({ people:people.map(p=>({personnel_id:p.id,vendor_id:p.vendor_id})),vendors });
+  return json({ people:people.map(p=>({personnel_id:p.id,vendor_id:p.vendor_id,non_billable:p.non_billable})),vendors });
  }catch(e){console.error('project-agencies',e);return json({error:'Unable to load project agencies'},500);}
 });
