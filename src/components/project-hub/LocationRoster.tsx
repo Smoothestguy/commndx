@@ -25,20 +25,21 @@ import { cn } from '@/lib/utils';
 
 type Agencies = { agencyName: (id: string) => string | null | undefined; employerName: (id: string) => string | null | undefined; nonBillableByPerson: Record<string, boolean | undefined> };
 
-function StatusPill({ s, tz }: { s: TodayStatus; tz: string }) {
+function StatusPill({ s, tz, elsewhere }: { s: TodayStatus; tz: string; elsewhere?: string | null }) {
+  if (elsewhere && (s.kind === 'not_checked_in' || s.kind === 'checked_out')) return <Badge variant="outline" className="bg-muted text-muted-foreground max-w-[16rem] truncate" title={`At other site: ${elsewhere}`}>At other site: {elsewhere}</Badge>;
   switch (s.kind) {
     case 'checked_in': return <Badge variant="outline" className="border-success bg-success/15 text-success whitespace-nowrap">Checked in {localTime(s.at, tz)}</Badge>;
     case 'checked_out': return <Badge variant="outline" className="text-muted-foreground whitespace-nowrap">Checked out {localTime(s.at, tz)}</Badge>;
     case 'mission': return <Badge variant="outline" className="border-info/50 bg-info/10 text-info max-w-[14rem] truncate" title={s.note || undefined}>Off-site mission{s.note ? ` · ${s.note}` : ''}</Badge>;
     case 'demobilized': return <Badge variant="outline" className="bg-secondary text-secondary-foreground">Demobilized</Badge>;
-    default: return <Badge variant="outline" className="border-warning/40 text-warning whitespace-nowrap">Not checked in</Badge>;
+    default: return <Badge variant="outline" className="border-muted-foreground/30 text-muted-foreground whitespace-nowrap">Not checked in</Badge>;
   }
 }
 
 const COLS = 'sm:grid-cols-[minmax(0,2.2fr)_minmax(0,1.3fr)_minmax(0,1.6fr)_minmax(0,1fr)_5.5rem]';
 
-export function LocationRoster({ locationId, projectId, timezone, canWrite, assignments, reqRoles, agencies, phones, texted, onText, onLog, onExpense, onUnassign }: {
-  locationId: string; projectId?: string; timezone?: string | null; canWrite: boolean; assignments: LocationAssignment[]; reqRoles: string[];
+export function LocationRoster({ locationId, projectId, timezone, canWrite, assignments, reqRoles, byRole, agencies, phones, texted, onText, onLog, onExpense, onUnassign }: {
+  locationId: string; projectId?: string; timezone?: string | null; canWrite: boolean; assignments: LocationAssignment[]; reqRoles: string[]; byRole: Record<string, { needed: number; assigned: number; rate: number | null }>;
   agencies: Agencies; phones: Record<string, string | null>; texted: Record<string, string>;
   onText: (ids: string[]) => void; onLog: (id: string) => void; onExpense: (id: string) => void; onUnassign: (a: LocationAssignment) => void;
 }) {
@@ -83,11 +84,13 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
     for (const a of active) { const k = a.role_label || 'No role'; by.set(k, [...(by.get(k) ?? []), a]); }
     const rank = (k: string) => /supervisor|lead|foreman/i.test(k) ? 0 : /operator/i.test(k) ? 1 : k === 'No role' ? 9 : 2;
     const name = (a: LocationAssignment) => [a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(' ');
+    for (const [k, v] of Object.entries(byRole)) if (v.needed > 0 && !by.has(k)) by.set(k, []);
+    const inNow = (a: LocationAssignment) => (stays.data?.[a.personnel_id] ?? []).some(x => !x.out_at) ? 0 : 1;
     return {
-      groups: [...by.entries()].sort((x, y) => rank(x[0]) - rank(y[0]) || x[0].localeCompare(y[0])).map(([k, v]) => [k, v.sort((p, q) => name(p).localeCompare(name(q)))] as const),
+      groups: [...by.entries()].sort((x, y) => rank(x[0]) - rank(y[0]) || x[0].localeCompare(y[0])).map(([k, v]) => [k, v.sort((p, q) => inNow(p) - inNow(q) || name(p).localeCompare(name(q)))] as const),
       demob: assignments.filter(a => a.demobilized),
     };
-  }, [assignments]);
+  }, [assignments, byRole, stays.data]);
 
   const row = (a: LocationAssignment) => {
     const name = [a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(' ') || 'Unknown';
@@ -107,14 +110,13 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
       <div className={cn('grid grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-1 px-3 py-2 items-center text-sm', COLS)}>
         <div className="min-w-0">
           <Link to={`/personnel/${a.personnel_id}`} className="font-medium hover:text-primary hover:underline truncate block">{name}</Link>
-          {elsewhere && <span className="text-[11px] text-muted-foreground">At other site: {elsewhere}</span>}
           {canWrite && !phones[a.personnel_id] && <Link to={`/personnel/${a.personnel_id}`} className="block text-[11px] text-warning hover:underline">No phone · add phone</Link>}
         </div>
         <div className="flex flex-wrap gap-1 justify-end sm:justify-start sm:order-none order-3 col-span-2 sm:col-span-1">
-          <AgencyChip name={agencies.agencyName(a.personnel_id)} />
+          <AgencyChip name={(() => { const n = agencies.agencyName(a.personnel_id); return n && n.trim().toLowerCase() !== name.trim().toLowerCase() ? n : undefined; })()} />
           <NonBillableChip value={agencies.nonBillableByPerson[a.personnel_id]} employer={agencies.employerName(a.personnel_id)} />
         </div>
-        <div className="sm:order-none order-2 justify-self-end sm:justify-self-start"><StatusPill s={s} tz={tz} /></div>
+        <div className="sm:order-none order-2 justify-self-end sm:justify-self-start"><StatusPill s={s} tz={tz} elsewhere={elsewhere} /></div>
         <div className="text-xs text-muted-foreground order-4 sm:order-none"><TextedCaption at={texted[`${a.personnel_id}:${locationId}`]} /></div>
         <div className="flex items-center justify-end gap-0.5 order-5 sm:order-none">
           <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Send site text to ${name}`} onClick={() => onText([a.personnel_id])}><MessageSquare className="h-4 w-4" /></Button>
@@ -142,18 +144,21 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
   return <div className="space-y-4">
     {groups.length === 0 && <p className="text-sm text-muted-foreground">No one actively assigned.</p>}
     {groups.map(([role, list]) => <section key={role} className="border rounded-md bg-card" aria-label={`${role} group`}>
-      <h3 className="flex items-center justify-between px-3 py-2 text-sm font-semibold border-b bg-muted/40">{role}s<Badge variant="secondary">{list.length}</Badge></h3>
+      <h3 className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm font-semibold border-b bg-muted/40">{role === 'No role' ? 'No role' : `${role}s`}
+        <span className={cn('tabular-nums', byRole[role]?.needed ? (list.length >= byRole[role].needed ? 'text-success' : 'text-warning') : 'text-muted-foreground')}>{list.length}{byRole[role]?.needed ? `/${byRole[role].needed}` : ''}</span>
+        {canWrite && byRole[role]?.rate != null && <Badge variant="outline" className="font-normal">${Number(byRole[role].rate).toLocaleString(undefined, { maximumFractionDigits: 2 })}/hr</Badge>}</h3>
+      {list.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">No one assigned.</p>}
       {header}<div className="divide-y">{list.map(row)}</div>
     </section>)}
+    {demob.length > 0 && <Collapsible open={demobOpen} onOpenChange={setDemobOpen} className="border rounded-md bg-card">
+      <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 text-sm font-semibold text-muted-foreground"><span>Demobilized · not counted as staffed</span><span className="flex items-center gap-2"><Badge variant="outline">{demob.length}</Badge><ChevronDown className={cn('h-4 w-4 transition-transform', demobOpen && 'rotate-180')} /></span></CollapsibleTrigger>
+      <CollapsibleContent>{header}<div className="divide-y border-t">{demob.map(row)}</div></CollapsibleContent>
+    </Collapsible>}
     <section className="border rounded-md bg-card" aria-label="Assets group">
       <h3 className="flex items-center justify-between px-3 py-2 text-sm font-semibold border-b bg-muted/40">Assets / Trucks<Badge variant="secondary">{assets.data?.length ?? 0}</Badge></h3>
       {assets.isLoading ? <Loader2 className="m-3 h-4 w-4 animate-spin" /> : !assets.data?.length ? <p className="px-3 py-2 text-sm text-muted-foreground">No equipment assigned. Manage in the Assets tab.</p> :
         <ul className="divide-y">{assets.data.map(r => <li key={r.id} className="flex items-center gap-2 px-3 py-2 text-sm"><Truck className="h-4 w-4 text-muted-foreground" />{r.assets?.label ?? 'Asset'}{r.assets?.type && <span className="text-xs text-muted-foreground">· {r.assets.type}</span>}</li>)}</ul>}
     </section>
-    {demob.length > 0 && <Collapsible open={demobOpen} onOpenChange={setDemobOpen} className="border rounded-md bg-card">
-      <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 text-sm font-semibold text-muted-foreground"><span>Demobilized · not counted as staffed</span><span className="flex items-center gap-2"><Badge variant="outline">{demob.length}</Badge><ChevronDown className={cn('h-4 w-4 transition-transform', demobOpen && 'rotate-180')} /></span></CollapsibleTrigger>
-      <CollapsibleContent>{header}<div className="divide-y border-t">{demob.map(row)}</div></CollapsibleContent>
-    </Collapsible>}
 
     <Dialog open={!!roleDlg} onOpenChange={o => !o && !changeRole.isPending && setRoleDlg(null)}><DialogContent className="max-w-sm">
       <DialogHeader><DialogTitle>Change position</DialogTitle></DialogHeader>

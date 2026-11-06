@@ -212,17 +212,8 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
           </div>
         )}
       </div>
-      {roles.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {roles.map(([role, v]) => (
-            <Badge key={role} variant="outline" className={cn(
-              v.assigned >= v.needed ? "border-success/40 bg-success/15 text-success" : "border-warning/40 bg-warning/15 text-warning",
-            )}>{role} {v.assigned}/{v.needed}{canWrite && v.rate != null && ` · $${Number(v.rate).toLocaleString(undefined, { maximumFractionDigits: 2 })}/hr`}</Badge>
-          ))}
-        </div>
-      )}
       <LocationRoster locationId={locationId} projectId={projectId} timezone={timezone} canWrite={canWrite} assignments={assignments} reqRoles={reqRoles}
-        agencies={agencies} phones={phones} texted={texted} onText={setTextIds} onLog={setLogFor} onExpense={setExpenseFor} onUnassign={removePerson} />
+        byRole={summary?.byRole ?? {}} agencies={agencies} phones={phones} texted={texted} onText={setTextIds} onLog={setLogFor} onExpense={setExpenseFor} onUnassign={removePerson} />
       {canWrite && <RequirementsDialog locationId={locationId} open={reqOpen} onOpenChange={setReqOpen} />}
       {canWrite && (
         <AssignDialog locationId={locationId} open={asgOpen} onOpenChange={v=>{setAsgOpen(v);if(!v)setReplacementRole(undefined);}} assignedIds={assignedIds} defaultRole={replacementRole}
