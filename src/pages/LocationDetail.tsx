@@ -27,6 +27,7 @@ import { VisitsCard } from '@/components/project-hub/ProjectDeploymentTab';
 import { ProjectDocuments } from '@/components/projects/ProjectDocuments';
 import { currentWeekStart, addDays } from '@/lib/shifts';
 import { formatLocalDate } from '@/lib/dateUtils';
+import { localDay } from '@/lib/signinSheets';
 const tabs = ['staffing','attendance','sheets','taskorders','lodging','assets','documents'] as const;
 const labels = { staffing:'Staffing',attendance:'Attendance',sheets:'Visits & Sheets',taskorders:'Task orders',lodging:'Lodging',assets:'Assets',documents:'Documents' };
 export default function LocationDetail() {
@@ -47,7 +48,7 @@ export default function LocationDetail() {
   useEffect(() => {
     if (!location) return;
     if (params.get('action') === 'edit' && canWrite) setEdit(true);
-    if (params.get('action') === 'daily') setSheet({location:location.id,day:params.get('day') || new Intl.DateTimeFormat('en-CA',{timeZone:location.timezone || 'America/Chicago'}).format(new Date())});
+    if (params.get('action') === 'daily') setSheet({location:location.id,day:params.get('day') || localDay(new Date().toISOString(),location.timezone || 'America/Chicago')});
   }, [location, params, canWrite]);
   if (isLoading || projectLoading) return <PageLayout title="Location"><Loader2 className="animate-spin"/></PageLayout>;
   if (!project || !location || error || projectError || !projectId) return <PageLayout title="Location unavailable"><Button asChild variant="link"><Link to="/projects">Projects</Link></Button></PageLayout>;
@@ -63,7 +64,7 @@ export default function LocationDetail() {
       <div className="flex flex-wrap items-center gap-2">{canWrite && <><Button variant="outline" size="sm" onClick={()=>setEdit(true)}><Pencil className="h-4 w-4 mr-1"/>Edit</Button><LocationKioskActions location={location} initialOpen={params.get('action')==='kiosk'}/><ProjectJoinLinks projectId={projectId} locationId={location.id}/></>}<DailyTimesheetPanel projectId={projectId} projectName={project.name} locationId={location.id} initialSheet={sheet}/></div>
     </section>
     {edit && <ProjectLocationsTab projectId={projectId} deploymentMode={!!project.deployment_mode} editTargetId={location.id}/>}
-    <Tabs value={tab} onValueChange={v=>{setTab(v as typeof tab);}} className="mt-4"><TabsList className="h-auto flex flex-wrap justify-start gap-1">{tabs.map(t=><TabsTrigger value={t} key={t}>{labels[t]}</TabsTrigger>)}</TabsList></Tabs>
+    <Tabs value={tab} onValueChange={v=>{setParams(prev=>{const next=new URLSearchParams(prev);next.set('tab',v);next.delete('sub');next.delete('action');return next;});}} className="mt-4"><TabsList className="h-auto flex flex-wrap justify-start gap-1">{tabs.map(t=><TabsTrigger value={t} key={t}>{labels[t]}</TabsTrigger>)}</TabsList></Tabs>
     <section className="py-4" aria-label={labels[tab]}>
       {tab==='staffing' && <LocationStaffing locationId={location.id} locationName={location.name} projectId={projectId} timezone={location.timezone} summary={summary} canWrite={canWrite}/>}
       {(tab==='attendance'||tab==='sheets') && <><div className="flex items-center gap-2 mb-3"><label htmlFor="location-week" className="text-sm">Week of</label><Input id="location-week" type="date" className="w-44" value={week} onChange={e=>{if(e.target.value)setWeek(e.target.value);}}/></div>{tab==='sheets' && <SigninStatusBoard projectId={projectId} locations={scoped} onSelect={(id,day)=>{setSheet({location:id,day});setParams(prev=>{const next=new URLSearchParams(prev);next.set('day',day);return next;});}}/>}<VisitsCard key={tab} projectId={projectId} locations={scoped} crews={[]} from={week} to={addDays(week,6)} canEdit={canWrite} defaultView={tab==='attendance'?'timesheet':'visits'} locationScopeId={location.id} unframed/></>}

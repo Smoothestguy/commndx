@@ -244,7 +244,7 @@ export function ProjectContextMenu({
   return (
     <>
       <ContextMenu>
-        <ContextMenuTrigger asChild onContextMenu={e => { if (e.target instanceof Element && e.target.closest('a[href]')) e.preventDefault(); }}>{children}</ContextMenuTrigger>
+        <ContextMenuTrigger asChild onContextMenuCapture={e => { if (e.target instanceof Element && e.target.closest('a[href]')) e.stopPropagation(); }}>{children}</ContextMenuTrigger>
         <ContextMenuContent className="w-56">
           {renderMenuItems(a, project, ContextMenuItem, ContextMenuSeparator)}
         </ContextMenuContent>

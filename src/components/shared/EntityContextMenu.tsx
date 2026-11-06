@@ -5,8 +5,8 @@ export type EntityAction = { label: string; run: () => void; destructive?: boole
 /** Right-click names keeps the native anchor menu; other row/card surfaces show actions. */
 export function EntityContextMenu({ href, person = false, actions = [], children }: { href: string; person?: boolean; actions?: EntityAction[]; children: ReactNode }) {
   const navigate = useNavigate();
-  return <ContextMenu><ContextMenuTrigger asChild onContextMenu={event => {
-    if (event.target instanceof Element && event.target.closest('a[href]')) event.preventDefault();
+  return <ContextMenu><ContextMenuTrigger asChild onContextMenuCapture={event => {
+    if (event.target instanceof Element && event.target.closest('a[href]')) event.stopPropagation();
   }}>{children}</ContextMenuTrigger><ContextMenuContent className="w-56" onClick={e => e.stopPropagation()}>
     <ContextMenuItem onSelect={() => navigate(href)}>{person ? 'Open profile' : 'Open'}</ContextMenuItem>
     <ContextMenuItem onSelect={() => window.open(href, '_blank', 'noopener,noreferrer')}>Open in new tab</ContextMenuItem>

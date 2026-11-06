@@ -85,7 +85,7 @@ const Projects = () => {
   const setActiveTab = (v: string) => {
     const next = new URLSearchParams(searchParams);
     if (v === "active") next.delete("tab"); else next.set("tab", v);
-    setSearchParams(next, { replace: true });
+    setSearchParams(next);
     setSelectedIds(new Set());
   };
 
@@ -387,7 +387,7 @@ const Projects = () => {
       tableId={tableId}
       data={projectList}
       columns={columns}
-      onRowClick={(item) => navigate(`/projects/${item.id}`)}
+      rowHref={(item) => `/projects/${item.id}`}
       selectable
       selectedIds={selectedIds}
       onSelectionChange={setSelectedIds}
