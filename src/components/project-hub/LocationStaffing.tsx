@@ -216,7 +216,7 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
           {assignments.map((a) => (
             <span key={a.id} className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-md border bg-muted/40 pl-2 pr-1 py-0.5 text-xs">
               <span className="font-medium">{[a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(" ") || "Unknown"}</span>
-              <NonBillableChip value={agencies.nonBillableByPerson[a.personnel_id]} agency={agencies.agencyName(a.personnel_id)} />
+              <NonBillableChip value={agencies.nonBillableByPerson[a.personnel_id]} employer={agencies.employerName(a.personnel_id)} />
               {canWrite && !phones[a.personnel_id] && <Button asChild variant="link" size="sm" className="h-auto p-0 text-warning text-xs"><Link to={`/personnel/${a.personnel_id}`}>No phone · add phone</Link></Button>}
               {canWrite
                 ? <span className="text-muted-foreground inline-flex items-center">·<RoleSelect value={a.role_label} canEdit priorityRoles={reqRoles} onChange={(role_label) => setRole.mutate({ id: a.id, location_id: locationId, role_label })} className="max-w-[9rem]" /></span>

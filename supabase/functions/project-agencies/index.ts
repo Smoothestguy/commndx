@@ -1,4 +1,4 @@
-// Staff-readable agency names only; personnel/vendor financial and private fields never leave this endpoint.
+// Staff-readable employer names only; personnel/vendor/customer private fields never leave this endpoint.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
@@ -34,12 +34,15 @@ Deno.serve(async req => {
   ]);
   const {data:crews,error:crewError}=await caller.from('crews').select('id').eq('project_id',pid);if(crewError)throw crewError;
   if(crews?.length)await add(caller.from('crew_members').select('personnel_id').in('crew_id',crews.map(c=>c.id)));
-  const people:{id:string;vendor_id:string|null;non_billable:boolean}[]=[];
+  const people:{id:string;vendor_id:string|null;employer_customer_id:string|null;non_billable:boolean}[]=[];
   const list=[...ids];
-  for(let i=0;i<list.length;i+=200){const {data,error}=await db.from('personnel').select('id,vendor_id,non_billable').in('id',list.slice(i,i+200));if(error)throw error;people.push(...(data||[]));}
-  const vendorIds=[...new Set(people.flatMap(p=>p.vendor_id?[p.vendor_id]:[]))];
+  for(let i=0;i<list.length;i+=200){const {data,error}=await db.from('personnel').select('id,vendor_id,employer_customer_id,non_billable').in('id',list.slice(i,i+200));if(error)throw error;people.push(...(data||[]));}
+  const vendorIds=[...new Set(people.flatMap(p=>!p.employer_customer_id&&p.vendor_id?[p.vendor_id]:[]))];
   const vendors:{id:string;name:string}[]=[];
   for(let i=0;i<vendorIds.length;i+=200){const {data,error}=await db.from('vendors').select('id,name').in('id',vendorIds.slice(i,i+200));if(error)throw error;vendors.push(...(data||[]));}
-  return json({ people:people.map(p=>({personnel_id:p.id,vendor_id:p.vendor_id,non_billable:p.non_billable})),vendors });
+  const customerIds=[...new Set(people.flatMap(p=>p.employer_customer_id?[p.employer_customer_id]:[]))];
+  const customers:{id:string;name:string}[]=[];
+  for(let i=0;i<customerIds.length;i+=200){const {data,error}=await db.from('customers').select('id,name').in('id',customerIds.slice(i,i+200));if(error)throw error;customers.push(...(data||[]));}
+  return json({ people:people.map(p=>({personnel_id:p.id,vendor_id:p.employer_customer_id?null:p.vendor_id,employer_customer_id:p.employer_customer_id,non_billable:p.non_billable})),vendors,customers });
  }catch(e){console.error('project-agencies',e);return json({error:'Unable to load project agencies'},500);}
 });
