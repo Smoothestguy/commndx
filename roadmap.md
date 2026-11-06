@@ -1,3 +1,8 @@
+# White-labeled agency portal
+- [ ] Agency manager logo upload/remove and portal token create/copy/revoke/QR on vendor detail and rows.
+- [ ] Token-only light agency portal: date attendance/stats, Mon–Sun weekly hours and XLSX, status-grouped roster; worker punch branding.
+- [ ] Regenerate live types; privacy/rule tests, requested TypeScript check and browser verification. No migrations.
+
 # Task-order refinements
 - [x] Shared direct requirements add/change/remove and location-editor saves record accepted internal ADJ deltas without sync; explicit legacy baseline capture maintains authorization consistency. Web Locks and expected-state guards reduce concurrent edits; rejected evidence survives incomplete saves. No atomic multi-request guarantee without a live transactional RPC.
 - [x] Optional effective time, Yes/No travel-time and structured demobilization details in staff and token-only customer forms/history; accepted demob Deployment alerts. New token-validated service wraps existing customer RPCs, which omit the live extra columns; no anonymous table grants.
