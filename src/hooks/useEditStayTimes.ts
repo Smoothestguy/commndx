@@ -53,7 +53,7 @@ export function useEditStayTimes(projectId: string) {
         for (const s of prepared) {
           const before = { checked_in_at: s.oldIn, checked_out_at: s.oldOut, signature_url: s.stay.signature_url, signed_at: s.stay.signed_at, visit_id: s.stay.visit_id, personnel_id: s.stay.personnel_id };
           const after = s.remove ? { removed: true } : { checked_in_at: s.inAt, checked_out_at: s.outAt };
-          const { data: audit, error: ae } = await supabase.from('audit_logs').insert({ user_id: user.id, action_type: s.remove ? 'stay_delete' : 'stay_times_edit', resource_type: 'visit_personnel', resource_id: s.id, changes_before: before, changes_after: after, metadata: { project_id: projectId, location_id: s.locationId }, success: false }).select('id').single();
+          const { data: audit, error: ae } = await supabase.from('audit_logs').insert({ user_id: user.id, user_email: user.email || 'unknown', action_type: s.remove ? 'stay_delete' : 'stay_times_edit', resource_type: 'visit_personnel', resource_id: s.id, changes_before: before, changes_after: after, metadata: { project_id: projectId, location_id: s.locationId }, success: false }).select('id').single();
           if (ae) throw ae;
           let query = s.remove ? supabase.from('visit_personnel').delete() : supabase.from('visit_personnel').update({ checked_in_at: s.inAt, checked_out_at: s.outAt });
           query = query.eq('id', s.id);
@@ -63,7 +63,7 @@ export function useEditStayTimes(projectId: string) {
           if (we) throw we;
           if (!written?.length) throw new Error('Stay changed; refresh and retry');
           saved++;
-          const { error: completeError } = await supabase.from('audit_logs').insert({ user_id: user.id, action_type: s.remove ? 'stay_delete' : 'stay_times_edit', resource_type: 'visit_personnel', resource_id: s.id, changes_before: before, changes_after: after, metadata: { project_id: projectId, location_id: s.locationId, attempt_id: audit.id }, success: true });
+          const { error: completeError } = await supabase.from('audit_logs').insert({ user_id: user.id, user_email: user.email || 'unknown', action_type: s.remove ? 'stay_delete' : 'stay_times_edit', resource_type: 'visit_personnel', resource_id: s.id, changes_before: before, changes_after: after, metadata: { project_id: projectId, location_id: s.locationId, attempt_id: audit.id }, success: true });
           if (completeError) throw completeError;
           if (s.remove) {
             // The live FK nullifies visit_personnel_id on deletion; preserve the financial row,
@@ -74,7 +74,7 @@ export function useEditStayTimes(projectId: string) {
         }
       } catch (e) {
         for (const scope of prepared) await recomputeAttendanceFromVisits(scope.locationId, scope.dates).catch(() => undefined);
-        throw new Error(`${saved ? `${saved} stay(s) saved; remaining changes failed. ` : ''}${e instanceof Error ? e.message : 'Unable to save changes'}`);
+        throw new Error(`${saved ? `${saved} stay(s) saved; remaining changes failed. ` : ''}${e && typeof e === 'object' && 'message' in e ? String(e.message) : 'Unable to save changes'}`);
       }
       for (const locationId of new Set(prepared.map(s => s.locationId))) await recomputeAttendanceFromVisits(locationId, prepared.filter(s => s.locationId === locationId).flatMap(s => s.dates));
     },
