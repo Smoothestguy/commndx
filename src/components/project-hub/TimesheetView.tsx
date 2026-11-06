@@ -1,4 +1,5 @@
 import { useLateStays } from '@/hooks/useLateStays';
+import { localDay } from '@/lib/signinSheets';
 import { maxLate } from '@/lib/lateAttendance';
 import { LateBadge } from '@/components/signin/LateBadge';
 import { Link } from 'react-router-dom';
@@ -29,7 +30,7 @@ import { toast } from "sonner";
 const fmtH = (n: number) => (Math.round(n * 100) / 100).toFixed(2).replace(/\.00$/, "");
 
 export function TimesheetView({ projectId, projectName, locations, week, setWeek, onPerson, locationScopeId }: {
-  projectId: string; projectName: string; locations: ({ id: string; name: string } & ShiftStarts)[];
+  projectId: string; projectName: string; locations: ({ id: string; name: string; timezone?: string | null } & ShiftStarts)[];
   locationScopeId?: string; week: string; setWeek: (w: string) => void; onPerson: (personnelId: string, weekStart: string) => void;
 }) {
   const agencies = useProjectAgencies(projectId);
@@ -117,7 +118,7 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
                       const c = r.days[d]; const h = cellH(c);
                       const both = shift === "all" && c && c.day > 0 && c.night > 0;
                       const cellStays = staysForCell(entries, r.personnel_id, d, locId || undefined);
-                      const late = maxLate(cellStays.map(e => lateStays[e.id.split(':')[0]] || {}));
+                      const late = maxLate(cellStays.filter(e => localDay(e.in_at, locations.find(l => l.id === e.location_id)?.timezone || 'America/Chicago') === d).map(e => lateStays[e.id.split(':')[0]] || {}));
                       const manual = cellStays.some(e => e.source === 'Manual' || editedIds?.has(e.id.split(':')[0]));
                       return (
                         <td key={d} className={`text-right px-1 whitespace-nowrap ${(late.late_minutes ?? 0) > 0 ? "bg-destructive/10 text-destructive" : ""}`}>

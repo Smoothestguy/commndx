@@ -1,8 +1,8 @@
 # Late clock-in and project cleanup
-- [ ] Update every live punch caller; late-reason screens/captions and durable retries.
-- [ ] Red late-day markers in attendance, Trail, Timesheet and customer token portal; five-minute reminders and bilingual already-registered join screen.
-- [ ] Browser audit project tabs and empty stats; small safe hide-empty cleanup with exact report.
-- [ ] Focused tests, browser verification and bunx tsgo --noEmit; no migrations or cron activation.
+- [x] Regenerated live types; updated all punch RPC callers, kiosk/Field Mode reason propagation, public durable retries, shared amber late-reason screens and captions. No migrations or schedule changes.
+- [x] Minimal batched staff late metadata, red location/day grid/Trail/Timesheet markers and reason tooltips; token-validated dollar-free customer attendance enrichment; five-minute reminders and bilingual already-registered screen.
+- [x] Browser audit: deployment Time hides duplicated canonical ledger (old links redirect Deployment); empty deployment Contract/Recruiting/Progress summaries and data-less Docs progress hide. Recruiting hides only when no task-order setup exists, preserving setup workflows; Crew Visits already suppressed, so unchanged. Milestone add and financial access preserved.
+- [x] 44 tests and bunx tsgo --noEmit passed; preview build OK. Browser verified public/kiosk reason resend/captions, original-time retention, join bilingual response, customer reason tooltip/mobile, staff red Timesheet/Trail using intercepted late metadata on populated real data, and signed-in cleanup. Live customer token readback: 33 locations/10 people/no financial keys; temporary token revoked. Real late punch writes, kiosk camera/iPhone Safari and separate field session not exercised; no SMS sent or cron enabled.
 
 # Existing stay corrections
 - [x] Shared manager/admin Edit times dialog from project/location Timesheet cells and Trail In/Out, including running stays, source chips, location-local dates/times and staged per-stay deletion.
