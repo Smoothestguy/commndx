@@ -22,4 +22,4 @@ export function adjustmentLines(before: {role_label: string; headcount_needed: n
     return qty_delta ? [{line_kind: 'position' as const, label, qty_delta, kind: qty_delta > 0 ? 'increase' as const : 'decrease' as const}] : [];
   });
 }
-export function adjustmentNumber(day: string, time: string) { return `ADJ-${day.replaceAll('-', '')}-${time.slice(0,5).replace(':','')}`; }
+export function adjustmentNumber(day: string, time: string) { return `ADJ-${day.replace(/-/g, '')}-${time.slice(0,5).replace(':','')}`; }
