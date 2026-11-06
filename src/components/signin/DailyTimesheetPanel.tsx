@@ -19,6 +19,7 @@ import { CustomerSheetApproval, downloadStoredSheet } from './CustomerSheetAppro
 import { SigninSheetsPanel } from '@/components/documents/SigninSheetsPanel';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useEffect } from 'react';
+import { MissingSignatures } from './MissingSignatures';
 
 export function DailyTimesheetPanel({ projectId, projectName, locationId, initialSheet }: { projectId: string; projectName: string; locationId?: string; initialSheet?: { location: string; day: string } }) {
   const { isAdmin, isManager } = useUserRole();
@@ -29,7 +30,7 @@ export function DailyTimesheetPanel({ projectId, projectName, locationId, initia
   const [picked, setPicked] = useState(locationId || '');
   useEffect(() => { if (initialSheet) { setDay(initialSheet.day); setPicked(initialSheet.location); setOpen(true); } }, [initialSheet]);
   const selected = locations.filter(l => l.id === (locationId || picked) || !(locationId || picked));
-  const { data: stays = [], isLoading, error } = useQuery({ queryKey: ['signin-sheet-stays', projectId, day, day], enabled: open && !!day, queryFn: () => loadSheetStays(projectId, locations, day, day) });
+  const { data: stays = [], isLoading, error } = useQuery({ queryKey: ['signin-sheet-stays', projectId, day, day], enabled: open && !!day, queryFn: () => loadSheetStays(projectId, locations, day, day), refetchOnMount: 'always', staleTime: 0 });
   const { data: saved = [], error: savedError } = useSheetDays(selected.map(l => l.id), day, day, open && !!day);
   return <>
     <Button size="sm" variant="outline" onClick={() => { const l = locations.find(l => l.id === locationId); if (l) setDay(localDay(new Date().toISOString(), l.timezone || 'America/Chicago')); setOpen(true); }}><Download className="h-4 w-4 mr-1" />Daily timesheet (PDF)</Button>
@@ -40,7 +41,7 @@ export function DailyTimesheetPanel({ projectId, projectName, locationId, initia
         const zone = location.timezone || 'America/Chicago', rows = rowsForDay(stays, location.id, day, zone);
         const sheet = saved.find(s => s.location_id === location.id && s.sheet_date === day);
         const generate = async () => {const levels=await loadLocationAuthorization(location.id,day);const approval=sheet?.status==='locked'&&sheet.countersign_url?{name:sheet.countersign_name,signature:sheet.countersign_url,at:sheet.countersigned_at}:undefined;return generateDailyTimesheet(rows, { day, zone, projectNumber: location.project_number || '', mission: projectName, location: location.name, authorized: levels===null?undefined:authorizedTotal(levels,'position'), approval }, loadSheetSignature);};
-        return <section key={location.id} className="border-b pb-3 space-y-2"><h3 className="font-medium">{location.name} · {day}</h3>{template&&<SigninSheetsPanel doc={template} projectName={projectName}/>}<div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={busy || !day} onClick={async () => { setBusy(true); try {
+        return <section key={location.id} className="border-b pb-3 space-y-2"><h3 className="font-medium">{location.name} · {day}</h3><MissingSignatures locationId={location.id} day={day} zone={zone} rows={rows} />{template&&<SigninSheetsPanel doc={template} projectName={projectName}/>}<div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={busy || !day} onClick={async () => { setBusy(true); try {
           const name = `FRG-${sheetFileName(location.name, day)}`;
           if (!template && sheet?.status === 'locked' && sheet.pdf_url) await downloadStoredSheet(sheet.pdf_url, name);
           else { const bytes = await generate(); const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' })); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 10000); }

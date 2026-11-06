@@ -9834,6 +9834,76 @@ export type Database = {
           },
         ]
       }
+      timesheet_signature_requests: {
+        Row: {
+          expires_at: string
+          id: string
+          location_id: string
+          personnel_id: string
+          requested_at: string
+          requested_by: string
+          sheet_date: string
+          signed_at: string | null
+          sms_error: string | null
+          sms_status: string
+          status: string
+          token: string
+          visit_personnel_id: string | null
+        }
+        Insert: {
+          expires_at?: string
+          id?: string
+          location_id: string
+          personnel_id: string
+          requested_at?: string
+          requested_by: string
+          sheet_date: string
+          signed_at?: string | null
+          sms_error?: string | null
+          sms_status?: string
+          status?: string
+          token?: string
+          visit_personnel_id?: string | null
+        }
+        Update: {
+          expires_at?: string
+          id?: string
+          location_id?: string
+          personnel_id?: string
+          requested_at?: string
+          requested_by?: string
+          sheet_date?: string
+          signed_at?: string | null
+          sms_error?: string | null
+          sms_status?: string
+          status?: string
+          token?: string
+          visit_personnel_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timesheet_signature_requests_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timesheet_signature_requests_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timesheet_signature_requests_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tm_ticket_line_items: {
         Row: {
           created_at: string

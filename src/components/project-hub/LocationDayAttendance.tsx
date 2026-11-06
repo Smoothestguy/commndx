@@ -1,3 +1,4 @@
+import { MissingSignatures } from '@/components/signin/MissingSignatures';
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,7 +56,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
     queryFn: async () => {
       const base = new Date(`${day}T12:00:00Z`).getTime();
       const [win, open] = await Promise.all([
-        supabase.from('personnel_location_trail').select('visit_personnel_id,personnel_id,first_name,last_name,in_at,out_at,hours').eq('location_id', locationId).gte('in_at', new Date(base - 864e5).toISOString()).lte('in_at', new Date(base + 864e5).toISOString()),
+        supabase.from('personnel_location_trail').select('visit_personnel_id,personnel_id,first_name,last_name,in_at,out_at,hours,signature_url').eq('location_id', locationId).gte('in_at', new Date(base - 864e5).toISOString()).lte('in_at', new Date(base + 864e5).toISOString()),
         supabase.from('personnel_location_trail').select('visit_personnel_id,personnel_id,first_name,last_name,in_at,out_at,hours').eq('location_id', locationId).is('out_at', null).order('in_at').limit(200),
       ]);
       if (win.error) throw win.error; if (open.error) throw open.error;
@@ -66,7 +67,8 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
       const toStay = (r: typeof rows[number]): Stay => { const m = meta.data?.find(x => x.id === r.visit_personnel_id); return { id: r.visit_personnel_id!, personnel_id: r.personnel_id!, name: [r.first_name, r.last_name].filter(Boolean).join(' '), in_at: r.in_at!, out_at: r.out_at, hours: r.hours, late_minutes: m?.late_minutes ?? null, late_reason: m?.late_reason ?? null, late_ack_reason: m?.late_ack_reason ?? null, in_geofence: m?.in_geofence ?? null, offsite_reason: m?.offsite_reason ?? null, synced_late: m?.synced_late ?? null }; };
       const dayStays = (win.data ?? []).filter(r => r.visit_personnel_id && r.in_at && localDay(r.in_at, tz) === day).map(toStay);
       const openStays = (open.data ?? []).filter(r => r.visit_personnel_id && r.in_at).map(toStay);
-      return { dayStays, openStays };
+      const sigRows = (win.data ?? []).filter(r => r.personnel_id && r.in_at && localDay(r.in_at, tz) === day).map(r => ({ personnelId: r.personnel_id!, name: [r.first_name, r.last_name].filter(Boolean).join(' '), signature: r.signature_url }));
+      return { dayStays, openStays, sigRows };
     },
   });
   const rows = useMemo(() => {
@@ -129,7 +131,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   return <div className="space-y-4">
     <div className="flex flex-wrap items-end gap-3">
       <div><label htmlFor="att-day" className="text-sm block">Date</label><Input id="att-day" type="date" className="w-44" value={day} onChange={e => { if (e.target.value) { setDay(e.target.value); setSel(new Set()); } }} /></div>
-      <p className="text-sm text-muted-foreground pb-2">{present}/{rows.length} signed in · {total.toFixed(2)} h closed</p>
+      <div className="flex flex-wrap items-center gap-2 pb-2"><p className="text-sm text-muted-foreground">{present}/{rows.length} signed in · {total.toFixed(2)} h closed</p><MissingSignatures compact locationId={locationId} day={day} zone={tz} rows={q.data?.sigRows ?? []} /></div>
       {canWrite && <Button className="ml-auto" size="sm" variant="outline" disabled={!sel.size} onClick={() => setBulk({ date: day, inTime: '', outTime: '', note: '' })}><Clock className="h-4 w-4 mr-1" />Set times for {sel.size || ''} selected</Button>}
     </div>
     {stale.length > 0 && <div className="rounded-md border border-warning/50 bg-warning/5 p-3 space-y-2" role="region" aria-label="Open punches">
