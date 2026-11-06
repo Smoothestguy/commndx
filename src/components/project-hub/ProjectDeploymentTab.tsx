@@ -207,6 +207,7 @@ function AttendanceCell({ status, hours, crewInitial, onTap, onLongPress, label,
       onPointerDown={start}
       onPointerUp={cancel}
       onPointerLeave={cancel}
+      onPointerCancel={cancel}
       onContextMenu={(e) => { e.preventDefault(); }}
       onClick={() => { if (fired.current) { fired.current = false; return; } onTap(); }}
       className={cn(
