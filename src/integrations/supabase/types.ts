@@ -255,6 +255,44 @@ export type Database = {
         }
         Relationships: []
       }
+      agency_portal_tokens: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          label: string | null
+          vendor_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          label?: string | null
+          vendor_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          label?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_portal_tokens_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_dev_conversations: {
         Row: {
           created_at: string | null
@@ -10664,6 +10702,7 @@ export type Database = {
           is_active: boolean | null
           itin: string | null
           license_number: string | null
+          logo_url: string | null
           merge_reason: string | null
           merged_at: string | null
           merged_by: string | null
@@ -10719,6 +10758,7 @@ export type Database = {
           is_active?: boolean | null
           itin?: string | null
           license_number?: string | null
+          logo_url?: string | null
           merge_reason?: string | null
           merged_at?: string | null
           merged_by?: string | null
@@ -10774,6 +10814,7 @@ export type Database = {
           is_active?: boolean | null
           itin?: string | null
           license_number?: string | null
+          logo_url?: string | null
           merge_reason?: string | null
           merged_at?: string | null
           merged_by?: string | null
@@ -11560,6 +11601,14 @@ export type Database = {
           bank_routing_number: string
           banking_info_updated_at: string
         }[]
+      }
+      agency_portal_overview: {
+        Args: { p_date?: string; p_token: string }
+        Returns: Json
+      }
+      agency_portal_week: {
+        Args: { p_token: string; p_week_start: string }
+        Returns: Json
       }
       applicant_is_onboarded: {
         Args: { _applicant_id: string }

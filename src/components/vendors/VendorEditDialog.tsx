@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { VendorLogoUpload } from './VendorLogoUpload';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -193,6 +194,7 @@ export function VendorEditDialog({ vendor, open, onOpenChange }: VendorEditDialo
           <DialogTitle>Edit Vendor</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <VendorLogoUpload vendorId={vendor.id} logoUrl={vendor.logo_url}/>
           {/* Basic Information */}
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">

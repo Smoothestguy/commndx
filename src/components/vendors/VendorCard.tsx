@@ -1,4 +1,5 @@
 import { Building2, Mail, Phone, Edit, Trash2, Tag } from "lucide-react";
+import { AgencyPortalLinks } from './AgencyPortalLinks';
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +55,7 @@ export const VendorCard = ({ vendor, onEdit, onDelete, index, isSelected, onSele
               </div>
             </div>
             <div className="flex items-center gap-1">
+              <AgencyPortalLinks vendorId={vendor.id} compact/>
               <Button
                 variant="ghost"
                 size="icon"

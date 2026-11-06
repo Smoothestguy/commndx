@@ -1,0 +1,25 @@
+import {useEffect,useState} from 'react';
+import {useQuery} from '@tanstack/react-query';
+import {supabase} from '@/integrations/supabase/client';
+import {useAuth} from '@/contexts/AuthContext';
+import {useUserRole} from '@/hooks/useUserRole';
+import {agencyExpiry,agencyUrl} from '@/lib/agencyPortal';
+import {Button} from '@/components/ui/button';
+import {Input} from '@/components/ui/input';
+import {Label} from '@/components/ui/label';
+import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
+import {Copy,Plus,X,Loader2,Link2} from 'lucide-react';
+import {toast} from 'sonner';
+
+export function AgencyPortalLinks({vendorId,compact=false}:{vendorId:string;compact?:boolean}) {
+ const {isAdmin,isManager}=useUserRole();const [open,setOpen]=useState(false);
+ if(!isAdmin&&!isManager)return null;
+ return <div onClick={e=>e.stopPropagation()}><Button type="button" variant="outline" size={compact?'icon':'default'} title="Agency portal link" aria-label="Agency portal link" onClick={()=>setOpen(true)}><Link2 className="h-4 w-4"/>{!compact&&<span className="ml-2">Agency portal link</span>}</Button>{open&&<AgencyLinksDialog vendorId={vendorId} open={open} onOpenChange={setOpen}/>}</div>;
+}
+function AgencyLinksDialog({vendorId,open,onOpenChange}:{vendorId:string;open:boolean;onOpenChange:(value:boolean)=>void}) {
+ const {user}=useAuth(),[label,setLabel]=useState(''),[selected,setSelected]=useState(''),[qr,setQr]=useState(''),[busy,setBusy]=useState(false);
+ const links=useQuery({queryKey:['agency-portal-links',vendorId],enabled:open,queryFn:async()=>{const {data,error}=await supabase.from('agency_portal_tokens').select('id,label,expires_at').eq('vendor_id',vendorId).eq('active',true).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false});if(error)throw error;return data||[];}});
+ const url=selected?agencyUrl(selected):'';
+ useEffect(()=>{let live=true;setQr('');if(url)import('qrcode').then(({default:QR})=>QR.toDataURL(url,{width:320,margin:2})).then(value=>{if(live)setQr(value);}).catch(()=>{if(live)toast.error('Unable to create QR code');});return()=>{live=false;};},[url]);
+ return <Dialog open={open} onOpenChange={v=>{if(!busy)onOpenChange(v);}}><DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Agency portal links</DialogTitle><DialogDescription>Links expire after 120 days. Share only with this agency.</DialogDescription></DialogHeader><form className="space-y-3" onSubmit={async e=>{e.preventDefault();if(busy||!user)return;setBusy(true);try{const {data,error}=await supabase.from('agency_portal_tokens').insert({vendor_id:vendorId,label:label.trim()||null,created_by:user.id,expires_at:agencyExpiry()}).select('id').single();if(error)throw error;setSelected(data.id);await links.refetch();toast.success('Agency portal link created');}catch{toast.error('Unable to create portal link');}finally{setBusy(false);}}}><Label htmlFor="agency-link-label">Label (optional)</Label><Input id="agency-link-label" value={label} maxLength={100} disabled={busy} onChange={e=>setLabel(e.target.value)}/><Button disabled={busy} type="submit">{busy?<Loader2 className="h-4 w-4 mr-2 animate-spin"/>:<Plus className="h-4 w-4 mr-2"/>}Create portal link</Button></form>{url&&<section className="border-t pt-4 space-y-3"><Input aria-label="Agency portal URL" readOnly value={url} onFocus={e=>e.target.select()}/><Button variant="outline" onClick={async()=>{try{await navigator.clipboard.writeText(url);toast.success('Portal link copied');}catch{toast.error('Select and copy the link');}}}><Copy className="h-4 w-4 mr-2"/>Copy link</Button>{qr&&<img className="w-48 h-48 mx-auto" src={qr} alt="Agency portal QR code"/>}</section>}<section className="border-t pt-4 space-y-2"><h2 className="font-semibold">Active links</h2>{links.isLoading?<Loader2 className="animate-spin"/>:links.error?<div role="alert"><p>Unable to load links.</p><Button variant="outline" onClick={()=>links.refetch()}>Try again</Button></div>:links.data?.map(link=><div key={link.id} className="flex items-center gap-2 border-b py-2"><Button variant="ghost" className="flex-1 h-auto whitespace-normal justify-start text-left" onClick={()=>setSelected(link.id)}><span>{link.label||'Agency portal'}<span className="block text-xs text-muted-foreground">Expires {new Date(link.expires_at).toLocaleDateString()}</span></span></Button><Button size="icon" variant="ghost" aria-label="Revoke agency portal link" disabled={busy} onClick={async()=>{setBusy(true);try{const {error}=await supabase.from('agency_portal_tokens').update({active:false}).eq('id',link.id).eq('vendor_id',vendorId).select('id').single();if(error)throw error;if(selected===link.id)setSelected('');await links.refetch();toast.success('Portal link revoked');}catch{toast.error('Unable to revoke link');}finally{setBusy(false);}}}><X className="h-4 w-4 text-destructive"/></Button></div>)}{links.data?.length===0&&<p className="text-sm text-muted-foreground">No active links.</p>}</section></DialogContent></Dialog>;
+}
