@@ -110,7 +110,7 @@ export function ProjectOverviewTab({ projectId, project }: Props) {
             </p>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
       {(project.poc_name || project.description) && (
         <div className="grid gap-4 lg:grid-cols-2">
