@@ -14,6 +14,7 @@ import { EarlyCheckIn } from '@/components/signin/EarlyCheckIn';
 import { ShiftExtensionRequest } from '@/components/signin/ShiftExtensionRequest';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { agencyLogo } from '@/lib/agencyPortal';
+import { LangSwitcher, usePublicLang } from '@/lib/publicLang';
 
 type Info = { valid: boolean; reason?: string; first_name?: string; location_name?: string; address?: string | null; report_at?: string | null; on_site_since?: string | null; timezone?: string; agency_name?: string | null; agency_logo_url?: string | null };
 type Done = { action: "in" | "out"; at: string; geo: boolean; offsite: boolean; early?: boolean; lateMinutes?: number } | null;
@@ -37,6 +38,8 @@ function getPos(): Promise<{ lat: number; lng: number; accuracy: number } | null
 
 export default function SitePunch() {
   const { token } = useParams<{ token: string }>();
+  const { tr } = usePublicLang();
+  const trRef = useRef(tr); trRef.current = tr;
   const [info, setInfo] = useState<Info | null>(() => token ? cachedInfo(token) : null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<Done>(null);
