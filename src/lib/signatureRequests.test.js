@@ -1,0 +1,10 @@
+import { expect, test } from 'bun:test';
+import { summarizeSignatures } from './signatureRequests.ts';
+
+test('a person with two stays counts once and is signed if any stay is signed', () => {
+  const s = summarizeSignatures([
+    { personnelId: 'a', name: 'Ana', signature: null }, { personnelId: 'a', name: 'Ana', signature: 'x.png' },
+    { personnelId: 'b', name: 'Bo', signature: null },
+  ]);
+  expect(s.total).toBe(2); expect(s.signed).toBe(1); expect(s.missing.map(m => m.name)).toEqual(['Bo']);
+});
