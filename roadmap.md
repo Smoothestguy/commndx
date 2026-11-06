@@ -147,3 +147,7 @@
 - [x] Audit/gate money in field-facing project views, roster, deployment receipts/mileage, asset creation, header contract value and financial project PDF export; admin Financials unchanged.
 - [x] Add clearable agency editor/tags and project Agency filters with authenticated project-scoped batched minimal-projection lookup; no migrations.
 - [x] Verify populated Edilberto Quiros agency XLSX from selected week with exactly Timesheet/Detail and no money columns; workbook scope/privacy/open-punch tests and TypeScript passed. Authenticated mobile flows passed; plain-user presentation gates checked with intercepted role response, not a separate real plain-user session; agency write not exercised.
+
+# Location attendance + staffing refinements
+- [x] 24h section, bulk audited time edits, late approval reasons (row tooltip + internal Detail export)
+- [x] Demobilized excluded from counts/collapsed group; dated position changes; derived single today badge with off-site missions; no cross-location blending; grouped aligned roster with assets
