@@ -31,7 +31,7 @@ export default function DocumentSign() {
     setSaving(true);
     try {
       const coords = await gps();
-      const result = await documentSign<{ signed_at: string }><LangSwitcher />({ action: 'sign', token, signature_png_base64: png, sign_name: name.trim(), ...coords });
+      const result = await documentSign<{ signed_at: string }>({ action: 'sign', token, signature_png_base64: png, sign_name: name.trim(), ...coords });
       setInfo(prev => prev ? { ...prev, already_signed: true, signed_at: result.signed_at } : prev);
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Unable to sign. Please try again.'); }
     finally { setSaving(false); }
