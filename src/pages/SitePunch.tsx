@@ -17,7 +17,7 @@ import { agencyLogo } from '@/lib/agencyPortal';
 
 type Info = { valid: boolean; reason?: string; first_name?: string; location_name?: string; address?: string | null; report_at?: string | null; on_site_since?: string | null; timezone?: string; agency_name?: string | null; agency_logo_url?: string | null };
 type Done = { action: "in" | "out"; at: string; geo: boolean; offsite: boolean; early?: boolean; lateMinutes?: number } | null;
-type Rejection = { reason: string; distance_m?: number; radius_m?: number; in_at?: string; out_at?: string; timezone?: string; shift_start?: string; early_minutes?: number; minutes_late?: number };
+type Rejection = { reason: string; distance_m?: number; radius_m?: number; in_at?: string; out_at?: string; timezone?: string; shift_start?: string; early_minutes?: number; minutes_late?: number; grace_minutes?: number };
 const OFFICE_PHONE = "(281) 748-3832";
 const infoKey = (token: string) => `site-punch-info:${token}`;
 function cachedInfo(token: string): Info | null {
