@@ -644,15 +644,20 @@ export const useBulkAddPersonnelTimeEntries = () => {
 
       // Use upsert to update existing entries or insert new ones
       // Personnel entries use personnel_id as the conflict target
-      const { data, error } = await supabase
-        .from("time_entries")
-        .upsert(validEntries, { 
-          onConflict: 'personnel_id,project_id,entry_date',
-          ignoreDuplicates: false 
-        })
-        .select();
-
-      if (error) throw error;
+      // Hours-only rows are unique per person/project/day among non-visit rows (partial index),
+      // so match them explicitly; visit-backed stays are never overwritten here.
+      const data: any[] = [];
+      for (const entry of validEntries) {
+        const { data: found, error: fErr } = await supabase.from("time_entries").select("id")
+          .eq("personnel_id", entry.personnel_id).eq("project_id", entry.project_id).eq("entry_date", entry.entry_date)
+          .is("visit_personnel_id", null).limit(1);
+        if (fErr) throw fErr;
+        const res = found?.length
+          ? await supabase.from("time_entries").update(entry).eq("id", found[0].id).select().single()
+          : await supabase.from("time_entries").insert(entry).select().single();
+        if (res.error) throw res.error;
+        data.push(res.data);
+      }
       return data;
     },
     onSuccess: (data) => {
