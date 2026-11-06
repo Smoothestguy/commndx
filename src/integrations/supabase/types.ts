@@ -4587,6 +4587,7 @@ export type Database = {
           merged_at: string | null
           merged_by: string | null
           merged_into_id: string | null
+          non_billable: boolean
           notes: string | null
           onboarding_completed_at: string | null
           onboarding_status: string | null
@@ -4662,6 +4663,7 @@ export type Database = {
           merged_at?: string | null
           merged_by?: string | null
           merged_into_id?: string | null
+          non_billable?: boolean
           notes?: string | null
           onboarding_completed_at?: string | null
           onboarding_status?: string | null
@@ -4737,6 +4739,7 @@ export type Database = {
           merged_at?: string | null
           merged_by?: string | null
           merged_into_id?: string | null
+          non_billable?: boolean
           notes?: string | null
           onboarding_completed_at?: string | null
           onboarding_status?: string | null
