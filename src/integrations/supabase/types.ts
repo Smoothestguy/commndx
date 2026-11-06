@@ -2483,6 +2483,54 @@ export type Database = {
           },
         ]
       }
+      customer_portal_tokens: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          expires_at: string
+          id: string
+          label: string | null
+          project_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          expires_at?: string
+          id?: string
+          label?: string | null
+          project_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          expires_at?: string
+          id?: string
+          label?: string | null
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_portal_tokens_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_portal_tokens_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -4234,34 +4282,43 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          created_via: string
           document_id: string | null
           effective_date: string
           id: string
           kind: string
           location_id: string
           notes: string | null
+          status: string
+          submitted_by_name: string | null
           to_number: string
         }
         Insert: {
           created_at?: string
           created_by?: string | null
+          created_via?: string
           document_id?: string | null
           effective_date?: string
           id?: string
           kind: string
           location_id: string
           notes?: string | null
+          status?: string
+          submitted_by_name?: string | null
           to_number: string
         }
         Update: {
           created_at?: string
           created_by?: string | null
+          created_via?: string
           document_id?: string | null
           effective_date?: string
           id?: string
           kind?: string
           location_id?: string
           notes?: string | null
+          status?: string
+          submitted_by_name?: string | null
           to_number?: string
         }
         Relationships: [
@@ -6668,6 +6725,54 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_customer_messages: {
+        Row: {
+          body: string
+          created_at: string
+          customer_id: string
+          id: string
+          project_id: string
+          read_at: string | null
+          sender: string
+          sender_name: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          project_id: string
+          read_at?: string | null
+          sender: string
+          sender_name?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          project_id?: string
+          read_at?: string | null
+          sender?: string
+          sender_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_customer_messages_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_customer_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -11597,6 +11702,29 @@ export type Database = {
       create_personnel_vendor: {
         Args: { p_personnel_id: string }
         Returns: string
+      }
+      customer_portal_messages: { Args: { p_token: string }; Returns: Json }
+      customer_portal_overview: {
+        Args: { p_date?: string; p_token: string }
+        Returns: Json
+      }
+      customer_portal_task_orders: { Args: { p_token: string }; Returns: Json }
+      customer_post_message: {
+        Args: { p_body: string; p_name: string; p_token: string }
+        Returns: Json
+      }
+      customer_submit_task_order: {
+        Args: {
+          p_effective: string
+          p_kind: string
+          p_lines: Json
+          p_location: string
+          p_name: string
+          p_notes: string
+          p_to_number: string
+          p_token: string
+        }
+        Returns: Json
       }
       deny_join_request: { Args: { p_request: string }; Returns: Json }
       expire_old_invitations: { Args: never; Returns: undefined }

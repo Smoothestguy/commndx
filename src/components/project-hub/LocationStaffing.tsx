@@ -1,4 +1,6 @@
 import { RoleSelect } from "./RoleSelect";
+import { useLocationAuthorization } from '@/hooks/useLocationAuthorization';
+import { toast } from 'sonner';
 import { JoinRequests } from './JoinRequests';
 import { QuickAddPerson } from './QuickAddPerson';
 import { NonBillableChip } from '@/components/personnel/NonBillableChip';
@@ -173,9 +175,11 @@ export function AssignDialog({ locationId, open, onOpenChange, assignedIds, role
   );
 }
 
-export function LocationStaffing({ locationId, summary, canWrite, projectId, locationName }: {
-  locationId: string; summary?: LocationStaffingSummary; canWrite: boolean; projectId?: string; locationName?: string;
+export function LocationStaffing({ locationId, summary, canWrite, projectId, locationName, timezone }: {
+  locationId: string; summary?: LocationStaffingSummary; canWrite: boolean; projectId?: string; locationName?: string; timezone?: string | null;
 }) {
+  const authorization = useLocationAuthorization([{id:locationId,timezone}]);
+  const [replacementRole,setReplacementRole]=useState<string|undefined>();
   const invStatus = useInvalidateStatus();
   const agencies = useProjectAgencies(projectId || '');
   const { data: assignments = [] } = useLocationAssignments(locationId);
@@ -229,7 +233,7 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
                 onClick={() => setTextIds([a.personnel_id])}><MessageSquare className="h-3 w-3" /></button>
               {canWrite && (
                 <button type="button" className="ml-0.5 rounded p-1 hover:bg-muted" aria-label="Unassign"
-                  onClick={() => unassign.mutate({ id: a.id, location_id: locationId })}><X className="h-3 w-3" /></button>
+                  onClick={() => unassign.mutate({ id: a.id, location_id: locationId }, {onSuccess: async () => {const result=await authorization.refetch();if(result.data?.[locationId]?.under)toast.success('Under authorized staffing',{action:{label:'Find replacement',onClick:()=>{setReplacementRole(a.role_label||undefined);setAsgOpen(true);}}});}})}><X className="h-3 w-3" /></button>
               )}
             </span>
           ))}
@@ -237,7 +241,7 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
       )}
       {canWrite && <RequirementsDialog locationId={locationId} open={reqOpen} onOpenChange={setReqOpen} />}
       {canWrite && (
-        <AssignDialog locationId={locationId} open={asgOpen} onOpenChange={setAsgOpen} assignedIds={assignedIds}
+        <AssignDialog locationId={locationId} open={asgOpen} onOpenChange={v=>{setAsgOpen(v);if(!v)setReplacementRole(undefined);}} assignedIds={assignedIds} defaultRole={replacementRole}
           roleOptions={Object.keys(summary?.byRole ?? {})} onAssigned={(ids) => {
             if (!ids.length) return;
             setTextIds(ids);

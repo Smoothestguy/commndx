@@ -1,4 +1,7 @@
 import { NonBillableChip } from '@/components/personnel/NonBillableChip';
+import { LocationTaskOrders } from './LocationTaskOrders';
+import { AuthorizationBadge } from './AuthorizationBadge';
+import { useLocationAuthorization } from '@/hooks/useLocationAuthorization';
 import { ProjectJoinLinks } from './ProjectJoinLinks';
 import { JoinRequests } from './JoinRequests';
 import { useProjectAgencies } from "@/hooks/useProjectAgencies";
@@ -66,6 +69,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
   onOpenCard: (locationId: string) => void;
 }) {
   const { agencyName, employerName, nonBillableByPerson } = useProjectAgencies(projectId);
+  const authorization = useLocationAuthorization(locations);
   const locIds = useMemo(() => locations.map((l) => l.id), [locations]);
   const { data: assignments = [] } = useLocationsAssignments(locIds);
   const { data: texted = {} } = useLastSiteTexts(locIds);
@@ -116,6 +120,10 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
   const [q, setQ] = useState("");
   const [assignFor, setAssignFor] = useState<{ locationId: string; role?: string } | null>(null);
   const [textFor, setTextFor] = useState<{ locationId: string; ids: string[] } | null>(null);
+  const removePerson = (a: (typeof assignments)[number]) => unassign.mutate({ id:a.id, location_id:a.location_id }, {onSuccess: async () => {
+    const result = await authorization.refetch();
+    if (result.data?.[a.location_id]?.under) toast.success('Under authorized staffing', {action:{label:'Find replacement',onClick:()=>setAssignFor({locationId:a.location_id,role:a.role_label||undefined})}});
+  }});
 
   const byLoc = useMemo(() => {
     const m: Record<string, typeof assignments> = {};
@@ -245,6 +253,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                   </button>
                   <span className={cn("font-medium shrink-0 tabular-nums", full ? "text-success" : "text-warning")}>{s?.assigned ?? 0}/{s?.needed ?? 0}</span>
                   <span className="flex items-center shrink-0">
+                    {canWrite && <LocationTaskOrders projectId={projectId} locationId={l.id} locationName={l.name} timezone={l.timezone} iconOnly />}
                     {canWrite && <ProjectJoinLinks projectId={projectId} locationId={l.id} iconOnly />}
                     {canWrite && <IconBtn label="Assign people" onClick={() => setAssignFor({ locationId: l.id })}><UserPlus className="h-4 w-4" /></IconBtn>}
                     {canWrite && <IconBtn label="Assign asset" onClick={() => setAssetFor(l.id)}><Package className="h-4 w-4" /></IconBtn>}
@@ -253,6 +262,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                 </div>
                 {isOpen && meta.length > 0 && <div className="pl-5 mt-0.5 text-[11px] text-muted-foreground">{meta.join(" · ")}</div>}
                 <JoinRequests projectId={projectId} locationId={l.id} />
+                <AuthorizationBadge value={authorization.data?.[l.id]} />
                 {canWrite && isOpen && <LocationKioskActions location={l} />}
               </div>
               {isOpen && rows.map((a) => {
@@ -276,7 +286,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                         {showPhone && phones[a.personnel_id] && (
                           <a href={`tel:${phones[a.personnel_id]}`} className="inline-flex rounded p-1 text-muted-foreground hover:bg-muted" aria-label={`Call ${nameOf(a)}`}><Phone className="h-4 w-4" /></a>
                         )}
-                        {canWrite && <IconBtn label="Unassign" onClick={() => unassign.mutate({ id: a.id, location_id: l.id })}><X className="h-4 w-4" /></IconBtn>}
+                        {canWrite && <IconBtn label="Unassign" onClick={() => removePerson(a)}><X className="h-4 w-4" /></IconBtn>}
                       </span>
                     </div>
                   </div>
@@ -349,6 +359,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                         {l.project_number && <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">#{l.project_number}</Badge>}
                         <JoinRequests projectId={projectId} locationId={l.id} />
                         <span className={cn("font-medium shrink-0", full ? "text-success" : "text-warning")}>{s?.assigned ?? 0}/{s?.needed ?? 0}</span>
+                        <AuthorizationBadge value={authorization.data?.[l.id]} />
                         {locAssets.length > 0 && <span className="text-muted-foreground shrink-0">· {locAssets.length} asset{locAssets.length === 1 ? "" : "s"}</span>}
                         {l.housing_provided_by === "customer" && <Badge variant="outline" className="hidden md:inline-flex text-[10px] px-1.5 py-0 shrink-0">Housing: Cust</Badge>}
                         {l.housing_provided_by === "frg" && <Badge variant="outline" className="hidden md:inline-flex text-[10px] px-1.5 py-0 shrink-0">Housing: FRG</Badge>}
@@ -356,6 +367,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                         {l.demobe_date && <span className="text-muted-foreground shrink-0">{l.mobe_date ? `${formatLocalDate(l.mobe_date, "M/d")}–` : "Demobe "}{formatLocalDate(l.demobe_date, "M/d")}</span>}
                         {deploymentMode && lastServiced?.[l.id] && <span className="hidden md:inline text-muted-foreground shrink-0">Svc {formatLocalDate(lastServiced[l.id], "M/d")}</span>}
                         <span className="ml-auto flex items-center gap-0.5 shrink-0">
+                          {canWrite && <LocationTaskOrders projectId={projectId} locationId={l.id} locationName={l.name} timezone={l.timezone} iconOnly />}
                           {canWrite && <ProjectJoinLinks projectId={projectId} locationId={l.id} iconOnly />}
                           {locHrs > 0 && <span className="mr-1 text-muted-foreground" title="Total hours this week">{locHrs.toFixed(1)} h</span>}
                           {canWrite && <IconBtn label="Assign people" onClick={() => setAssignFor({ locationId: l.id })}><UserPlus className="h-3.5 w-3.5" /></IconBtn>}
@@ -391,7 +403,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                         )}
                         <td className="px-1 py-1 text-right whitespace-nowrap">
                           <IconBtn label="Send site text" onClick={() => setTextFor({ locationId: l.id, ids: [a.personnel_id] })}><MessageSquare className="h-3.5 w-3.5" /></IconBtn>
-                          {canWrite && <IconBtn label="Unassign" onClick={() => unassign.mutate({ id: a.id, location_id: l.id })}><X className="h-3.5 w-3.5" /></IconBtn>}
+                          {canWrite && <IconBtn label="Unassign" onClick={() => removePerson(a)}><X className="h-3.5 w-3.5" /></IconBtn>}
                         </td>
                       </tr>
                     );

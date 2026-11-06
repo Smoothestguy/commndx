@@ -8,7 +8,7 @@ import { useProjectDocuments } from '@/integrations/supabase/hooks/useProjectDoc
 import { SigninSheetsPanel } from '@/components/documents/SigninSheetsPanel';
 import { SigninStatusBoard } from '@/components/signin/SigninStatusBoard';
 import { ReconcileView } from '@/components/signin/ReconcileView';
-import { DeploymentAlerts } from '@/components/signin/DeploymentAlerts';
+import { DeploymentAlerts, LocationAuthorizationAlerts } from '@/components/signin/DeploymentAlerts';
 import { ShiftReviews } from '@/components/signin/ShiftReviews';
 import { EarlyInBadge } from '@/components/signin/EarlyInBadge';
 import { ReusableSigninPicker } from '@/components/documents/ReusableSigninPicker';
@@ -1341,6 +1341,7 @@ export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
           <DeploymentSettings projectId={projectId} canEdit={canEdit} />
         </div>
       </div>
+      <LocationAuthorizationAlerts projectId={projectId} locations={locations} />
       {canEdit && <DeploymentAlerts projectId={projectId} locations={locations} onView={view => { setAlertView(s => ({view,key:s.key+1})); setTimeout(() => document.getElementById('deployment-visits')?.scrollIntoView({behavior:'smooth'}), 0); }} />}
       <JoinRequests projectId={projectId} strip />
       <ProjectRosterCard projectId={projectId} />

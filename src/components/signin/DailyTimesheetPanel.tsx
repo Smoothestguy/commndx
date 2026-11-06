@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { loadLocationAuthorization } from '@/hooks/useLocationAuthorization';
+import { authorizedTotal } from '@/lib/locationAuthorization';
 import { useQuery } from '@tanstack/react-query';
 import { useProjectDocuments } from '@/integrations/supabase/hooks/useProjectDocuments';
 import { useProjectLocations } from '@/integrations/supabase/hooks/useProjectLocations';
@@ -37,7 +39,7 @@ export function DailyTimesheetPanel({ projectId, projectName, locationId, initia
         if (template) return <section key={location.id}><h3 className="font-medium">{location.name}</h3><SigninSheetsPanel doc={template} projectName={projectName} initialSheet={{ location: location.id, day }} /></section>;
         const zone = location.timezone || 'America/Chicago', rows = rowsForDay(stays, location.id, day, zone);
         const sheet = saved.find(s => s.location_id === location.id && s.sheet_date === day);
-        const generate = () => generateDailyTimesheet(rows, { day, zone, projectNumber: location.project_number || '', mission: projectName, location: location.name }, loadSheetSignature);
+        const generate = async () => {const levels=await loadLocationAuthorization(location.id,day);return generateDailyTimesheet(rows, { day, zone, projectNumber: location.project_number || '', mission: projectName, location: location.name, authorized: levels===null?undefined:authorizedTotal(levels,'position') }, loadSheetSignature);};
         return <section key={location.id} className="border-b pb-3 space-y-2"><h3 className="font-medium">{location.name} · {day}</h3><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={busy || !day} onClick={async () => { setBusy(true); try {
           const name = sheetFileName(location.name, day);
           if (sheet?.status === 'locked' && sheet.pdf_url) await downloadStoredSheet(sheet.pdf_url, name);
