@@ -32,7 +32,7 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
   const recon = useReconciliation(projectId, currentWeekStart(), canWrite);
   const blocks = recon.data ? closeBlockers(recon.data.rows, recon.data.resolutions).length : 0;
   const [filter, setFilter] = useState<FilterKey | null>(null);
-  const [status, setStatus] = useState<'all' | 'active' | 'inactive'>('active');
+  const [status, setStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [reqFor, setReqFor] = useState<ProjectLocation | null>(null);
 
   const rows = useMemo(() => sortByAttention(locations.map(l => {
@@ -122,10 +122,10 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
       [o?.openPunches ?? 0, 'open', 'Open punches'], [o?.pendingTOs ?? 0, 'TO', 'Customer task orders awaiting acceptance'], [o?.extPending ?? 0, 'ext', 'Shift-extension requests'],
     ];
     const shown = items.filter(i => i[0] > 0);
-    return shown.length ? <span className="inline-flex flex-wrap gap-1">{shown.map(([n, t, title]) => <Badge key={t} variant="outline" title={title} className={cn('px-1.5 py-0 text-[10px]', t !== 'open' && tone.amber)}>{n} {t}</Badge>)}</span> : <span className="text-muted-foreground">—</span>;
+    return shown.length ? <span className="inline-flex flex-wrap gap-1">{shown.map(([n, t, title]) => <Badge key={t} variant="outline" title={title} className={cn('px-1.5 py-0 text-[10px] whitespace-nowrap', t !== 'open' && tone.amber)}>{n} {t}</Badge>)}</span> : <span className="text-muted-foreground">—</span>;
   };
   const NextCell = ({ r }: { r: (typeof rows)[number] }) => {
-    const n = r.o?.next; if (!n) return <span className="text-muted-foreground">—</span>;
+    const n = r.o?.next; if (!n) return <span className="text-muted-foreground md:inline hidden">—</span>;
     const pos = n.labels.filter(x => x.line_kind === 'position').sort((a, b) => a.label.localeCompare(b.label));
     return <span className="text-xs" title={n.labels.map(x => `${x.label}: ${x.authorized}`).join('\n')}>
       <span className="font-semibold text-warning">{KIND_SHORT[n.kind] ?? n.kind} {formatLocalDate(n.date, 'MM/dd')}</span> → <span className="tabular-nums">{pos.map(x => x.authorized).join('/') || '0'}</span>
@@ -177,7 +177,7 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
 
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="Status filter">
-            {(['active', 'inactive', 'all'] as const).map(s => <Button key={s} size="sm" variant={status === s ? 'secondary' : 'ghost'} className="h-7 px-2 text-xs capitalize" onClick={() => setStatus(s)}>{s}</Button>)}
+            {(['all', 'active', 'inactive'] as const).map(s => <Button key={s} size="sm" variant={status === s ? 'secondary' : 'ghost'} className="h-7 px-2 text-xs capitalize" onClick={() => setStatus(s)}>{s}</Button>)}
           </div>
           <Button size="sm" variant={filter === 'attention' ? 'secondary' : 'outline'} className="h-7 px-2 text-xs" onClick={() => toggle('attention')} aria-pressed={filter === 'attention'}>Needs attention ({totals.attention})</Button>
           {filter && filter !== 'attention' && <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setFilter(null)}>Clear filter</Button>}
@@ -192,7 +192,7 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
             <tbody className="divide-y">
               {visible.map(r => (
                 <tr key={r.l.id} className={cn('cursor-pointer hover:bg-muted/40', r.severity === 'red' && 'bg-destructive/5')} onClick={() => navigate(locationHref(projectId, r.l.id))}>
-                  <td className="px-2 py-1.5 max-w-[18rem]"><NameCell r={r} /></td>
+                  <td className="px-2 py-1.5 min-w-[16rem] max-w-[24rem]"><NameCell r={r} /></td>
                   <td className="px-2 py-1.5 whitespace-nowrap"><StaffCell r={r} /></td>
                   <td className="px-2 py-1.5 whitespace-nowrap"><TodayCell r={r} /></td>
                   <td className="px-2 py-1.5 whitespace-nowrap text-xs"><AssetCell r={r} /></td>
