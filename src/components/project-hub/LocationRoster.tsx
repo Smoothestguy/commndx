@@ -63,6 +63,11 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
       return m;
     },
   });
+  const otherIds = [...new Set(Object.values(onSite).filter(o => o.location_id !== locationId).map(o => o.project_id))];
+  const otherProjects = useQuery({
+    queryKey: ['roster-other-projects', otherIds.sort()], enabled: otherIds.length > 0, staleTime: 60000,
+    queryFn: async () => { const { data, error } = await supabase.from('projects').select('id,name').in('id', otherIds); if (error) throw error; return Object.fromEntries((data ?? []).map(p => [p.id, p.name])); },
+  });
   const assets = useQuery({
     queryKey: ['location-roster-assets', locationId],
     queryFn: async () => {
@@ -87,7 +92,9 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
   const row = (a: LocationAssignment) => {
     const name = [a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(' ') || 'Unknown';
     const s = todayStatus({ demobilized: !!a.demobilized, stays: stays.data?.[a.personnel_id] ?? [], missionToday: a.mission_day === today, missionNote: a.mission_note ?? null });
-    const elsewhere = onSite[a.personnel_id] && onSite[a.personnel_id].location_id !== locationId ? onSite[a.personnel_id].location_name : null;
+    // Scoped by location id: same address under another project is a different site.
+    const os = onSite[a.personnel_id];
+    const elsewhere = os && os.location_id !== locationId ? `${os.location_name ?? 'site'}${os.project_id !== projectId ? ` (${otherProjects.data?.[os.project_id] ?? 'other project'})` : ''}` : null;
     const actions = [
       { label: 'Send site text', run: () => onText([a.personnel_id]) },
       ...(canWrite ? [
@@ -122,7 +129,7 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
               <DropdownMenuSeparator />
               {a.demobilized
                 ? <DropdownMenuItem disabled={!projectId} onClick={() => projectId && setStatus.mutate({ personnelIds: [a.personnel_id], status: 'activated', project_id: projectId, note: 'Reactivated from location roster' })}>Reactivate</DropdownMenuItem>
-                : <DropdownMenuItem onClick={() => setStatus.mutate({ personnelIds: [a.personnel_id], status: 'demobilized', project_id: projectId ?? null, note: 'Demobilized from location roster' })}>Demobilize (keeps history)</DropdownMenuItem>}
+                : <DropdownMenuItem disabled={!projectId} onClick={() => projectId && setStatus.mutate({ personnelIds: [a.personnel_id], status: 'demobilized', project_id: projectId!, note: 'Demobilized from location roster' })}>Demobilize (keeps history)</DropdownMenuItem>}
               <DropdownMenuItem className="text-destructive" onClick={() => onUnassign(a)}>Unassign…</DropdownMenuItem>
             </DropdownMenuContent></DropdownMenu>}
         </div>
