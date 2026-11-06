@@ -66,7 +66,7 @@ export async function generateSigninSheet(original: ArrayBuffer, fields: SignFie
           const size = image.scaleToFit(w, h); page.drawImage(image, { x, y: bottom + (h - size.height) / 2, ...size });
         } else {
           const text = clean(values[field.binding || field.kind] ?? '');
-          if (text) { const size = Math.min(10, h * 0.75, w / Math.max(1, font.widthOfTextAtSize(text, 1))); page.drawText(text, { x, y: bottom + (h - size) / 2, font, size }); }
+          if (text) { const size = Math.min(10, h * 0.75, Math.max(1,w-4) / Math.max(1, font.widthOfTextAtSize(text, 1))); page.drawText(text, { x, y: bottom + (h - size) / 2, font, size }); }
         }
         page.pushOperators(popGraphicsState());
       }
