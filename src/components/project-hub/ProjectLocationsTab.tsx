@@ -1,3 +1,4 @@
+import { Time24Input } from '@/components/ui/time24-input';
 import { DailyTimesheetPanel } from '@/components/signin/DailyTimesheetPanel';
 import { LocationTaskOrders } from './LocationTaskOrders';
 import { AuthorizationBadge } from './AuthorizationBadge';
@@ -59,7 +60,7 @@ const EMPTY = {
   name: "", project_number: "", scope: "", address: "", city: "", state: "", zip: "",
   poc_name: "", poc_phone: "", poc_email: "", status: "active", sort_order: "",
   housing_provided_by: "none", meals_provided: false as boolean, meals_notes: "", mobe_date: "", demobe_date: "",
-  day_shift_start: "", night_shift_start: "", lat: "", lng: "", timezone: "", geofence_radius_m: "300",
+  day_shift_start: "", night_shift_start: "", day_shift_end: "", night_shift_end: "", lat: "", lng: "", timezone: "", geofence_radius_m: "300",
 };
 type FormState = typeof EMPTY;
 
@@ -139,6 +140,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
       housing_provided_by: l.housing_provided_by || "none", meals_provided: !!l.meals_provided, meals_notes: l.meals_notes ?? "",
       mobe_date: l.mobe_date ?? "", demobe_date: l.demobe_date ?? "",
       day_shift_start: l.day_shift_start?.slice(0, 5) ?? "", night_shift_start: l.night_shift_start?.slice(0, 5) ?? "",
+      day_shift_end: l.day_shift_end?.slice(0,5) ?? "", night_shift_end: l.night_shift_end?.slice(0,5) ?? "",
     });
     setRows([]); setSeeded(false);
     setOpen(true);
@@ -170,6 +172,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
       housing_provided_by: form.housing_provided_by, meals_provided: form.meals_provided,
       meals_notes: form.meals_provided ? n(form.meals_notes) : null,
       day_shift_start: n(form.day_shift_start), night_shift_start: n(form.night_shift_start),
+      day_shift_end: n(form.day_shift_end), night_shift_end: n(form.night_shift_end),
       ...(deploymentMode ? { mobe_date: form.mobe_date || null, demobe_date: form.demobe_date || null } : {}),
     };
     let locationId: string;
@@ -339,8 +342,11 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
             {deploymentMode && <div><Label>Demobe date</Label><Input type="date" {...f("demobe_date")} /></div>}
             <div><Label>Sort order</Label><Input type="number" {...f("sort_order")} /></div>
             <div className="col-span-2 grid grid-cols-2 gap-3">
-              <div><Label htmlFor="location-day-shift">Day shift starts</Label><Input id="location-day-shift" type="time" {...f("day_shift_start")} placeholder={project?.day_shift_start?.slice(0, 5) ?? "06:00"} /><p className="text-xs text-muted-foreground mt-1">Inherit: {project?.day_shift_start?.slice(0, 5) ?? "06:00"}</p></div>
-              <div><Label htmlFor="location-night-shift">Night shift starts</Label><Input id="location-night-shift" type="time" {...f("night_shift_start")} placeholder={project?.night_shift_start?.slice(0, 5) ?? "18:00"} /><p className="text-xs text-muted-foreground mt-1">Inherit: {project?.night_shift_start?.slice(0, 5) ?? "18:00"}</p></div>
+              <h3 className="col-span-2 text-sm font-semibold">Shifts</h3>
+              <div><Label htmlFor="location-day-shift">Day shift starts</Label><Time24Input id="location-day-shift"  {...f("day_shift_start")} placeholder={project?.day_shift_start?.slice(0, 5) ?? "06:00"} /><p className="text-xs text-muted-foreground mt-1">Inherit: {project?.day_shift_start?.slice(0, 5) ?? "06:00"}</p></div>
+              <div><Label htmlFor="location-day-end">Day shift ends</Label><Time24Input id="location-day-end"  {...f('day_shift_end')} placeholder={(project?.day_shift_end || form.night_shift_start || project?.night_shift_start || '18:00').slice(0,5)}/><p className="text-xs text-muted-foreground mt-1">Default: {(project?.day_shift_end || form.night_shift_start || project?.night_shift_start || '18:00').slice(0,5)}</p></div>
+              <div><Label htmlFor="location-night-shift">Night shift starts</Label><Time24Input id="location-night-shift"  {...f("night_shift_start")} placeholder={project?.night_shift_start?.slice(0, 5) ?? "18:00"} /><p className="text-xs text-muted-foreground mt-1">Inherit: {project?.night_shift_start?.slice(0, 5) ?? "18:00"}</p></div>
+              <div><Label htmlFor="location-night-end">Night shift ends</Label><Time24Input id="location-night-end"  {...f('night_shift_end')} placeholder={(project?.night_shift_end || form.day_shift_start || project?.day_shift_start || '06:00').slice(0,5)}/><p className="text-xs text-muted-foreground mt-1">Default: {(project?.night_shift_end || form.day_shift_start || project?.day_shift_start || '06:00').slice(0,5)} next day</p></div>
             </div>
             <div className="col-span-2"><Label>Scope</Label><Textarea rows={4} {...f("scope")} /></div>
             <div className="col-span-2 space-y-2 border-t pt-3">

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAppModules } from '@/hooks/useAppModules';
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -101,6 +102,7 @@ const setupNavigation = [
 ];
 
 export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
+  const modules=useAppModules();
   const location = useLocation();
   const { signOut } = useAuth();
   const { isAdmin, isManager } = useUserRole();
@@ -117,6 +119,7 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
   };
 
   const NavLink = ({ item }: { item: { name: string; href: string; icon: React.ComponentType<{ className?: string }>; requiresAdmin?: boolean; requiresManager?: boolean } }) => {
+    if(!modules.visible(item.href))return null;
     if (item.requiresAdmin && !isAdmin) return null;
     if (item.requiresManager && !isAdmin && !isManager) return null;
 

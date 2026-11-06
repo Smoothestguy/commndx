@@ -28,6 +28,8 @@ export interface ProjectLocation {
   demobe_date: string | null;
   day_shift_start: string | null;
   night_shift_start: string | null;
+  day_shift_end: string | null;
+  night_shift_end: string | null;
   created_at: string;
   updated_at: string;
 }

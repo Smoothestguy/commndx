@@ -1,3 +1,4 @@
+import { stripWhiteBackground } from './signatureInk';
 export type SignFieldKind = 'signature' | 'name' | 'date';
 export const SIGN_BINDINGS = ['date', 'project_name', 'mission_number', 'location_name', 'location_address', 'employee_name', 'position', 'signature', 'time_in', 'time_out', 'total_hours', 'name'] as const;
 export type SignBinding = typeof SIGN_BINDINGS[number];
@@ -24,7 +25,7 @@ export async function stampDocument(original: ArrayBuffer, pngBytes: ArrayBuffer
   const { PDFDocument, StandardFonts, pushGraphicsState, popGraphicsState, concatTransformationMatrix } = await import('pdf-lib');
   const pdf = await PDFDocument.load(original);
   const font = await pdf.embedFont(StandardFonts.Helvetica), bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const png = await pdf.embedPng(pngBytes);
+  const png = await pdf.embedPng(await stripWhiteBackground(pngBytes));
   const printable = (text: string) => Array.from(text).map(char => { try { font.encodeText(char); return char; } catch { return '?'; } }).join('');
   const originals = pdf.getPages();
   for (const field of fields) {

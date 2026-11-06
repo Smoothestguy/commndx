@@ -7,6 +7,7 @@ import { type EarlyRejection } from '@/lib/shiftDiscipline';
 import { SignaturePad } from "@/components/documents/SignaturePad";
 import { SaveCrewPrompt } from '@/components/personnel/lifecycle/SaveCrewPrompt';
 import { needsCrew } from '@/lib/deploymentFlow';
+import { scheduledCheckout } from '@/lib/manualTime';
 import { AddExpenseDialog } from "@/components/personnel/lifecycle/AddExpenseDialog";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -211,6 +212,7 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, peopl
   visit: VisitRow; location: ProjectLocation; projectId: string; defaultShiftHours: number;
   people: VisitPerson[]; locationIds: string[]; onClose: () => void;
 }) {
+  const {data:shiftProject}=useProject(projectId);
   const [mode, setMode] = useState<"menu" | "receipt" | "photo" | "add">("menu");
   const [personSheet, setPersonSheet] = useState<VisitPerson | null>(null);
   const [sigFor, setSigFor] = useState<string | null>(null);
@@ -246,8 +248,10 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, peopl
   const checkOut = useCheckOut(projectId);
 
   const openHours = (Date.now() - new Date(visit.check_in_at).getTime()) / 3_600_000;
-  const stale = openHours > 14;
-  const defaultEnd = new Date(new Date(visit.check_in_at).getTime() + defaultShiftHours * 3_600_000);
+  const autoCloseHours=shiftProject?.auto_close_after_hours??14;
+  const stale = openHours > autoCloseHours;
+  const scheduled=scheduledCheckout(visit.check_in_at,location.timezone||'America/Chicago',location,shiftProject);
+  const defaultEnd = new Date(scheduled || new Date(visit.check_in_at).getTime() + defaultShiftHours * 3_600_000);
 
   const doCheckOut = async (endedAt?: string) => {
     if (!navigator.onLine) { toast.error("No signal — try again in coverage"); return; }
@@ -303,7 +307,7 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, peopl
         {stale && mode === "menu" && (
           <div className="rounded-xl border-2 border-warning bg-warning/10 p-4 space-y-2">
             <p className="font-semibold">Forgot to check out?</p>
-            <p className="text-sm text-muted-foreground">This visit has been open over 14 hours.</p>
+            <p className="text-sm text-muted-foreground">This visit has been open over {autoCloseHours} hours.</p>
             <Button
               variant="outline"
               className="w-full h-12"

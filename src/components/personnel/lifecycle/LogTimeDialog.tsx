@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { Time24Input } from '@/components/ui/time24-input';
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -11,7 +12,8 @@ import { useProjectLocations } from "@/integrations/supabase/hooks/useProjectLoc
 import { useCurrentStatuses } from "@/integrations/supabase/hooks/usePersonnelStatus";
 import { useLogManualTime } from "@/integrations/supabase/hooks/useFieldMode";
 import { useLocationAssignments } from "@/integrations/supabase/hooks/useLocationStaffing";
-import { locationRosterPeople, manualTimeRange } from "@/lib/manualTime";
+import { locationRosterPeople, manualTimeRange, scheduledShift } from "@/lib/manualTime";
+import { useProject } from '@/integrations/supabase/hooks/useProjects';
 import { localDay } from "@/lib/signinSheets";
 
 const nm = (r: { first_name: string | null; last_name: string | null }) => [r.first_name, r.last_name].filter(Boolean).join(" ") || "Unknown";
@@ -25,24 +27,28 @@ export function LogTimeDialog({ open, onOpenChange, projectId, personnelId, pers
   const { list: people } = useCurrentStatuses({ projectId });
   const { data: roster = [], isLoading: rosterLoading } = useLocationAssignments(open ? locationId : undefined);
   const save = useLogManualTime(projectId);
+  const { data: project } = useProject(projectId);
   const [pid, setPid] = useState("");
   const [loc, setLoc] = useState("");
   const [day, setDay] = useState(format(new Date(), "yyyy-MM-dd"));
   const [tin, setTin] = useState("");
   const [tout, setTout] = useState("");
+  const [outDay, setOutDay] = useState(day);
+  const [shift, setShift] = useState<'day'|'night'>('day');
   const [note, setNote] = useState("");
   const [lastOpen, setLastOpen] = useState(false);
   if (open !== lastOpen) {
     setLastOpen(open);
-    if (open) { setPid(personnelId ?? ""); setLoc(locationId ?? ""); setDay(defaultDate ?? localDay(new Date().toISOString(), locations.find(l => l.id === locationId)?.timezone || 'America/Chicago')); setTin(""); setTout(""); setNote(""); }
+    if (open) { const date = defaultDate ?? localDay(new Date().toISOString(), locations.find(l => l.id === locationId)?.timezone || 'America/Chicago'); setPid(personnelId ?? ""); setLoc(locationId ?? ""); setDay(date); setOutDay(date); setTin(""); setTout(""); setNote(""); }
   }
 
   const zone = locations.find(l => l.id === loc)?.timezone || 'America/Chicago';
-  const range = manualTimeRange(day, tin, tout, zone);
+  const range = manualTimeRange(day, tin, tout, zone, outDay);
   const rosterPeople = roster.map(p => ({ personnel_id: p.personnel_id, first_name: p.personnel?.first_name ?? null, last_name: p.personnel?.last_name ?? null }));
   const scopedPeople = locationRosterPeople(locationId ? rosterPeople : people, locationId, roster);
   const valid = !!pid && !!loc && !!day && !!range && (!locationId || roster.some(p => p.personnel_id === pid));
   const sortedPeople = [...scopedPeople].sort((a, b) => nm(a).localeCompare(nm(b)));
+  useEffect(() => { if (open && !defaultDate && !tin && !tout && locations.length) { const date=localDay(new Date().toISOString(),zone);setDay(date);setOutDay(date); } },[open,zone,locations.length,defaultDate,tin,tout]);
 
   return (
     <Dialog open={open} onOpenChange={o => { if (!save.isPending) onOpenChange(o); }}>
@@ -63,11 +69,13 @@ export function LogTimeDialog({ open, onOpenChange, projectId, personnelId, pers
               <SelectContent>{locations.map((l: any) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div><Label htmlFor="manual-date">Date</Label><Input id="manual-date" type="date" className="h-11" value={day} onChange={(e) => setDay(e.target.value)} /></div>
+          <div><Label htmlFor="manual-date">Date</Label><Input id="manual-date" type="date" className="h-11" value={day} onChange={(e) => { setDay(e.target.value); setOutDay(e.target.value); }} /></div>
+          <div className="flex gap-2"><Select value={shift} onValueChange={v=>setShift(v==='night'?'night':'day')}><SelectTrigger aria-label="Scheduled shift"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="day">Day shift</SelectItem><SelectItem value="night">Night shift</SelectItem></SelectContent></Select><Button type="button" variant="outline" disabled={!loc || !day} onClick={()=>{const s=scheduledShift(day,shift,locations.find(l=>l.id===loc),project);setTin(s.timeIn);setTout(s.timeOut);setOutDay(s.outDay);}}>Use shift times</Button></div>
           <div className="grid grid-cols-2 gap-2">
-            <div><Label htmlFor="manual-in">Time in</Label><Input id="manual-in" type="time" step={60} className="h-11" value={tin} onChange={(e) => setTin(e.target.value)} /></div>
-            <div><Label htmlFor="manual-out">Time out</Label><Input id="manual-out" type="time" step={60} className="h-11" value={tout} onChange={(e) => setTout(e.target.value)} /></div>
+            <div><Label htmlFor="manual-in">Time in</Label><Time24Input id="manual-in"  step={60} className="h-11" value={tin} onChange={(e) => setTin(e.target.value)} /></div>
+            <div><Label htmlFor="manual-out">Time out</Label><Time24Input id="manual-out"  step={60} className="h-11" value={tout} onChange={(e) => setTout(e.target.value)} /></div>
           </div>
+          <div><Label htmlFor="manual-out-date">Time out date</Label><Input id="manual-out-date" type="date" value={outDay} min={day} onChange={e=>setOutDay(e.target.value)}/></div>
           {range && <p className="text-xs text-muted-foreground">{range.hours.toFixed(2)} hours · {zone}</p>}
           {tin && tout && !range && <p className="text-xs text-destructive">Enter valid times with time out after time in.</p>}
           <div><Label>Note (optional)</Label><Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></div>

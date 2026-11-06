@@ -1,5 +1,9 @@
 import { describe, it, expect } from "bun:test";
-import { splitAtMidnight, resolveShiftStarts, chicagoMidnight, timesheetSegments } from "./shifts";
+import { splitAtMidnight, resolveShiftStarts, resolveShifts, chicagoMidnight, timesheetSegments } from "./shifts";
+it('ends inherit project values then opposite starts, with location end taking precedence',()=>{
+  expect(resolveShifts({day_shift_start:'07:30',night_shift_start:'19:30'})).toEqual({day:'07:30',night:'19:30',dayEnd:'19:30',nightEnd:'07:30'});
+  expect(resolveShifts({day_shift_end:'17:00'},{day_shift_end:'18:00',night_shift_end:'08:00'})).toMatchObject({dayEnd:'17:00',nightEnd:'08:00'});
+});
 
 describe("location shifts and Chicago midnight hours", () => {
   it("location overrides win, then project values, then 06:00 / 18:00", () => {

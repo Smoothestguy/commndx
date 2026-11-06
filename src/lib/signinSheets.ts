@@ -1,4 +1,5 @@
 import type { SignField } from './documentStamp';
+import { stripWhiteBackground } from './signatureInk';
 export const localDay = (iso: string, zone: string) => {
   const p = new Intl.DateTimeFormat('en-US', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(iso));
   return `${p.find(x => x.type === 'year')?.value}-${p.find(x => x.type === 'month')?.value}-${p.find(x => x.type === 'day')?.value}`;
@@ -36,7 +37,14 @@ export async function generateSigninSheet(original: ArrayBuffer, fields: SignFie
   const font = await output.embedFont(StandardFonts.Helvetica);
   const clean = (text: string) => Array.from(text).map(c => { try { font.encodeText(c); return c; } catch { return '?'; } }).join('');
   const images = new Map<string, Awaited<ReturnType<typeof output.embedPng>>>();
-  const chunks = Math.max(1, Math.ceil(rows.length / config.rowsPerPage));
+  const ordered = [...rows].sort((a,b) => a.inAt.localeCompare(b.inAt) || a.id.localeCompare(b.id));
+  const rowFields = fields.filter(f => f.scope === 'row');
+  // Legacy placed boxes may be taller than their row band: fit the ink/text inside
+  // the band's height without moving the saved top-left or changing source fields.
+  const fieldHeight=(f:SignField)=>f.scope==='row'?Math.min(f.h_pct ?? config.rowHeight,config.rowHeight):f.h_pct ?? 0.04;
+  const capacity = Math.min(config.rowsPerPage, ...rowFields.map(f => Math.floor((1 - f.y_pct - fieldHeight(f) + 0.000001) / config.rowHeight) + 1));
+  if (capacity < 1) throw new Error('No template rows fit on the page');
+  const chunks = Math.max(1, Math.ceil(ordered.length / capacity));
   for (let chunk = 0; chunk < chunks; chunk++) {
     const pages = await output.copyPages(source, source.getPageIndices());
     pages.forEach(p => output.addPage(p));
@@ -45,20 +53,20 @@ export async function generateSigninSheet(original: ArrayBuffer, fields: SignFie
       const crop = page.getCropBox(), angle = ((page.getRotation().angle % 360) + 360) % 360;
       const width = angle === 90 || angle === 270 ? crop.height : crop.width, height = angle === 90 || angle === 270 ? crop.width : crop.height;
       const matrix: [number, number, number, number, number, number] = angle === 90 ? [0, 1, -1, 0, crop.x + crop.width, crop.y] : angle === 180 ? [-1, 0, 0, -1, crop.x + crop.width, crop.y + crop.height] : angle === 270 ? [0, -1, 1, 0, crop.x, crop.y + crop.height] : [1, 0, 0, 1, crop.x, crop.y];
-      const band = field.scope === 'row' ? rows.slice(chunk * config.rowsPerPage, (chunk + 1) * config.rowsPerPage) : [null];
+      const band = field.scope === 'row' ? ordered.slice(chunk * capacity, (chunk + 1) * capacity) : [null];
       for (let i = 0; i < band.length; i++) {
-        const row = band[i], yPct = field.y_pct + (row ? i * config.rowHeight : 0), hPct = field.h_pct ?? Math.min(config.rowHeight, 0.04);
+        const row = band[i], yPct = field.y_pct + (row ? i * config.rowHeight : 0), hPct = fieldHeight(field);
         if (![field.x_pct, yPct, field.w_pct, hPct].every(Number.isFinite) || field.x_pct < 0 || field.w_pct <= 0 || hPct <= 0 || yPct < 0 || field.x_pct + field.w_pct > 1.00001 || yPct + hPct > 1.00001) throw new Error('Fields or row bands extend beyond the page');
         const values: Record<string, string> = { date: config.day, project_name: config.project, mission_number: config.mission, location_name: config.location, location_address: config.address, employee_name: row?.name ?? '', name: row?.name ?? '', position: row?.position ?? '', time_in: row ? localTime(row.inAt, config.zone) : '', time_out: row ? localTime(row.outAt, config.zone) : '', total_hours: row?.hours == null ? '' : row.hours.toFixed(2) };
         page.pushOperators(pushGraphicsState(), concatTransformationMatrix(...matrix));
         const x = field.x_pct * width, bottom = height * (1 - yPct - hPct), w = field.w_pct * width, h = hPct * height;
         if ((field.binding || field.kind) === 'signature' && row?.signature) {
           let image = images.get(row.signature);
-          if (!image) { const bytes = await loadSignature(row.signature); image = new Uint8Array(bytes)[0] === 137 ? await output.embedPng(bytes) : await output.embedJpg(bytes); images.set(row.signature, image); }
+          if (!image) { image = await output.embedPng(await stripWhiteBackground(await loadSignature(row.signature))); images.set(row.signature, image); }
           const size = image.scaleToFit(w, h); page.drawImage(image, { x, y: bottom + (h - size.height) / 2, ...size });
         } else {
           const text = clean(values[field.binding || field.kind] ?? '');
-          if (text) { const size = Math.min(10, h * 0.75, w / Math.max(1, font.widthOfTextAtSize(text, 1))); page.drawText(text, { x, y: bottom + (h - size) / 2, font, size }); }
+          if (text) { const size = Math.min(10, h * 0.75, Math.max(1,w-4) / Math.max(1, font.widthOfTextAtSize(text, 1))); page.drawText(text, { x, y: bottom + (h - size) / 2, font, size }); }
         }
         page.pushOperators(popGraphicsState());
       }

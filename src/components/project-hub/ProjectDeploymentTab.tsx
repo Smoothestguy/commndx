@@ -1,3 +1,4 @@
+import { Time24Input } from '@/components/ui/time24-input';
 import { shiftRuleDefaults, projectShiftRulesSchema, checkoutRoundingOptions } from '@/lib/projectShiftRules';
 import { useLateStays } from '@/hooks/useLateStays';
 import { maxLate, lateDayKey, type LateInfo } from '@/lib/lateAttendance';
@@ -207,6 +208,7 @@ function AttendanceCell({ status, hours, crewInitial, onTap, onLongPress, label,
       onPointerDown={start}
       onPointerUp={cancel}
       onPointerLeave={cancel}
+      onPointerCancel={cancel}
       onContextMenu={(e) => { e.preventDefault(); }}
       onClick={() => { if (fired.current) { fired.current = false; return; } onTap(); }}
       className={cn(
@@ -367,7 +369,7 @@ function AttendanceGrid({ projectId, locations, crews, defaultHours, canManage }
           </Button>
         )}
       </div>
-      <p className="text-[11px] text-muted-foreground">Tap: blank → W → S → N → blank. Press and hold a cell to set hours.</p>
+
       {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : people.length === 0 ? (
         <p className="text-sm text-muted-foreground py-4">No personnel assigned to this location.</p>
       ) : (
@@ -429,8 +431,8 @@ function AttendanceGrid({ projectId, locations, crews, defaultHours, canManage }
                 </Select>
               </div>
               {canManage && <div className="grid grid-cols-2 gap-2">
-                <div><Label htmlFor="attendance-in">Time in</Label><Input id="attendance-in" type="time" step={60} value={edit.timeIn} onChange={e => setEdit({ ...edit, timeIn: e.target.value })} /></div>
-                <div><Label htmlFor="attendance-out">Time out</Label><Input id="attendance-out" type="time" step={60} value={edit.timeOut} onChange={e => setEdit({ ...edit, timeOut: e.target.value })} /></div>
+                <div><Label htmlFor="attendance-in">Time in</Label><Time24Input id="attendance-in"  step={60} value={edit.timeIn} onChange={e => setEdit({ ...edit, timeIn: e.target.value })} /></div>
+                <div><Label htmlFor="attendance-out">Time out</Label><Time24Input id="attendance-out"  step={60} value={edit.timeOut} onChange={e => setEdit({ ...edit, timeOut: e.target.value })} /></div>
               </div>}
               {mode !== 'hours' && <p className="text-xs text-muted-foreground">{zone}</p>}
               {mode === 'incomplete' && <p role="alert" className="text-xs text-destructive">Enter both times, or leave both blank.</p>}
@@ -888,6 +890,8 @@ function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit
   const [sbRate, setSbRate] = useState("");
   const [dayStartT, setDayStartT] = useState("06:00");
   const [nightStartT, setNightStartT] = useState("18:00");
+  const [dayEndT,setDayEndT]=useState("");
+  const [nightEndT,setNightEndT]=useState("");
   const [rules, setRules] = useState(() => Object.fromEntries(Object.entries(shiftRuleDefaults).map(([k,v]) => [k,String(v)])));
   const parsedRules = projectShiftRulesSchema.safeParse(Object.fromEntries(Object.entries(rules).map(([k,v]) => [k, v.trim() ? Number(v) : NaN])));
   const [open, setOpen] = useState(false);
@@ -900,6 +904,7 @@ function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit
     setSbRate((project as any)?.standby_rate != null ? String((project as any).standby_rate) : "");
     setDayStartT(String((project as any)?.day_shift_start ?? "06:00").slice(0, 5));
     setNightStartT(String((project as any)?.night_shift_start ?? "18:00").slice(0, 5));
+    setDayEndT(project?.day_shift_end?.slice(0,5)||"");setNightEndT(project?.night_shift_end?.slice(0,5)||"");
     setRules(Object.fromEntries(Object.entries(shiftRuleDefaults).map(([k,v]) => [k,String(project?.[k as keyof typeof shiftRuleDefaults] ?? v)])));
   } else if (!open && openRef.current) openRef.current = false;
 
@@ -925,8 +930,10 @@ function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit
           <h3 className="text-sm font-semibold">Shift rules</h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2 grid grid-cols-2 gap-2">
-              <div><Label htmlFor="project-day-start" className="text-xs">Day shift starts</Label><Input id="project-day-start" type="time" value={dayStartT} onChange={e=>setDayStartT(e.target.value)}/></div>
-              <div><Label htmlFor="project-night-start" className="text-xs">Night shift starts</Label><Input id="project-night-start" type="time" value={nightStartT} onChange={e=>setNightStartT(e.target.value)}/></div>
+              <div><Label htmlFor="project-day-start" className="text-xs">Day shift starts</Label><Time24Input id="project-day-start"  value={dayStartT} onChange={e=>setDayStartT(e.target.value)}/></div>
+              <div><Label htmlFor="project-night-start" className="text-xs">Night shift starts</Label><Time24Input id="project-night-start"  value={nightStartT} onChange={e=>setNightStartT(e.target.value)}/></div>
+              <div><Label htmlFor="project-day-end" className="text-xs">Day shift ends</Label><Time24Input id="project-day-end"  value={dayEndT} placeholder={nightStartT} onChange={e=>setDayEndT(e.target.value)}/><span className="text-xs text-muted-foreground">Default: {nightStartT}</span></div>
+              <div><Label htmlFor="project-night-end" className="text-xs">Night shift ends</Label><Time24Input id="project-night-end"  value={nightEndT} placeholder={dayStartT} onChange={e=>setNightEndT(e.target.value)}/><span className="text-xs text-muted-foreground">Default: {dayStartT} next day</span></div>
             </div>
             {([
               ['reminder_lead_minutes','Reminder lead (min before shift)'],
@@ -949,6 +956,7 @@ function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit
             standby_rate: sbRate.trim() ? Number(sbRate) : null,
             day_shift_start: dayStartT || "06:00",
             night_shift_start: nightStartT || "18:00",
+            day_shift_end: dayEndT || null, night_shift_end: nightEndT || null,
           }, { onSuccess: () => setOpen(false) }); }}
         >{update.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Save</Button>
       </PopoverContent>
@@ -1408,13 +1416,6 @@ export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
       <CustomerProjectAlerts projectId={projectId} locations={locations}/>
       {canEdit && <DeploymentAlerts projectId={projectId} locations={locations} onView={view => { setUrlSub(view); setAlertView(s => ({view,key:s.key+1})); setTimeout(() => document.getElementById('deployment-visits')?.scrollIntoView({behavior:'smooth'}), 0); }} />}
       <JoinRequests projectId={projectId} strip />
-      <ProjectRosterCard projectId={projectId} />
-      <SigninStatusBoard projectId={projectId} locations={locations} onSelect={(location, day) => setSheetSelection({ doc: '', location, day })} />
-      {canEdit && <ReusableSigninPicker projectId={projectId} />}
-      <section className="space-y-2"><h3 className="text-sm font-semibold">Customer sign-in sheets</h3><DailyTimesheetPanel projectId={projectId} projectName={project?.name || 'Project'} initialSheet={sheetSelection} /></section>
-      <CrewsSection projectId={projectId} crews={crews} canEdit={canEdit} />
-      <div id="deployment-visits"><VisitsCard key={alertView.key} defaultView={urlSub} projectId={projectId} locations={locations} crews={crews} from={r.from} to={r.to} canEdit={canEdit} /></div>
-      <MileageCard crews={crews} locations={locations} from={r.from} to={r.to} mileageRate={mileageRate} canEdit={canEdit} />
       <Tabs defaultValue="service">
         <TabsList>
           <TabsTrigger value="service">Service grid</TabsTrigger>
@@ -1423,6 +1424,14 @@ export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
         <TabsContent value="service"><ServiceGrid locations={locations} /></TabsContent>
         <TabsContent value="attendance"><AttendanceGrid projectId={projectId} locations={locations} crews={crews} defaultHours={defaultHours} canManage={canEdit} /></TabsContent>
       </Tabs>
+      <SigninStatusBoard projectId={projectId} locations={locations} onSelect={(location, day) => setSheetSelection({ doc: '', location, day })} />
+      {canEdit && <ReusableSigninPicker projectId={projectId} />}
+      <section className="space-y-2"><h3 className="text-sm font-semibold">Customer sign-in sheets</h3><DailyTimesheetPanel projectId={projectId} projectName={project?.name || 'Project'} initialSheet={sheetSelection} /></section>
+      <div id="deployment-visits"><VisitsCard key={alertView.key} defaultView={urlSub} projectId={projectId} locations={locations} crews={crews} from={r.from} to={r.to} canEdit={canEdit} /></div>
+      <MileageCard crews={crews} locations={locations} from={r.from} to={r.to} mileageRate={mileageRate} canEdit={canEdit} />
+
+      <CrewsSection projectId={projectId} crews={crews} canEdit={canEdit} />
+      <ProjectRosterCard projectId={projectId} />
     </div>
   );
 }

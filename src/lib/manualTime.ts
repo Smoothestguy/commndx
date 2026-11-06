@@ -1,4 +1,5 @@
-import { localDay, localTime } from './signinSheets';
+import { localDay, localTime, nextDay } from './signinSheets';
+import { resolveShifts, type ShiftStarts } from './shifts';
 
 /** Interpret the input as a location wall-clock time, never the browser's timezone. */
 export function locationTimeIso(day: string, time: string, zone: string): string | null {
@@ -16,11 +17,23 @@ export function locationTimeIso(day: string, time: string, zone: string): string
   return localDay(iso, zone) === day && localTime(iso, zone) === time ? iso : null;
 }
 
-export function manualTimeRange(day: string, timeIn: string, timeOut: string, zone: string) {
+export function manualTimeRange(day: string, timeIn: string, timeOut: string, zone: string, outDay = day) {
   const inAt = locationTimeIso(day, timeIn, zone);
-  const outAt = locationTimeIso(day, timeOut, zone);
+  const outAt = locationTimeIso(outDay, timeOut, zone);
   if (!inAt || !outAt || outAt <= inAt) return null;
   return { inAt, outAt, hours: (Date.parse(outAt) - Date.parse(inAt)) / 3600000 };
+}
+
+export function scheduledShift(day: string, shift: 'day' | 'night', location?: ShiftStarts, project?: ShiftStarts) {
+  const s = resolveShifts(location, project), timeIn = shift === 'day' ? s.day : s.night, timeOut = shift === 'day' ? s.dayEnd : s.nightEnd;
+  return { timeIn, timeOut, outDay: timeOut <= timeIn ? nextDay(day) : day };
+}
+export function scheduledCheckout(inAt: string, zone: string, location?: ShiftStarts, project?: ShiftStarts) {
+  const day = localDay(inAt, zone), time = localTime(inAt,zone), s = resolveShifts(location,project);
+  const shift = time >= s.day && time < s.night ? 'day' : 'night';
+  const shiftDay = shift === 'night' && time < s.day ? new Date(Date.parse(day+'T12:00:00Z')-86400000).toISOString().slice(0,10) : day;
+  const plan = scheduledShift(shiftDay,shift,location,project);
+  return locationTimeIso(plan.outDay,plan.timeOut,zone);
 }
 
 export function attendanceSaveMode(canManage: boolean, timeIn: string, timeOut: string) {

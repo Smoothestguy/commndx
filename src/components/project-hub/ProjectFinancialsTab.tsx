@@ -1,3 +1,4 @@
+import { useAppModules } from '@/hooks/useAppModules';
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -40,6 +41,7 @@ interface Props {
 
 export function ProjectFinancialsTab({ projectId, project, customer }: Props) {
   const navigate = useNavigate();
+  const modules=useAppModules();
   const { data: estimates = [] } = useEstimatesByProject(projectId);
   const { data: jobOrders = [] } = useJobOrdersByProject(projectId);
   const { data: invoices = [] } = useInvoicesByProject(projectId);
@@ -210,7 +212,7 @@ export function ProjectFinancialsTab({ projectId, project, customer }: Props) {
       <ProjectRateBracketsSection projectId={projectId} />
 
       {/* Estimates */}
-      <div className="space-y-4">
+      {modules.flags.estimates && <div className="space-y-4">
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" />
           <h3 className="font-heading text-lg font-semibold">
@@ -230,10 +232,10 @@ export function ProjectFinancialsTab({ projectId, project, customer }: Props) {
             onRowClick={(item) => navigate(`/estimates/${item.id}`)}
           />
         )}
-      </div>
+      </div>}
 
       {/* Job Orders */}
-      <div className="space-y-4">
+      {modules.flags.job_orders && <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Briefcase className="h-5 w-5 text-primary" />
@@ -259,7 +261,7 @@ export function ProjectFinancialsTab({ projectId, project, customer }: Props) {
             onRowClick={(item) => navigate(`/job-orders/${item.id}`)}
           />
         )}
-      </div>
+      </div>}
 
       {/* Invoices */}
       <div className="space-y-4">
@@ -294,23 +296,23 @@ export function ProjectFinancialsTab({ projectId, project, customer }: Props) {
         projectId={projectId}
         onAddNew={() => navigate(`/vendor-bills/new?projectId=${projectId}`)}
       />
-      <ProjectChangeOrdersList
+      {modules.flags.change_orders && <ProjectChangeOrdersList
         changeOrders={changeOrders || []}
         projectId={projectId}
         onAddNew={() => navigate(`/change-orders/new?projectId=${projectId}`)}
-      />
-      {(tmTickets || []).length > 0 && (
+      />}
+      {modules.flags.tm_tickets && (tmTickets || []).length > 0 && (
         <ProjectTMTicketsList
           tickets={tmTickets || []}
           projectId={projectId}
           onAddNew={() => setIsTMTicketDialogOpen(true)}
         />
       )}
-      <ProjectPurchaseOrdersList
+      {modules.flags.work_orders && <ProjectPurchaseOrdersList
         purchaseOrders={purchaseOrders}
         projectId={projectId}
         onAddNew={() => navigate(`/purchase-orders/new?projectId=${projectId}`)}
-      />
+      />}
 
       <AddTMTicketDialog
         open={isTMTicketDialogOpen}

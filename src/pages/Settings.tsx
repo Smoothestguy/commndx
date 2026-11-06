@@ -42,6 +42,7 @@ import { DeleteAccountSection } from "@/components/settings/DeleteAccountSection
 import { ApplicationWatchdogCard } from "@/components/settings/ApplicationWatchdogCard";
 import { InvitationDefaultsCard } from "@/components/settings/InvitationDefaultsCard";
 import { SigninProvidersCard } from "@/components/settings/SigninProvidersCard";
+import { ModulesCard } from '@/components/settings/ModulesCard';
 
 
 import AppWalkthroughDownload from "@/components/AppWalkthroughDownload";
@@ -161,6 +162,7 @@ export default function Settings() {
         description="Manage your account settings and preferences"
       >
         <div className="space-y-6">
+          {role==='admin'&&<ModulesCard/>}
           {(role === "admin" || role === "manager") && <ApplicationWatchdogCard />}
 
           {(role === "admin" || role === "manager") && <InvitationDefaultsCard />}

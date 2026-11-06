@@ -1,4 +1,5 @@
 import { expect, it } from 'bun:test';
+import './canvasTestSupport';
 import { sha256, sheetStatus, validReopenReason, locationDays, KIOSK_REFRESH_MS, KIOSK_RETURN_MS } from './sheetApprovalRules';
 import { countersignSheet } from './customerApprovalPdf';
 import { PDFDocument } from 'pdf-lib';

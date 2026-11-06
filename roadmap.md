@@ -1,3 +1,11 @@
+# Polish and fix batch
+- [x] Transparent signature stamping/capture; ordered/clamped legacy row bands; browser generated and visually inspected the live Patriot template plus 43-row/two-page overflow and FRG download. Existing unlinked template stays unlinked; isolated copy used for paired-download checks.
+- [x] Location/person context now retains location; location-local date and explicit checkout date, overnight prefill; guarded manager bulk loop with partial-save reporting and seeded roster. Signed-in header, attendance clocks, bulk three-person save and grid long-press read back in Trail/Timesheet.
+- [x] Optional location/project ends persist/reload; checkout defaults and deployed roster-alerts use them, dedupe/cron unchanged; 24h text inputs plus remaining task-order/join/version displays.
+- [x] Admin module toggles persist in existing integration_settings JSON, no localStorage/schema changes; default hidden Estimates/Takeoff/estimating/roof measurements, Change Orders, T&M, Work Orders/completion reviews/contractor submissions, Job Orders. Sidebar/menus/FAB and financial project sections hide them; accounting data/calculations retained. Operations then Workforce then Recruiting.
+- [x] Location header actions aligned, project breadcrumb/native customer link, Deployment summary→alerts→grids→sheets/visits→crews/mileage/roster; dark/light laptop/phone captures inspected. 87 focused tests, bunx tsgo --noEmit and preview build passed.
+- [ ] Live ledger only allows one personnel/project/date time entry, so additional separate same-day backfill stays fail server uniqueness. Client now blocks clearly before creating empty shells and directs to existing edits; requires live owner schema/trigger change for multiple same-day stays. No migrations applied. Actual Safari/separate manager session unverified.
+
 # Project-configurable shift rules
 - [x] Regenerated types; Deployment Project settings separates Billing/Shift rules with all six typed/validated values saved through useUpdateProject, including listed rounding choices.
 - [x] Deployed roster-alerts reading project reminder lead; preshift/no-show/checkout/checkout-ext/supervisor copy and reservation dedupe preserved. Shared punch/kiosk/Field Mode late screen displays returned grace. No schema or scheduling changes.

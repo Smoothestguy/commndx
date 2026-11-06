@@ -2,6 +2,8 @@ import {it,expect} from 'bun:test';
 import {extensionChoices,earlyApproval,earlyMinutes} from './shiftDiscipline';
 import {preshiftAt,checkoutKind,rosterThresholds} from '../../supabase/functions/_shared/rosterRules';
 const now=Date.parse('2026-11-05T12:00:00Z');
+it('checkout nag starts thirty minutes after the explicit day end, not night start',()=>{const at=time=>rosterThresholds(Date.parse(time),'America/Chicago','07:30','19:30','2026-11-06T13:30Z','17:00','07:30').checkout;expect(at('2026-11-06T23:29Z')).toBe(false);expect(at('2026-11-06T23:30Z')).toBe(true);});
+it('explicit night end controls after-midnight checkout nags',()=>{expect(rosterThresholds(Date.parse('2026-11-07T14:29Z'),'America/Chicago','07:30','19:30','2026-11-07T01:30Z','17:00','08:00').checkout).toBe(false);expect(rosterThresholds(Date.parse('2026-11-07T14:30Z'),'America/Chicago','07:30','19:30','2026-11-07T01:30Z','17:00','08:00').checkout).toBe(true);});
 it('extension choices use fifteen-minute steps and stop at six hours',()=>{const choices=extensionChoices(now);expect(choices[0]).toBe('2026-11-05T12:15:00.000Z');expect(choices.at(-1)).toBe('2026-11-05T18:00:00.000Z');expect(choices).toHaveLength(24);});
 it('extension choices also respect six hours beyond the shift end',()=>expect(extensionChoices(now,'2026-11-05T11:00Z').at(-1)).toBe('2026-11-05T17:00:00.000Z'));
 it('early approval requires both markers while retaining reason',()=>{expect(earlyApproval('Prep work',null,null)).toBe('pending supervisor approval');expect(earlyApproval('Prep work','manager','2026-11-05T12:00Z')).toBe('approved');});

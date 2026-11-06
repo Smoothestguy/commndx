@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useParams, Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useParams, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { useProject, useArchiveProject, useUnarchiveProject } from "@/integrations/supabase/hooks/useProjects";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -193,6 +193,7 @@ const ProjectDetail = () => {
         </div>
       }
     >
+      <nav aria-label="Breadcrumb" className="flex flex-wrap gap-2 text-sm text-muted-foreground mb-4"><Link to="/projects" className="hover:underline">Projects</Link><span>/</span><Link to={`/projects/${project.id}`} className="text-foreground hover:underline">{project.name}</Link></nav>
       {/* Compact header */}
       <div className="mb-4 space-y-2">
         <div className="flex flex-wrap items-center gap-2">
@@ -225,12 +226,9 @@ const ProjectDetail = () => {
           {customer && (
             <span className="flex items-center gap-1">
               <User className="h-3.5 w-3.5" />
-              <button
-                className="text-primary hover:underline"
-                onClick={() => navigate(`/customers/${customer.id}`)}
-              >
+              <Link className="text-primary hover:underline" to={`/customers/${customer.id}`}>
                 {getCustomerDisplayName(customer)}
-              </button>
+              </Link>
             </span>
           )}
           <span className="flex items-center gap-1">
