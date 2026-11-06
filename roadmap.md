@@ -1,3 +1,8 @@
+# Project join links
+- [ ] Regenerate live types; add bilingual anonymous registration, validation and personal punch-link success.
+- [ ] Manager project/location link creation, employer defaults, role/expiry, copy/QR/text and revocation; focus refresh.
+- [ ] Rule tests, live browser registration/deduplication and requested TypeScript check; no migrations.
+
 # Daily timesheets and non-billable personnel
 - [x] Built-in location/day customer PDF, linked-template precedence and private approval/lock flow; live populated location PDF downloaded and isolated template-free approval/hash/storage readback verified. Employee signature/footer rendering inspected with synthetic evidence.
 - [x] Non-billable editor/labels and money exclusions while retaining attendance and agency hours; distinct from non-billable rate brackets.
