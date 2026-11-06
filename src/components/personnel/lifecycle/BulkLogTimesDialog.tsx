@@ -22,7 +22,7 @@ export function BulkLogTimesDialog({ projectId, location }: { projectId: string;
   const [selected,setSelected]=useState<string[]>([]),[completed,setCompleted]=useState<string[]>([]);
   const {data:roster=[],isLoading,error:rosterError}=useLocationAssignments(location.id);
   const {data:project}=useProject(projectId),save=useLogManualTime(projectId);
-  useEffect(()=>{if(open){setSelected(roster.map(r=>r.personnel_id));setCompleted([]);setError('');}},[open,roster]);
+  useEffect(()=>{if(open){setSelected(roster.map(r=>r.personnel_id));setCompleted([]);setError('');}},[open]);
   const range=manualTimeRange(day,tin,tout,zone,outDay);
   return <><Button variant="outline" size="sm" onClick={()=>setOpen(true)}>Bulk log times</Button><Dialog open={open} onOpenChange={v=>{if(!busy)setOpen(v);}}><DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto" onEscapeKeyDown={e=>{if(busy)e.preventDefault();}} onPointerDownOutside={e=>{if(busy)e.preventDefault();}}><DialogHeader><DialogTitle>Bulk log times · {location.name}</DialogTitle></DialogHeader>
     <div><Label htmlFor="bulk-date">Date</Label><Input id="bulk-date" type="date" value={day} disabled={busy||!!completed.length} onChange={e=>{setDay(e.target.value);setOutDay(e.target.value);}}/></div>

@@ -511,6 +511,10 @@ export function useLogManualTime(projectId: string | undefined) {
       const {data: location,error:locationError}=await supabase.from('project_locations').select('project_id,timezone').eq('id',i.location_id).single();
       if(locationError)throw locationError;
       if(location.project_id!==projectId)throw new Error('Location does not belong to this project');
+      const payrollDates=splitAtMidnight(i.in_at,i.out_at).map(s=>s.date);
+      const {data:existing,error:existingError}=await supabase.from('time_entries').select('id').eq('project_id',projectId).eq('personnel_id',i.personnel_id).in('entry_date',payrollDates).limit(1);
+      if(existingError)throw existingError;
+      if(existing?.length)throw new Error('This person already has time for this project day. Edit the existing Timesheet hours or Trail time instead; the live daily ledger does not accept a second stay.');
       await guardStayWeeks(projectId,[{id:crypto.randomUUID(),oldIn:i.in_at,oldOut:i.out_at,inAt:i.in_at,outAt:i.out_at,zone:location.timezone||'America/Chicago'}]);
       await guardVisitDates(i.location_id, i.in_at, i.out_at);
       const { data: { user } } = await supabase.auth.getUser();
@@ -522,7 +526,11 @@ export function useLogManualTime(projectId: string | undefined) {
       const { error: pErr } = await db.from("visit_personnel").insert({
         visit_id: v.id, personnel_id: i.personnel_id, checked_in_at: i.in_at, checked_out_at: i.out_at, checked_in_by: user?.id ?? null,
       });
-      if (pErr) throw pErr;
+      if (pErr) {
+        // A failed personnel insert leaves no stay/evidence: remove only its empty shell.
+        await db.from('location_visits').delete().eq('id',v.id);
+        throw new Error(pErr.message || 'Unable to save manual stay');
+      }
       await recomputeAttendanceFromVisits(i.location_id, await visitAttendanceDates(v.id));
     },
     onSuccess: () => {
@@ -530,6 +538,7 @@ export function useLogManualTime(projectId: string | undefined) {
       qc.invalidateQueries({ queryKey: ["location-attendance"] });
       qc.invalidateQueries({ queryKey: ["personnel-trail"] });
       qc.invalidateQueries({ queryKey: ["project-roster"] });
+      for(const key of ['week-timesheet','signin-sheet-stays','signin-reconciliation'])qc.invalidateQueries({queryKey:[key]});
       toast.success("Time logged");
     },
     onError: (e: any) => toast.error(e?.message ?? "Failed to log time"),
