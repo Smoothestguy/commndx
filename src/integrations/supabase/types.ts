@@ -4283,8 +4283,10 @@ export type Database = {
           created_at: string
           created_by: string | null
           created_via: string
+          details: Json | null
           document_id: string | null
           effective_date: string
+          effective_time: string | null
           id: string
           kind: string
           location_id: string
@@ -4292,13 +4294,16 @@ export type Database = {
           status: string
           submitted_by_name: string | null
           to_number: string
+          travel_time: boolean | null
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           created_via?: string
+          details?: Json | null
           document_id?: string | null
           effective_date?: string
+          effective_time?: string | null
           id?: string
           kind: string
           location_id: string
@@ -4306,13 +4311,16 @@ export type Database = {
           status?: string
           submitted_by_name?: string | null
           to_number: string
+          travel_time?: boolean | null
         }
         Update: {
           created_at?: string
           created_by?: string | null
           created_via?: string
+          details?: Json | null
           document_id?: string | null
           effective_date?: string
+          effective_time?: string | null
           id?: string
           kind?: string
           location_id?: string
@@ -4320,6 +4328,7 @@ export type Database = {
           status?: string
           submitted_by_name?: string | null
           to_number?: string
+          travel_time?: boolean | null
         }
         Relationships: [
           {

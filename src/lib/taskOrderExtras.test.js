@@ -1,0 +1,12 @@
+import {it,expect} from 'bun:test';
+import {adjustmentLines,adjustmentNumber,buildDetails,isDemob,taskOrderWhen} from './taskOrderExtras';
+it('manual increase records only the delta for a role',()=>expect(adjustmentLines([{role_label:'Operator',headcount_needed:7}],[{role_label:'Operator',headcount_needed:9}])).toEqual([{line_kind:'position',label:'Operator',qty_delta:2,kind:'increase'}]));
+it('manual decrease records a negative delta',()=>expect(adjustmentLines([{role_label:'Operator',headcount_needed:7}],[{role_label:'Operator',headcount_needed:3}])[0]).toMatchObject({qty_delta:-4,kind:'decrease'}));
+it('unchanged counts do not create adjustment orders',()=>expect(adjustmentLines([{role_label:'Operator',headcount_needed:7}],[{role_label:'Operator',headcount_needed:7}])).toEqual([]));
+it('removed role records full decrease',()=>expect(adjustmentLines([{role_label:'Operator',headcount_needed:7}],[])[0].qty_delta).toBe(-7));
+it('new role records full increase',()=>expect(adjustmentLines([],[{role_label:'Operator',headcount_needed:3}])[0].qty_delta).toBe(3));
+it('ADJ reference uses date and minute',()=>expect(adjustmentNumber('2026-11-06','14:00')).toBe('ADJ-20261106-1400'));
+it('decrease and demobilization allow demob extras',()=>{expect(isDemob('decrease')).toBe(true);expect(isDemob('demobilization')).toBe(true);expect(isDemob('increase')).toBe(false);});
+it('additional info persists as label value object',()=>expect(buildDetails([{id:'x',label:'Last meal provided',value:'11/6 lunch'},{id:'y',label:'Equipment pickup',value:'11/7'}])).toEqual({'Last meal provided':'11/6 lunch','Equipment pickup':'11/7'}));
+it('duplicate details cannot silently overwrite',()=>expect(()=>buildDetails([{id:'x',label:'Meal',value:'A'},{id:'y',label:'Meal',value:'B'}])).toThrow());
+it('effective time stays 24-hour and date does not shift',()=>expect(taskOrderWhen('2026-11-06','14:00:00')).toBe('11/6 14:00'));

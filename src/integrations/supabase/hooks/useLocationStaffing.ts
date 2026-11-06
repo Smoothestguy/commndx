@@ -1,3 +1,4 @@
+import { saveManualRequirements } from '@/lib/manualRequirementSave';
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -37,7 +38,7 @@ function useInvalidate() {
     qc.invalidateQueries({ queryKey: reqKey(locationId) });
     qc.invalidateQueries({ queryKey: asgKey(locationId) });
     qc.invalidateQueries({ queryKey: ["location-staffing-summary"] });
-    qc.invalidateQueries({ queryKey: ["location-authorization"] });
+    for (const key of ["location-authorization", "location-task-orders", "location-task-orders-asof", "customer-project-counts", "deployment-alerts"]) qc.invalidateQueries({ queryKey: [key] });
   };
 }
 
@@ -58,8 +59,8 @@ export function useAddLocationRequirement() {
   const inv = useInvalidate();
   return useMutation({
     mutationFn: async (input: { location_id: string; role_label: string; headcount_needed: number; bill_rate?: number | null; notes?: string | null }) => {
-      const { error } = await db.from("location_requirements").insert(input);
-      if (error) throw error;
+      const {data:current,error}=await supabase.from("location_requirements").select("*").eq("location_id",input.location_id);if(error)throw error;
+      await saveManualRequirements(input.location_id,[...current??[],input],current??[]);
       return input.location_id;
     },
     onSuccess: inv,
@@ -71,8 +72,8 @@ export function useUpdateLocationRequirement() {
   const inv = useInvalidate();
   return useMutation({
     mutationFn: async ({ id, location_id, ...rest }: Partial<LocationRequirement> & { id: string; location_id: string }) => {
-      const { error } = await db.from("location_requirements").update(rest).eq("id", id);
-      if (error) throw error;
+      const {data:current,error}=await supabase.from("location_requirements").select("*").eq("location_id",location_id);if(error)throw error;
+      await saveManualRequirements(location_id,(current??[]).map(r=>r.id===id?{...r,...rest}:r),current??[]);
       return location_id;
     },
     onSuccess: inv,
@@ -84,8 +85,8 @@ export function useDeleteLocationRequirement() {
   const inv = useInvalidate();
   return useMutation({
     mutationFn: async ({ id, location_id }: { id: string; location_id: string }) => {
-      const { error } = await db.from("location_requirements").delete().eq("id", id);
-      if (error) throw error;
+      const {data:current,error}=await supabase.from("location_requirements").select("*").eq("location_id",location_id);if(error)throw error;
+      await saveManualRequirements(location_id,(current??[]).filter(r=>r.id!==id),current??[]);
       return location_id;
     },
     onSuccess: inv,
@@ -261,24 +262,7 @@ export async function saveLocationRequirements(
   rows: { id?: string; role_label: string; headcount_needed: number; bill_rate: number | null }[],
   existing: LocationRequirement[],
 ) {
-  const keep = new Set(rows.filter((r) => r.id).map((r) => r.id));
-  const toDelete = existing.filter((e) => !keep.has(e.id)).map((e) => e.id);
-  if (toDelete.length) {
-    const { error } = await db.from("location_requirements").delete().in("id", toDelete);
-    if (error) throw error;
-  }
-  for (const r of rows.filter((r) => r.id)) {
-    const e = existing.find((x) => x.id === r.id);
-    if (e && e.role_label === r.role_label && e.headcount_needed === r.headcount_needed && (e.bill_rate ?? null) === r.bill_rate) continue;
-    const { error } = await db.from("location_requirements")
-      .update({ role_label: r.role_label, headcount_needed: r.headcount_needed, bill_rate: r.bill_rate }).eq("id", r.id);
-    if (error) throw error;
-  }
-  const inserts = rows.filter((r) => !r.id).map((r) => ({ location_id: locationId, role_label: r.role_label, headcount_needed: r.headcount_needed, bill_rate: r.bill_rate }));
-  if (inserts.length) {
-    const { error } = await db.from("location_requirements").insert(inserts);
-    if (error) throw error;
-  }
+  await saveManualRequirements(locationId, rows, existing);
 }
 
 /** All active assignments across many locations in one round-trip (+ one name lookup). */
