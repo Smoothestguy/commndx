@@ -30,6 +30,10 @@ export interface ProjectLocation {
   night_shift_start: string | null;
   day_shift_end: string | null;
   night_shift_end: string | null;
+  closed_at?: string | null;
+  closed_by?: string | null;
+  closeout_date?: string | null;
+  closeout_notes?: string | null;
   created_at: string;
   updated_at: string;
 }
