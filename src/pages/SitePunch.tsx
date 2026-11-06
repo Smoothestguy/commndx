@@ -14,6 +14,7 @@ import { EarlyCheckIn } from '@/components/signin/EarlyCheckIn';
 import { ShiftExtensionRequest } from '@/components/signin/ShiftExtensionRequest';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { agencyLogo } from '@/lib/agencyPortal';
+import { LangSwitcher, usePublicLang } from '@/lib/publicLang';
 
 type Info = { valid: boolean; reason?: string; first_name?: string; location_name?: string; address?: string | null; report_at?: string | null; on_site_since?: string | null; timezone?: string; agency_name?: string | null; agency_logo_url?: string | null };
 type Done = { action: "in" | "out"; at: string; geo: boolean; offsite: boolean; early?: boolean; lateMinutes?: number } | null;
@@ -37,6 +38,8 @@ function getPos(): Promise<{ lat: number; lng: number; accuracy: number } | null
 
 export default function SitePunch() {
   const { token } = useParams<{ token: string }>();
+  const { tr } = usePublicLang();
+  const trRef = useRef(tr); trRef.current = tr;
   const [info, setInfo] = useState<Info | null>(() => token ? cachedInfo(token) : null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<Done>(null);
@@ -123,7 +126,7 @@ export default function SitePunch() {
         }
         await finish({...intent,action:result.action,effectiveAt:result.at,earlyFlagged:result.early_flagged,lateMinutes:result.late_minutes??result.minutes_late});
       } catch (e) {
-        if (!isNetworkError(e)) setError("Could not send the saved punch. / No se pudo enviar el registro guardado.");
+        if (!isNetworkError(e)) setError(trRef.current("Could not send the saved punch.", "No se pudo enviar el registro guardado."));
       } finally { setBusy(false); }
     });
   }, [token, confirm]);
@@ -162,7 +165,7 @@ export default function SitePunch() {
       savePunch(intent); setPending(intent); // Write ahead: reloads cannot lose an in-flight punch.
       await flush();
     } catch {
-      setError("This phone couldn't save your punch. Keep this page open and try in coverage, or call the office. / No se pudo guardar; intenta con señal o llama a la oficina.");
+      setError(tr("This phone couldn't save your punch. Keep this page open and try in coverage, or call the office.", "No se pudo guardar; intenta con señal o llama a la oficina."));
     } finally { tapping.current = false; setBusy(false); }
   };
   const override = async () => {
@@ -178,51 +181,49 @@ export default function SitePunch() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-5">
-      <ForceDarkTheme />
-      {signing ? <div className="w-full max-w-md h-[85dvh]"><SignaturePad name={info?.first_name||'You'} required description="Sign to check in" saving={busy} onSkip={()=>{}} onSave={async blob=>{const intent=signing;setBusy(true);try{const base64=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob);});savePunch({...intent,signatureBase64:base64});setSigning(null);setPending(readPunch(intent.token));blocked.current=false;await flush();}catch{setError('Could not save your signature. Please try again.');}finally{setBusy(false);}}}/></div> : <div className="w-full max-w-md text-center space-y-6">
-        {info?.valid&&info.agency_name?<div className="space-y-2">{agencyLogo.parse(info.agency_logo_url)&&!logoFailed?<img src={agencyLogo.parse(info.agency_logo_url)||undefined} alt={`${info.agency_name} logo`} referrerPolicy="no-referrer" onError={()=>setLogoFailed(true)} className="max-h-12 max-w-56 object-contain mx-auto"/>:<p className="text-xl font-semibold">{info.agency_name}</p>}<p className="text-xs text-muted-foreground">for Fairfield Response Group</p></div>:<p className="text-sm uppercase tracking-widest text-muted-foreground">Fairfield Response Group</p>}
+      <ForceDarkTheme /><LangSwitcher />
+      {signing ? <div className="w-full max-w-md h-[85dvh]"><SignaturePad name={info?.first_name||'You'} required description={tr("Sign to check in", "Firma para registrar tu entrada")} saving={busy} onSkip={()=>{}} onSave={async blob=>{const intent=signing;setBusy(true);try{const base64=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob);});savePunch({...intent,signatureBase64:base64});setSigning(null);setPending(readPunch(intent.token));blocked.current=false;await flush();}catch{setError(tr('Could not save your signature. Please try again.', 'No se pudo guardar tu firma. Intenta otra vez.'));}finally{setBusy(false);}}}/></div> : <div className="w-full max-w-md text-center space-y-6">
+        {info?.valid&&info.agency_name?<div className="space-y-2">{agencyLogo.parse(info.agency_logo_url)&&!logoFailed?<img src={agencyLogo.parse(info.agency_logo_url)||undefined} alt={`${info.agency_name} logo`} referrerPolicy="no-referrer" onError={()=>setLogoFailed(true)} className="max-h-12 max-w-56 object-contain mx-auto"/>:<p className="text-xl font-semibold">{info.agency_name}</p>}<p className="text-xs text-muted-foreground">{tr("for Fairfield Response Group", "para Fairfield Response Group")}</p></div>:<p className="text-sm uppercase tracking-widest text-muted-foreground">Fairfield Response Group</p>}
         {pending && !rejection && <div role="status" className="border-2 border-warning bg-warning/15 text-warning rounded-md p-5 space-y-3">
           <WifiOff className="h-12 w-12 mx-auto" />
-          <h1 className="text-2xl font-bold">{pending.committed?'Signature pending — check-in recorded':error?'Punch not accepted — saved for review':navigator.onLine?'Sending saved punch':'No signal — punch saved'} {t(pending.at)}</h1>
-          <p className="text-lg">{error?'Keep this page open and call the office.':"It will send automatically when you're back in coverage. Keep this page open or revisit the link."}</p>
-          <p className="text-base">Sin señal — registro guardado a las {t(pending.at)}. Se enviará al volver la señal. Mantén esta página abierta o vuelve a abrir el enlace.</p>
+          <h1 className="text-2xl font-bold">{pending.committed?tr('Signature pending — check-in recorded','Firma pendiente — entrada registrada'):error?tr('Punch not accepted — saved for review','Registro no aceptado — guardado para revisión'):navigator.onLine?tr('Sending saved punch','Enviando registro guardado'):tr('No signal — punch saved','Sin señal — registro guardado')} {t(pending.at)}</h1>
+          <p className="text-lg">{error?tr('Keep this page open and call the office.','Mantén esta página abierta y llama a la oficina.'):tr("It will send automatically when you're back in coverage. Keep this page open or revisit the link.","Se enviará al volver la señal. Mantén esta página abierta o vuelve a abrir el enlace.")}</p>
           {busy && <Loader2 className="h-5 w-5 animate-spin mx-auto" />}
         </div>}
-        {!info && !pending && <><Loader2 className="h-10 w-10 animate-spin mx-auto" /><p className="text-muted-foreground">Waiting for signal… / Esperando señal…</p></>}
+        {!info && !pending && <><Loader2 className="h-10 w-10 animate-spin mx-auto" /><p className="text-muted-foreground">{tr('Waiting for signal…', 'Esperando señal…')}</p></>}
         {info && !info.valid && !pending && <div className="space-y-3">
           <AlertCircle className="h-14 w-14 mx-auto text-destructive" />
-          <h1 className="text-3xl font-bold">This link isn't active</h1>
-          <p className="text-lg text-muted-foreground">Please call the office: <a className="underline" href={`tel:${OFFICE_PHONE.replace(/\D/g, "")}`}>{OFFICE_PHONE}</a></p>
-          <p className="text-base text-muted-foreground">Este enlace no está activo. Llama a la oficina.</p>
+          <h1 className="text-3xl font-bold">{tr("This link isn't active", "Este enlace no está activo")}</h1>
+          <p className="text-lg text-muted-foreground">{tr("Please call the office:", "Llama a la oficina:")} <a className="underline" href={`tel:${OFFICE_PHONE.replace(/\D/g, "")}`}>{OFFICE_PHONE}</a></p>
         </div>}
         {info?.valid && !pending && !rejection && <>
           {done ? <div className="space-y-2">
             <CheckCircle2 className="h-16 w-16 mx-auto text-success" />
-            <h1 className="text-3xl font-bold">{done.action === "in" ? "Checked in" : "Checked out"} {t(done.at)} ✓</h1>
+            <h1 className="text-3xl font-bold">{done.action === "in" ? tr("Checked in", "Entrada registrada") : tr("Checked out", "Salida registrada")} {t(done.at)} ✓</h1>
             <p className="text-xl">{info.location_name}</p>
-            <p className="text-xs text-muted-foreground">{done.geo ? "📍 location tagged" : "no GPS"}</p>
-            {!!done.lateMinutes && <p className="text-sm text-destructive">Marked {done.lateMinutes} min late</p>}
-            {done.early && <p className="text-warning">Early check-in — pending supervisor approval</p>}
-            {done.offsite && <p className="text-warning">Recorded as off-site — supervisor will review</p>}
-            {done.action === "out" && <p className="text-lg text-muted-foreground">Total today shows on your supervisor's board.</p>}
+            <p className="text-xs text-muted-foreground">{done.geo ? tr("📍 location tagged", "📍 ubicación registrada") : tr("no GPS", "sin GPS")}</p>
+            {!!done.lateMinutes && <p className="text-sm text-destructive">{tr(`Marked ${done.lateMinutes} min late`, `Marcado ${done.lateMinutes} min tarde`)}</p>}
+            {done.early && <p className="text-warning">{tr("Early check-in — pending supervisor approval", "Entrada temprana — pendiente de aprobación del supervisor")}</p>}
+            {done.offsite && <p className="text-warning">{tr("Recorded as off-site — supervisor will review", "Registrado fuera del sitio — el supervisor lo revisará")}</p>}
+            {done.action === "out" && <p className="text-lg text-muted-foreground">{tr("Total today shows on your supervisor's board.", "El total de hoy aparece en el tablero de tu supervisor.")}</p>}
           </div> : <div className="space-y-2">
-            <h1 className="text-4xl font-bold">Hi {info.first_name}!</h1>
+            <h1 className="text-4xl font-bold">{tr(`Hi ${info.first_name}!`, `¡Hola ${info.first_name}!`)}</h1>
             <p className="text-2xl font-semibold">{info.location_name}</p>
             {mapsHref && <a href={mapsHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-lg text-primary underline"><MapPin className="h-5 w-5" />{info.address}</a>}
-            {info.report_at && !onSite && <p className="text-lg text-muted-foreground">Report: {format(new Date(info.report_at), "EEE M/d HH:mm")}</p>}
-            {info.on_site_since && <p className="text-xl">On site since {t(info.on_site_since)}</p>}
+            {info.report_at && !onSite && <p className="text-lg text-muted-foreground">{tr("Report:", "Presentarse:")} {format(new Date(info.report_at), "EEE M/d HH:mm")}</p>}
+            {info.on_site_since && <p className="text-xl">{tr("On site since", "En el sitio desde")} {t(info.on_site_since)}</p>}
           </div>}
           {(!done || done.action === "in") && <Button onClick={punch} disabled={busy} className={`w-full h-28 text-2xl font-bold ${onSite ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : "bg-success text-success-foreground hover:bg-success/90"}`}>
-            {busy ? <Loader2 className="h-8 w-8 animate-spin" /> : onSite ? "CHECK OUT" : "I'M HERE — CHECK IN"}
+            {busy ? <Loader2 className="h-8 w-8 animate-spin" /> : onSite ? tr("CHECK OUT", "REGISTRAR SALIDA") : tr("I'M HERE — CHECK IN", "YA LLEGUÉ — REGISTRAR ENTRADA")}
           </Button>}
           {onSite && token && <ShiftExtensionRequest token={token} />}
         </>}
         {rejection?.reason === 'late' ? <LateCheckIn rejection={rejection} timezone={rejection.timezone||info?.timezone} busy={busy} onSubmit={async reason => { if (!token || busy) return; const intent=readPunch(token); if (!intent) return; savePunch({...intent,lateReason:reason,tries:0});setRejection(null);blocked.current=false;await flush(); }} /> : rejection?.reason === 'before_shift' ? <EarlyCheckIn rejection={rejection} timezone={rejection.timezone||info?.timezone} busy={busy} onSubmit={async reason => { if (!token || busy) return; const intent=readPunch(token); if (!intent) return; savePunch({...intent,earlyReason:reason,tries:0});setRejection(null);blocked.current=false;await flush(); }} /> : rejection && <div role="status" className={`rounded-md border-2 p-5 space-y-4 ${rejection.reason === 'already_signed_today' ? 'border-success text-success' : 'border-warning text-warning'}`}>
-          <h1 className="text-2xl font-bold">{rejection.reason === 'out_of_range' ? `You're ${Math.round(rejection.distance_m ?? 0)}m from ${info?.location_name || 'the site'} (allowed ${rejection.radius_m ?? 300}m)` : rejection.reason === 'no_gps' ? "Couldn't get your location" : 'Already signed in today at this site'}</h1>
-          {rejection.reason === 'already_signed_today' ? <p>{rejection.in_at && `In ${t(rejection.in_at)}`} {rejection.out_at && `Out ${t(rejection.out_at)}`}</p> : overriding ? <>
-            <Textarea aria-label="Off-site reason" placeholder="Reason (required)" value={overrideReason} maxLength={1000} onChange={e => setOverrideReason(e.target.value)} />
-            <Button className="w-full min-h-14" disabled={!overrideReason.trim() || busy} onClick={override}>Record check-in</Button>
-          </> : <Button className="w-full h-20 text-xl" onClick={() => setOverriding(true)}>I'M ON SITE ANYWAY</Button>}
+          <h1 className="text-2xl font-bold">{rejection.reason === 'out_of_range' ? tr(`You're ${Math.round(rejection.distance_m ?? 0)}m from ${info?.location_name || 'the site'} (allowed ${rejection.radius_m ?? 300}m)`, `Estás a ${Math.round(rejection.distance_m ?? 0)} m de ${info?.location_name || 'el sitio'} (permitido ${rejection.radius_m ?? 300} m)`) : rejection.reason === 'no_gps' ? tr("Couldn't get your location", "No se pudo obtener tu ubicación") : tr('Already signed in today at this site', 'Ya registraste tu entrada hoy en este sitio')}</h1>
+          {rejection.reason === 'already_signed_today' ? <p>{rejection.in_at && `${tr('In','Entrada')} ${t(rejection.in_at)}`} {rejection.out_at && `${tr('Out','Salida')} ${t(rejection.out_at)}`}</p> : overriding ? <>
+            <Textarea aria-label={tr("Off-site reason", "Motivo fuera del sitio")} placeholder={tr("Reason (required)", "Motivo (obligatorio)")} value={overrideReason} maxLength={1000} onChange={e => setOverrideReason(e.target.value)} />
+            <Button className="w-full min-h-14" disabled={!overrideReason.trim() || busy} onClick={override}>{tr("Record check-in", "Registrar entrada")}</Button>
+          </> : <Button className="w-full h-20 text-xl" onClick={() => setOverriding(true)}>{tr("I'M ON SITE ANYWAY", "ESTOY EN EL SITIO DE TODAS FORMAS")}</Button>}
         </div>}
         {error && <p role="alert" className="text-lg text-destructive">{error} <a className="underline" href={`tel:${OFFICE_PHONE.replace(/\D/g, "")}`}>{OFFICE_PHONE}</a></p>}
       </div>}
