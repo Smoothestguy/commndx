@@ -292,7 +292,7 @@ async function visitAttendanceDates(visitId: string): Promise<string[]> {
   return [...new Set<string>((data??[]).flatMap((r:{in_at:string;out_at:string|null})=>{const dates:string[]=[];let d=localDay(r.in_at,zone);const end=localDay(r.out_at||new Date().toISOString(),zone);while(d<=end){dates.push(d);d=nextDay(d);}return dates;}))];
 }
 
-async function recomputeAttendanceFromVisits(locationId: string, touchedDates: string[]) {
+export async function recomputeAttendanceFromVisits(locationId: string, touchedDates: string[]) {
   const dates = [...new Set(touchedDates)].sort();
   const first = dates[0];
   const last = dates[dates.length - 1];

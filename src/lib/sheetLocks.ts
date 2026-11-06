@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { locationDays } from './sheetApprovalRules';
 import { FunctionsHttpError } from '@supabase/supabase-js';
+import { affectedStayWeeks } from './stayEdits';
 export type LockRequest = { title: string; resolve: (reason: string | null) => void };
 const listeners = new Set<(request: LockRequest | null) => void>();
 let active: LockRequest | null = null;
@@ -26,6 +27,19 @@ export async function ensureSheetsOpen(scopes: { locationId: string; dates: stri
 export async function guardVisitDates(locationId: string, inAt: string, outAt: string | null, extraDates: string[] = []) {
   const { data, error } = await supabase.from('project_locations').select('timezone').eq('id', locationId).single(); if (error) throw error;
   await ensureSheetsOpen([{ locationId, dates: [...extraDates, ...locationDays(inAt, outAt, data.timezone || 'America/Chicago')] }]);
+}
+/** Closed weeks cannot be bypassed by reopening only the customer sheet. */
+export async function guardStayWeeks(projectId: string, stays: { id: string; oldIn: string; oldOut: string | null; inAt: string; outAt: string | null; zone: string }[]) {
+  const weeks = [...new Set(stays.flatMap(s => affectedStayWeeks(s.oldIn, s.oldOut, s.inAt, s.outAt, s.zone)))];
+  const ids = stays.map(s => s.id);
+  const [closed, entries] = await Promise.all([
+    supabase.from('week_closeouts').select('week_start').eq('project_id', projectId).in('week_start', weeks),
+    supabase.from('time_entries').select('id,is_locked,invoice_id').in('visit_personnel_id', ids),
+  ]);
+  if (closed.error) throw closed.error;
+  if (entries.error) throw entries.error;
+  if (closed.data?.length || entries.data?.some(e => e.is_locked)) throw new Error('Week is locked — reopen the closed week before editing its stays. Reopening a sheet alone does not unlock payroll.');
+  if (entries.data?.some(e => e.invoice_id)) throw new Error('This stay has been invoiced. Correct the invoice before changing its time.');
 }
 export async function guardTimeEntries(ids: string[], proposed?: { location_id?: string | null; entry_date?: string }) {
   if (!ids.length) return;
