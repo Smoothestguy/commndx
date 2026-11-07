@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { SignatureCanvas, SignatureCanvasHandle } from "@/components/documents/SignatureCanvas";
 import { useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,9 +53,9 @@ export default function ApproveChangeOrderPublic() {
   const [signerName, setSignerName] = useState("");
   const [signerEmail, setSignerEmail] = useState("");
   const [notes, setNotes] = useState("");
-  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasSignature, setHasSignature] = useState(false);
   const [rejectMode, setRejectMode] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = useRef<SignatureCanvasHandle>(null);
 
   const { data: co, isLoading, error } = useChangeOrderByToken(token);
 
@@ -87,46 +88,13 @@ export default function ApproveChangeOrderPublic() {
     },
   });
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    setIsDrawing(true);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const rect = canvas.getBoundingClientRect();
-    ctx.beginPath();
-    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const rect = canvas.getBoundingClientRect();
-    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-    ctx.strokeStyle = "#1f2937";
-    ctx.lineWidth = 2;
-    ctx.lineCap = "round";
-    ctx.stroke();
-  };
-
-  const handleMouseUp = () => setIsDrawing(false);
-
-  const clearSignature = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  };
+  const clearSignature = () => canvasRef.current?.clear();
 
   const getSignature = (): string => {
     if (signatureType === "type") return typedSignature;
     const canvas = canvasRef.current;
     if (!canvas) return "";
-    return canvas.toDataURL("image/png");
+    return canvas.toDataURL();
   };
 
   const handleApprove = async () => {
@@ -278,7 +246,7 @@ export default function ApproveChangeOrderPublic() {
 
   const lineItems = co.line_items || [];
   const project = co.project as any;
-  const isSignatureValid = signatureType === "type" ? typedSignature.trim().length > 0 : true;
+  const isSignatureValid = signatureType === "type" ? typedSignature.trim().length > 0 : hasSignature;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20 py-8 px-4">
@@ -449,17 +417,8 @@ export default function ApproveChangeOrderPublic() {
                     <Label>Draw Your Signature *</Label>
                     <Button type="button" variant="ghost" size="sm" onClick={clearSignature}>Clear</Button>
                   </div>
-                  <div className="border-2 border-dashed border-border rounded-lg bg-white">
-                    <canvas
-                      ref={canvasRef}
-                      width={400}
-                      height={150}
-                      className="w-full cursor-crosshair touch-none"
-                      onMouseDown={handleMouseDown}
-                      onMouseMove={handleMouseMove}
-                      onMouseUp={handleMouseUp}
-                      onMouseLeave={handleMouseUp}
-                    />
+                  <div className="border-2 border-dashed border-border rounded-lg bg-card">
+                    <SignatureCanvas ref={canvasRef} onInkChange={setHasSignature} className="w-full h-[280px] landscape:h-[300px]" />
                   </div>
                 </div>
               )}
