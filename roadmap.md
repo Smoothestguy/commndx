@@ -154,3 +154,8 @@
 
 # Locations command center
 - [x] List default (Cards/Roster secondary), needs strip with filtering chips, field requests table + dialog, header KPIs hidden on Locations tab. Browser verified desktop/phone on Florida Floods; test request accepted.
+
+# Role-based Home
+- [ ] Admin/manager operations needs across active projects, attention list, daily totals and quick actions; preserve collapsed Sales and clock banner.
+- [ ] Field My Day: scoped sites, punch action, weekly hours, POC and signature requests without money.
+- [ ] Rule tests and signed-in 390px/desktop verification, including Jorge Perez if an authorized session is available; no leftover test data.
