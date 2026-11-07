@@ -1,3 +1,4 @@
+import {localStamp,locationZone} from '../_shared/locationTime.ts';
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -21,13 +22,15 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body: NotifyLateClockAttemptRequest = await req.json();
+    const bearer=req.headers.get('Authorization')?.replace(/^Bearer /,'');const {data:{user},error:authError}=await supabase.auth.getUser(bearer);if(authError||!user)return new Response(JSON.stringify({error:'Sign in required'}),{status:401,headers:corsHeaders});
     const { personnel_id, project_id, scheduled_start_time, attempt_time, minutes_late } = body;
 
+    const [{data:roles},{data:self}]=await Promise.all([supabase.from('user_roles').select('role').eq('user_id',user.id),supabase.from('personnel').select('id').eq('id',personnel_id).eq('user_id',user.id).maybeSingle()]);if(!self&&!roles?.some(r=>['admin','manager'].includes(r.role)))return new Response(JSON.stringify({error:'Forbidden'}),{status:403,headers:corsHeaders});
     console.log("Processing late clock-in attempt notification:", {
       personnel_id,
       project_id,
@@ -52,7 +55,7 @@ serve(async (req) => {
     // Get project details
     const { data: project, error: projectError } = await supabase
       .from("projects")
-      .select("name")
+      .select("*")
       .eq("id", project_id)
       .single();
 
@@ -64,7 +67,7 @@ serve(async (req) => {
     const projectName = project.name;
 
     // Create clock alert record
-    const today = new Date().toISOString().split("T")[0];
+    const zone=locationZone({},project);const today=new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(attempt_time));
     const { error: alertError } = await supabase
       .from("clock_alerts")
       .insert({
@@ -72,7 +75,7 @@ serve(async (req) => {
         alert_date: today,
         personnel_id,
         project_id,
-        notes: `Attempted to clock in ${Math.round(minutes_late)} minutes late. Scheduled: ${scheduled_start_time}. Attempt: ${attempt_time}`,
+        notes: `Attempted to clock in ${Math.round(minutes_late)} minutes late. Scheduled: ${scheduled_start_time.slice(0,5).replace(':','')} (${zone}). Attempt: ${localStamp(attempt_time,zone)}`,
         metadata: {
           scheduled_start_time,
           attempt_time,
