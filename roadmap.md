@@ -1,5 +1,5 @@
 # Polish and fix batch
-- [ ] Four-digit time inputs everywhere, location-zone SMS and punch/kiosk audit, dry-run Eastern verification; no test rows or sends.
+- [x] Shared four-digit time/date-time fields with normalization and inline errors; location-zone SMS/punch/kiosk handling. 17 tests and signed-in desktop/390px manual dialog verified; live roster-alerts dry-run returned 0725–0730 Eastern with zero sends. No test rows created.
 - [x] Transparent signature stamping/capture; ordered/clamped legacy row bands; browser generated and visually inspected the live Patriot template plus 43-row/two-page overflow and FRG download. Existing unlinked template stays unlinked; isolated copy used for paired-download checks.
 - [x] Location/person context now retains location; location-local date and explicit checkout date, overnight prefill; guarded manager bulk loop with partial-save reporting and seeded roster. Signed-in header, attendance clocks, bulk three-person save and grid long-press read back in Trail/Timesheet.
 - [x] Optional location/project ends persist/reload; checkout defaults and deployed roster-alerts use them, dedupe/cron unchanged; 24h text inputs plus remaining task-order/join/version displays.
