@@ -9,6 +9,8 @@ import { staleVisitEnd } from '@/lib/deploymentFlow';
 import { signatureImageUrl } from '@/utils/signedDocumentExport';
 import { ensureSheetsOpen, guardVisitDates, guardStayWeeks } from '@/lib/sheetLocks';
 
+import { locationTimeIso } from '@/lib/manualTime';
+
 const db = supabase as any;
 const BUCKET = "field-captures";
 
@@ -506,31 +508,53 @@ export function useLogManualTime(projectId: string | undefined) {
   const inv = useInv(projectId);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (i: { personnel_id: string; location_id: string; day: string; in_at: string; out_at: string; note?: string }) => {
+    mutationFn: async (i: { personnel_id: string; location_id: string; day: string; in_at: string; out_at: string; note?: string; assignRole?: string; confirmOtherOpen?: boolean }) => {
       if (!projectId || Date.parse(i.out_at) <= Date.parse(i.in_at)) throw new Error('Valid project and time out after time in required');
       const {data: location,error:locationError}=await supabase.from('project_locations').select('project_id,timezone').eq('id',i.location_id).single();
       if(locationError)throw locationError;
       if(location.project_id!==projectId)throw new Error('Location does not belong to this project');
       // Managers may add extra stays the same day; only overlapping stays (double-counted hours) are refused.
-      const {data:overlap,error:overlapError}=await supabase.from('personnel_location_trail').select('visit_personnel_id,in_at,out_at').eq('personnel_id',i.personnel_id).lt('in_at',i.out_at).gt('in_at',new Date(Date.parse(i.in_at)-2*864e5).toISOString()).limit(50);
+      const {data:overlap,error:overlapError}=await supabase.from('personnel_location_trail').select('visit_personnel_id,location_id,in_at,out_at').eq('personnel_id',i.personnel_id).lt('in_at',i.out_at).gt('in_at',new Date(Date.parse(i.in_at)-2*864e5).toISOString()).limit(50);
       if(overlapError)throw overlapError;
-      if((overlap??[]).some(r=>r.out_at?Date.parse(r.out_at)>Date.parse(i.in_at):Date.parse(r.in_at!)>Date.parse(i.in_at)-16*3600e3))throw new Error('This overlaps another stay for this person. Pick times that do not overlap, or edit the existing stay.');
+      if((overlap??[]).some(r=>r.out_at?Date.parse(r.out_at)>Date.parse(i.in_at):r.in_at && Date.parse(r.in_at)>Date.parse(i.in_at)-16*3600e3 && !(i.confirmOtherOpen && r.location_id!==i.location_id)))throw new Error('This overlaps another stay for this person, possibly an unfinished check-out at another location. Close or correct that stay before adding these hours.');
       await guardStayWeeks(projectId,[{id:crypto.randomUUID(),oldIn:i.in_at,oldOut:i.out_at,inAt:i.in_at,outAt:i.out_at,zone:location.timezone||'America/Chicago'}]);
       await guardVisitDates(i.location_id, i.in_at, i.out_at);
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Sign in required');
+      const {data:roles,error:roleError}=await supabase.from('user_roles').select('role').eq('user_id',user.id);
+      if(roleError)throw roleError;
+      if(!roles?.some(r=>r.role==='admin'||r.role==='manager'))throw new Error('Manager access required');
+      const {data:member,error:memberError}=await supabase.from('personnel_project_assignments').select('id').eq('project_id',projectId).eq('personnel_id',i.personnel_id).limit(1);
+      if(memberError)throw memberError;
+      if(!member?.length)throw new Error('Person must belong to this project');
+      if(i.assignRole){
+        const {data:previous,error:pe}=await supabase.from('location_assignments').select('id,assigned_at,unassigned_at,status,role_label').eq('location_id',i.location_id).eq('personnel_id',i.personnel_id).maybeSingle();if(pe)throw pe;
+        if(previous?.unassigned_at)throw new Error('This person has an ended assignment. Record this day without reassignment to preserve their historical removal.');
+        const start=locationTimeIso(i.day,'00:00',location.timezone||'America/Chicago');
+        if(!start)throw new Error('Invalid assignment date');
+        const values={assigned_at:previous?.assigned_at && previous.assigned_at<start?previous.assigned_at:start,role_label:previous?.role_label??i.assignRole,status:'active',assigned_by:user.id};
+        const result=previous?await supabase.from('location_assignments').update(values).eq('id',previous.id):await supabase.from('location_assignments').insert({...values,role_label:i.assignRole,location_id:i.location_id,personnel_id:i.personnel_id});if(result.error)throw result.error;
+        if(previous){
+          const periods=await supabase.from('location_assignment_roles').select('id').eq('assignment_id',previous.id).limit(1);if(periods.error)throw periods.error;
+          if(!periods.data?.length){const baseline=await supabase.from('location_assignment_roles').insert({assignment_id:previous.id,role_label:previous.role_label,effective_from:previous.assigned_at||'1970-01-01T00:00:00Z',set_by:user.id});if(baseline.error)throw baseline.error;}
+          const historical=await supabase.from('location_assignment_roles').insert({assignment_id:previous.id,role_label:i.assignRole,effective_from:start,set_by:user.id});if(historical.error)throw historical.error;
+        }
+      }
       const notes = i.note?.trim() ? `Manual entry — ${i.note.trim()}` : "Manual entry";
       const { data: v, error } = await db.from("location_visits").insert({
         location_id: i.location_id, check_in_at: i.in_at, check_out_at: i.out_at, notes, created_by: user?.id ?? null,
       }).select("id").single();
       if (error) throw error;
-      const { error: pErr } = await db.from("visit_personnel").insert({
+      const { data: savedStay, error: pErr } = await db.from("visit_personnel").insert({
         visit_id: v.id, personnel_id: i.personnel_id, checked_in_at: i.in_at, checked_out_at: i.out_at, checked_in_by: user?.id ?? null,
-      });
+      }).select('id').single();
       if (pErr) {
         // A failed personnel insert leaves no stay/evidence: remove only its empty shell.
         await db.from('location_visits').delete().eq('id',v.id);
         throw new Error(pErr.message || 'Unable to save manual stay');
       }
+      const audit=await supabase.from('audit_logs').insert({user_id:user.id,user_email:user.email||'unknown',action_type:'stay_manual_add',resource_type:'visit_personnel',resource_id:savedStay.id,changes_after:{in_at:i.in_at,out_at:i.out_at,note:i.note??null},metadata:{project_id:projectId,location_id:i.location_id,assignment_role:i.assignRole??null,confirmed_other_open_stays:i.confirmOtherOpen?(overlap??[]).filter(r=>!r.out_at).map(r=>r.visit_personnel_id):[]},success:true});
+      if(audit.error)throw new Error('Time saved, but audit recording failed. Do not add it again; refresh and contact your administrator.');
       await recomputeAttendanceFromVisits(i.location_id, await visitAttendanceDates(v.id));
     },
     onSuccess: () => {

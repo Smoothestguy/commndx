@@ -31,3 +31,6 @@ it('location-locked picker contains only that locations active roster', () => {
   expect(locationRosterPeople(people, 'site', [])).toEqual([]);
   expect(locationRosterPeople(people)).toEqual(people);
 });
+it('Jaime requested November 6 Eastern day is 0730–1930 and twelve hours', () => {
+  expect(manualTimeRange('2026-11-06','07:30','19:30','America/New_York')).toEqual({inAt:'2026-11-06T12:30:00.000Z',outAt:'2026-11-07T00:30:00.000Z',hours:12});
+});
