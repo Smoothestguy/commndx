@@ -87,6 +87,6 @@ export async function kioskPending(db: any, v: any, locationId: string, projectI
     const visit = await db.from('visit_personnel').select('visit_id').eq('id', s.visit_personnel_id).single(); if (visit.error) throw visit.error;
     const review = await db.from('location_visits').update({ needs_review: true }).eq('id', visit.data.visit_id); if (review.error) throw review.error;
   }
-  const audit = await db.from('audit_logs').insert({ action_type: `kiosk_pending_${v.kind}`, resource_type: 'visit_personnel', resource_id: s.visit_personnel_id, changes_after: { out_at: v.out_at ?? null, reason: v.reason ?? null }, metadata: { location_id: locationId, project_id: projectId, personnel_id: person, supervisor_review_required: v.kind === 'checkout' }, success: true }); if (audit.error) throw audit.error;
+  const audit = await db.from('audit_logs').insert({ user_email: 'kiosk-worker', action_type: `kiosk_pending_${v.kind}`, resource_type: 'visit_personnel', resource_id: s.visit_personnel_id, changes_after: { out_at: v.out_at ?? null, reason: v.reason ?? null }, metadata: { location_id: locationId, project_id: projectId, personnel_id: person, supervisor_review_required: v.kind === 'checkout' }, success: true }); if (audit.error) throw audit.error;
   return { ok: true };
 }
