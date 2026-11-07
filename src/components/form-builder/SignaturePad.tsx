@@ -1,4 +1,5 @@
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState } from "react";
+import { SignatureCanvas, SignatureCanvasHandle } from "@/components/documents/SignatureCanvas";
 import { Button } from "@/components/ui/button";
 import { PenLine, Trash2, Check } from "lucide-react";
 import {
@@ -25,106 +26,15 @@ export function SignaturePad({
   helpText,
 }: SignaturePadProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
+  const canvasRef = useRef<SignatureCanvasHandle>(null);
   const [hasSignature, setHasSignature] = useState(false);
-
-  const getContext = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.strokeStyle = "#1a1aa6";
-      ctx.lineWidth = 2;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-    }
-    return ctx;
-  }, []);
-
-  const initCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    // Set canvas size
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
-    
-    // Signature pixels remain transparent outside the ink.
-    const ctx = getContext();
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-  }, [getContext]);
-
-  useEffect(() => {
-    if (isOpen) {
-      // Small delay to ensure canvas is mounted
-      setTimeout(initCanvas, 50);
-    }
-  }, [isOpen, initCanvas]);
-
-  const getCoordinates = (e: React.MouseEvent | React.TouchEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-
-    const rect = canvas.getBoundingClientRect();
-    if ("touches" in e) {
-      return {
-        x: e.touches[0].clientX - rect.left,
-        y: e.touches[0].clientY - rect.top,
-      };
-    }
-    return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    };
-  };
-
-  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    const ctx = getContext();
-    if (!ctx) return;
-
-    setIsDrawing(true);
-    const { x, y } = getCoordinates(e);
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-  };
-
-  const draw = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    if (!isDrawing) return;
-    
-    const ctx = getContext();
-    if (!ctx) return;
-
-    const { x, y } = getCoordinates(e);
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    setHasSignature(true);
-  };
-
-  const stopDrawing = () => {
-    setIsDrawing(false);
-  };
-
-  const clearCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = getContext();
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-    setHasSignature(false);
-  };
+  const clearCanvas = () => canvasRef.current?.clear();
 
   const saveSignature = () => {
     const canvas = canvasRef.current;
     if (!canvas || !hasSignature) return;
     
-    const dataUrl = canvas.toDataURL("image/png");
+    const dataUrl = canvas.toDataURL();
     onChange(dataUrl);
     setIsOpen(false);
   };
@@ -174,23 +84,13 @@ export function SignaturePad({
       {helpText && <p className="text-xs text-muted-foreground">{helpText}</p>}
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md landscape:max-w-none landscape:w-[calc(100%-2rem)] max-h-[95dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Draw your signature</DialogTitle>
           </DialogHeader>
           
           <div className="border rounded-lg overflow-hidden bg-card">
-            <canvas
-              ref={canvasRef}
-              className="w-full h-48 touch-none cursor-crosshair"
-              onMouseDown={startDrawing}
-              onMouseMove={draw}
-              onMouseUp={stopDrawing}
-              onMouseLeave={stopDrawing}
-              onTouchStart={startDrawing}
-              onTouchMove={draw}
-              onTouchEnd={stopDrawing}
-            />
+            <SignatureCanvas ref={canvasRef} onInkChange={setHasSignature} className="w-full h-[280px] landscape:h-[300px]" />
           </div>
           
           <DialogFooter className="flex-row gap-2 sm:gap-0">

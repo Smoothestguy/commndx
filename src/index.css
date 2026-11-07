@@ -38,6 +38,7 @@
 @layer base {
   /* Light Theme - Halo Systems inspired */
   :root {
+    --signature-ink: #1a1aa6;
     /* Warm near-white background, crisp white cards */
     --background: 40 20% 97%;
     --foreground: 220 15% 15%;
