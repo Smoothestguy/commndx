@@ -67,7 +67,7 @@ function useInvalidate() {
     qc.invalidateQueries({ queryKey: reqKey(locationId) });
     qc.invalidateQueries({ queryKey: asgKey(locationId) });
     qc.invalidateQueries({ queryKey: ["location-staffing-summary"] });
-    for (const key of ["location-authorization", "location-task-orders", "location-task-orders-asof", "customer-project-counts", "deployment-alerts"]) qc.invalidateQueries({ queryKey: [key] });
+    for (const key of ["location-authorization", "location-task-orders", "location-task-orders-asof", "customer-project-counts", "deployment-alerts", "asset-assignments", "location-roster-assets", "personnel-with-assets", "portal-assigned-assets", "portal-project-assets"]) qc.invalidateQueries({ queryKey: [key] });
   };
 }
 

@@ -1,3 +1,4 @@
+import type { AssetAssignmentWithDetails } from './useAssetAssignments';
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -31,32 +32,8 @@ export function usePersonnelAssignedAssets(personnelId: string | undefined) {
     queryFn: async () => {
       if (!personnelId) return [];
 
-      const { data, error } = await supabase
-        .from("asset_assignments")
-        .select(`
-          id,
-          project_id,
-          asset_id,
-          start_at,
-          end_at,
-          notes,
-          projects:project_id(id, name),
-          assets:asset_id(
-            id,
-            type,
-            label,
-            description,
-            address,
-            gate_code,
-            access_instructions,
-            operating_hours,
-            instructions
-          )
-        `)
-        .eq("assigned_to_personnel_id", personnelId)
-        .eq("status", "active")
-        .is("unassigned_at", null)
-        .order("start_at", { ascending: false });
+      const { data: projection, error } = await supabase.rpc('asset_placements', { p_personnel_id: personnelId });
+      const data = ((projection ?? []) as unknown as AssetAssignmentWithDetails[]).filter(a => a.status === 'active' && !a.unassigned_at);
 
       if (error) throw error;
 
@@ -73,7 +50,7 @@ export function usePersonnelAssignedAssets(personnelId: string | undefined) {
           asset_id: a.asset_id,
           start_at: a.start_at,
           end_at: a.end_at,
-          notes: a.notes,
+          notes: null,
           project: a.projects as PortalAssignedAsset["project"],
           asset: a.assets as PortalAssignedAsset["asset"],
         })) as PortalAssignedAsset[];
@@ -89,32 +66,8 @@ export function usePersonnelProjectAssets(personnelId: string | undefined, proje
     queryFn: async () => {
       if (!personnelId || !projectId) return [];
 
-      const { data, error } = await supabase
-        .from("asset_assignments")
-        .select(`
-          id,
-          project_id,
-          asset_id,
-          start_at,
-          end_at,
-          notes,
-          assets:asset_id(
-            id,
-            type,
-            label,
-            description,
-            address,
-            gate_code,
-            access_instructions,
-            operating_hours,
-            instructions
-          )
-        `)
-        .eq("assigned_to_personnel_id", personnelId)
-        .eq("project_id", projectId)
-        .eq("status", "active")
-        .is("unassigned_at", null)
-        .order("start_at", { ascending: false });
+      const { data: projection, error } = await supabase.rpc('asset_placements', { p_personnel_id: personnelId, p_project_id: projectId });
+      const data = ((projection ?? []) as unknown as AssetAssignmentWithDetails[]).filter(a => a.status === 'active' && !a.unassigned_at);
 
       if (error) throw error;
 
@@ -131,7 +84,7 @@ export function usePersonnelProjectAssets(personnelId: string | undefined, proje
           asset_id: a.asset_id,
           start_at: a.start_at,
           end_at: a.end_at,
-          notes: a.notes,
+          notes: null,
           project: null,
           asset: a.assets as PortalAssignedAsset["asset"],
         })) as PortalAssignedAsset[];

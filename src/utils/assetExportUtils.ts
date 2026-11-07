@@ -1,3 +1,4 @@
+import { ownershipText } from '@/lib/assetDetails';
 import * as XLSX from "xlsx";
 import type { AssetAssignmentWithDetails } from "@/integrations/supabase/hooks/useAssetAssignments";
 
@@ -6,6 +7,7 @@ export interface AssetExportRow {
   assetId: string;
   assetLabel: string;
   assetType: string;
+  ownership: string;
   serialNumber: string;
   address: string;
   assignedTo: string;
@@ -25,6 +27,7 @@ export interface AssetExportColumn {
 export const DEFAULT_ASSET_EXPORT_COLUMNS: AssetExportColumn[] = [
   { key: "assetLabel", label: "Asset Label", visible: true },
   { key: "assetType", label: "Type", visible: true },
+  { key: "ownership", label: "Ownership", visible: true },
   { key: "serialNumber", label: "Serial Number", visible: true },
   { key: "address", label: "Address", visible: true },
   { key: "assignedTo", label: "Assigned To", visible: true },
@@ -45,6 +48,7 @@ export function transformAssetAssignmentToExportRow(
     assetId: assignment.asset_id,
     assetLabel: asset?.label || "Unknown",
     assetType: asset?.type || "",
+    ownership: ownershipText(asset),
     serialNumber: asset?.serial_number || "",
     address: asset?.address || "",
     assignedTo: personnel
@@ -138,7 +142,7 @@ export function performAssetExport(
   let dataToExport = allData;
 
   if (options.scope === "selected" && options.selectedIds?.length) {
-    dataToExport = allData.filter((row) => options.selectedIds!.includes(row.id));
+    dataToExport = allData.filter((row) => options.selectedIds?.includes(row.id));
   }
 
   const timestamp = new Date().toISOString().split("T")[0];

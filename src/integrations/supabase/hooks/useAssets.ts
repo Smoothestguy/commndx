@@ -118,19 +118,12 @@ export interface CreateAssetInput {
   serial_number?: string;
   ownership?: "owned" | "rented";
   vendor_id?: string | null;
-  vendor_name?: string | null;
   unit_cost?: number | null;
   rental_rate?: number | null;
   rental_period?: "day" | "week" | "month";
   notes?: string | null;
   default_day_rate?: number | null;
   status?: AssetStatus;
-  ownership?: "owned" | "rented";
-  vendor_id?: string | null;
-  unit_cost?: number | null;
-  rental_rate?: number | null;
-  rental_period?: "day" | "week" | "month";
-  notes?: string | null;
   metadata?: Json;
 }
 
@@ -192,19 +185,12 @@ export interface UpdateAssetInput {
   serial_number?: string | null;
   ownership?: "owned" | "rented";
   vendor_id?: string | null;
-  vendor_name?: string | null;
   unit_cost?: number | null;
   rental_rate?: number | null;
   rental_period?: "day" | "week" | "month";
   notes?: string | null;
   default_day_rate?: number | null;
   status?: AssetStatus;
-  ownership?: "owned" | "rented";
-  vendor_id?: string | null;
-  unit_cost?: number | null;
-  rental_rate?: number | null;
-  rental_period?: "day" | "week" | "month";
-  notes?: string | null;
   metadata?: Json;
 }
 

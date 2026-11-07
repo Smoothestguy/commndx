@@ -89,6 +89,7 @@ export function useInvalidateStatus() {
     qc.invalidateQueries({ queryKey: ["personnel-current-status"] });
     qc.invalidateQueries({ queryKey: ["personnel-status-history"] });
     qc.invalidateQueries({ queryKey: ["project-roster"] });
+    for (const key of ["asset-assignments", "location-roster-assets", "personnel-with-assets", "portal-assigned-assets", "portal-project-assets"]) qc.invalidateQueries({ queryKey: [key] });
   };
 }
 

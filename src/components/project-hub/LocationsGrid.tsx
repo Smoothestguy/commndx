@@ -1,3 +1,4 @@
+import { assetCareLabel, ownershipText } from '@/lib/assetDetails';
 import { NonBillableChip } from '@/components/personnel/NonBillableChip';
 import { LocationTaskOrders } from './LocationTaskOrders';
 import { AuthorizationBadge } from './AuthorizationBadge';
@@ -319,7 +320,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
               {isOpen && !search && locAssets.map((r) => (
                 <div key={`asset-${r.id}`} className="border-t px-2 py-1.5 pl-6 flex items-center gap-2 min-w-0">
                   <AssetIcon type={r.assets?.type} className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  <span className="truncate flex-1 min-w-0">{r.assets?.label ?? "Asset"} <span className="text-muted-foreground">· {r.days}d{canWrite && r.billable ? (r.rate == null ? " · no rate" : ` · ${fmtMoney0(r.rate)}/day`) : ""}</span></span>
+                  <span className="truncate flex-1 min-w-0">{assetCareLabel(r.assets?.label ?? "Asset", r.personnel)} <span className="text-muted-foreground">· {r.days}d{canWrite && r.billable ? (r.rate == null ? " · no rate" : ` · Bill rate ${fmtMoney0(r.rate)}/day`) : ""}</span></span>
                   {canWrite && !r.end_at && <IconBtn label="End (stop day-rate clock)" onClick={() => endAsset.mutate(r.id)}><Square className="h-4 w-4" /></IconBtn>}
                   {canWrite && <IconBtn label="Unassign asset" onClick={() => unassignAsset.mutate(r.id)}><X className="h-4 w-4" /></IconBtn>}
                 </div>
@@ -432,12 +433,12 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                   {isOpen && !search && locAssets.map((r) => (
                     <tr key={`asset-${r.id}`} className="border-t hover:bg-muted/30">
                       <td className="px-2 py-1 pl-7 truncate" title={r.assets?.label ?? undefined}>
-                        <span className="inline-flex items-center gap-1.5 min-w-0"><AssetIcon type={r.assets?.type} className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /><span className="truncate">{r.assets?.label ?? "Asset"}</span></span>
+                        <span className="inline-flex items-center gap-1.5 min-w-0"><AssetIcon type={r.assets?.type} className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /><span className="truncate">{assetCareLabel(r.assets?.label ?? "Asset", r.personnel)}</span></span>
                       </td>
-                      <td className="px-2 py-1 text-muted-foreground capitalize truncate">{r.assets?.type ?? ""}</td>
+                      <td className="px-2 py-1 text-muted-foreground capitalize truncate">{ownershipText(r.assets)}</td>
                       <td className="px-2 py-1 truncate">
                         {canWrite && (r.billable
-                          ? <span className={r.rate == null ? "text-warning" : "text-success"}>{r.rate == null ? "billable · no rate" : `billable ${fmtMoney0(r.rate)}/day`}</span>
+                          ? <span className={r.rate == null ? "text-warning" : "text-success"}>{r.rate == null ? "billable · no rate" : `Bill rate ${fmtMoney0(r.rate)}/day`}</span>
                           : <span className="text-muted-foreground">— not billed</span>)}
                         {r.end_at && <span className="ml-1 text-muted-foreground">ended {format(new Date(r.end_at), "M/d")}</span>}
                       </td>
