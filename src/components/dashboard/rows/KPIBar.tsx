@@ -6,6 +6,7 @@ import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
+import { useAppModules } from '@/hooks/useAppModules';
 
 interface KPIMetric {
   label: string;
@@ -16,6 +17,7 @@ interface KPIMetric {
 }
 
 export function KPIBar() {
+  const modules = useAppModules();
   const { data: invoices, isLoading: invoicesLoading } = useInvoices();
   const { data: estimates, isLoading: estimatesLoading } = useEstimates();
   const { data: projects, isLoading: projectsLoading } = useProjects();
@@ -114,7 +116,7 @@ export function KPIBar() {
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-px bg-border/50 border border-border/50 rounded-lg overflow-hidden">
-      {metrics.map((metric, index) => (
+      {metrics.filter(metric=>metric.href !== '/estimates' || modules.visible('/estimates')).map((metric, index) => (
         <Link
           key={metric.label}
           to={metric.href || "#"}

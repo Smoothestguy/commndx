@@ -132,6 +132,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
   }
 
   const openNew = () => { setEditing(null); setForm(EMPTY); setRows([newRow()]); setSeeded(true); setOpen(true); };
+  useEffect(() => { if (locationParams.get('action') === 'new-location' && canWrite) openNew(); }, [canWrite, locationParams.get('action')]);
   const openEdit = (l: ProjectLocation) => {
     setEditing(l);
     setForm({

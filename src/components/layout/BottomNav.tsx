@@ -4,6 +4,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Home, ClipboardList, Wallet, Grid2X2, Plus, X, FileText, Receipt, ShoppingCart, UserPlus, MessageCircle } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole } from '@/hooks/useUserRole';
+import { Button } from '@/components/ui/button';
 import { cn } from "@/lib/utils";
 
 const tabs = [
@@ -36,6 +38,7 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
   const location = useLocation();
   const isMobile = useIsMobile();
   const { user } = useAuth();
+  const { isUser } = useUserRole();
 
   if (!isMobile) return null;
   
@@ -64,6 +67,8 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
     navigate(path);
     setIsExpanded(false);
   };
+
+  if (isUser && location.pathname === '/') return <nav aria-label="My Day navigation" className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t safe-area-bottom"><div className="flex h-16 items-center justify-around gap-2 px-3"><Button variant="ghost" className="flex-1 h-12 gap-2" onClick={()=>navigate('/')}><Home className="h-5 w-5"/>Home</Button><Button variant="ghost" className="flex-1 h-12 gap-2" onClick={()=>navigate('/messages')}><MessageCircle className="h-5 w-5"/>Messages</Button><Button variant="ghost" className="flex-1 h-12 gap-2" onClick={onMoreClick}><Grid2X2 className="h-5 w-5"/>More</Button></div></nav>;
 
   return (
     <>

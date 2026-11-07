@@ -14,8 +14,9 @@ async function all<T>(make: (o: number) => PromiseLike<{ data: T[] | null; error
 }
 
 /** Batched, dollar-free operational snapshot for every location in a project. */
-export function useLocationCommandCenter(projectId: string, locations: { id: string; timezone?: string | null }[]) {
+export function useLocationCommandCenter(projectId: string | string[], locations: { id: string; timezone?: string | null }[]) {
   const ids = locations.map(l => l.id).sort();
+  const projectIds = (Array.isArray(projectId) ? projectId : [projectId]).sort();
   return useQuery({
     queryKey: ['location-command-center', projectId, ids], enabled: ids.length > 0, refetchInterval: 60000,
     queryFn: async () => {
@@ -23,13 +24,12 @@ export function useLocationCommandCenter(projectId: string, locations: { id: str
       const today = (id: string) => localDay(new Date().toISOString(), zone(id));
       const since = new Date(Date.now() - 3 * 86400000).toISOString();
       const [recent, open, joins, tos, exts] = await Promise.all([
-        all<any>(o => supabase.from('personnel_location_trail').select('visit_personnel_id,personnel_id,location_id,in_at,out_at').eq('project_id', projectId).gte('in_at', since).order('in_at').range(o, o + 999)),
-        all<any>(o => supabase.from('personnel_location_trail').select('personnel_id,location_id').eq('project_id', projectId).is('out_at', null).order('in_at').range(o, o + 999)),
-        supabase.from('project_join_requests').select('location_id').eq('project_id', projectId).eq('status', 'pending'),
-        supabase.from('location_task_orders').select('location_id,kind,effective_date,status').in('location_id', ids),
-        supabase.from('shift_extensions').select('location_id').in('location_id', ids).eq('status', 'pending'),
+        all<any>(o => supabase.from('personnel_location_trail').select('visit_personnel_id,personnel_id,location_id,in_at,out_at').in('project_id', projectIds).in('location_id', ids).gte('in_at', since).order('in_at').order('visit_personnel_id').range(o, o + 999)),
+        all<any>(o => supabase.from('personnel_location_trail').select('personnel_id,location_id').in('project_id', projectIds).in('location_id', ids).is('out_at', null).order('in_at').order('visit_personnel_id').range(o, o + 999)),
+        all<any>(o => supabase.from('project_join_requests').select('location_id').in('project_id', projectIds).eq('status', 'pending').order('id').range(o, o + 999)),
+        all<any>(o => supabase.from('location_task_orders').select('location_id,kind,effective_date,status').in('location_id', ids).order('id').range(o, o + 999)),
+        all<any>(o => supabase.from('shift_extensions').select('location_id').in('location_id', ids).eq('status', 'pending').order('id').range(o, o + 999)),
       ]);
-      for (const r of [joins, tos, exts]) if (r.error) throw r.error;
       const out: Record<string, LocationOps> = {};
       for (const id of ids) out[id] = { onSite: 0, checkedToday: 0, late: 0, openPunches: 0, joinPending: 0, pendingTOs: 0, extPending: 0, lastActivity: null, next: null };
       const todayRows = recent.filter(t => out[t.location_id] && localDay(t.in_at, zone(t.location_id)) === today(t.location_id));
@@ -48,11 +48,11 @@ export function useLocationCommandCenter(projectId: string, locations: { id: str
         o.openPunches = open.filter(t => t.location_id === id).length;
         for (const t of recent) if (t.location_id === id) { const ts = [t.in_at, t.out_at].filter(Boolean).sort().pop(); if (ts && (!o.lastActivity || ts > o.lastActivity)) o.lastActivity = ts; }
       }
-      for (const j of joins.data ?? []) if (j.location_id && out[j.location_id]) out[j.location_id].joinPending++;
-      for (const e of exts.data ?? []) if (out[e.location_id]) out[e.location_id].extPending++;
-      for (const t of tos.data ?? []) if (['submitted', 'pending'].includes(t.status)) out[t.location_id].pendingTOs++;
+      for (const j of joins) if (j.location_id && out[j.location_id]) out[j.location_id].joinPending++;
+      for (const e of exts) if (out[e.location_id]) out[e.location_id].extPending++;
+      for (const t of tos) if (out[t.location_id] && ['submitted', 'pending'].includes(t.status)) out[t.location_id].pendingTOs++;
       await Promise.all(ids.map(async id => {
-        const upcoming = (tos.data ?? []).filter(t => t.location_id === id && t.status === 'accepted' && t.effective_date > today(id)).sort((a, b) => a.effective_date.localeCompare(b.effective_date))[0];
+        const upcoming = tos.filter(t => t.location_id === id && t.status === 'accepted' && t.effective_date > today(id)).sort((a, b) => a.effective_date.localeCompare(b.effective_date))[0];
         if (!upcoming) return;
         const { data, error } = await supabase.rpc('location_authorized_asof', { p_location: id, p_date: upcoming.effective_date });
         if (error) throw error;
