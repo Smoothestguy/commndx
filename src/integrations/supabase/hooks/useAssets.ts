@@ -14,6 +14,13 @@ export interface Asset {
   operating_hours: string | null;
   instructions: string | null;
   serial_number: string | null;
+  ownership?: "owned" | "rented";
+  vendor_id?: string | null;
+  vendor_name?: string | null;
+  unit_cost?: number | null;
+  rental_rate?: number | null;
+  rental_period?: "day" | "week" | "month";
+  notes?: string | null;
   default_day_rate?: number | null;
   status: "available" | "assigned" | "maintenance" | "retired";
   metadata: Record<string, unknown>;
@@ -55,25 +62,14 @@ export function useAssets(filters: AssetFilters = {}) {
   return useQuery({
     queryKey: ["assets", filters],
     queryFn: async () => {
-      let query = supabase
-        .from("assets")
-        .select("*")
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false });
-
-      if (filters.type && filters.type !== "all") {
-        query = query.eq("type", filters.type);
-      }
-      if (filters.status && filters.status !== "all") {
-        query = query.eq("status", filters.status);
-      }
-      if (filters.search) {
-        query = query.or(`label.ilike.%${filters.search}%,description.ilike.%${filters.search}%,serial_number.ilike.%${filters.search}%`);
-      }
-
-      const { data, error } = await query;
+      const { data, error } = await supabase.rpc("asset_catalog");
       if (error) throw error;
-      return data as Asset[];
+      let rows = (data ?? []) as unknown as Asset[];
+      if (filters.type && filters.type !== "all") rows = rows.filter(a => a.type === filters.type);
+      if (filters.status && filters.status !== "all") rows = rows.filter(a => a.status === filters.status);
+      if (filters.search) { const search = filters.search.toLowerCase(); rows = rows.filter(a => [a.label,a.description,a.serial_number].some(v => v?.toLowerCase().includes(search))); }
+      return rows;
+
     },
   });
 }
@@ -85,15 +81,10 @@ export function useAsset(assetId: string | undefined) {
     queryFn: async () => {
       if (!assetId) return null;
 
-      const { data, error } = await supabase
-        .from("assets")
-        .select("*")
-        .eq("id", assetId)
-        .is("deleted_at", null)
-        .single();
-
+      const { data, error } = await supabase.rpc("asset_catalog");
       if (error) throw error;
-      return data as Asset;
+      return ((data ?? []) as unknown as Asset[]).find(a => a.id === assetId) ?? null;
+
     },
     enabled: !!assetId,
   });
@@ -104,30 +95,13 @@ export function useAvailableAssets() {
   return useQuery({
     queryKey: ["assets", "available"],
     queryFn: async () => {
-      // Get all assets that are not retired and not in active assignments
-      const { data: assets, error: assetsError } = await supabase
-        .from("assets")
-        .select("*")
-        .is("deleted_at", null)
-        .neq("status", "retired")
-        .order("label");
-
-      if (assetsError) throw assetsError;
-
-      // Get active assignment asset IDs
-      const { data: activeAssignments, error: assignmentsError } = await supabase
-        .from("asset_assignments")
-        .select("asset_id")
-        .eq("status", "active")
-        .is("unassigned_at", null)
-        .is("end_at", null);
-
-      if (assignmentsError) throw assignmentsError;
-
-      const assignedAssetIds = new Set(activeAssignments?.map(a => a.asset_id) || []);
-
-      // Filter to assets not currently assigned
-      return (assets || []).filter(asset => !assignedAssetIds.has(asset.id)) as Asset[];
+      const [{ data: catalog, error }, { data: placements, error: placementError }] = await Promise.all([
+        supabase.rpc("asset_catalog"), supabase.rpc("asset_placements"),
+      ]);
+      if (error) throw error;
+      if (placementError) throw placementError;
+      const active = new Set(((placements ?? []) as unknown as {asset_id:string;status:string;end_at:string|null;unassigned_at:string|null}[]).filter(p => p.status === 'active' && !p.end_at && !p.unassigned_at).map(p => p.asset_id));
+      return ((catalog ?? []) as unknown as Asset[]).filter(a => a.status !== 'retired' && !active.has(a.id));
     },
   });
 }
@@ -142,8 +116,21 @@ export interface CreateAssetInput {
   operating_hours?: string;
   instructions?: string;
   serial_number?: string;
+  ownership?: "owned" | "rented";
+  vendor_id?: string | null;
+  vendor_name?: string | null;
+  unit_cost?: number | null;
+  rental_rate?: number | null;
+  rental_period?: "day" | "week" | "month";
+  notes?: string | null;
   default_day_rate?: number | null;
   status?: AssetStatus;
+  ownership?: "owned" | "rented";
+  vendor_id?: string | null;
+  unit_cost?: number | null;
+  rental_rate?: number | null;
+  rental_period?: "day" | "week" | "month";
+  notes?: string | null;
   metadata?: Json;
 }
 
@@ -165,6 +152,8 @@ export function useCreateAsset() {
         operating_hours: input.operating_hours,
         instructions: input.instructions,
         serial_number: input.serial_number,
+        ownership: input.ownership ?? 'owned', vendor_id: input.ownership === 'rented' ? input.vendor_id ?? null : null,
+        unit_cost: input.unit_cost ?? null, rental_rate: input.rental_rate ?? null, rental_period: input.rental_period ?? 'day', notes: input.notes ?? null,
         default_day_rate: input.default_day_rate ?? null,
         status: input.status || "available",
         metadata: input.metadata || {},
@@ -201,8 +190,21 @@ export interface UpdateAssetInput {
   operating_hours?: string | null;
   instructions?: string | null;
   serial_number?: string | null;
+  ownership?: "owned" | "rented";
+  vendor_id?: string | null;
+  vendor_name?: string | null;
+  unit_cost?: number | null;
+  rental_rate?: number | null;
+  rental_period?: "day" | "week" | "month";
+  notes?: string | null;
   default_day_rate?: number | null;
   status?: AssetStatus;
+  ownership?: "owned" | "rented";
+  vendor_id?: string | null;
+  unit_cost?: number | null;
+  rental_rate?: number | null;
+  rental_period?: "day" | "week" | "month";
+  notes?: string | null;
   metadata?: Json;
 }
 
