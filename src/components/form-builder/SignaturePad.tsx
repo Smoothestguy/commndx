@@ -34,7 +34,7 @@ export function SignaturePad({
     const canvas = canvasRef.current;
     if (!canvas || !hasSignature) return;
     
-    const dataUrl = canvas.toDataURL("image/png");
+    const dataUrl = canvas.toDataURL();
     onChange(dataUrl);
     setIsOpen(false);
   };

@@ -25,7 +25,7 @@ export default function TimesheetSign() {
         <p className="font-medium">{info.name}</p><p>{info.location}</p><p>{m}/{d}/{y}</p>
         {info.stays.map((s, i) => <p key={i} className="tabular-nums text-muted-foreground">{s.in} – {s.out ?? '…'}</p>)}
       </div>
-      <SignaturePad name={info.name} onSave={save} onSkip={() => {}} saving={saving} required description="Sign to confirm your hours for this day. / Firme para confirmar sus horas." />
+      <SignaturePad compact name={info.name} onSave={save} onSkip={() => {}} saving={saving} required description="Sign to confirm your hours for this day. / Firme para confirmar sus horas." />
     </>}
   </div></main>;
 }
