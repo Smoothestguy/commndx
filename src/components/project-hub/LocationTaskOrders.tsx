@@ -51,7 +51,7 @@ export function LocationTaskOrders({projectId,locationId,locationName,timezone,i
     toast.success('Task order saved and requirements updated');setEditing(false);setCommitted(null);
   }catch(e){toast.error(e instanceof Error?e.message:'Task order could not be saved');}finally{setBusy(false);}};
   const canWrite=isAdmin||isManager;
-  useEffect(()=>{if(newSignal&&canWrite)startNew();},[newSignal]);// eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(()=>{if(newSignal&&canWrite)startNew();},[newSignal,canWrite]);// eslint-disable-line react-hooks/exhaustive-deps
   if(!canWrite&&!inline)return null;
   const ledger = <div className="space-y-3">
     {!editing?<><div className="flex flex-wrap justify-between gap-2"><div><Label htmlFor={`to-asof-${locationId}`}>As of</Label><Input id={`to-asof-${locationId}`} type="date" value={asof} onChange={e=>setAsof(e.target.value)}/></div>{canWrite && newSignal===undefined && <Button onClick={startNew}><Plus className="h-4 w-4 mr-1"/>New task order</Button>}</div>
