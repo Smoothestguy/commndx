@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useLocation } from 'react-router-dom';
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { cn } from "@/lib/utils";
@@ -30,7 +31,9 @@ interface TopNavBarProps {
 
 export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
   const { user, signOut } = useAuth();
-  const { isAdmin, isManager } = useUserRole();
+  const { isAdmin, isManager, isUser } = useUserRole();
+  const location = useLocation();
+  const fieldHome = isUser && location.pathname === '/';
   const { toggleOpen, messages } = useAIAssistant();
   const { resolvedTheme } = useTheme();
   const { activeTheme } = useDashboardConfig();
@@ -110,10 +113,10 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
           <div className="h-5 w-px bg-black/20 dark:bg-white/20 mx-1 hidden md:block" />
 
           {/* Global Search */}
-          <GlobalSearch />
+          {!fieldHome && <GlobalSearch />}
 
           {/* Quick Create Button */}
-          <QuickCreateMenu />
+          {!fieldHome && <QuickCreateMenu />}
 
           {/* Divider */}
           <div className="h-5 w-px bg-black/20 dark:bg-white/20 mx-1" />

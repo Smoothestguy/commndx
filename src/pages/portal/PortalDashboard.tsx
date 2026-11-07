@@ -14,8 +14,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/utils";
 import { getLastCompletedPayPeriod, calculatePayPeriodTotals } from "@/lib/payPeriodUtils";
 import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
+import { useUserRole } from '@/hooks/useUserRole';
+import { MyDayHome } from '@/components/dashboard/MyDayHome';
+import { WelcomeStrip } from '@/components/dashboard/rows/WelcomeStrip';
 
 export default function PortalDashboard() {
+  const { isUser, loading } = useUserRole();
+  if (loading) return <PortalLayout><Skeleton className="h-20 w-full" /></PortalLayout>;
+  if (isUser) return <PortalLayout><div className="space-y-4"><WelcomeStrip /><MyDayHome /></div></PortalLayout>;
+  return <LegacyPortalDashboard />;
+}
+
+function LegacyPortalDashboard() {
   const navigate = useNavigate();
   const { data: personnel, isLoading: personnelLoading } = useCurrentPersonnel();
   const { data: timeEntries, isLoading: timeLoading } = usePersonnelTimeEntries(personnel?.id);

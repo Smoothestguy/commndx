@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Activity, ArrowRight, Clock, Inbox, ListChecks, MapPin, Plus, Send, Users, ChevronDown, RefreshCw } from 'lucide-react';
+import { Activity, ArrowRight, Clock, Inbox, ListChecks, MapPin, Plus, Send, Users, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -73,7 +73,7 @@ export function OperationsHome() {
       <div className="flex items-center justify-between gap-2"><div><h2 className="text-xl font-semibold flex items-center gap-2"><Activity className="h-5 w-5 text-primary"/>Command center</h2><p className="text-xs text-muted-foreground mt-1">{projects.length} active projects · {locations.length} active locations</p></div><Button variant="ghost" size="icon" aria-label="Refresh operations" onClick={refresh}><RefreshCw className="h-4 w-4"/></Button></div>
       {error ? <div role="alert" className="text-sm text-destructive">Some operations could not load. <Button variant="link" onClick={refresh}>Retry</Button></div>:null}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 border-y divide-x-0 gap-px bg-border">
-        {metrics.map(m=><Button key={m.key} variant="ghost" aria-pressed={filter===m.key} onClick={()=>setFilter(m.key)} className={`h-auto min-h-20 rounded-none bg-background flex flex-col items-start justify-center gap-1 px-3 whitespace-normal text-left ${filter===m.key?'bg-accent ring-1 ring-inset ring-primary':''}`}><span className={`font-semibold text-2xl tabular-nums ${m.key==='over'&&Number(m.value)>0?'text-destructive':m.key==='onsite'?'text-success':''}`}>{loading?'—':m.value}</span><span className="text-xs font-normal text-muted-foreground leading-snug">{m.label}</span></Button>)}
+        {metrics.map(m=><Button key={m.key} variant="ghost" aria-pressed={filter===m.key} onClick={()=>setFilter(m.key)} className={`h-auto min-h-20 rounded-none bg-background flex flex-col items-start justify-center gap-1 px-3 whitespace-normal text-left ${filter===m.key?'bg-muted ring-1 ring-inset ring-primary hover:bg-muted':''}`}><span className={`font-semibold text-2xl tabular-nums ${m.key==='over'&&Number(m.value)>0?'text-destructive':m.key==='onsite'?'text-success':''}`}>{loading?'—':m.value}</span><span className="text-xs font-normal text-muted-foreground leading-snug">{m.label}</span></Button>)}
       </div>
     </section>
     <section aria-label="Operations quick actions"><h2 className="text-sm font-semibold mb-2">Quick actions</h2><div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">{([{key:'log',text:'Log time',Icon:Clock},{key:'text',text:'Send punch links',Icon:Send},{key:'to',text:'New task order',Icon:ListChecks},{key:'location',text:'New location',Icon:Plus},{key:'requests',text:'Field requests inbox',Icon:Inbox}] as const).map(a=><Button key={a.key} variant="outline" className="h-12 px-3 whitespace-normal gap-2 text-xs" onClick={()=>{setAction(a.key);setTarget(null);}}><a.Icon className="h-4 w-4 shrink-0"/>{a.text}</Button>)}</div></section>

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Plus, FileText, Receipt, ShoppingCart, Users, FolderKanban, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAppModules } from '@/hooks/useAppModules';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +19,7 @@ const quickCreateItems = [
 ];
 
 export function QuickCreateMenu() {
+  const modules = useAppModules();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -32,7 +34,7 @@ export function QuickCreateMenu() {
       <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuLabel>Quick Create</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {quickCreateItems.map((item) => (
+        {quickCreateItems.filter(item=>modules.visible(item.href)).map((item) => (
           <DropdownMenuItem key={item.href} asChild>
             <Link to={item.href} className="flex items-center gap-2">
               <item.icon className="h-4 w-4" />

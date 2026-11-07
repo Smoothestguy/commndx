@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { EnhancedTimeEntryForm } from "@/components/time-tracking/EnhancedTimeEntryForm";
+import { useAppModules } from '@/hooks/useAppModules';
 
 interface QuickAction {
   icon: React.ComponentType<{ className?: string }>;
@@ -20,6 +21,7 @@ interface QuickAction {
 }
 
 export function QuickActionsRow() {
+  const modules = useAppModules();
   const navigate = useNavigate();
   const [timeEntryOpen, setTimeEntryOpen] = useState(false);
   const [isMac, setIsMac] = useState(false);
@@ -41,6 +43,7 @@ export function QuickActionsRow() {
 
       switch (e.key.toLowerCase()) {
         case 'e':
+          if (!modules.visible('/estimates')) return;
           e.preventDefault();
           navigate("/estimates/new");
           break;
@@ -69,7 +72,7 @@ export function QuickActionsRow() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigate]);
+  }, [navigate, modules.visible('/estimates')]);
 
   const actions: QuickAction[] = [
     {
@@ -113,7 +116,7 @@ export function QuickActionsRow() {
   return (
     <>
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-        {actions.map((action) => (
+        {actions.filter(action=>action.label !== 'New Estimate' || modules.visible('/estimates')).map((action) => (
           <Button
             key={action.label}
             variant="outline"
