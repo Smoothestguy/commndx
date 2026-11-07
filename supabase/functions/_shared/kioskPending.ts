@@ -48,11 +48,11 @@ async function writable(db: any, projectId: string, locationId: string, s: any, 
 }
 export async function kioskPending(db: any, v: any, locationId: string, projectId: string, zone: string) {
   const person = await verify(v.proof, v.token, locationId);
-  const { data: rows, error } = await db.from('personnel_location_trail').select('visit_personnel_id,in_at,out_at,signature_url').eq('location_id', locationId).eq('personnel_id', person).order('in_at').limit(1000);
-  if (error) throw error;
-  const ids = (rows ?? []).map((r: any) => r.visit_personnel_id);
-  const meta = ids.length ? await db.from('visit_personnel').select('id,late_minutes,late_reason').in('id', ids) : { data: [] }; if (meta.error) throw meta.error;
-  const stays = (rows ?? []).map((s: any) => ({ ...s, ...meta.data?.find((m: any) => m.id === s.visit_personnel_id) }));
+  const rows:any[]=[];
+  for(let offset=0;;offset+=500){const result=await db.from('personnel_location_trail').select('visit_personnel_id,in_at,out_at,signature_url').eq('location_id',locationId).eq('personnel_id',person).order('in_at').order('visit_personnel_id').range(offset,offset+499);if(result.error)throw result.error;rows.push(...result.data??[]);if((result.data??[]).length<500)break;}
+  const ids=rows.map(r=>r.visit_personnel_id),meta:any[]=[];
+  for(let offset=0;offset<ids.length;offset+=200){const result=await db.from('visit_personnel').select('id,late_minutes,late_reason').in('id',ids.slice(offset,offset+200));if(result.error)throw result.error;meta.push(...result.data??[]);}
+  const stays=rows.map(s=>({...s,...meta.find(m=>m.id===s.visit_personnel_id)}));
   const requests = await db.from('timesheet_signature_requests').select('sheet_date,status').eq('personnel_id', person).eq('location_id', locationId).eq('status', 'pending'); if (requests.error) throw requests.error;
   const items = pendingItems(stays, requests.data ?? [], zone, new Date().toISOString());
   if (v.action === 'pending') return { ok: true, items };

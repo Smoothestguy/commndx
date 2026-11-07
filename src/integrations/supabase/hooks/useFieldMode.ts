@@ -532,8 +532,13 @@ export function useLogManualTime(projectId: string | undefined) {
         if(previous?.unassigned_at)throw new Error('This person has an ended assignment. Record this day without reassignment to preserve their historical removal.');
         const start=locationTimeIso(i.day,'00:00',location.timezone||'America/Chicago');
         if(!start)throw new Error('Invalid assignment date');
-        const values={assigned_at:previous?.assigned_at && previous.assigned_at<start?previous.assigned_at:start,role_label:i.assignRole,status:'active',assigned_by:user.id};
-        const result=previous?await supabase.from('location_assignments').update(values).eq('id',previous.id):await supabase.from('location_assignments').insert({...values,location_id:i.location_id,personnel_id:i.personnel_id});if(result.error)throw result.error;
+        const values={assigned_at:previous?.assigned_at && previous.assigned_at<start?previous.assigned_at:start,role_label:previous?.role_label??i.assignRole,status:'active',assigned_by:user.id};
+        const result=previous?await supabase.from('location_assignments').update(values).eq('id',previous.id):await supabase.from('location_assignments').insert({...values,role_label:i.assignRole,location_id:i.location_id,personnel_id:i.personnel_id});if(result.error)throw result.error;
+        if(previous){
+          const periods=await supabase.from('location_assignment_roles').select('id').eq('assignment_id',previous.id).limit(1);if(periods.error)throw periods.error;
+          if(!periods.data?.length){const baseline=await supabase.from('location_assignment_roles').insert({assignment_id:previous.id,role_label:previous.role_label,effective_from:previous.assigned_at||'1970-01-01T00:00:00Z',set_by:user.id});if(baseline.error)throw baseline.error;}
+          const historical=await supabase.from('location_assignment_roles').insert({assignment_id:previous.id,role_label:i.assignRole,effective_from:start,set_by:user.id});if(historical.error)throw historical.error;
+        }
       }
       const notes = i.note?.trim() ? `Manual entry — ${i.note.trim()}` : "Manual entry";
       const { data: v, error } = await db.from("location_visits").insert({
