@@ -1,3 +1,4 @@
+import { PersonnelAssetCare } from '@/components/personnel/PersonnelAssetCare';
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { useCustomers } from '@/integrations/supabase/hooks/useCustomers';
 import { employerIds } from '@/lib/personnelEmployer';
@@ -583,6 +584,7 @@ const PersonnelDetail = () => {
             <TabsList className="inline-flex w-max min-w-full h-auto gap-1 p-1">
               <TabsTrigger value="personal" className="px-3 py-1.5">Personal</TabsTrigger>
               <TabsTrigger value="projects" className="px-3 py-1.5">Projects</TabsTrigger>
+              <TabsTrigger value="assets" className="px-3 py-1.5">Assets</TabsTrigger>
               <TabsTrigger value="documents" className="px-3 py-1.5">Documents</TabsTrigger>
               <TabsTrigger value="i9" className="px-3 py-1.5">I-9</TabsTrigger>
               <TabsTrigger value="everify" className="px-3 py-1.5">E-Verify</TabsTrigger>
@@ -682,8 +684,10 @@ const PersonnelDetail = () => {
           </TabsContent>
 
           <TabsContent value="documents">
+            <span className="sr-only">Personnel documents</span>
             <PersonnelDocumentsList personnelId={personnel.id} canDelete={true} />
           </TabsContent>
+          <TabsContent value="assets"><PersonnelAssetCare personnelId={personnel.id} /></TabsContent>
 
           <TabsContent value="i9">
             <Card>
