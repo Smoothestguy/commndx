@@ -6,12 +6,12 @@ const Dashboard = () => {
   return (
     <>
       <SEO
-        title="Dashboard"
-        description="Overview of your business metrics, estimates, invoices, and recent activity"
-        keywords="business dashboard, metrics, estimates overview, invoice tracking"
+        title="Home | Command X"
+        description="Your operational command center and personal workday"
+        keywords="operations, locations, staffing, attendance"
       />
       <PageLayout
-        title="Dashboard"
+        title="Home"
         description="Welcome back"
       >
         <RowBasedDashboard />

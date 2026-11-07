@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { WelcomeStrip } from "./WelcomeStrip";
+import { OperationsHome } from '../OperationsHome';
+import { MyDayHome } from '../MyDayHome';
+import { homeView } from '@/lib/homeOperations';
 import { KPIBar } from "./KPIBar";
 import { QuickActionsRow } from "./QuickActionsRow";
 import { RevenueChartRow } from "./RevenueChartRow";
@@ -19,7 +22,7 @@ import { DashboardThemeEditor } from "../customization/DashboardThemeEditor";
 import { UnsavedChangesDialog } from "../customization/UnsavedChangesDialog";
 import { DashboardTheme } from "../widgets/types";
 import { Button } from "@/components/ui/button";
-import { Palette } from "lucide-react";
+import { Palette, ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -33,7 +36,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export function RowBasedDashboard() {
-  const { isAdmin, isManager, loading: roleLoading } = useUserRole();
+  const { isAdmin, isManager, role, loading: roleLoading, hasError: roleError } = useUserRole();
+  const [salesOpen, setSalesOpen] = useState(false);
   const {
     activeTheme,
     updateConfigAsync,
@@ -208,11 +212,14 @@ export function RowBasedDashboard() {
     isUpdating,
   ]);
 
+  if (roleLoading) return <div role="status" className="p-4"><Loader2 className="h-5 w-5 animate-spin" /></div>;
+  if (roleError) return <p role="alert" className="p-4 text-sm text-destructive">Your Home access could not be confirmed. Please refresh.</p>;
+  const view = homeView(role);
   return (
     <>
       <div className="space-y-4 p-4 lg:p-6">
         {/* Mobile Session Clock - prominent on mobile */}
-        <MobileSessionCard />
+        {canCustomize && <MobileSessionCard />}
 
         {/* Edit Mode Toolbar */}
         {isEditMode && (
@@ -234,28 +241,13 @@ export function RowBasedDashboard() {
         {/* Row 1: Welcome Strip */}
         <WelcomeStrip />
 
-        {/* Row 2: KPI Bar */}
-        <KPIBar />
-
-        {/* Row 3: Quick Actions */}
-        <QuickActionsRow />
-
-        {/* Row 4: Tables Side by Side */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <RecentInvoicesTable />
-          <RecentActivityTable />
-        </div>
-
-        {/* Recent Records (client-side visited pages) */}
-        <RecentRecordsCard />
-
-
-
-        {/* Row 5: Revenue Chart */}
-        <RevenueChartRow />
-
-        {/* Row 6: Invoice Aging Summary */}
-        <InvoiceAgingSummary />
+        {view === 'operations' ? <OperationsHome /> : <MyDayHome />}
+        {canCustomize && <section aria-label="Sales" className="border-t pt-3">
+          <Button variant="ghost" className="w-full justify-between h-12 px-0" aria-expanded={salesOpen} onClick={() => setSalesOpen(v => !v)}>
+            <span className="font-semibold">Sales</span><ChevronDown className={`h-4 w-4 transition-transform ${salesOpen ? 'rotate-180' : ''}`} />
+          </Button>
+          {salesOpen && <div className="space-y-4 pt-3"><KPIBar /><QuickActionsRow /><div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><RecentInvoicesTable /><RecentActivityTable /></div><RecentRecordsCard /><RevenueChartRow /><InvoiceAgingSummary /></div>}
+        </section>}
       </div>
 
       {/* Theme Editor Sidebar */}
