@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertTriangle, Loader2, MessageSquare } from "lucide-react";
 
-import { localDateTimeToIso } from "@/lib/signinSheets";
+import { locationTimeIso } from "@/lib/manualTime";
 import { localStamp, locationZone } from "../../../supabase/functions/_shared/locationTime";
 
 type Loc = { timezone: string | null; project_id: string; id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; poc_name: string | null; poc_phone: string | null };
@@ -89,7 +89,7 @@ export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationI
   useEffect(() => { if (!locId && locOptions.length === 1) setLocId(locOptions[0].id); }, [locOptions, locId]);
   const loc = locOptions.find((l) => l.id === locId) ?? null;
   const zone = locationZone(loc || {});
-  const reportIso = reportAt ? localDateTimeToIso(reportAt.split('T')[0],reportAt.split('T')[1]||'',zone) : null;
+  const reportIso = reportAt ? locationTimeIso(reportAt.split('T')[0],reportAt.split('T')[1]||'',zone) : null;
   const hasPoc = !!(loc?.poc_name || loc?.poc_phone);
   useEffect(() => { setInc((s) => ({ ...s, poc: hasPoc })); }, [hasPoc]);
 

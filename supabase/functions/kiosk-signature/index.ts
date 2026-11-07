@@ -1,3 +1,4 @@
+import {locationZone} from '../_shared/locationTime.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
@@ -11,8 +12,8 @@ Deno.serve(async req=>{
   const db=createClient(Deno.env.get('SUPABASE_URL')||'',Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'');
   const {data:token,error:te}=await db.from('kiosk_tokens').select('location_id,expires_at').eq('id',v.token).maybeSingle();if(te)throw te;if(!token||Date.parse(token.expires_at)<=Date.now())return json({error:'Kiosk link expired',valid:false},403);
   const {data:info,error:ie}=await db.rpc('get_kiosk_info',{p_kiosk:v.token});if(ie)throw ie;
-  const {data:loc,error:le}=await db.from('project_locations').select('timezone').eq('id',token.location_id).single();if(le)throw le;
-  const zone=loc.timezone||'America/Chicago';const localDate=(at:string)=>new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(at));
+  const {data:loc,error:le}=await db.from('project_locations').select('timezone,project_id').eq('id',token.location_id).single();if(le)throw le;
+  const {data:project,error:projectError}=await db.from('projects').select('*').eq('id',loc.project_id).single();if(projectError)throw projectError;const zone=locationZone(loc,project);const localDate=(at:string)=>new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(at));
   const {data:openStays,error:openError}=await db.from('personnel_location_trail').select('personnel_id,in_at').eq('location_id',token.location_id).is('out_at',null);if(openError)throw openError;
   const sameDay=openStays?.filter(s=>localDate(s.in_at)===localDate(new Date().toISOString()))||[];
   info.roster=(info.roster||[]).map((p:{personnel_id:string})=>({...p,on_site:sameDay.some(s=>s.personnel_id===p.personnel_id)}));
@@ -24,7 +25,7 @@ Deno.serve(async req=>{
   if(v.action==='badge'){if(!v.badge)return json({error:'Badge required'},400);const {data:locked,error}=await db.from('signin_sheet_days').select('id').eq('location_id',token.location_id).eq('sheet_date',localDate(new Date().toISOString())).eq('status','locked').maybeSingle();if(error)throw error;if(locked)return json({ok:false,reason:'sheet_locked'});const {data:result,error:be}=await db.rpc('kiosk_badge_punch',{p_kiosk:v.token,p_badge:v.badge,p_lat:v.lat??undefined,p_lng:v.lng??undefined,p_accuracy:v.accuracy??undefined,p_override_reason:v.override_reason,p_late_reason:v.late_reason,p_early_reason:v.early_reason});if(be)throw be;return json(result);}
   if(!v.personnel_id||!info.roster?.some((p:{personnel_id:string})=>p.personnel_id===v.personnel_id))return json({error:'Person is not on this roster'},403);
   const now=new Date().toISOString();
-  const {data:locked,error:lockError}=await db.from('signin_sheet_days').select('id').eq('location_id',token.location_id).eq('sheet_date',new Intl.DateTimeFormat('en-CA',{timeZone:loc.timezone||'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())).eq('status','locked');if(lockError)throw lockError;
+  const {data:locked,error:lockError}=await db.from('signin_sheet_days').select('id').eq('location_id',token.location_id).eq('sheet_date',new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())).eq('status','locked');if(lockError)throw lockError;
   if(locked?.length&&v.action==='punch')return json({ok:false,reason:'sheet_locked'});
   let bytes:Uint8Array|undefined;if(v.signature){try{bytes=Uint8Array.from(atob(v.signature.replace(/^data:image\/png;base64,/,'')),c=>c.charCodeAt(0));}catch{return json({error:'Invalid signature'},400);}if(!validSignaturePng(bytes))return json({error:'Invalid signature'},400);}
   let stayId=v.stay_id;let earlyFlagged=false;let lateMinutes=0;
