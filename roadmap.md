@@ -1,4 +1,5 @@
 # Polish and fix batch
+- [ ] Completion pass: verify 5049 real demobilized worked day/today, both signature name lists, Edit/Set military inputs and TypeScript signal without changing owner records.
 - [x] Demobilized dated/work eligibility shared by attendance/manual entry; missing badges open names, phone/request state and individual/bulk actions. 11 tests pass. On 5049, isolated removed worker edit and second stay saved/read back; individual request targeting intercepted (no SMS), both badges and phone dialog verified. All temporary rows/audits removed.
 - [x] Shared four-digit time/date-time fields with normalization and inline errors; location-zone SMS/punch/kiosk handling. 17 tests and signed-in desktop/390px manual dialog verified; live roster-alerts dry-run returned 0725–0730 Eastern with zero sends. No test rows created.
 - [x] Transparent signature stamping/capture; ordered/clamped legacy row bands; browser generated and visually inspected the live Patriot template plus 43-row/two-page overflow and FRG download. Existing unlinked template stays unlinked; isolated copy used for paired-download checks.
