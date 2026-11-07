@@ -230,46 +230,8 @@ export function usePersonnelWithAssetsForExport(projectId: string | undefined, i
       if (assignmentsError) throw assignmentsError;
       if (!assignments || assignments.length === 0) return [];
 
-      // Get all active asset assignments for this project - include gate_code for admins
-      const selectFields = isAdmin
-        ? `
-          id,
-          asset_id,
-          assigned_to_personnel_id,
-          start_at,
-          end_at,
-          assets (
-            id,
-            type,
-            label,
-            address,
-            gate_code,
-            operating_hours,
-            instructions
-          )
-        `
-        : `
-          id,
-          asset_id,
-          assigned_to_personnel_id,
-          start_at,
-          end_at,
-          assets (
-            id,
-            type,
-            label,
-            address,
-            operating_hours,
-            instructions
-          )
-        `;
-
-      const { data: assetAssignments, error: assetError } = await supabase
-        .from("asset_assignments")
-        .select(selectFields)
-        .eq("project_id", projectId)
-        .eq("status", "active")
-        .is("unassigned_at", null);
+      const { data: projection, error: assetError } = await supabase.rpc('asset_placements', { p_project_id: projectId });
+      const assetAssignments = ((projection ?? []) as unknown as AssetAssignmentWithDetails[]).filter(a => a.status === 'active' && !a.unassigned_at);
 
       if (assetError) throw assetError;
 
