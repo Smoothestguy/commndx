@@ -156,6 +156,7 @@
 - [x] List default (Cards/Roster secondary), needs strip with filtering chips, field requests table + dialog, header KPIs hidden on Locations tab. Browser verified desktop/phone on Florida Floods; test request accepted.
 
 # Role-based Home
-- [ ] Admin/manager operations needs across active projects, attention list, daily totals and quick actions; preserve collapsed Sales and clock banner.
-- [ ] Field My Day: scoped sites, punch action, weekly hours, POC and signature requests without money.
-- [ ] Rule tests and signed-in 390px/desktop verification, including Jorge Perez if an authorized session is available; no leftover test data.
+- [x] Admin/manager operations across active projects, filters, daily totals and quick-action dialogs; preserved collapsed Sales, construction flags and clock banner.
+- [x] Dollar-free My Day at staff/linked-worker Home: authenticated self-only sites, guarded punch links, Chicago weekly hours, POC and pending signature links.
+- [x] Nine rule tests; owner/admin 390px and 1440px real-data read/navigation checks, field presentation-only role override checked (no dollars/Sales), no verification rows or texts created.
+- [ ] Real Jorge field-session/populated end-to-end check blocked: specific-account session approval unavailable; his existing user account has no linked personnel/site assignment. No account data changed.

@@ -105,7 +105,7 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
           <div className="h-5 w-px bg-black/20 dark:bg-white/20 mx-1 hidden sm:block" />
 
           {/* Session Timer */}
-          <div className="hidden sm:block">
+          <div className={fieldHome ? 'hidden' : 'hidden sm:block'}>
             <SessionTimer />
           </div>
 

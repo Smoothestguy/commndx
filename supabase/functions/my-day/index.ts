@@ -37,10 +37,14 @@ Deno.serve(async req => {
     const locations = ids.length ? await rows(o=>db.from('project_locations').select('id,project_id,name,address,city,state,zip,poc_name,poc_phone,timezone,status,mobe_date,demobe_date,day_shift_start,day_shift_end,night_shift_start,night_shift_end').in('id',ids).order('id').range(o,o+499)) : [];
     const projectIds = [...new Set(locations.map(l=>l.project_id))];
     const projects = projectIds.length ? await rows(o=>db.from('projects').select('id,name,day_shift_start,day_shift_end,night_shift_start,night_shift_end,status,archived_at').in('id',projectIds).order('id').range(o,o+499)) : [];
+    const demobilized = pid ? await rows(o=>db.from('personnel_current_status').select('project_id').eq('personnel_id',pid).eq('status','demobilized').order('project_id').range(o,o+499)) : [];
     const sites = locations.filter(l=> {
       const project = projects.find(p=>p.id===l.project_id);
       const a = assignments.find(a=>a.location_id===l.id);
-      return l.status==='active' && project?.status==='active' && !project.archived_at && a && (!a.assigned_at || Date.parse(a.assigned_at)<=now.getTime()) && (!a.unassigned_at || Date.parse(a.unassigned_at)>now.getTime());
+      const dateParts = new Intl.DateTimeFormat('en-CA',{timeZone:l.timezone||'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now);
+      const part=(key:string)=>dateParts.find(p=>p.type===key)?.value;
+      const localDate=`${part('year')}-${part('month')}-${part('day')}`;
+      return l.status==='active' && project?.status==='active' && !project.archived_at && !demobilized.some(d=>d.project_id===l.project_id) && (!l.mobe_date||l.mobe_date<=localDate) && (!l.demobe_date||l.demobe_date>=localDate) && a && (!a.assigned_at || Date.parse(a.assigned_at)<=now.getTime()) && (!a.unassigned_at || Date.parse(a.unassigned_at)>now.getTime());
     }).map(l=>({ ...l, project: projects.find(p=>p.id===l.project_id), openAt: open.find(o=>o.location_id===l.id)?.in_at ?? null }));
     // Only the authenticated person's own bearer links leave this function, never other roster links.
     const links = pid && sites.length ? await rows(o=>db.from('site_checkin_tokens').select('id,location_id,expires_at,created_at').eq('personnel_id',pid).in('location_id',sites.map(l=>l.id)).gt('expires_at',now.toISOString()).order('created_at',{ascending:false}).order('id').range(o,o+499)) : [];
