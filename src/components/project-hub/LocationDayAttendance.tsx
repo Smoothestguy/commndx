@@ -37,6 +37,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   const [bulk, setBulk] = useState<{ date: string; inTime: string; outTime: string; note: string } | null>(null);
   const [ack, setAck] = useState<{ stay: Stay; preset: string; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [addPerson, setAddPerson] = useState(false);
   const editTimes = useEditStayTimes(projectId);
   const logTime = useLogManualTime(projectId);
   const {data:roster=[]}=useAttendanceRoster(projectId,locationId,day,tz);
@@ -122,6 +123,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
       <div><label htmlFor="att-day" className="text-sm block">Date</label><Input id="att-day" type="date" className="w-44" value={day} onChange={e => { if (e.target.value) { setDay(e.target.value); setSel(new Set()); } }} /></div>
       <div className="flex flex-wrap items-center gap-2 pb-2"><p className="text-sm text-muted-foreground">{present}/{rows.length} signed in · {total.toFixed(2)} h closed</p><MissingSignatures compact locationId={locationId} day={day} zone={tz} rows={q.data?.sigRows ?? []} /></div>
       {canWrite && <Button className="ml-auto" size="sm" variant="outline" disabled={!sel.size} onClick={() => setBulk({ date: day, inTime: '', outTime: '', note: '' })}><Clock className="h-4 w-4 mr-1" />Set times for {sel.size || ''} selected</Button>}
+      {canWrite && <Button size="sm" onClick={() => setAddPerson(true)}><Plus className="h-4 w-4 mr-1" />Add person to this day</Button>}
     </div>
     {stale.length > 0 && <div className="rounded-md border border-warning/50 bg-warning/5 p-3 space-y-2" role="region" aria-label="Open punches">
       <p className="text-sm font-medium"><AlertTriangle className="inline h-4 w-4 mr-1 text-warning" />{stale.length} open punch{stale.length === 1 ? '' : 'es'} from earlier days — not counted in hours until closed</p>
@@ -161,6 +163,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
       </div>}
     {edit && <EditStayTimesDialog projectId={projectId} ids={edit.ids} personName={edit.name} day={edit.day} onClose={() => { setEdit(null); void q.refetch(); }} />}
     {log && <LogTimeDialog open onOpenChange={o => { if (!o) { setLog(null); void q.refetch(); } }} projectId={projectId} personnelId={log.id} personName={log.name} locationId={locationId} defaultDate={day} />}
+    {addPerson && <LogTimeDialog open addToDay onOpenChange={o => { if (!o) { setAddPerson(false); void q.refetch(); } }} projectId={projectId} locationId={locationId} defaultDate={day} />}
 
     <Dialog open={!!bulk} onOpenChange={o => !o && !busy && setBulk(null)}><DialogContent className="max-w-sm max-h-[90dvh] overflow-y-auto">
       <DialogHeader><DialogTitle>Set times · {sel.size} selected</DialogTitle></DialogHeader>
