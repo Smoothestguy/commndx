@@ -1,5 +1,5 @@
 import { expect, it } from 'bun:test';
-import { homeView, upcomingDemobe, signatureCounts, homeLocationState } from './homeOperations';
+import { homeView, upcomingDemobe, signatureCounts, homeLocationState, closedDayHours } from './homeOperations';
 
 it('only admin and manager get operational Home; field users never get Sales', () => {
   expect(homeView('admin')).toBe('operations');
@@ -20,4 +20,10 @@ it('preserves per-role overage even when total staffing matches authorization', 
     { late: 0, joinPending: 0, openPunches: 0, pendingTOs: 0, extPending: 0 }, { assetUnder: 6, assetOver: 0 }, 0, 0);
   expect(state.severity).toBe('red');
   expect(state.worst.label).toBe('Operator +1 OVER');
+});
+it('counts Chicago midnight ledger segments only within the site local day', () => {
+  const common={clock_in_at:'2026-11-06T23:00:00Z',clock_out_at:'2026-11-07T09:00:00Z'};
+  const first={...common,entry_date:'2026-11-06',hours:7},second={...common,entry_date:'2026-11-07',hours:3};
+  expect(closedDayHours(first,'2026-11-06','America/New_York')+closedDayHours(second,'2026-11-06','America/New_York')).toBe(6);
+  expect(closedDayHours(first,'2026-11-07','America/New_York')+closedDayHours(second,'2026-11-07','America/New_York')).toBe(4);
 });

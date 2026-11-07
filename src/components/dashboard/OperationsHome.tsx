@@ -46,7 +46,7 @@ export function OperationsHome() {
   const count=(f:Filter)=>rows.filter(r=>match(r,f)).length;
   const metrics:{key:Filter;label:string;value:number|string}[]=[
     {key:'attention',label:'Locations need attention',value:count('attention')},
-    {key:'onsite',label:'On site / expected',value:`${daily.data?.people??0} / ${sum(r=>r.actual)}`},
+    {key:'onsite',label:'On site / expected',value:`${daily.data?.people??0} / ${daily.data?.expected??0}`},
     {key:'under',label:'Under personnel',value:count('under')},{key:'over',label:'Over authorization',value:count('over')},
     {key:'late',label:'Late today',value:sum(r=>r.o.late)},{key:'missing',label:'Missing signatures',value:sum(r=>r.d?.missing??0)},
     {key:'punches',label:'Open punches',value:sum(r=>r.o.openPunches)},{key:'joins',label:'Pending joins',value:sum(r=>r.o.joinPending)},
