@@ -1,3 +1,8 @@
+# Kiosk follow-up and add person to day
+- [ ] Diagnose Jaime's Nov 6 absence; manager add-person flow with dated assignment and audited military-time stay; retain requested real Jaime 0730–1930 entry at 5049.
+- [ ] Private selected-person/location kiosk pending items: signatures/requests, earlier forgotten checkouts with confirmation, required late reasons; skip and empty auto-dismiss.
+- [ ] Browser verify real attendance and throwaway kiosk completion; run focused tests; remove all verification rows.
+
 # Polish and fix batch
 - [x] All drawing pads share DPR/ResizeObserver calibration and normalized strokes; landscape expands and retains held-stroke ink. Playwright touch pixel checks pass at 390×844 and 844×390 after scroll, ancestor scale/zoom, rotation, Clear and intercepted PNG save; both wrappers verified, 7 regression tests and preview build pass. No live writes/test rows; physical iPhone Safari and live-token submissions not exercised.
 - [x] Completion pass: owner/admin browser on 5049 verified Anderson's actual Nov 4 worked stay (Nov 3 has assignment but no stay), tagged/editable; exact eligible totals Nov 3=5, Nov 4=20, local today Nov 6=21, Nov 7=10. Both badges show identical Nov 4 names, phone status and individual/bulk actions; intercepted request targets Anderson/date without SMS. Existing Nov 6 requests prevent duplicates; 390px list inspected. Edit/Set inputs normalize 0730/07:30/730 and reject 2460. TypeScript, 20 tests and build OK; zero runtime errors, data writes or test rows.
