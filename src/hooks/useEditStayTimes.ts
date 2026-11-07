@@ -21,7 +21,7 @@ export function useEditedStayIds(ids: string[]) {
 export function useEditStayTimes(projectId: string) {
   const qc = useQueryClient();
   const refresh = () => {
-    for (const key of ['edited-stays','personnel-trail','week-timesheet','visit-notes','visits-window','today-visits','on-site-now','location-attendance','location-attendance-batch','time-entries','all-time-entries','deployment-hours','project-time-entries','project-roster','signin-sheet-days','signin-reconciliation']) qc.invalidateQueries({ queryKey: [key] });
+    for (const key of ['attendance-roster','signin-sheet-stays','edited-stays','personnel-trail','week-timesheet','visit-notes','visits-window','today-visits','on-site-now','location-attendance','location-attendance-batch','time-entries','all-time-entries','deployment-hours','project-time-entries','project-roster','signin-sheet-days','signin-reconciliation']) qc.invalidateQueries({ queryKey: [key] });
   };
   return useMutation({
     mutationFn: async (changes: StayChange[]) => {

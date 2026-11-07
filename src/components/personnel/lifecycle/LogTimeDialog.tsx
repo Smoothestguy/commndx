@@ -11,7 +11,7 @@ import { Loader2 } from "lucide-react";
 import { useProjectLocations } from "@/integrations/supabase/hooks/useProjectLocations";
 import { useCurrentStatuses } from "@/integrations/supabase/hooks/usePersonnelStatus";
 import { useLogManualTime } from "@/integrations/supabase/hooks/useFieldMode";
-import { useLocationAssignments } from "@/integrations/supabase/hooks/useLocationStaffing";
+import { useAttendanceRoster } from '@/hooks/useAttendanceRoster';
 import { locationRosterPeople, manualTimeRange, scheduledShift } from "@/lib/manualTime";
 import { useProject } from '@/integrations/supabase/hooks/useProjects';
 import { localDay } from "@/lib/signinSheets";
@@ -25,7 +25,6 @@ export function LogTimeDialog({ open, onOpenChange, projectId, personnelId, pers
 }) {
   const { data: locations = [] } = useProjectLocations(open ? projectId : undefined);
   const { list: people } = useCurrentStatuses({ projectId });
-  const { data: roster = [], isLoading: rosterLoading } = useLocationAssignments(open ? locationId : undefined);
   const save = useLogManualTime(projectId);
   const { data: project } = useProject(projectId);
   const [pid, setPid] = useState("");
@@ -43,6 +42,7 @@ export function LogTimeDialog({ open, onOpenChange, projectId, personnelId, pers
   }
 
   const zone = locations.find(l => l.id === loc)?.timezone || 'America/Chicago';
+  const { data: roster = [], isLoading: rosterLoading } = useAttendanceRoster(projectId,locationId,day,zone,open);
   const range = manualTimeRange(day, tin, tout, zone, outDay);
   const rosterPeople = roster.map(p => ({ personnel_id: p.personnel_id, first_name: p.personnel?.first_name ?? null, last_name: p.personnel?.last_name ?? null }));
   const scopedPeople = locationRosterPeople(locationId ? rosterPeople : people, locationId, roster);

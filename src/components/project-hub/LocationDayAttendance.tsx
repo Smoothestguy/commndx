@@ -1,3 +1,4 @@
+import {useAttendanceRoster} from '@/hooks/useAttendanceRoster';
 import { MissingSignatures } from '@/components/signin/MissingSignatures';
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -38,43 +39,31 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   const [busy, setBusy] = useState(false);
   const editTimes = useEditStayTimes(projectId);
   const logTime = useLogManualTime(projectId);
-  // Roster AS OF the chosen day: assignment period must cover that local day (removed/added people respect their dates).
-  const { data: roster = [] } = useQuery({
-    queryKey: ['location-assignments', 'as-of', locationId, day],
-    queryFn: async () => {
-      const start = new Date(midnight(day, tz)).toISOString(), end = new Date(midnight(nextDay(day), tz)).toISOString();
-      const { data, error } = await supabase.from('location_assignments').select('personnel_id,role_label,assigned_at,unassigned_at').eq('location_id', locationId).lt('assigned_at', end).or(`unassigned_at.is.null,unassigned_at.gt.${start}`);
-      if (error) throw error;
-      const ids = [...new Set((data ?? []).map(r => r.personnel_id))];
-      const dir = ids.length ? await supabase.from('personnel_directory').select('id,first_name,last_name').in('id', ids) : { data: [], error: null };
-      if (dir.error) throw dir.error;
-      return (data ?? []).map(r => { const d = dir.data?.find(x => x.id === r.personnel_id); return { personnel_id: r.personnel_id, role_label: r.role_label, personnel: { first_name: d?.first_name ?? null, last_name: d?.last_name ?? null } }; });
-    },
-  });
+  const {data:roster=[]}=useAttendanceRoster(projectId,locationId,day,tz);
   const q = useQuery({
     queryKey: ['visits-window', 'location-day', locationId, day], refetchInterval: 60000,
     queryFn: async () => {
       const base = new Date(`${day}T12:00:00Z`).getTime();
       const [win, open] = await Promise.all([
-        supabase.from('personnel_location_trail').select('visit_personnel_id,personnel_id,first_name,last_name,in_at,out_at,hours,signature_url').eq('location_id', locationId).gte('in_at', new Date(base - 864e5).toISOString()).lte('in_at', new Date(base + 864e5).toISOString()),
-        supabase.from('personnel_location_trail').select('visit_personnel_id,personnel_id,first_name,last_name,in_at,out_at,hours').eq('location_id', locationId).is('out_at', null).order('in_at').limit(200),
+        supabase.from('personnel_location_trail').select('visit_personnel_id,personnel_id,first_name,last_name,in_at,out_at,hours,signature_url').eq('project_id',projectId).eq('location_id', locationId).gte('in_at', new Date(base - 864e5).toISOString()).lte('in_at', new Date(base + 864e5).toISOString()),
+        supabase.from('personnel_location_trail').select('visit_personnel_id,personnel_id,first_name,last_name,in_at,out_at,hours').eq('project_id',projectId).eq('location_id', locationId).is('out_at', null).order('in_at').limit(200),
       ]);
       if (win.error) throw win.error; if (open.error) throw open.error;
       const rows = [...(win.data ?? []).filter(r => r.in_at && localDay(r.in_at, tz) === day), ...(open.data ?? [])];
       const ids = [...new Set(rows.flatMap(r => r.visit_personnel_id ? [r.visit_personnel_id] : []))];
       const meta = ids.length ? await supabase.from('visit_personnel').select('id,late_minutes,late_reason,late_ack_reason,in_geofence,offsite_reason,synced_late').in('id', ids) : { data: [], error: null };
       if (meta.error) throw meta.error;
-      const toStay = (r: typeof rows[number]): Stay => { const m = meta.data?.find(x => x.id === r.visit_personnel_id); return { id: r.visit_personnel_id!, personnel_id: r.personnel_id!, name: [r.first_name, r.last_name].filter(Boolean).join(' '), in_at: r.in_at!, out_at: r.out_at, hours: r.hours, late_minutes: m?.late_minutes ?? null, late_reason: m?.late_reason ?? null, late_ack_reason: m?.late_ack_reason ?? null, in_geofence: m?.in_geofence ?? null, offsite_reason: m?.offsite_reason ?? null, synced_late: m?.synced_late ?? null }; };
+      const toStay = (r: typeof rows[number]): Stay => { const m = meta.data?.find(x => x.id === r.visit_personnel_id); return { id: r.visit_personnel_id ?? '', personnel_id: r.personnel_id ?? '', name: [r.first_name, r.last_name].filter(Boolean).join(' '), in_at: r.in_at ?? '', out_at: r.out_at, hours: r.hours, late_minutes: m?.late_minutes ?? null, late_reason: m?.late_reason ?? null, late_ack_reason: m?.late_ack_reason ?? null, in_geofence: m?.in_geofence ?? null, offsite_reason: m?.offsite_reason ?? null, synced_late: m?.synced_late ?? null }; };
       const dayStays = (win.data ?? []).filter(r => r.visit_personnel_id && r.in_at && localDay(r.in_at, tz) === day).map(toStay);
       const openStays = (open.data ?? []).filter(r => r.visit_personnel_id && r.in_at).map(toStay);
-      const sigRows = (win.data ?? []).filter(r => r.personnel_id && r.in_at && localDay(r.in_at, tz) === day).map(r => ({ personnelId: r.personnel_id!, name: [r.first_name, r.last_name].filter(Boolean).join(' '), signature: r.signature_url }));
+      const sigRows = (win.data ?? []).filter(r => r.personnel_id && r.in_at && localDay(r.in_at, tz) === day).map(r => ({ personnelId: r.personnel_id ?? '', name: [r.first_name, r.last_name].filter(Boolean).join(' '), signature: r.signature_url }));
       return { dayStays, openStays, sigRows };
     },
   });
   const rows = useMemo(() => {
     const stays = q.data?.dayStays ?? [];
-    const people = new Map<string, { id: string; name: string; role: string | null; stays: Stay[]; offRoster?: boolean }>();
-    for (const a of roster) people.set(a.personnel_id, { id: a.personnel_id, name: [a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(' '), role: a.role_label, stays: [] });
+    const people = new Map<string, { id: string; name: string; role: string | null; stays: Stay[]; offRoster?: boolean; demobilized?:boolean }>();
+    for (const a of roster) people.set(a.personnel_id, { id: a.personnel_id, name: [a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(' '), role: a.role_label, stays: [],offRoster:!a.assignedOnDay,demobilized:a.demobilized });
     for (const s of stays) { const p = people.get(s.personnel_id) ?? { id: s.personnel_id, name: s.name, role: null, stays: [], offRoster: true }; p.stays.push(s); people.set(s.personnel_id, p); }
     return [...people.values()].map(p => ({ ...p, stays: p.stays.sort((a, b) => a.in_at.localeCompare(b.in_at)) })).sort((a, b) => (a.stays[0]?.in_at ?? 'z').localeCompare(b.stays[0]?.in_at ?? 'z') || a.name.localeCompare(b.name));
   }, [roster, q.data]);
@@ -108,7 +97,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
     try {
       if (changes.length) await editTimes.mutateAsync(changes);
       let made = 0; const failed: string[] = [];
-      for (const p of create) { try { await logTime.mutateAsync({ personnel_id: p.id, location_id: locationId, day: bulk.date, in_at: inAt!, out_at: outAt!, note: note ?? 'Bulk time entry' }); made++; } catch { failed.push(p.name); } }
+      for (const p of create) { try { await logTime.mutateAsync({ personnel_id: p.id, location_id: locationId, day: bulk.date, in_at: inAt ?? '', out_at: outAt ?? '', note: note ?? 'Bulk time entry' }); made++; } catch { failed.push(p.name); } }
       toast.success(`Updated ${changes.length} stay(s)${made ? `, created ${made}` : ''}`);
       if (skipped.length || failed.length) toast.warning(`Not changed: ${[...skipped, ...failed].join(', ')}`);
       setBulk(null); setSel(new Set()); void q.refetch();
@@ -152,7 +141,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
             <span className="tabular-nums"><span className="sm:hidden text-muted-foreground">Out </span>{last ? (last.out_at ? hm(last.out_at, tz) : <span className="text-warning">open</span>) : '—'}</span>
             <span className="col-span-3 sm:col-span-1 flex flex-wrap gap-1">
               {!first && <Badge variant="outline" className="text-muted-foreground">Not signed in</Badge>}
-              {r.offRoster && <Badge variant="outline" className="bg-muted text-muted-foreground" title="Has time here this day but was not assigned to this site on this date">Not on roster this day</Badge>}
+              {r.demobilized&&<Badge variant="outline" className="text-muted-foreground">Demobilized</Badge>}{r.offRoster && <Badge variant="outline" className="bg-muted text-muted-foreground" title="Has time here this day but was not assigned to this site on this date">Not on roster this day</Badge>}
               {late ? <Badge variant="outline" className={cn(late.late_ack_reason ? 'text-warning border-warning/40' : 'text-destructive border-destructive/40')} title={lateTip || undefined}>LATE {late.late_minutes}m{late.late_reason ? ` · ${late.late_reason}` : ''}{late.late_ack_reason ? ' · approved' : ''}</Badge> : first && <Badge variant="outline" className="text-success border-success/40">On time</Badge>}
               {late && canWrite && <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs" onClick={() => setAck({ stay: late, preset: '', text: '' })}><CheckCircle2 className="h-3 w-3 mr-1" />{late.late_ack_reason ? 'Change approval' : 'Approve late'}</Button>}
               {r.stays.some(s => s.in_geofence === false || s.offsite_reason) ? <Badge variant="outline" className="text-warning border-warning/40" title={r.stays.find(s => s.offsite_reason)?.offsite_reason || undefined}>Off-site</Badge> : r.stays.some(s => s.in_geofence) ? <Badge variant="outline">In geofence</Badge> : null}
