@@ -1,3 +1,8 @@
+# Asset enhancements
+- [ ] Ownership/vendor/cost defaults and server-side financial privacy; responsibility history and lifecycle release.
+- [ ] Searchable location responsibility, ownership/cost dialogs, staffing/location/personnel displays and existing exports.
+- [ ] Browser Ram and rented-asset readback, field privacy, focused tests and test cleanup.
+
 # Kiosk follow-up and add person to day
 - [x] Jaime's assignment restarted late Nov 6 and another site's open stay blocked adding hours; project-wide add-person picker and explicit audited other-open confirmation save without changing the other stay. Real Jaime Nov 6 0730–1930 (12h) retained, attendance/ledger/dialog/PDF verified.
 - [x] Private post-punch person/location proof exposes unsigned/requested days, earlier forgotten checkouts and missing late reasons; kiosk pad signs/fulfills requests, worker checkout corrections require confirmation and supervisor review; locks, skip and empty dismissal retained.
