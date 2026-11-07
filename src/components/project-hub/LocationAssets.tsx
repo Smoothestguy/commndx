@@ -1,3 +1,6 @@
+import { AssetResponsiblePicker } from './AssetResponsiblePicker';
+import { AssetOwnershipFields, emptyOwnership } from './AssetOwnershipFields';
+import { assetCareLabel, ownershipText } from '@/lib/assetDetails';
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Pencil, Key, MapPin, Package, Plus, Settings, Square, Truck, X } from "lucide-react";
@@ -28,7 +31,7 @@ export function AssetIcon({ type, className = "h-3.5 w-3.5" }: { type?: string |
 export function assetBillingText(r: AssetBillingRow) {
   if (!r.billable) return "";
   if (r.rate == null) return `no rate · ${r.days}d`;
-  return `${fmtMoney0(r.rate)}/day · ${r.days}d · ${fmtMoney0(r.accrued ?? 0)}`;
+  return `Bill rate ${fmtMoney0(r.rate)}/day · ${r.days}d · ${fmtMoney0(r.accrued ?? 0)}`;
 }
 
 /** Assets currently placed at a location (not returned). */
@@ -55,7 +58,7 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
       return data ?? [];
     },
   });
-  const projectRows = rows.filter((r) => r.status === "active" && (r.location_id !== locationId || !!r.end_at));
+  const projectRows = rows.filter((r) => r.status === "active");
   const projectAssetIds = new Set(projectRows.map((r) => r.asset_id));
   const hereIds = new Set(rows.filter((r) => r.status === "active" && !r.end_at && r.location_id === locationId).map((r) => r.asset_id));
   const registry = allAssets.filter((a) => a.status !== "retired" && !projectAssetIds.has(a.id) && !hereIds.has(a.id));
@@ -64,6 +67,9 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
       | { project_locations?: { name?: string } | null; projects?: { name?: string } | null } | undefined;
     return p ? (p.project_locations?.name ?? p.projects?.name ?? "another project") : null;
   };
+  const [responsible, setResponsible] = useState<string | null>(null);
+  const [ownership, setOwnership] = useState(emptyOwnership);
+  const [careEdit, setCareEdit] = useState(false);
   const [creating, setCreating] = useState(false);
   const [nw, setNw] = useState({ label: "", type: "vehicle", serial: "" });
   const [pick, setPick] = useState("");
@@ -71,10 +77,13 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
   const [rate, setRate] = useState("");
   const [start, setStart] = useState(format(new Date(), "yyyy-MM-dd"));
   const [lastOpen, setLastOpen] = useState(false);
-  if (open !== lastOpen) { setLastOpen(open); if (open) { setCreating(false); setNw({ label: "", type: "vehicle", serial: "" }); setPick(""); setBillable(false); setRate(""); setStart(format(new Date(), "yyyy-MM-dd")); } }
+  if (open !== lastOpen) { setLastOpen(open); if (open) { setResponsible(null); setOwnership(emptyOwnership); setCareEdit(false); setCreating(false); setNw({ label: "", type: "vehicle", serial: "" }); setPick(""); setBillable(false); setRate(""); setStart(format(new Date(), "yyyy-MM-dd")); } }
 
   const onPick = (v: string) => {
     setPick(v);
+    const selected = rows.find(r => r.id === v.slice(2));
+    setCareEdit(!!selected && selected.location_id === locationId && !selected.end_at);
+    setResponsible(selected?.location_id === locationId ? selected.assigned_to_personnel_id : null);
     if (v.startsWith("a:")) {
       const r = projectRows.find((x) => x.id === v.slice(2));
       setBillable(!!r?.billable);
@@ -88,18 +97,18 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
   const isExisting = pick.startsWith("a:");
   const createAsset = () => {
     if (!nw.label.trim()) return;
-    create.mutate({ label: nw.label.trim(), type: nw.type, serial_number: nw.serial.trim() || undefined, status: "available" }, {
+    create.mutate({ label: nw.label.trim(), type: nw.type, serial_number: nw.serial.trim() || undefined, ownership: ownership.ownership, vendor_id: ownership.vendor || null, status: "available" }, {
       onSuccess: (a) => { setCreating(false); setPick(`r:${a.id}`); setRate(""); },
     });
   };
   const submit = () => {
     const n = rate.trim() === "" ? null : Number(rate);
     assign.mutate({
-      projectId, locationId,
+      projectId, locationId, personnelId: responsible,
       assignmentId: isExisting ? pick.slice(2) : undefined,
       assetId: !isExisting ? pick.slice(2) : undefined,
       ...(canBill ? { billable, dayRate: n != null && Number.isFinite(n) ? n : null } : {}),
-      startAt: new Date(`${start}T08:00:00`).toISOString(),
+      startAt: careEdit ? undefined : new Date(`${start}T08:00:00`).toISOString(),
     }, { onSuccess: () => onOpenChange(false) });
   };
 
@@ -145,15 +154,17 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
                 </div>
                 <div className="space-y-1.5"><Label htmlFor="na-serial">Plate / serial</Label><Input id="na-serial" className="h-11" value={nw.serial} onChange={(e) => setNw({ ...nw, serial: e.target.value })} /></div>
               </div>
+              <AssetOwnershipFields value={ownership} onChange={setOwnership} />
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setCreating(false)}>Cancel</Button>
-                <Button size="sm" disabled={!nw.label.trim() || create.isPending} onClick={createAsset}>Create asset</Button>
+                <Button size="sm" disabled={!nw.label.trim() || (ownership.ownership === "rented" && !ownership.vendor) || create.isPending} onClick={createAsset}>Create asset</Button>
               </div>
             </div>
           ) : (
             <Button variant="outline" size="sm" onClick={() => setCreating(true)}><Plus className="h-3 w-3 mr-1" />Create new asset</Button>
           )}
-          {pick && (
+          {pick && <div className="space-y-1.5"><Label>Responsible person (optional)</Label><AssetResponsiblePicker locationId={locationId} value={responsible} onChange={setResponsible} /></div>}
+          {pick && !careEdit && (
             <div className="space-y-1.5"><Label>{isExisting ? "Move effective" : "Start date"}</Label><Input type="date" className="h-11" value={start} onChange={(e) => setStart(e.target.value)} /></div>
           )}
           {pick && canBill && (
@@ -163,7 +174,7 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
                 <Switch checked={billable} onCheckedChange={setBillable} />
               </div>
               {billable && (
-                <div className="space-y-1.5"><Label>Day rate ($/day)</Label>
+                <div className="space-y-1.5"><Label>Bill rate ($/day)</Label>
                   <Input type="number" inputMode="decimal" min={0} step="0.01" className="h-11" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="No rate set" />
                 </div>
               )}
@@ -172,7 +183,7 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button disabled={!pick || assign.isPending} onClick={submit}>{isExisting || (pick && elsewhere(pick.slice(2))) ? "Move here" : "Assign"}</Button>
+          <Button disabled={!pick || assign.isPending} onClick={submit}>{careEdit ? "Save responsibility" : isExisting || (pick && elsewhere(pick.slice(2))) ? "Move here" : "Assign"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -204,7 +215,7 @@ export function LocationAssets({ projectId, locationId, locationName, canWrite, 
           {here.map((r) => (
             <span key={r.id} className="inline-flex items-center gap-1 rounded-md border bg-muted/40 pl-2 pr-1 py-0.5 text-xs">
               <AssetIcon type={r.assets?.type} />
-              <span className="font-medium">{r.assets?.label ?? "Asset"}</span>
+              <span className="font-medium">{assetCareLabel(r.assets?.label ?? "Asset", r.personnel)}</span><Badge variant="outline">{ownershipText(r.assets)}</Badge>
               {canBill && r.billable && (
                 <Badge variant="outline" className={r.rate == null ? "text-[10px] px-1.5 py-0 border-warning/50 text-warning" : "text-[10px] px-1.5 py-0 border-success/50 text-success"}>
                   {assetBillingText(r)}
@@ -213,17 +224,17 @@ export function LocationAssets({ projectId, locationId, locationName, canWrite, 
               {r.end_at && <span className="text-muted-foreground">ended {format(new Date(r.end_at), "M/d")}</span>}
               {canBill && r.assets && (
                 <Tooltip><TooltipTrigger asChild>
-                  <button type="button" className="rounded p-1 hover:bg-muted" aria-label="Edit asset" onClick={() => setEditAsset(r.assets as EditableAsset)}><Pencil className="h-3 w-3" /></button>
+                  <Button variant="ghost" size="icon" type="button" className="h-7 w-7" aria-label="Edit asset" onClick={() => setEditAsset(r.assets as EditableAsset)}><Pencil className="h-3 w-3" /></Button>
                 </TooltipTrigger><TooltipContent>Edit asset (registry)</TooltipContent></Tooltip>
               )}
               {canWrite && !r.end_at && (
                 <Tooltip><TooltipTrigger asChild>
-                  <button type="button" className="rounded p-1 hover:bg-muted" aria-label="End assignment" onClick={() => end.mutate(r.id)}><Square className="h-3 w-3" /></button>
+                  <Button variant="ghost" size="icon" type="button" className="h-7 w-7" aria-label="End assignment" onClick={() => end.mutate(r.id)}><Square className="h-3 w-3" /></Button>
                 </TooltipTrigger><TooltipContent>End (stop day-rate clock)</TooltipContent></Tooltip>
               )}
               {canWrite && (
                 <Tooltip><TooltipTrigger asChild>
-                  <button type="button" className="rounded p-1 hover:bg-muted" aria-label="Unassign asset" onClick={() => unassign.mutate(r.id)}><X className="h-3 w-3" /></button>
+                  <Button variant="ghost" size="icon" type="button" className="h-7 w-7" aria-label="Unassign asset" onClick={() => unassign.mutate(r.id)}><X className="h-3 w-3" /></Button>
                 </TooltipTrigger><TooltipContent>Return to registry</TooltipContent></Tooltip>
               )}
             </span>

@@ -1,3 +1,5 @@
+import { AssetOwnershipFields, emptyOwnership } from './AssetOwnershipFields';
+import { validAssetCost, type Ownership, type RentalPeriod } from '@/lib/assetDetails';
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -9,16 +11,19 @@ import { ASSET_STATUSES, ASSET_TYPES, AssetStatus, useUpdateAsset } from "@/inte
 
 export interface EditableAsset {
   id: string; label: string; type: string; serial_number: string | null; description: string | null;
+  ownership?: Ownership; vendor_id?: string | null; unit_cost?: number | null; rental_rate?: number | null; rental_period?: RentalPeriod; notes?: string | null;
   status: string; default_day_rate?: number | null;
 }
 
 /** Edits the registry asset (source of truth for default day rate). Callers gate to manager+. */
 export function EditAssetDialog({ asset, open, onOpenChange }: { asset: EditableAsset | null; open: boolean; onOpenChange: (o: boolean) => void }) {
   const update = useUpdateAsset();
+  const [ownership, setOwnership] = useState(emptyOwnership);
   const [f, setF] = useState({ label: "", type: "", serial: "", description: "", status: "available", rate: "" });
   const [lastOpen, setLastOpen] = useState(false);
   if (open !== lastOpen) {
     setLastOpen(open);
+    if (open && asset) setOwnership({ ownership: asset.ownership ?? 'owned', vendor: asset.vendor_id ?? '', unitCost: asset.unit_cost != null ? String(asset.unit_cost) : '', rentalRate: asset.rental_rate != null ? String(asset.rental_rate) : '', rentalPeriod: asset.rental_period ?? 'day', notes: asset.notes ?? '' });
     if (open && asset) setF({
       label: asset.label, type: asset.type, serial: asset.serial_number ?? "", description: asset.description ?? "",
       status: asset.status, rate: asset.default_day_rate != null ? String(asset.default_day_rate) : "",
@@ -32,13 +37,16 @@ export function EditAssetDialog({ asset, open, onOpenChange }: { asset: Editable
     if (!asset) return;
     update.mutate({
       id: asset.id, label: f.label.trim(), type: f.type, serial_number: f.serial.trim() || null,
+      ownership: ownership.ownership, vendor_id: ownership.ownership === 'rented' ? ownership.vendor || null : null,
+      unit_cost: ownership.unitCost.trim() ? Number(ownership.unitCost) : null, rental_rate: ownership.rentalRate.trim() ? Number(ownership.rentalRate) : null,
+      rental_period: ownership.rentalPeriod, notes: ownership.notes.trim() || null,
       description: f.description.trim() || null, status: f.status as AssetStatus, default_day_rate: rateNum,
     }, { onSuccess: () => onOpenChange(false) });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto">
         <DialogHeader><DialogTitle>Edit asset</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5"><Label>Label / Name</Label><Input className="h-11" value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} /></div>
@@ -57,7 +65,8 @@ export function EditAssetDialog({ asset, open, onOpenChange }: { asset: Editable
             </div>
           </div>
           <div className="space-y-1.5"><Label>Serial number</Label><Input className="h-11" value={f.serial} onChange={(e) => setF({ ...f, serial: e.target.value })} /></div>
-          <div className="space-y-1.5"><Label>Day rate ($/day)</Label>
+          <AssetOwnershipFields value={ownership} onChange={setOwnership} full />
+          <div className="space-y-1.5"><Label>Default bill rate ($/day)</Label>
             <Input type="number" inputMode="decimal" min={0} step="0.01" className="h-11" value={f.rate} placeholder="No default rate"
               onChange={(e) => setF({ ...f, rate: e.target.value })} />
             <p className="text-xs text-muted-foreground">{rateBad ? <span className="text-destructive">Enter a valid rate</span> : "Default for billable assignments without their own rate."}</p>
@@ -66,7 +75,7 @@ export function EditAssetDialog({ asset, open, onOpenChange }: { asset: Editable
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button disabled={!f.label.trim() || !f.type || rateBad || update.isPending} onClick={save}>Save</Button>
+          <Button disabled={!f.label.trim() || !f.type || rateBad || !validAssetCost(ownership.unitCost) || !validAssetCost(ownership.rentalRate) || (ownership.ownership === "rented" && !ownership.vendor) || update.isPending} onClick={save}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
