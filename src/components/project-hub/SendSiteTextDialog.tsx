@@ -13,7 +13,10 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertTriangle, Loader2, MessageSquare } from "lucide-react";
 
-type Loc = { id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; poc_name: string | null; poc_phone: string | null };
+import { localDateTimeToIso } from "@/lib/signinSheets";
+import { localStamp, locationZone } from "../../../supabase/functions/_shared/locationTime";
+
+type Loc = { timezone: string | null; project_id: string; id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; poc_name: string | null; poc_phone: string | null };
 
 /** Latest site-text send per person+location (from site_checkin_tokens.created_at). Key: `${personnel_id}:${location_id}` */
 export function useLastSiteTexts(locationIds: string[]) {
@@ -41,10 +44,6 @@ function fmtAddr(l?: Loc | null) {
   if (!l) return "";
   return [l.address, [l.city, [l.state, l.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ")].filter(Boolean).join(", ");
 }
-function fmtReport(d: Date) {
-  const tz = "America/Chicago";
-  return `${d.toLocaleDateString("en-US", { weekday: "short", timeZone: tz })} ${d.toLocaleDateString("en-US", { month: "numeric", day: "numeric", timeZone: tz })} ${d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: tz })} CT`;
-}
 const defaultReport = () => format(addDays(new Date(), 1), "yyyy-MM-dd") + "T07:00";
 
 export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationId, projectId }: {
@@ -62,7 +61,7 @@ export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationI
     queryKey: ["site-text-locs", locationId, projectId, personnelIds],
     enabled: open,
     queryFn: async (): Promise<Loc[]> => {
-      const cols = "id, name, address, city, state, zip, poc_name, poc_phone";
+      const cols = "id, name, address, city, state, zip, poc_name, poc_phone, timezone, project_id";
       if (locationId) {
         const { data } = await supabase.from("project_locations").select(cols).eq("id", locationId);
         return (data ?? []) as Loc[];
@@ -89,6 +88,8 @@ export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationI
   useEffect(() => { if (open) { setLocId(locationId); setReportAt(defaultReport()); setNote(""); } }, [open, locationId]);
   useEffect(() => { if (!locId && locOptions.length === 1) setLocId(locOptions[0].id); }, [locOptions, locId]);
   const loc = locOptions.find((l) => l.id === locId) ?? null;
+  const zone = locationZone(loc || {});
+  const reportIso = reportAt ? localDateTimeToIso(reportAt.split('T')[0],reportAt.split('T')[1]||'',zone) : null;
   const hasPoc = !!(loc?.poc_name || loc?.poc_phone);
   useEffect(() => { setInc((s) => ({ ...s, poc: hasPoc })); }, [hasPoc]);
 
@@ -97,12 +98,12 @@ export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationI
     let m = `FRG: You're assigned to ${loc.name}`;
     const a = fmtAddr(loc);
     if (inc.address && a) m += `\n${a}`;
-    if (inc.report_time && reportAt) m += `\nReport: ${fmtReport(new Date(reportAt))}`;
+    if (inc.report_time && reportAt) m += `\nReport: ${reportIso ? localStamp(reportIso,zone) : "Invalid report time"}`;
     if (inc.poc && hasPoc) m += `\nPOC: ${[loc.poc_name, loc.poc_phone].filter(Boolean).join(" ")}`;
     if (note.trim()) m += `\n${note.trim()}`;
     m += `\nWhen you arrive, tap to check in: https://fairfieldrg.com/punch/…\nTap again when you leave to check out.`;
     return m;
-  }, [loc, inc, reportAt, note, hasPoc]);
+  }, [loc, inc, reportAt, reportIso, zone, note, hasPoc]);
 
   const hasPhone = (p: any) => { const d = String(p.phone ?? "").replace(/\D/g, ""); return d.length === 10 || (d.length === 11 && d.startsWith("1")); };
   const nameOf = (id: string) => { const p: any = people.find((x: any) => x.id === id); return p ? [p.first_name, p.last_name].filter(Boolean).join(" ") : "…"; };
@@ -110,7 +111,7 @@ export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationI
   const send = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke("send-site-assignment-sms", {
-        body: { location_id: locId, personnel_ids: personnelIds, report_at: reportAt ? new Date(reportAt).toISOString() : null, include: inc, custom_note: note.trim() || undefined },
+        body: { location_id: locId, personnel_ids: personnelIds, report_at: reportIso, include: inc, custom_note: note.trim() || undefined },
       });
       if (error) throw new Error(error instanceof FunctionsHttpError ? await error.context.text() : error.message);
       return (data?.results ?? []) as { personnel_id: string; status: string; reason?: string }[];
@@ -143,7 +144,7 @@ export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationI
             )
           )}
           <div className="space-y-1">
-            <Label>Report date & time</Label>
+            <Label>Report date & time · {zone}</Label>{loc && !loc.timezone && <p role="alert" className="text-xs text-warning">Location timezone not set — using {zone}. Set it before sending.</p>}
             <Input type="datetime-local" value={reportAt} onChange={(e) => setReportAt(e.target.value)} />
           </div>
           <div className="flex flex-wrap gap-4">
@@ -172,7 +173,7 @@ export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationI
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Skip</Button>
-          <Button disabled={!locId || send.isPending} onClick={() => send.mutate()}>
+          <Button disabled={!locId || (inc.report_time && !!reportAt && !reportIso) || send.isPending} onClick={() => send.mutate()}>
             {send.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Send
           </Button>
         </DialogFooter>

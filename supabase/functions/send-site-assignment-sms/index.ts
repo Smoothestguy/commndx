@@ -1,6 +1,7 @@
 // Texts site assignment details + a personal self check-in link (/punch/:token) to personnel.
 // Staff-only (admin/manager/user). Creates one site_checkin_tokens row per person.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
+import { locationZone,localStamp } from '../_shared/locationTime.ts';
 import { sendJoinApproval } from '../_shared/joinApproval.ts';
 
 const corsHeaders = {
@@ -10,15 +11,6 @@ const corsHeaders = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function fmtReport(iso: string) {
-  const d = new Date(iso);
-  const tz = "America/Chicago";
-  const wd = d.toLocaleDateString("en-US", { weekday: "short", timeZone: tz });
-  const md = d.toLocaleDateString("en-US", { month: "numeric", day: "numeric", timeZone: tz });
-  const t = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: tz });
-  return `${wd} ${md} ${t} CT`;
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -50,8 +42,10 @@ Deno.serve(async (req) => {
     const note = typeof custom_note === "string" ? custom_note.trim().slice(0, 300) : "";
 
     const { data: loc, error: locErr } = await service.from("project_locations")
-      .select("name, address, city, state, zip, poc_name, poc_phone").eq("id", location_id).maybeSingle();
+      .select("name, address, city, state, zip, poc_name, poc_phone, timezone, project_id, status").eq("id", location_id).maybeSingle();
     if (locErr || !loc) return json({ error: "Location not found" }, 404);
+    if(loc.status==='closed')return json({error:'Location is closed'},409);
+    const {data:project,error:projectError}=await service.from('projects').select('*').eq('id',loc.project_id).single();if(projectError)throw projectError;const zone=locationZone(loc,project);
     const addr = [loc.address, [loc.city, [loc.state, loc.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ")].filter(Boolean).join(", ");
 
     const { data: people, error: pErr } = await service.from("personnel")
@@ -78,7 +72,7 @@ Deno.serve(async (req) => {
 
       let msg = `FRG: You're assigned to ${loc.name}`;
       if (include.address && addr) msg += `\n${addr}`;
-      if (include.report_time && reportAt) msg += `\nReport: ${fmtReport(reportAt)}`;
+      if (include.report_time && reportAt) msg += `\nReport: ${localStamp(reportAt,zone)}`;
       if (include.poc && (loc.poc_name || loc.poc_phone)) msg += `\nPOC: ${[loc.poc_name, loc.poc_phone].filter(Boolean).join(" ")}`;
       if (note) msg += `\n${note}`;
       msg += `\nWhen you arrive, tap to check in: ${siteUrl}/punch/${tok.id}\nTap again when you leave to check out.`;

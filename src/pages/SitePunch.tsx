@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { format } from "date-fns";
+import { localStamp } from "../../supabase/functions/_shared/locationTime";
 import { supabase } from "@/integrations/supabase/client";
 import { ForceDarkTheme } from "@/components/ForceDarkTheme";
 import { Button } from "@/components/ui/button";
@@ -141,7 +141,7 @@ export default function SitePunch() {
       if (!navigator.onLine) return;
       const { data, error } = await supabase.rpc("get_site_checkin_info", { p_token: token });
       if (!active) return;
-      if (!error && data) { const value=data as unknown as Info; if(value.valid){const {data:shift}=await supabase.functions.invoke('shift-discipline',{body:{action:'info',token}});if(active)updateInfo({...value,timezone:shift?.timezone});}else updateInfo(value); }
+      if (!error && data) { const value=data as unknown as Info; if(value.valid){const {data:shift}=await supabase.functions.invoke('shift-discipline',{body:{action:'info',token}});if(active)updateInfo({...value,timezone:shift?.timezone || value.timezone});}else updateInfo(value); }
       else if (!isNetworkError(error)) updateInfo({ valid: false });
     };
     void load().then(flush);
@@ -210,7 +210,7 @@ export default function SitePunch() {
             <h1 className="text-4xl font-bold">{tr(`Hi ${info.first_name}!`, `¡Hola ${info.first_name}!`)}</h1>
             <p className="text-2xl font-semibold">{info.location_name}</p>
             {mapsHref && <a href={mapsHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-lg text-primary underline"><MapPin className="h-5 w-5" />{info.address}</a>}
-            {info.report_at && !onSite && <p className="text-lg text-muted-foreground">{tr("Report:", "Presentarse:")} {format(new Date(info.report_at), "EEE M/d HH:mm")}</p>}
+            {info.report_at && !onSite && <p className="text-lg text-muted-foreground">{tr("Report:", "Presentarse:")} {localStamp(info.report_at,info.timezone || 'America/Chicago')}</p>}
             {info.on_site_since && <p className="text-xl">{tr("On site since", "En el sitio desde")} {t(info.on_site_since)}</p>}
           </div>}
           {(!done || done.action === "in") && <Button onClick={punch} disabled={busy} className={`w-full h-28 text-2xl font-bold ${onSite ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : "bg-success text-success-foreground hover:bg-success/90"}`}>
