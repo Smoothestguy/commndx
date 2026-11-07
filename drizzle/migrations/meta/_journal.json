@@ -120,6 +120,13 @@
       "when": 1794002069809,
       "tag": "0016_timesheet_signature_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794087735640,
+      "tag": "0017_asset_ownership_custody_and_financial_privacy",
+      "breakpoints": true
     }
   ]
 }

@@ -1174,6 +1174,41 @@ export type Database = {
           },
         ]
       }
+      asset_custody_history: {
+        Row: {
+          assignment_id: string
+          changed_by: string | null
+          ended_at: string | null
+          id: string
+          personnel_id: string | null
+          started_at: string
+        }
+        Insert: {
+          assignment_id: string
+          changed_by?: string | null
+          ended_at?: string | null
+          id?: string
+          personnel_id?: string | null
+          started_at?: string
+        }
+        Update: {
+          assignment_id?: string
+          changed_by?: string | null
+          ended_at?: string | null
+          id?: string
+          personnel_id?: string | null
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_custody_history_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "asset_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assets: {
         Row: {
           access_instructions: string | null
@@ -1188,11 +1223,17 @@ export type Database = {
           instructions: string | null
           label: string
           metadata: Json | null
+          notes: string | null
           operating_hours: string | null
+          ownership: string
+          rental_period: string | null
+          rental_rate: number | null
           serial_number: string | null
           status: string
           type: string
+          unit_cost: number | null
           updated_at: string | null
+          vendor_id: string | null
         }
         Insert: {
           access_instructions?: string | null
@@ -1207,11 +1248,17 @@ export type Database = {
           instructions?: string | null
           label: string
           metadata?: Json | null
+          notes?: string | null
           operating_hours?: string | null
+          ownership?: string
+          rental_period?: string | null
+          rental_rate?: number | null
           serial_number?: string | null
           status?: string
           type: string
+          unit_cost?: number | null
           updated_at?: string | null
+          vendor_id?: string | null
         }
         Update: {
           access_instructions?: string | null
@@ -1226,13 +1273,27 @@ export type Database = {
           instructions?: string | null
           label?: string
           metadata?: Json | null
+          notes?: string | null
           operating_hours?: string | null
+          ownership?: string
+          rental_period?: string | null
+          rental_rate?: number | null
           serial_number?: string | null
           status?: string
           type?: string
+          unit_cost?: number | null
           updated_at?: string | null
+          vendor_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "assets_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       assignment_removal_log: {
         Row: {
@@ -11843,6 +11904,15 @@ export type Database = {
         Returns: boolean
       }
       approve_join_request: { Args: { p_request: string }; Returns: Json }
+      asset_catalog: { Args: never; Returns: Json }
+      asset_placements: {
+        Args: {
+          p_location_id?: string
+          p_personnel_id?: string
+          p_project_id?: string
+        }
+        Returns: Json
+      }
       check_returning_contact: { Args: { _contact: string }; Returns: boolean }
       complete_personnel_onboarding:
         | {

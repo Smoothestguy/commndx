@@ -1,3 +1,4 @@
+import { ownershipText } from '@/lib/assetDetails';
 import { useState } from "react";
 import { format } from "date-fns";
 import { 
@@ -83,9 +84,9 @@ function AssetBillingCell({ row, projectId, canEdit }: { row: AssetBillingRow; p
   };
   return (
     <div className="flex items-center gap-2">
-      <Switch checked={row.billable} onCheckedChange={(b) => save(b, rate)} aria-label="Billable" />
+      <Switch checked={row.billable} onCheckedChange={(b) => save(b, rate)} aria-label="Bill customer" />
       {row.billable && (
-        <Input type="number" inputMode="decimal" min={0} step="0.01" className="h-8 w-24 text-xs" value={rate}
+        <Input aria-label="Bill rate" type="number" inputMode="decimal" min={0} step="0.01" className="h-8 w-24 text-xs" value={rate}
           placeholder={row.assets?.default_day_rate != null ? `${row.assets.default_day_rate} (default)` : "$/day"}
           onChange={(e) => setRate(e.target.value)}
           onBlur={() => { if (rate !== (row.day_rate != null ? String(row.day_rate) : "")) save(true, rate); }} />
@@ -227,7 +228,7 @@ export function ProjectAssetAssignmentsSection({
                               {getAssetIcon(asset.type)}
                             </div>
                             <div className="min-w-0">
-                              <p className="font-medium truncate">{asset.label}</p>
+                              <p className="font-medium truncate">{asset.label}</p><Badge variant="outline">{ownershipText(asset)}</Badge>
                               <p className="text-sm text-muted-foreground capitalize">
                                 {asset.type}
                               </p>
@@ -277,7 +278,7 @@ export function ProjectAssetAssignmentsSection({
                         <TableHead>Asset</TableHead>
                         <TableHead>Type</TableHead>
                         <TableHead>Location</TableHead>
-                        {canEdit && <TableHead>Billing</TableHead>}
+                        {canEdit && <TableHead>Bill rate</TableHead>}
                         <TableHead>Assigned To</TableHead>
                         <TableHead>Start Date</TableHead>
                         <TableHead>End Date</TableHead>
@@ -298,7 +299,7 @@ export function ProjectAssetAssignmentsSection({
                                   {getAssetIcon(asset.type)}
                                 </div>
                                 <div>
-                                  <p className="font-medium">{asset.label}</p>
+                                  <p className="font-medium">{asset.label}</p><Badge variant="outline">{ownershipText(asset)}</Badge>
                                   {asset.serial_number && (
                                     <p className="text-xs text-muted-foreground">
                                       SN: {asset.serial_number}

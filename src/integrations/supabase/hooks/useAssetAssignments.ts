@@ -55,45 +55,11 @@ export function useAssetAssignmentsByProject(projectId: string | undefined, filt
     queryFn: async () => {
       if (!projectId) return [];
 
-      let query = supabase
-        .from("asset_assignments")
-        .select(`
-          *,
-          assets (
-            id,
-            type,
-            label,
-            description,
-            address,
-            gate_code,
-            access_instructions,
-            operating_hours,
-            instructions,
-            serial_number,
-            status,
-            metadata,
-            default_day_rate
-          ),
-          personnel (
-            id,
-            first_name,
-            last_name,
-            email,
-            phone
-          )
-        `)
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false });
-
-      if (filters.status && filters.status !== "all") {
-        query = query.eq("status", filters.status);
-      }
-
-      const { data, error } = await query;
+      const { data, error } = await supabase.rpc("asset_placements", { p_project_id: projectId });
       if (error) throw error;
-
       // Filter by asset type if specified
-      let results = data as AssetAssignmentWithDetails[];
+      let results = (data ?? []) as unknown as AssetAssignmentWithDetails[];
+      if (filters.status && filters.status !== 'all') results = results.filter(a => a.status === filters.status);
       if (filters.type && filters.type !== "all") {
         results = results.filter(a => a.assets?.type === filters.type);
       }
@@ -123,29 +89,10 @@ export function useAssetAssignmentsByPersonnel(personnelId: string | undefined) 
     queryFn: async () => {
       if (!personnelId) return [];
 
-      const { data, error } = await supabase
-        .from("asset_assignments")
-        .select(`
-          *,
-          assets (
-            id,
-            type,
-            label,
-            description,
-            address,
-            serial_number,
-            status
-          ),
-          projects (
-            id,
-            name
-          )
-        `)
-        .eq("assigned_to_personnel_id", personnelId)
-        .order("created_at", { ascending: false });
-
+      const { data, error } = await supabase.rpc("asset_placements", { p_personnel_id: personnelId });
       if (error) throw error;
-      return data as AssetAssignmentWithDetails[];
+      return (data ?? []) as unknown as AssetAssignmentWithDetails[];
+
     },
     enabled: !!personnelId,
   });
@@ -400,10 +347,11 @@ export interface AssignToLocationInput {
   assetId?: string;
   billable?: boolean;
   dayRate?: number | null;
+  personnelId?: string | null;
   startAt?: string;
 }
 
-const ASSET_KEYS = ["asset-assignments", "location-authorization", "assets", "location-roster-assets", "location-command-center"];
+const ASSET_KEYS = ["personnel-with-assets", "portal-assigned-assets", "portal-project-assets", "asset-assignments", "location-authorization", "assets", "location-roster-assets", "location-command-center"];
 const invalidateAssetViews = (qc: ReturnType<typeof useQueryClient>) => ASSET_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
 
 /**
@@ -416,6 +364,7 @@ export function useAssignAssetToLocation() {
   return useMutation({
     mutationFn: async (i: AssignToLocationInput): Promise<"updated" | "moved" | "assigned"> => {
       const { data: { user } } = await supabase.auth.getUser();
+      const responsibility = i.personnelId === undefined ? {} : { assigned_to_personnel_id: i.personnelId };
       const billing = i.billable === undefined ? {} : { billable: i.billable, day_rate: i.dayRate ?? null };
       const at = i.startAt ?? new Date().toISOString();
       let assetId = i.assetId;
@@ -426,7 +375,7 @@ export function useAssignAssetToLocation() {
         if (error) throw error;
         const open = cur.status === "active" && !cur.end_at;
         if (open && cur.location_id === i.locationId && cur.project_id === i.projectId) {
-          const { error: e } = await supabase.from("asset_assignments").update(billing).eq("id", cur.id);
+          const { error: e } = await supabase.from("asset_assignments").update({ ...billing, ...responsibility }).eq("id", cur.id);
           if (e) throw e;
           return "updated";
         }
@@ -447,7 +396,7 @@ export function useAssignAssetToLocation() {
       }
       const { error } = await supabase.from("asset_assignments").insert({
         project_id: i.projectId, asset_id: assetId, location_id: i.locationId,
-        assigned_by: user?.id ?? null, start_at: at, ...(carry ?? {}), ...billing,
+        assigned_by: user?.id ?? null, start_at: at, ...(carry ?? {}), ...billing, ...responsibility,
       });
       if (error) throw error;
       await supabase.from("assets").update({ status: "assigned" }).eq("id", assetId);

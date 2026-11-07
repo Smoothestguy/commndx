@@ -1,3 +1,5 @@
+import { assetCareLabel, ownershipText } from '@/lib/assetDetails';
+import type { AssetAssignmentWithDetails } from '@/integrations/supabase/hooks/useAssetAssignments';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -81,9 +83,9 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
   const assets = useQuery({
     queryKey: ['location-roster-assets', locationId],
     queryFn: async () => {
-      const { data, error } = await supabase.from('asset_assignments').select('id, assets(label,type)').eq('location_id', locationId).eq('status', 'active').is('unassigned_at', null).is('end_at', null);
+      const { data, error } = await supabase.rpc('asset_placements', { p_location_id: locationId });
       if (error) throw error;
-      return (data ?? []) as { id: string; assets: { label: string | null; type: string | null } | null }[];
+      return ((data ?? []) as unknown as AssetAssignmentWithDetails[]).filter(a => a.status === 'active' && !a.unassigned_at && !a.end_at);
     },
   });
 
@@ -168,7 +170,7 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
     <section className="border rounded-md bg-card" aria-label="Assets group">
       <h3 className="flex items-center justify-between px-3 py-2 text-sm font-semibold border-b bg-muted/40">Assets / Trucks<Badge variant="secondary">{assets.data?.length ?? 0}</Badge></h3>
       {assets.isLoading ? <Loader2 className="m-3 h-4 w-4 animate-spin" /> : !assets.data?.length ? <p className="px-3 py-2 text-sm text-muted-foreground">No equipment assigned. Manage in the Assets tab.</p> :
-        <ul className="divide-y">{assets.data.map(r => <li key={r.id} className="flex items-center gap-2 px-3 py-2 text-sm"><Truck className="h-4 w-4 text-muted-foreground" />{r.assets?.label ?? 'Asset'}{r.assets?.type && <span className="text-xs text-muted-foreground">· {r.assets.type}</span>}</li>)}</ul>}
+        <ul className="divide-y">{assets.data.map(r => <li key={r.id} className="flex items-center gap-2 px-3 py-2 text-sm"><Truck className="h-4 w-4 text-muted-foreground" />{assetCareLabel(r.assets?.label ?? 'Asset', r.personnel)}<Badge variant="outline">{ownershipText(r.assets)}</Badge>{r.assets?.type && <span className="text-xs text-muted-foreground">· {r.assets.type}</span>}</li>)}</ul>}
     </section>
 
     <Dialog open={!!roleDlg} onOpenChange={o => !o && !changeRole.isPending && setRoleDlg(null)}><DialogContent className="max-w-sm">

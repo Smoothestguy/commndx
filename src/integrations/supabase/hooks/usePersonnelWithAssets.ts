@@ -1,3 +1,4 @@
+import type { AssetAssignmentWithDetails } from './useAssetAssignments';
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -99,25 +100,8 @@ export function usePersonnelWithAssets(
       if (!assignments || assignments.length === 0) return [];
 
       // Get all active asset assignments for this project
-      const { data: assetAssignments, error: assetError } = await supabase
-        .from("asset_assignments")
-        .select(`
-          id,
-          asset_id,
-          assigned_to_personnel_id,
-          end_at,
-          assets (
-            id,
-            type,
-            label,
-            address,
-            operating_hours,
-            instructions
-          )
-        `)
-        .eq("project_id", projectId)
-        .eq("status", "active")
-        .is("unassigned_at", null);
+      const { data: projection, error: assetError } = await supabase.rpc('asset_placements', { p_project_id: projectId });
+      const assetAssignments = ((projection ?? []) as unknown as AssetAssignmentWithDetails[]).filter(a => a.status === 'active' && !a.unassigned_at);
 
       if (assetError) throw assetError;
 
@@ -137,7 +121,7 @@ export function usePersonnelWithAssets(
             return; // Skip expired assets
           }
           
-          personnelAssetsMap.get(personnelId)!.push({
+          personnelAssetsMap.get(personnelId)?.push({
             assetId: aa.asset_id,
             type: aa.assets.type,
             label: aa.assets.label,
@@ -305,7 +289,7 @@ export function usePersonnelWithAssetsForExport(projectId: string | undefined, i
             return; // Skip expired assets
           }
           
-          personnelAssetsMap.get(personnelId)!.push({
+          personnelAssetsMap.get(personnelId)?.push({
             assetId: aa.asset_id,
             type: aa.assets.type,
             label: aa.assets.label,

@@ -1,3 +1,4 @@
+import { AssetOwnershipFields, emptyOwnership } from './AssetOwnershipFields';
 import { useUserRole } from "@/hooks/useUserRole";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -85,6 +86,7 @@ export function AssignAssetDialog({
 }: AssignAssetDialogProps) {
   const { isAdmin, isManager } = useUserRole();
   const canSeeRates = isAdmin || isManager;
+  const [ownership, setOwnership] = useState(emptyOwnership);
   const [activeTab, setActiveTab] = useState<"existing" | "new">("existing");
   const [createdAssetId, setCreatedAssetId] = useState<string | null>(null);
   
@@ -119,12 +121,13 @@ export function AssignAssetDialog({
 
   const handleCreateAsset = async (values: NewAssetFormValues) => {
     const asset = await createAssetMutation.mutateAsync({
+      ownership: ownership.ownership, vendor_id: ownership.vendor || null,
       type: values.type,
       label: values.label,
-      serial_number: values.serialNumber || null,
+      serial_number: values.serialNumber || undefined,
       ...(canSeeRates ? { default_day_rate: values.dayRate ? Number(values.dayRate) : null } : {}),
-      address: values.address || null,
-      instructions: values.instructions || null,
+      address: values.address || undefined,
+      instructions: values.instructions || undefined,
       status: "available",
     });
     
@@ -415,12 +418,13 @@ export function AssignAssetDialog({
                   )}
                 />
 
+                <AssetOwnershipFields value={ownership} onChange={setOwnership} />
                 {canSeeRates && <FormField
                   control={newAssetForm.control}
                   name="dayRate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Day rate ($/day) (Optional)</FormLabel>
+                      <FormLabel>Default bill rate ($/day) (Optional)</FormLabel>
                       <FormControl>
                         <Input type="number" inputMode="decimal" min={0} step="0.01" placeholder="e.g., 450" {...field} />
                       </FormControl>
@@ -464,7 +468,7 @@ export function AssignAssetDialog({
                   <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={createAssetMutation.isPending}>
+                  <Button type="submit" disabled={createAssetMutation.isPending || (ownership.ownership === "rented" && !ownership.vendor)}>
                     {createAssetMutation.isPending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
