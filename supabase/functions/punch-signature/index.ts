@@ -1,3 +1,4 @@
+import {locationZone} from '../_shared/locationTime.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
@@ -15,7 +16,7 @@ Deno.serve(async req=>{
   if(Date.parse(v.at)>Date.now()+(v.action==='save'?10*60000:60000)||Date.parse(v.at)<Date.now()-7*86400000)return json({error:'Punch time unavailable'},400);
   const db=createClient(Deno.env.get('SUPABASE_URL')??'',Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')??'');
   const {data:token,error:tokenError}=await db.from('site_checkin_tokens').select('personnel_id,location_id,expires_at').eq('id',v.token).maybeSingle();if(tokenError)throw tokenError;if(!token||Date.parse(token.expires_at)<=Date.now())return json({error:'Inactive link'},403);
-  const {data:loc,error:locError}=await db.from('project_locations').select('timezone,lat,lng,geofence_radius_m').eq('id',token.location_id).single();if(locError)throw locError;const zone=loc.timezone||'America/Chicago',date=day(v.at,zone);
+  const {data:loc,error:locError}=await db.from('project_locations').select('timezone,project_id,lat,lng,geofence_radius_m').eq('id',token.location_id).single();if(locError)throw locError;const {data:project,error:projectError}=await db.from('projects').select('*').eq('id',loc.project_id).single();if(projectError)throw projectError;const zone=locationZone(loc,project),date=day(v.at,zone);
   const {data:signed,error:sigError}=await db.from('visit_personnel').select('signature_url,signed_at').eq('personnel_id',token.personnel_id).not('signature_url','is',null).gte('signed_at',new Date(Date.parse(v.at)-2*86400000).toISOString()).lte('signed_at',new Date(Date.parse(v.at)+2*86400000).toISOString()).order('signed_at',{ascending:false});if(sigError)throw sigError;
   const prior=signed?.find(s=>s.signed_at&&day(s.signed_at,zone)===date);
   if(v.action==='prepare'){

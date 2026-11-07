@@ -1,3 +1,5 @@
+import {authorize} from '../_shared/signinJobs.ts';
+import {locationZone,zoneLabel} from '../_shared/locationTime.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.86.0';
 
 const corsHeaders = {
@@ -26,6 +28,7 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
+    if(!await authorize(req,supabaseAdmin))return new Response(JSON.stringify({error:'Manager access required'}),{status:403,headers:{...corsHeaders,'Content-Type':'application/json'}});
     const { personnelId, projectId, assignmentId, scheduledDate, scheduledStartTime, force }: AssignmentSMSRequest = await req.json();
 
     console.log(`Processing assignment SMS for personnel ${personnelId} on project ${projectId}${force ? ' (force mode)' : ''}`);
@@ -96,7 +99,7 @@ Deno.serve(async (req: Request) => {
     // Fetch project details
     const { data: project, error: projectError } = await supabaseAdmin
       .from("projects")
-      .select("id, name, address, city, state, zip, require_clock_location")
+      .select("*")
       .eq("id", projectId)
       .single();
 
@@ -116,7 +119,7 @@ Deno.serve(async (req: Request) => {
 
     if (!scheduleInfo.date || !scheduleInfo.startTime) {
       // Look for upcoming schedule
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Intl.DateTimeFormat('en-CA',{timeZone:locationZone({},project),year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
       const { data: schedule } = await supabaseAdmin
         .from("personnel_schedules")
         .select("scheduled_date, scheduled_start_time")
@@ -150,21 +153,16 @@ Deno.serve(async (req: Request) => {
     // Format date and time for display
     let scheduleDisplay = "";
     if (scheduleInfo.date && scheduleInfo.startTime) {
-      const dateObj = new Date(scheduleInfo.date + 'T00:00:00');
+      const dateObj = new Date(scheduleInfo.date + 'T12:00:00Z');
       const formattedDate = dateObj.toLocaleDateString('en-US', { 
-        weekday: 'long', 
+        timeZone: 'UTC', weekday: 'long', 
         month: 'long', 
         day: 'numeric', 
         year: 'numeric' 
       });
       
       // Format time (convert from HH:MM:SS to readable format)
-      const timeParts = scheduleInfo.startTime.split(':');
-      const hours = parseInt(timeParts[0]);
-      const minutes = timeParts[1];
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      const displayHours = hours % 12 || 12;
-      const formattedTime = `${displayHours}:${minutes} ${ampm}`;
+      const formattedTime = `${scheduleInfo.startTime.slice(0,5).replace(':','')} ${zoneLabel(locationZone({},project),dateObj.toISOString())}`;
       
       scheduleDisplay = `${formattedTime} on ${formattedDate}`;
     }
