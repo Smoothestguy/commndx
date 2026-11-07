@@ -37,6 +37,8 @@ export function LogTimeDialog({ open, onOpenChange, projectId, personnelId, pers
   const [outDay, setOutDay] = useState(day);
   const [shift, setShift] = useState<'day'|'night'>('day');
   const [note, setNote] = useState("");
+  const [saveError,setSaveError]=useState('');
+  const [confirmOtherOpen,setConfirmOtherOpen]=useState(false);
   const [search, setSearch] = useState('');
   const [assign, setAssign] = useState(false);
   const [role, setRole] = useState('Operator');
@@ -85,15 +87,16 @@ export function LogTimeDialog({ open, onOpenChange, projectId, personnelId, pers
           </div>
           <div><Label htmlFor="manual-out-date">Time out date</Label><Input id="manual-out-date" type="date" value={outDay} min={day} onChange={e=>setOutDay(e.target.value)}/></div>
           {range && <p className="text-xs text-muted-foreground">{range.hours.toFixed(2)} hours · {zone}</p>}
+          {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
+          {saveError.includes('unfinished check-out') && <label className="flex gap-2 items-start text-sm"><Checkbox checked={confirmOtherOpen} onCheckedChange={v=>setConfirmOtherOpen(v===true)}/>Confirm these location hours are correct; keep the other site's unfinished punch for supervisor review.</label>}
           {tin && tout && !range && <p className="text-xs text-destructive">Enter valid times with time out after time in.</p>}
           <div><Label>Note (optional)</Label><Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></div>
         </div>
         <DialogFooter>
           <Button variant="outline" disabled={save.isPending} onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button disabled={!valid || save.isPending} onClick={() => { if (!valid || !range) return; save.mutate(
-            { personnel_id: pid, location_id: loc, day, in_at: range.inAt, out_at: range.outAt, note, assignRole: addToDay && assign ? role.trim() : undefined },
-            { onSuccess: () => onOpenChange(false) },
-          ); }}>
+          <Button disabled={!valid || save.isPending} onClick={async () => { if (!valid || !range) return; try { await save.mutateAsync(
+            { personnel_id: pid, location_id: loc, day, in_at: range.inAt, out_at: range.outAt, note, assignRole: addToDay && assign ? role.trim() : undefined, confirmOtherOpen },
+          ); onOpenChange(false); } catch(e) { setSaveError(e instanceof Error ? e.message : 'Time could not be saved'); } }}>
             {save.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Save
           </Button>
         </DialogFooter>
