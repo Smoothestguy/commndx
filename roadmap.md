@@ -1,7 +1,7 @@
 # Kiosk follow-up and add person to day
-- [ ] Diagnose Jaime's Nov 6 absence; manager add-person flow with dated assignment and audited military-time stay; retain requested real Jaime 0730–1930 entry at 5049.
-- [ ] Private selected-person/location kiosk pending items: signatures/requests, earlier forgotten checkouts with confirmation, required late reasons; skip and empty auto-dismiss.
-- [ ] Browser verify real attendance and throwaway kiosk completion; run focused tests; remove all verification rows.
+- [x] Jaime's assignment restarted late Nov 6 and another site's open stay blocked adding hours; project-wide add-person picker and explicit audited other-open confirmation save without changing the other stay. Real Jaime Nov 6 0730–1930 (12h) retained, attendance/ledger/dialog/PDF verified.
+- [x] Private post-punch person/location proof exposes unsigned/requested days, earlier forgotten checkouts and missing late reasons; kiosk pad signs/fulfills requests, worker checkout corrections require confirmation and supervisor review; locks, skip and empty dismissal retained.
+- [x] Live 390px kiosk search/punch→signature request fulfillment/private ink→late reason→return verified, separate earlier checkout confirmed/read back with review flag. 22 rule tests and preview checks pass; temporary person, assignments, stays, requests, tokens, ledger and media removed. No messages or schedule changes. Physical badge scanner/roster mode not separately exercised; shared post-punch path wired to all modes.
 
 # Polish and fix batch
 - [x] All drawing pads share DPR/ResizeObserver calibration and normalized strokes; landscape expands and retains held-stroke ink. Playwright touch pixel checks pass at 390×844 and 844×390 after scroll, ancestor scale/zoom, rotation, Clear and intercepted PNG save; both wrappers verified, 7 regression tests and preview build pass. No live writes/test rows; physical iPhone Safari and live-token submissions not exercised.
