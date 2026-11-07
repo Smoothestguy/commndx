@@ -76,9 +76,9 @@ export async function kioskPending(db: any, v: any, locationId: string, projectI
     const fulfilled = await db.from('timesheet_signature_requests').update({ status: 'signed', signed_at: now, visit_personnel_id: signed.visit_personnel_id }).eq('personnel_id', person).eq('location_id', locationId).eq('sheet_date', item.date).eq('status', 'pending'); if (fulfilled.error) throw fulfilled.error;
   } else if (v.kind === 'late') {
     if (!v.reason?.trim()) throw new Error('Late reason required');
-    const result = await db.from('visit_personnel').update({ late_reason: v.reason.trim() }).eq('id', s.visit_personnel_id).eq('personnel_id', person).eq('late_reason', s.late_reason ?? '').select('id');
-    // NULL and blank need distinct predicates.
-    if (s.late_reason === null) { const r = await db.from('visit_personnel').update({ late_reason: v.reason.trim() }).eq('id', s.visit_personnel_id).eq('personnel_id', person).is('late_reason', null); if (r.error) throw r.error; }
+    let query = db.from('visit_personnel').update({ late_reason: v.reason.trim() }).eq('id', s.visit_personnel_id).eq('personnel_id', person);
+    query = s.late_reason === null ? query.is('late_reason', null) : query.eq('late_reason', s.late_reason);
+    const result = await query.select('id');
     if (result.error) throw result.error;
   } else {
     if (!v.confirm || !v.reason?.trim() || !Number.isFinite(Date.parse(v.out_at)) || Date.parse(v.out_at) <= Date.parse(s.in_at) || Date.parse(v.out_at) > Date.now()) throw new Error('Confirm a valid past check-out time and reason');

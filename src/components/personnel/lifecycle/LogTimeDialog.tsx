@@ -47,7 +47,7 @@ export function LogTimeDialog({ open, onOpenChange, projectId, personnelId, pers
     if (open) { const date = defaultDate ?? localDay(new Date().toISOString(), locations.find(l => l.id === locationId)?.timezone || 'America/Chicago'); setPid(personnelId ?? ""); setLoc(locationId ?? ""); setDay(date); setOutDay(date); setTin(""); setTout(""); setNote(""); }
   }
 
-  const zone = locations.find(l => l.id === loc)?.timezone || project?.timezone || 'America/Chicago';
+  const zone = locations.find(l => l.id === loc)?.timezone || (project as { timezone?: string | null } | undefined)?.timezone || 'America/Chicago';
   const { data: roster = [], isLoading: rosterLoading } = useAttendanceRoster(projectId,locationId,day,zone,open);
   const range = manualTimeRange(day, tin, tout, zone, outDay);
   const rosterPeople = roster.map(p => ({ personnel_id: p.personnel_id, first_name: p.personnel?.first_name ?? null, last_name: p.personnel?.last_name ?? null }));
