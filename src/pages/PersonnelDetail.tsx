@@ -684,7 +684,6 @@ const PersonnelDetail = () => {
           </TabsContent>
 
           <TabsContent value="documents">
-            <span className="sr-only">Personnel documents</span>
             <PersonnelDocumentsList personnelId={personnel.id} canDelete={true} />
           </TabsContent>
           <TabsContent value="assets"><PersonnelAssetCare personnelId={personnel.id} /></TabsContent>

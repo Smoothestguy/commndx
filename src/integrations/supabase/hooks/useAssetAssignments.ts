@@ -284,6 +284,7 @@ export function useTransferAsset() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["asset-assignments"] });
       toast.success("Asset transferred successfully");
+      for (const key of ["location-roster-assets", "personnel-with-assets", "portal-assigned-assets", "portal-project-assets"]) queryClient.invalidateQueries({ queryKey: [key] });
     },
     onError: (error: Error) => {
       toast.error(`Failed to transfer asset: ${error.message}`);
