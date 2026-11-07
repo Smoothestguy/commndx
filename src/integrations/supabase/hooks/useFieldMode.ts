@@ -9,6 +9,8 @@ import { staleVisitEnd } from '@/lib/deploymentFlow';
 import { signatureImageUrl } from '@/utils/signedDocumentExport';
 import { ensureSheetsOpen, guardVisitDates, guardStayWeeks } from '@/lib/sheetLocks';
 
+import { locationTimeIso } from '@/lib/manualTime';
+
 const db = supabase as any;
 const BUCKET = "field-captures";
 
