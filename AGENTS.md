@@ -36,4 +36,4 @@
 - Home/Locations share dollar-free batched ops; Home scopes active projects/sites. Field My Day uses authenticated self-only minimal projection and existing punch links; Sales mounts only for admin/manager. Field requests retain manager ALL/member insert-select and trigger stamps.
 - Close-out: `project_locations.status='closed'`; triggers enforce manager close (blocked by open punches/requests), admin reopen, closed-site writes and all-closed project close. Ends assignments, zeroes authorization via demob TO or manual saver.
 - Live production app: verification-only rows (projects, locations, people, visits, tokens, requests) are deleted in the same run; destructive flows never touch owner data.
-- Missing timesheet signatures: manager `timesheet-signature` requests (one pending per person/site/day); token signing fills that day's first unsigned stay.
+- Attendance and manual pickers share dated assignment/work eligibility, not live roster. Missing-signature lists share per-person/bulk requests; token signing targets worked stays.

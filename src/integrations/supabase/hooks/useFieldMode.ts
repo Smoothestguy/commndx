@@ -538,7 +538,7 @@ export function useLogManualTime(projectId: string | undefined) {
       qc.invalidateQueries({ queryKey: ["location-attendance"] });
       qc.invalidateQueries({ queryKey: ["personnel-trail"] });
       qc.invalidateQueries({ queryKey: ["project-roster"] });
-      for(const key of ['week-timesheet','signin-sheet-stays','signin-reconciliation'])qc.invalidateQueries({queryKey:[key]});
+      for(const key of ['attendance-roster','week-timesheet','signin-sheet-stays','signin-reconciliation'])qc.invalidateQueries({queryKey:[key]});
       toast.success("Time logged");
     },
     onError: (e: any) => toast.error(e?.message ?? "Failed to log time"),
