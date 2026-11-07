@@ -1,7 +1,7 @@
 # Asset enhancements
-- [ ] Ownership/vendor/cost defaults and server-side financial privacy; responsibility history and lifecycle release.
-- [ ] Searchable location responsibility, ownership/cost dialogs, staffing/location/personnel displays and existing exports.
-- [ ] Browser Ram and rented-asset readback, field privacy, focused tests and test cleanup.
+- [x] Additive owned-default migration, rental vendor/cost/period/notes, role-aware authenticated asset projections and manager/admin base-table financial privacy; separate custody history and lifecycle release triggers preserve placement billing.
+- [x] Searchable location responsibility, ownership quick-create/full-cost edit, staffing/location/personnel care displays and dollar-free ownership exports; customer charges labeled Bill rate, purchase/rental amounts Our cost.
+- [x] Real admin browser Ram→Connor readback in staffing/location/personnel; rented ABC Supply asset 125/day cost + 200/day bill persisted. Real user RPC checks omit money and base reads return zero rows; that user cannot access 5049 (existing project permissions), so populated 390px field presentation checked with role-response interception. Temporary person lifecycle checks passed (unassign/demob clear care, two closed custody periods, billing unchanged). Rental/person test rows deleted and zero remaining confirmed; Ram restored to original no-person state, original start/150 bill rate unchanged, custody evidence retained. 12 focused tests and preview build OK; separate manager account unavailable, owner/admin verified.
 
 # Kiosk follow-up and add person to day
 - [x] Jaime's assignment restarted late Nov 6 and another site's open stay blocked adding hours; project-wide add-person picker and explicit audited other-open confirmation save without changing the other stay. Real Jaime Nov 6 0730–1930 (12h) retained, attendance/ledger/dialog/PDF verified.
