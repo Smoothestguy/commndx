@@ -1,8 +1,8 @@
-# Event Manager SOV
 # Bunk trailer correction
-- [ ] Numbered bunk-trailer assets, configurable generated rooms, grouped placement-aware board and occupancy; history-preserving move/occupancy guards and lodging continuity.
-- [ ] Browser create 26B01 / ten rooms, assign, room 03 check-in, dashboard/SOV readback, move guard, cleanup and focused tests.
+- [x] Unique optional asset numbers and editable year/letter suggestion, bunk-trailer type, configurable generated placement rooms, grouped phone/desktop board and per-trailer occupancy. Catalog/placement labels carry numbers; immutable placement history and locked occupied-departure checks retain lodging continuity. Existing room count was zero; unlinked legacy rows remain supported without invented asset identities.
+- [x] Signed-in owner/admin browser created 26B01 with ten rooms, assigned trailer, checked person into room 03, read dashboard 1/10 and Lodging PPPD 1; occupied departure refused, checkout/move generated destination rooms, edit expanded rooms to twelve, 390px actions visible. 27 focused tests pass, latest preview build OK, no runtime errors; all test locations/assets/rooms and children deleted, zero counts confirmed. Separate manager login not exercised.
 
+# Event Manager SOV
 - [x] Customer header details, shared-catalog independent event placement/custody history, cross-project overlap guards, transactional event moves, local military fuel tracking and measured/manual SOV lines with optional protected internal rates.
 - [x] Owner/admin browser saved customer details, assigned a throwaway genset/responsible person, logged 12.5 gallons, bunked/scanned/laundry checked-in a worker; SOV read back 1 lodging/breakfast/bag/equipment day, 12.5 fuel, 2.5 manual. Both nine-sheet workbooks downloaded and financial separation verified; company filter, move/unassign history and 390px fuel form verified. 22 rule tests pass, preview build OK, no runtime errors; verification location/assets/children deleted. Separate manager/field sessions not exercised; manager-only RLS inspected.
 
