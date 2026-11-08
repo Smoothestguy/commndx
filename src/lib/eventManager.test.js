@@ -1,0 +1,11 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {campCounts,reportRange,pastedPeople,laundryAge,eventAccess} from './eventManager.ts';
+const data={companies:[{id:'a',name:'Alpha'},{id:'b',name:'Beta'}],people:[{id:'p',company_id:'a'},{id:'q',company_id:'b'}],bunks:[],assignments:[{person_id:'p',checked_in_at:'2026-11-08T04:30:00Z',checked_out_at:'2026-11-08T06:00:00Z'}],meals:[{person_id:'p',service_date:'2026-11-08',meal_type:'breakfast'},{person_id:'q',service_date:'2026-11-08',meal_type:'dinner'}],laundry:[{person_id:'p',checked_in_at:'2026-11-08T04:30:00Z',checked_out_at:'2026-11-08T06:00:00Z'}]};
+test('heads count by company and local-day overlap',()=>{const r=campCounts(data,'2026-11-08','America/New_York');assert.equal(r[0]['Bunk heads'],1);assert.equal(r[1]['Bunk heads'],0);assert.equal(campCounts(data,'2026-11-09','America/New_York')[0]['Bunk heads'],0);});
+test('meals segregate company and type',()=>{const r=campCounts(data,'2026-11-08','America/New_York');assert.equal(r[0].Breakfast,1);assert.equal(r[0].Dinner,0);assert.equal(r[1].Dinner,1);});
+test('laundry in and out use local days independently',()=>{const r=campCounts(data,'2026-11-08','America/New_York')[0];assert.equal(r['Laundry in'],0);assert.equal(r['Laundry out'],1);});
+test('company and date-range reports contain only requested counts',()=>{const r=reportRange(data,'2026-11-08','2026-11-09','America/New_York','a');assert.equal(r.length,2);assert.equal(r[0].Company,'Alpha');assert.equal(r[1].Breakfast,0);assert.deepEqual(Object.keys(r[0]),['Date','Company','Bunk heads','Breakfast','Lunch','Dinner','Laundry in','Laundry out']);});
+test('admin and manager only',()=>{assert.equal(eventAccess(['manager']),true);assert.equal(eventAccess(['admin']),true);for(const role of ['user','personnel','vendor','accounting'])assert.equal(eventAccess([role]),false);});
+test('fast pasted names allow name only',()=>assert.deepEqual(pastedPeople('Jaime\nAnna Smith\n\n'),[{first_name:'Jaime',last_name:''},{first_name:'Anna',last_name:'Smith'}]));
+test('laundry aging highlights a 24-hour bag',()=>assert.equal(laundryAge('2026-11-07T12:00:00Z',Date.parse('2026-11-08T12:00:00Z')),24));
