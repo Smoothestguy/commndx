@@ -3311,6 +3311,144 @@ export type Database = {
           },
         ]
       }
+      event_asset_assignments: {
+        Row: {
+          asset_id: string
+          bill_rate: number | null
+          company_id: string | null
+          created_at: string
+          created_by: string
+          end_at: string | null
+          event_location_id: string
+          id: string
+          notes: string
+          responsible_person_id: string | null
+          start_at: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          asset_id: string
+          bill_rate?: number | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string
+          end_at?: string | null
+          event_location_id: string
+          id?: string
+          notes?: string
+          responsible_person_id?: string | null
+          start_at?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          asset_id?: string
+          bill_rate?: number | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string
+          end_at?: string | null
+          event_location_id?: string
+          id?: string
+          notes?: string
+          responsible_person_id?: string | null
+          start_at?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_asset_assignments_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_asset_assignments_company_id_event_location_id_fkey"
+            columns: ["company_id", "event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_companies"
+            referencedColumns: ["id", "event_location_id"]
+          },
+          {
+            foreignKeyName: "event_asset_assignments_event_location_id_fkey"
+            columns: ["event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_asset_assignments_responsible_person_id_event_locati_fkey"
+            columns: ["responsible_person_id", "event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_company_personnel"
+            referencedColumns: ["id", "event_location_id"]
+          },
+        ]
+      }
+      event_asset_custody_history: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          created_by: string
+          ended_at: string | null
+          event_location_id: string
+          id: string
+          person_id: string
+          started_at: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          created_by?: string
+          ended_at?: string | null
+          event_location_id: string
+          id?: string
+          person_id: string
+          started_at?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          created_by?: string
+          ended_at?: string | null
+          event_location_id?: string
+          id?: string
+          person_id?: string
+          started_at?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_asset_custody_history_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "event_asset_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_asset_custody_history_event_location_id_fkey"
+            columns: ["event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_asset_custody_history_person_id_event_location_id_fkey"
+            columns: ["person_id", "event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_company_personnel"
+            referencedColumns: ["id", "event_location_id"]
+          },
+        ]
+      }
       event_bunk_assignments: {
         Row: {
           bunk_id: string
@@ -3533,6 +3671,76 @@ export type Database = {
           },
         ]
       }
+      event_fuel_logs: {
+        Row: {
+          asset_id: string | null
+          company_id: string | null
+          created_at: string
+          created_by: string
+          event_location_id: string
+          fuel_type: string
+          gallons: number
+          id: string
+          logged_at: string
+          logged_by: string
+          note: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string
+          event_location_id: string
+          fuel_type: string
+          gallons: number
+          id?: string
+          logged_at?: string
+          logged_by?: string
+          note?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string
+          event_location_id?: string
+          fuel_type?: string
+          gallons?: number
+          id?: string
+          logged_at?: string
+          logged_by?: string
+          note?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_fuel_logs_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_fuel_logs_company_id_event_location_id_fkey"
+            columns: ["company_id", "event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_companies"
+            referencedColumns: ["id", "event_location_id"]
+          },
+          {
+            foreignKeyName: "event_fuel_logs_event_location_id_fkey"
+            columns: ["event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_laundry: {
         Row: {
           checked_in_at: string
@@ -3590,11 +3798,18 @@ export type Database = {
       event_locations: {
         Row: {
           address: string
+          billing_notes: string
+          contract_reference: string
           created_at: string
           created_by: string
+          customer_id: string | null
+          customer_name: string
           id: string
           name: string
           notes: string
+          poc_email: string
+          poc_name: string
+          poc_phone: string
           status: string
           timezone: string
           updated_at: string
@@ -3602,11 +3817,18 @@ export type Database = {
         }
         Insert: {
           address?: string
+          billing_notes?: string
+          contract_reference?: string
           created_at?: string
           created_by?: string
+          customer_id?: string | null
+          customer_name?: string
           id?: string
           name: string
           notes?: string
+          poc_email?: string
+          poc_name?: string
+          poc_phone?: string
           status?: string
           timezone?: string
           updated_at?: string
@@ -3614,17 +3836,32 @@ export type Database = {
         }
         Update: {
           address?: string
+          billing_notes?: string
+          contract_reference?: string
           created_at?: string
           created_by?: string
+          customer_id?: string | null
+          customer_name?: string
           id?: string
           name?: string
           notes?: string
+          poc_email?: string
+          poc_name?: string
+          poc_phone?: string
           status?: string
           timezone?: string
           updated_at?: string
           updated_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "event_locations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       event_meal_scans: {
         Row: {
@@ -3676,6 +3913,133 @@ export type Database = {
             columns: ["person_id", "event_location_id"]
             isOneToOne: false
             referencedRelation: "event_company_personnel"
+            referencedColumns: ["id", "event_location_id"]
+          },
+        ]
+      }
+      event_sov_lines: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string
+          event_location_id: string
+          id: string
+          internal_rate: number | null
+          label: string
+          sort_order: number
+          source: string
+          unit_description: string
+          unit_type: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string
+          event_location_id: string
+          id?: string
+          internal_rate?: number | null
+          label: string
+          sort_order?: number
+          source: string
+          unit_description?: string
+          unit_type: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string
+          event_location_id?: string
+          id?: string
+          internal_rate?: number | null
+          label?: string
+          sort_order?: number
+          source?: string
+          unit_description?: string
+          unit_type?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_sov_lines_company_id_event_location_id_fkey"
+            columns: ["company_id", "event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_companies"
+            referencedColumns: ["id", "event_location_id"]
+          },
+          {
+            foreignKeyName: "event_sov_lines_event_location_id_fkey"
+            columns: ["event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_sov_quantities: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string
+          event_location_id: string
+          id: string
+          note: string
+          quantity: number
+          service_date: string
+          sov_line_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string
+          event_location_id: string
+          id?: string
+          note?: string
+          quantity: number
+          service_date: string
+          sov_line_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string
+          event_location_id?: string
+          id?: string
+          note?: string
+          quantity?: number
+          service_date?: string
+          sov_line_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_sov_quantities_company_id_event_location_id_fkey"
+            columns: ["company_id", "event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_companies"
+            referencedColumns: ["id", "event_location_id"]
+          },
+          {
+            foreignKeyName: "event_sov_quantities_event_location_id_fkey"
+            columns: ["event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_sov_quantities_sov_line_id_event_location_id_fkey"
+            columns: ["sov_line_id", "event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_sov_lines"
             referencedColumns: ["id", "event_location_id"]
           },
         ]
@@ -12512,6 +12876,18 @@ export type Database = {
         Returns: Json
       }
       deny_join_request: { Args: { p_request: string }; Returns: Json }
+      event_move_asset: {
+        Args: {
+          p_assignment_id: string
+          p_bill_rate?: number
+          p_company_id?: string
+          p_location_id: string
+          p_notes?: string
+          p_person_id?: string
+          p_start_at: string
+        }
+        Returns: string
+      }
       expire_old_invitations: { Args: never; Returns: undefined }
       find_applicant_id_by_contact: {
         Args: { _email: string; _phone?: string }

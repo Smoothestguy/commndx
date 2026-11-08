@@ -141,6 +141,20 @@
       "when": 1794165549308,
       "tag": "0019_event_location_task_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1794166300844,
+      "tag": "0020_event_sov_assets_fuel",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794166334614,
+      "tag": "0021_event_asset_custody_history",
+      "breakpoints": true
     }
   ]
 }
