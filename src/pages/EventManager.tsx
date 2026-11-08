@@ -5,7 +5,7 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import { BedDouble, Building2, ChevronLeft, ChevronRight, Download, Plus, QrCode, ScanLine, Shirt, Utensils, Pencil } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useEventManager } from '@/hooks/useEventManager';
-import { campCounts, reportRange, pastedPeople, laundryAge, type EventRow } from '@/lib/eventManager';
+import { campCounts, reportRange, pastedPeople, laundryAge, eventAccess, type EventRow } from '@/lib/eventManager';
 import { localDay, localTime, nextDay } from '@/lib/signinSheets';
 import { locationTimeIso } from '@/lib/manualTime';
 import { formatLocalDate, parseLocalDate } from '@/lib/dateUtils';
@@ -21,7 +21,7 @@ import { toast } from 'sonner';
 const zoneOptions=['America/New_York','America/Chicago','America/Denver','America/Phoenix','America/Los_Angeles','America/Anchorage','Pacific/Honolulu'].map(value=>({value,label:value.replace('America/','').replace(/_/g,' ')}));
 const names=(p?:{first_name:string;last_name:string})=>p?`${p.first_name} ${p.last_name}`.trim():'—';
 const emptyData={companies:[],people:[],bunks:[],assignments:[],meals:[],laundry:[]};
-export default function EventManager() {const {isAdmin,isManager,loading}=useUserRole();if(loading)return <p className="p-6">Loading…</p>;if(!isAdmin&&!isManager)return <Navigate to="/unauthorized" replace/>;return <CampWorkspace/>;}
+export default function EventManager() {const {isAdmin,isManager,loading}=useUserRole();if(loading)return <p className="p-6">Loading…</p>;if(!eventAccess([...(isAdmin?['admin']:[]),...(isManager?['manager']:[])]))return <Navigate to="/unauthorized" replace/>;return <CampWorkspace/>;}
 function CampWorkspace() {
  const {campId}=useParams();const api=useEventManager(campId);const customers=useQuery({queryKey:['events','customer-links'],queryFn:async()=>{const {data,error}=await supabase.from('customers').select('id,name,company').order('name').limit(1000);if(error)throw error;return data;}});const camp=api.camps.data?.find(c=>c.id===campId);const data=api.detail.data??emptyData;const zone=camp?.timezone??'America/Chicago';
  const [selectedDay,setDay]=useState(''),day=selectedDay||localDay(new Date().toISOString(),zone);
