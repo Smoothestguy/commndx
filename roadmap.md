@@ -1,3 +1,7 @@
+# Event Manager refinements
+- [x] Locations wording, dated manager-entered task orders/addendums, server-audited validated lines and same-location company scope; shared authorization dashboard/export math without approval workflow.
+- [x] Owner/admin browser verified initial 300 + 300 = 600 authorized / 1 actual, prior date 300, company 5 / 1, future demobilization floor and newest-first history. CSV/XLSX values, 390px form, invalid-line denial, anonymous privacy and creator attribution verified; 14 tests pass, latest preview build OK, no runtime errors. All throwaway locations/children deleted. Separate manager login not exercised.
+
 # Event Manager
 - [x] Independent seven-table camp schema, manager-only RLS/navigation, server creator attribution, same-camp foreign keys; free-standing/linked companies, quick-add/paste personnel and QR badges.
 - [x] Single-capacity bunk board/history, server duplicate-safe meals, phone search/badge scanning, laundry aging/returns and shared camp-local company/day counts with CSV/XLSX range exports.

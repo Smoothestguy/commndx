@@ -1,3 +1,4 @@
 # Event Manager
 - Keep camp operations independent of project/construction/payroll modules; same-camp foreign keys, manager RLS, server creator stamping and unique meal/open-bunk indexes protect concurrent writes.
 - Dashboard and exports share paginated counts-only projections and camp-local calendar-day segmentation; preserve service timestamps and history on checkout.
+- Event authorization headers store validated JSON quantity-delta lines atomically; scopes floor independently before location aggregation, and unscoped capacity is never allocated implicitly to companies. Dashboard and daily exports share these pure authorization calculations.
