@@ -158,6 +158,7 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
               {mainNavigation.map((item) => (
                 <NavLink key={item.href} item={item} />
               ))}
+              {(isAdmin || isManager) && <NavLink item={{ name: "Event Manager", href: "/events", icon: FolderKanban, requiresManager: true }} />}
             </div>
 
             {/* Sales */}

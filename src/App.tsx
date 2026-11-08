@@ -38,6 +38,7 @@ import Products from "./pages/Products";
 import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
 import Projects from "./pages/Projects";
+import EventManager from "./pages/EventManager";
 import ProjectDetail from "./pages/ProjectDetail";
 import LocationDetail from './pages/LocationDetail';
 import ProjectJoin from './pages/ProjectJoin';
@@ -434,6 +435,8 @@ const App = () => {
                         element={<CustomerDetail />}
                       />
                       <Route path="/projects" element={<Projects />} />
+                      <Route path="/events" element={<EventManager />} />
+                      <Route path="/events/:campId" element={<EventManager />} />
                       <Route path="/projects/:id" element={<ProjectDetail />} />
                       <Route path="/projects/:projectId/locations/:locationId" element={<LocationDetail />} />
                       <Route path="/field/:projectId" element={<FieldMode />} />

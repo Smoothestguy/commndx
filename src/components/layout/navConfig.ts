@@ -60,6 +60,7 @@ export const sections: NavSection[] = [
     items: [
       { name: "Dashboard", href: "/", icon: LayoutDashboard },
       { name: "Projects", href: "/projects", icon: FolderKanban },
+      { name: "Event Manager", href: "/events", icon: Building2, requiresManager: true },
       { name: "Crew Assignments", href: "/project-assignments", icon: ClipboardList, requiresManager: true },
       { name: "Time Tracking", href: "/time-tracking", icon: Clock },
       { name: "Staffing Map", href: "/staffing/map", icon: Map, requiresManager: true },
