@@ -1,0 +1,1 @@
+DO $$ DECLARE definition text; BEGIN SELECT pg_get_functiondef('public.asset_catalog()'::regprocedure) INTO definition; definition:=replace(definition,'''label'',a.label,','''label'',CASE WHEN a.asset_number IS NULL THEN a.label WHEN a.label=a.asset_number THEN a.label ELSE a.asset_number||'' — ''||a.label END,''raw_label'',a.label,'); EXECUTE definition; END $$;

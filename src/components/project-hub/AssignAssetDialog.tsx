@@ -1,4 +1,5 @@
 import { AssetOwnershipFields, emptyOwnership } from './AssetOwnershipFields';
+import {AssetNumberFields} from './AssetNumberFields';
 import { useUserRole } from "@/hooks/useUserRole";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -71,6 +72,7 @@ interface AssignAssetDialogProps {
 }
 
 const assetTypes = [
+  { value: "bunk_trailer", label: "Bunk trailer" },
   { value: "vehicle", label: "Vehicle" },
   { value: "equipment", label: "Equipment" },
   { value: "key", label: "Key/Badge" },
@@ -87,6 +89,7 @@ export function AssignAssetDialog({
   const { isAdmin, isManager } = useUserRole();
   const canSeeRates = isAdmin || isManager;
   const [ownership, setOwnership] = useState(emptyOwnership);
+  const [number,setNumber]=useState(''),[rooms,setRooms]=useState(10);
   const [activeTab, setActiveTab] = useState<"existing" | "new">("existing");
   const [createdAssetId, setCreatedAssetId] = useState<string | null>(null);
   
@@ -121,6 +124,7 @@ export function AssignAssetDialog({
 
   const handleCreateAsset = async (values: NewAssetFormValues) => {
     const asset = await createAssetMutation.mutateAsync({
+      asset_number:number.trim()||null,room_count:rooms,
       ownership: ownership.ownership, vendor_id: ownership.vendor || null,
       type: values.type,
       label: values.label,
@@ -419,6 +423,7 @@ export function AssignAssetDialog({
                 />
 
                 <AssetOwnershipFields value={ownership} onChange={setOwnership} />
+                <AssetNumberFields type={newAssetForm.watch('type')} number={number} rooms={rooms} onChange={(n,r)=>{setNumber(n);setRooms(r);}} suggest />
                 {canSeeRates && <FormField
                   control={newAssetForm.control}
                   name="dayRate"
