@@ -169,6 +169,13 @@
       "when": 1794177868238,
       "tag": "0023_asset_number_display_projection",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794178046208,
+      "tag": "0024_trailer_room_history_guards",
+      "breakpoints": true
     }
   ]
 }
