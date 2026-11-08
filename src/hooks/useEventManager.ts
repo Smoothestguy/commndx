@@ -11,6 +11,6 @@ export function useEventManager(campId?:string) {
  const camps=useQuery({queryKey:['events','camps'],queryFn:()=>all('event_locations')});
  const detail=useQuery({queryKey:['events','camp',campId],enabled:!!campId,queryFn:async():Promise<CampData>=>{const [companies,people,bunks,assignments,meals,laundry]=await Promise.all([all('event_companies',campId),all('event_company_personnel',campId),all('event_bunks',campId),all('event_bunk_assignments',campId),all('event_meal_scans',campId),all('event_laundry',campId)]);return {companies,people,bunks,assignments,meals,laundry};}});
  async function insert<T extends EventTable>(table:T,values:Database['public']['Tables'][T]['Insert']|Database['public']['Tables'][T]['Insert'][]) {const {error}=await supabase.from(table).insert(values as never);if(error)throw error;await client.invalidateQueries({queryKey:['events']});}
- async function update<T extends EventTable>(table:T,id:string,values:Database['public']['Tables'][T]['Update']) {const {error}=await supabase.from(table).update(values as never).eq('id',id);if(error)throw error;await client.invalidateQueries({queryKey:['events']});}
+ async function update<T extends EventTable>(table:T,id:string,values:Database['public']['Tables'][T]['Update']) {const {error}=await supabase.from(table).update(values as never).eq('id' as never,id);if(error)throw error;await client.invalidateQueries({queryKey:['events']});}
  return {camps,detail,insert,update};
 }
