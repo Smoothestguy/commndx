@@ -1,3 +1,8 @@
+# Event Manager
+- [ ] Independent manager-only schema and navigation; camps, companies, quick-add personnel and QR badges.
+- [ ] Bunk board, duplicate-safe meals, laundry, company daily dashboard and date-range CSV/XLSX.
+- [ ] Browser end-to-end verification, rule tests, privacy checks and complete fixture cleanup.
+
 # Asset enhancements
 - [x] Additive owned-default migration, rental vendor/cost/period/notes, role-aware authenticated asset projections and manager/admin base-table financial privacy; separate custody history and lifecycle release triggers preserve placement billing.
 - [x] Searchable location responsibility, ownership quick-create/full-cost edit, staffing/location/personnel care displays and dollar-free ownership exports; customer charges labeled Bill rate, purchase/rental amounts Our cost.
