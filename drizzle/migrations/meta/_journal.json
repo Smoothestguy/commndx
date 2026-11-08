@@ -162,6 +162,13 @@
       "when": 1794177822371,
       "tag": "0022_bunk_trailer_rooms",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794177868238,
+      "tag": "0023_asset_number_display_projection",
+      "breakpoints": true
     }
   ]
 }
