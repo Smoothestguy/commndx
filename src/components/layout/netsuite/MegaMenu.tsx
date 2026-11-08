@@ -241,6 +241,7 @@ interface MegaMenuProps {
 
 export function MegaMenu({ menuBackground, menuTextColor }: MegaMenuProps) {
   const location = useLocation();
+  const { isAdmin, isManager } = useUserRole();
 
   const menuContentStyle = {
     backgroundColor: menuBackground || undefined,
@@ -267,6 +268,7 @@ export function MegaMenu({ menuBackground, menuTextColor }: MegaMenuProps) {
           </NavigationMenuLink>
         </NavigationMenuItem>
 
+        {(isAdmin || isManager) && <NavigationMenuItem><NavigationMenuLink asChild className={cn(navigationMenuTriggerStyle(), "bg-transparent text-header-foreground")}><Link to="/events">Event Manager</Link></NavigationMenuLink></NavigationMenuItem>}
         {/* Sales */}
         <NavigationMenuItem>
           <NavigationMenuTrigger

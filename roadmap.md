@@ -1,3 +1,8 @@
+# Event Manager
+- [x] Independent seven-table camp schema, manager-only RLS/navigation, server creator attribution, same-camp foreign keys; free-standing/linked companies, quick-add/paste personnel and QR badges.
+- [x] Single-capacity bunk board/history, server duplicate-safe meals, phone search/badge scanning, laundry aging/returns and shared camp-local company/day counts with CSV/XLSX range exports.
+- [x] Real owner/admin browser created two companies/three people: 3 bunks, 3 breakfasts, 1 badge lunch, duplicate blocked, laundry in/out and matching company dashboard/download contents. 390px live meal/laundry writes and bunk/person checkout verified; date navigation, populated anonymous denial and creator-spoof protection passed. Nine focused tests, preview build OK, no browser errors. All verification camps and seven-table children removed and zero counts confirmed. Separate manager/field login and physical camera decoding not exercised; manager/field policies inspected, QR identifier path verified.
+
 # Asset enhancements
 - [x] Additive owned-default migration, rental vendor/cost/period/notes, role-aware authenticated asset projections and manager/admin base-table financial privacy; separate custody history and lifecycle release triggers preserve placement billing.
 - [x] Searchable location responsibility, ownership quick-create/full-cost edit, staffing/location/personnel care displays and dollar-free ownership exports; customer charges labeled Bill rate, purchase/rental amounts Our cost.
