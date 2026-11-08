@@ -1,9 +1,9 @@
 import type { Database } from '@/integrations/supabase/types';
 import { localDay, nextDay } from '@/lib/signinSheets';
 import { locationTimeIso } from '@/lib/manualTime';
-export type EventTable = 'event_locations'|'event_companies'|'event_company_personnel'|'event_bunks'|'event_bunk_assignments'|'event_meal_scans'|'event_laundry'|'event_task_orders';
+export type EventTable = 'event_locations'|'event_companies'|'event_company_personnel'|'event_bunks'|'event_bunk_assignments'|'event_meal_scans'|'event_laundry'|'event_task_orders'|'event_asset_assignments'|'event_fuel_logs'|'event_sov_lines'|'event_sov_quantities';
 export type EventRow<T extends EventTable> = Database['public']['Tables'][T]['Row'];
-export type CampData = { companies: EventRow<'event_companies'>[]; people: EventRow<'event_company_personnel'>[]; bunks: EventRow<'event_bunks'>[]; assignments: EventRow<'event_bunk_assignments'>[]; meals: EventRow<'event_meal_scans'>[]; laundry: EventRow<'event_laundry'>[]; orders?: EventRow<'event_task_orders'>[] };
+export type CampData = { companies: EventRow<'event_companies'>[]; people: EventRow<'event_company_personnel'>[]; bunks: EventRow<'event_bunks'>[]; assignments: EventRow<'event_bunk_assignments'>[]; meals: EventRow<'event_meal_scans'>[]; laundry: EventRow<'event_laundry'>[]; orders?: EventRow<'event_task_orders'>[]; eventAssets?:EventRow<'event_asset_assignments'>[]; fuel?:EventRow<'event_fuel_logs'>[]; sov?:EventRow<'event_sov_lines'>[]; quantities?:EventRow<'event_sov_quantities'>[] };
 export type AuthorizationLine = {label:string;qty_delta:number};
 export function authorizationLines(value:unknown):AuthorizationLine[] {
  if(!Array.isArray(value))return [];
