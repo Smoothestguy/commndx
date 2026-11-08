@@ -3680,6 +3680,66 @@ export type Database = {
           },
         ]
       }
+      event_task_orders: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string
+          effective_date: string
+          event_location_id: string
+          id: string
+          kind: string
+          lines: Json
+          notes: string
+          number: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string
+          effective_date: string
+          event_location_id: string
+          id?: string
+          kind: string
+          lines?: Json
+          notes?: string
+          number: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string
+          effective_date?: string
+          event_location_id?: string
+          id?: string
+          kind?: string
+          lines?: Json
+          notes?: string
+          number?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_task_orders_company_id_event_location_id_fkey"
+            columns: ["company_id", "event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_companies"
+            referencedColumns: ["id", "event_location_id"]
+          },
+          {
+            foreignKeyName: "event_task_orders_event_location_id_fkey"
+            columns: ["event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expense_categories: {
         Row: {
           category_type: Database["public"]["Enums"]["expense_category_type"]
