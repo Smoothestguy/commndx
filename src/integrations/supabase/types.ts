@@ -3388,6 +3388,67 @@ export type Database = {
           },
         ]
       }
+      event_asset_custody_history: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          created_by: string
+          ended_at: string | null
+          event_location_id: string
+          id: string
+          person_id: string
+          started_at: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          created_by?: string
+          ended_at?: string | null
+          event_location_id: string
+          id?: string
+          person_id: string
+          started_at?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          created_by?: string
+          ended_at?: string | null
+          event_location_id?: string
+          id?: string
+          person_id?: string
+          started_at?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_asset_custody_history_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "event_asset_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_asset_custody_history_event_location_id_fkey"
+            columns: ["event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_asset_custody_history_person_id_event_location_id_fkey"
+            columns: ["person_id", "event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_company_personnel"
+            referencedColumns: ["id", "event_location_id"]
+          },
+        ]
+      }
       event_bunk_assignments: {
         Row: {
           bunk_id: string

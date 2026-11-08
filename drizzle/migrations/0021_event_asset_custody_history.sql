@@ -1,0 +1,10 @@
+CREATE TABLE public.event_asset_custody_history(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), event_location_id uuid NOT NULL REFERENCES public.event_locations(id) ON DELETE CASCADE, assignment_id uuid NOT NULL REFERENCES public.event_asset_assignments(id) ON DELETE CASCADE, person_id uuid NOT NULL, started_at timestamptz NOT NULL DEFAULT now(), ended_at timestamptz, created_by uuid NOT NULL DEFAULT auth.uid(), created_at timestamptz NOT NULL DEFAULT now(), updated_by uuid, updated_at timestamptz NOT NULL DEFAULT now(), FOREIGN KEY(person_id,event_location_id) REFERENCES public.event_company_personnel(id,event_location_id));
+GRANT SELECT,INSERT,UPDATE,DELETE ON public.event_asset_custody_history TO authenticated;
+GRANT ALL ON public.event_asset_custody_history TO service_role;
+ALTER TABLE public.event_asset_custody_history ENABLE ROW LEVEL SECURITY;
+CREATE POLICY event_managers_all ON public.event_asset_custody_history FOR ALL TO authenticated USING(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'manager')) WITH CHECK(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'manager'));
+CREATE FUNCTION public.event_record_custody() RETURNS trigger LANGUAGE plpgsql SET search_path=public AS $$ BEGIN
+ IF TG_OP='UPDATE' AND (NEW.responsible_person_id IS DISTINCT FROM OLD.responsible_person_id OR NEW.end_at IS NOT NULL) THEN UPDATE public.event_asset_custody_history SET ended_at=coalesce(NEW.end_at,now()),updated_by=auth.uid(),updated_at=now() WHERE assignment_id=NEW.id AND ended_at IS NULL; END IF;
+ IF NEW.responsible_person_id IS NOT NULL AND NEW.end_at IS NULL AND (TG_OP='INSERT' OR NEW.responsible_person_id IS DISTINCT FROM OLD.responsible_person_id) THEN INSERT INTO public.event_asset_custody_history(event_location_id,assignment_id,person_id,started_at) VALUES(NEW.event_location_id,NEW.id,NEW.responsible_person_id,CASE WHEN TG_OP='INSERT' THEN NEW.start_at ELSE now() END); END IF;
+ RETURN NEW; END $$;
+CREATE TRIGGER event_record_custody AFTER INSERT OR UPDATE ON public.event_asset_assignments FOR EACH ROW EXECUTE FUNCTION public.event_record_custody();
