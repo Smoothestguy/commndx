@@ -3311,6 +3311,375 @@ export type Database = {
           },
         ]
       }
+      event_bunk_assignments: {
+        Row: {
+          bunk_id: string
+          checked_in_at: string
+          checked_out_at: string | null
+          created_at: string
+          created_by: string
+          event_location_id: string
+          id: string
+          person_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          bunk_id: string
+          checked_in_at?: string
+          checked_out_at?: string | null
+          created_at?: string
+          created_by?: string
+          event_location_id: string
+          id?: string
+          person_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          bunk_id?: string
+          checked_in_at?: string
+          checked_out_at?: string | null
+          created_at?: string
+          created_by?: string
+          event_location_id?: string
+          id?: string
+          person_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_bunk_assignments_bunk_id_event_location_id_fkey"
+            columns: ["bunk_id", "event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_bunks"
+            referencedColumns: ["id", "event_location_id"]
+          },
+          {
+            foreignKeyName: "event_bunk_assignments_event_location_id_fkey"
+            columns: ["event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_bunk_assignments_person_id_event_location_id_fkey"
+            columns: ["person_id", "event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_company_personnel"
+            referencedColumns: ["id", "event_location_id"]
+          },
+        ]
+      }
+      event_bunks: {
+        Row: {
+          capacity: number
+          code: string
+          created_at: string
+          created_by: string
+          event_location_id: string
+          id: string
+          section: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          capacity?: number
+          code: string
+          created_at?: string
+          created_by?: string
+          event_location_id: string
+          id?: string
+          section?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          capacity?: number
+          code?: string
+          created_at?: string
+          created_by?: string
+          event_location_id?: string
+          id?: string
+          section?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_bunks_event_location_id_fkey"
+            columns: ["event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_companies: {
+        Row: {
+          created_at: string
+          created_by: string
+          customer_id: string | null
+          event_location_id: string
+          id: string
+          name: string
+          notes: string
+          phone: string
+          poc: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          customer_id?: string | null
+          event_location_id: string
+          id?: string
+          name: string
+          notes?: string
+          phone?: string
+          poc?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          customer_id?: string | null
+          event_location_id?: string
+          id?: string
+          name?: string
+          notes?: string
+          phone?: string
+          poc?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_companies_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_companies_event_location_id_fkey"
+            columns: ["event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_company_personnel: {
+        Row: {
+          badge_id: string
+          company_id: string
+          created_at: string
+          created_by: string
+          event_location_id: string
+          first_name: string
+          id: string
+          last_name: string
+          phone: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          badge_id?: string
+          company_id: string
+          created_at?: string
+          created_by?: string
+          event_location_id: string
+          first_name: string
+          id?: string
+          last_name?: string
+          phone?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          badge_id?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          event_location_id?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          phone?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_company_personnel_company_id_event_location_id_fkey"
+            columns: ["company_id", "event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_companies"
+            referencedColumns: ["id", "event_location_id"]
+          },
+          {
+            foreignKeyName: "event_company_personnel_event_location_id_fkey"
+            columns: ["event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_laundry: {
+        Row: {
+          checked_in_at: string
+          checked_out_at: string | null
+          created_at: string
+          created_by: string
+          event_location_id: string
+          id: string
+          person_id: string
+          tag: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          checked_in_at?: string
+          checked_out_at?: string | null
+          created_at?: string
+          created_by?: string
+          event_location_id: string
+          id?: string
+          person_id: string
+          tag?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          checked_in_at?: string
+          checked_out_at?: string | null
+          created_at?: string
+          created_by?: string
+          event_location_id?: string
+          id?: string
+          person_id?: string
+          tag?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_laundry_event_location_id_fkey"
+            columns: ["event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_laundry_person_id_event_location_id_fkey"
+            columns: ["person_id", "event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_company_personnel"
+            referencedColumns: ["id", "event_location_id"]
+          },
+        ]
+      }
+      event_locations: {
+        Row: {
+          address: string
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          notes: string
+          status: string
+          timezone: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          address?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          name: string
+          notes?: string
+          status?: string
+          timezone?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          notes?: string
+          status?: string
+          timezone?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      event_meal_scans: {
+        Row: {
+          created_at: string
+          created_by: string
+          event_location_id: string
+          id: string
+          meal_type: string
+          person_id: string
+          scanned_at: string
+          service_date: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          event_location_id: string
+          id?: string
+          meal_type: string
+          person_id: string
+          scanned_at?: string
+          service_date?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          event_location_id?: string
+          id?: string
+          meal_type?: string
+          person_id?: string
+          scanned_at?: string
+          service_date?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_meal_scans_event_location_id_fkey"
+            columns: ["event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_meal_scans_person_id_event_location_id_fkey"
+            columns: ["person_id", "event_location_id"]
+            isOneToOne: false
+            referencedRelation: "event_company_personnel"
+            referencedColumns: ["id", "event_location_id"]
+          },
+        ]
+      }
       expense_categories: {
         Row: {
           category_type: Database["public"]["Enums"]["expense_category_type"]

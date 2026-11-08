@@ -127,6 +127,13 @@
       "when": 1794087735640,
       "tag": "0017_asset_ownership_custody_and_financial_privacy",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1794164527158,
+      "tag": "0018_event_manager_camp_operations",
+      "breakpoints": true
     }
   ]
 }
