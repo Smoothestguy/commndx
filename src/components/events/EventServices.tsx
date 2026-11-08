@@ -3,7 +3,8 @@ import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {supabase} from '@/integrations/supabase/client';
 import {useEventManager} from '@/hooks/useEventManager';
 import type {CampData,EventRow} from '@/lib/eventManager';
-import {assetDays,assetOnDay,sovQuantity,downloadSov} from '@/lib/eventSov';
+import {assetDays,sovQuantity,downloadSov} from '@/lib/eventSov';
+import {useAssets} from '@/integrations/supabase/hooks/useAssets';
 import {localDay,localTime} from '@/lib/signinSheets';
 import {locationTimeIso} from '@/lib/manualTime';
 import {Button} from '@/components/ui/button';
@@ -17,7 +18,7 @@ import {toast} from 'sonner';
 type Props={location:EventRow<'event_locations'>;data:CampData;day:string;companyFilter:string;view:'assets'|'fuel'|'sov'};
 export function EventServices({location,data,day,companyFilter,view}:Props) {
  const api=useEventManager(location.id),client=useQueryClient();const [form,setForm]=useState<FormSpec|null>(null),[search,setSearch]=useState(''),[from,setFrom]=useState(day),[to,setTo]=useState(day),[busy,setBusy]=useState(false);
- const catalog=useQuery({queryKey:['events','asset-catalog'],queryFn:async()=>{const {data,error}=await supabase.rpc('asset_catalog');if(error)throw error;return data??[];}});
+ const catalog=useAssets();
  const zone=location.timezone,closed=location.status==='closed';const assets=data.eventAssets??[],fuel=data.fuel??[],lines=data.sov??[];
  const assetName=(id:string)=>catalog.data?.find(a=>a.id===id)?.label??'—';const companyName=(id:string|null)=>data.companies.find(c=>c.id===id)?.name??'Whole location';
  const name=(id:string|null)=>{const p=data.people.find(p=>p.id===id);return p?`${p.first_name} ${p.last_name}`.trim():'—';};

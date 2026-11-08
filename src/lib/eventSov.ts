@@ -3,7 +3,7 @@ import {localDay,nextDay} from './signinSheets';
 import {locationTimeIso} from './manualTime';
 export function assetOnDay(a:{start_at:string;end_at:string|null},day:string,zone:string) {
  const start=locationTimeIso(day,'00:00',zone),end=locationTimeIso(nextDay(day),'00:00',zone);
- return !!start&&!!end&&a.start_at<end&&(!a.end_at||a.end_at>start);
+ return !!start&&!!end&&Date.parse(a.start_at)<Date.parse(end)&&(!a.end_at||Date.parse(a.end_at)>Date.parse(start));
 }
 export function assetDays(a:{start_at:string;end_at:string|null},through:string,zone:string) {
  let n=0;for(let day=localDay(a.start_at,zone);day<=through;day=nextDay(day)){if(assetOnDay(a,day,zone))n++;if(n>36500)break;}return n;
@@ -11,7 +11,7 @@ export function assetDays(a:{start_at:string;end_at:string|null},through:string,
 export function sovQuantity(data:CampData,line:EventRow<'event_sov_lines'>,day:string,zone:string,companyFilter='') {
  if(companyFilter&&line.company_id&&line.company_id!==companyFilter)return 0;
  const scope=line.company_id||companyFilter;
- const counts=campCounts(data,day,zone).filter(r=>!scope||data.companies.find(c=>c.name===r.Company)?.id===scope);
+ const counts=campCounts({...data,companies:data.companies.filter(c=>!scope||c.id===scope)},day,zone);
  const key={lodging:'Bunk heads',breakfast:'Breakfast',lunch:'Lunch',dinner:'Dinner',laundry:'Laundry in'}[line.source] as 'Bunk heads'|'Breakfast'|'Lunch'|'Dinner'|'Laundry in'|undefined;
  if(key)return counts.reduce((n,r)=>n+r[key],0);
  if(line.source==='fuel')return (data.fuel??[]).filter(f=>localDay(f.logged_at,zone)===day&&(!scope||f.company_id===scope)).reduce((n,f)=>n+f.gallons,0);
