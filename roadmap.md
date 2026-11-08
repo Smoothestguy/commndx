@@ -1,3 +1,7 @@
+# Event Manager refinements
+- [ ] Locations wording, dated manager-entered task orders/addendums, shared authorization dashboard/export math.
+- [ ] Browser verify initial 300 + 300, company scoping, history/date navigation/export and delete fixtures.
+
 # Event Manager
 - [x] Independent seven-table camp schema, manager-only RLS/navigation, server creator attribution, same-camp foreign keys; free-standing/linked companies, quick-add/paste personnel and QR badges.
 - [x] Single-capacity bunk board/history, server duplicate-safe meals, phone search/badge scanning, laundry aging/returns and shared camp-local company/day counts with CSV/XLSX range exports.
