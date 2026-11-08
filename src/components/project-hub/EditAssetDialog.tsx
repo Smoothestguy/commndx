@@ -1,4 +1,5 @@
 import { AssetOwnershipFields, emptyOwnership } from './AssetOwnershipFields';
+import {AssetNumberFields} from './AssetNumberFields';
 import { validAssetCost, type Ownership, type RentalPeriod } from '@/lib/assetDetails';
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ASSET_STATUSES, ASSET_TYPES, AssetStatus, useUpdateAsset } from "@/integrations/supabase/hooks/useAssets";
 
 export interface EditableAsset {
+  asset_number?: string | null; room_count?: number; raw_label?: string;
   id: string; label: string; type: string; serial_number: string | null; description: string | null;
   ownership?: Ownership; vendor_id?: string | null; unit_cost?: number | null; rental_rate?: number | null; rental_period?: RentalPeriod; notes?: string | null;
   status: string; default_day_rate?: number | null;
@@ -18,14 +20,16 @@ export interface EditableAsset {
 /** Edits the registry asset (source of truth for default day rate). Callers gate to manager+. */
 export function EditAssetDialog({ asset, open, onOpenChange }: { asset: EditableAsset | null; open: boolean; onOpenChange: (o: boolean) => void }) {
   const update = useUpdateAsset();
+  const [number,setNumber]=useState(''),[rooms,setRooms]=useState(10);
   const [ownership, setOwnership] = useState(emptyOwnership);
   const [f, setF] = useState({ label: "", type: "", serial: "", description: "", status: "available", rate: "" });
   const [lastOpen, setLastOpen] = useState(false);
   if (open !== lastOpen) {
     setLastOpen(open);
+    if(open&&asset){setNumber(asset.asset_number??'');setRooms(asset.room_count??10);}
     if (open && asset) setOwnership({ ownership: asset.ownership ?? 'owned', vendor: asset.vendor_id ?? '', unitCost: asset.unit_cost != null ? String(asset.unit_cost) : '', rentalRate: asset.rental_rate != null ? String(asset.rental_rate) : '', rentalPeriod: asset.rental_period ?? 'day', notes: asset.notes ?? '' });
     if (open && asset) setF({
-      label: asset.label, type: asset.type, serial: asset.serial_number ?? "", description: asset.description ?? "",
+      label: asset.raw_label??asset.label, type: asset.type, serial: asset.serial_number ?? "", description: asset.description ?? "",
       status: asset.status, rate: asset.default_day_rate != null ? String(asset.default_day_rate) : "",
     });
   }
@@ -37,6 +41,7 @@ export function EditAssetDialog({ asset, open, onOpenChange }: { asset: Editable
     if (!asset) return;
     update.mutate({
       id: asset.id, label: f.label.trim(), type: f.type, serial_number: f.serial.trim() || null,
+      asset_number:number.trim()||null,room_count:rooms,
       ownership: ownership.ownership, vendor_id: ownership.ownership === 'rented' ? ownership.vendor || null : null,
       unit_cost: ownership.unitCost.trim() ? Number(ownership.unitCost) : null, rental_rate: ownership.rentalRate.trim() ? Number(ownership.rentalRate) : null,
       rental_period: ownership.rentalPeriod, notes: ownership.notes.trim() || null,
@@ -66,6 +71,7 @@ export function EditAssetDialog({ asset, open, onOpenChange }: { asset: Editable
           </div>
           <div className="space-y-1.5"><Label>Serial number</Label><Input className="h-11" value={f.serial} onChange={(e) => setF({ ...f, serial: e.target.value })} /></div>
           <AssetOwnershipFields value={ownership} onChange={setOwnership} full />
+          <AssetNumberFields type={f.type} number={number} rooms={rooms} onChange={(n,r)=>{setNumber(n);setRooms(r);}} suggest />
           <div className="space-y-1.5"><Label>Default bill rate ($/day)</Label>
             <Input type="number" inputMode="decimal" min={0} step="0.01" className="h-11" value={f.rate} placeholder="No default rate"
               onChange={(e) => setF({ ...f, rate: e.target.value })} />

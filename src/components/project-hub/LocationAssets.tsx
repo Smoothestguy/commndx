@@ -1,4 +1,5 @@
 import { AssetResponsiblePicker } from './AssetResponsiblePicker';
+import {AssetNumberFields} from './AssetNumberFields';
 import { AssetOwnershipFields, emptyOwnership } from './AssetOwnershipFields';
 import { assetCareLabel, ownershipText } from '@/lib/assetDetails';
 import { useMemo, useState } from "react";
@@ -72,6 +73,7 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
   const [careEdit, setCareEdit] = useState(false);
   const [creating, setCreating] = useState(false);
   const [nw, setNw] = useState({ label: "", type: "vehicle", serial: "" });
+  const [number,setNumber]=useState(''),[rooms,setRooms]=useState(10);
   const [pick, setPick] = useState("");
   const [billable, setBillable] = useState(false);
   const [rate, setRate] = useState("");
@@ -97,7 +99,7 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
   const isExisting = pick.startsWith("a:");
   const createAsset = () => {
     if (!nw.label.trim()) return;
-    create.mutate({ label: nw.label.trim(), type: nw.type, serial_number: nw.serial.trim() || undefined, ownership: ownership.ownership, vendor_id: ownership.vendor || null, status: "available" }, {
+    create.mutate({ asset_number:number.trim()||null,room_count:rooms,label: nw.label.trim(), type: nw.type, serial_number: nw.serial.trim() || undefined, ownership: ownership.ownership, vendor_id: ownership.vendor || null, status: "available" }, {
       onSuccess: (a) => { setCreating(false); setPick(`r:${a.id}`); setRate(""); },
     });
   };
@@ -149,12 +151,13 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
                 <div className="space-y-1.5"><Label>Type</Label>
                   <Select value={nw.type} onValueChange={(v) => setNw({ ...nw, type: v })}>
                     <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                    <SelectContent>{["vehicle", "equipment", "tool", "key", "other"].map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                    <SelectContent>{["bunk_trailer", "vehicle", "equipment", "tool", "key", "other"].map((t) => <SelectItem key={t} value={t}>{t.replace('_',' ')}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5"><Label htmlFor="na-serial">Plate / serial</Label><Input id="na-serial" className="h-11" value={nw.serial} onChange={(e) => setNw({ ...nw, serial: e.target.value })} /></div>
               </div>
               <AssetOwnershipFields value={ownership} onChange={setOwnership} />
+              <AssetNumberFields type={nw.type} number={number} rooms={rooms} onChange={(n,r)=>{setNumber(n);setRooms(r);}} suggest />
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setCreating(false)}>Cancel</Button>
                 <Button size="sm" disabled={!nw.label.trim() || (ownership.ownership === "rented" && !ownership.vendor) || create.isPending} onClick={createAsset}>Create asset</Button>

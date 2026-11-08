@@ -4,6 +4,9 @@ import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
 
 export interface Asset {
+  asset_number?: string | null;
+  raw_label?: string;
+  room_count?: number;
   id: string;
   type: string;
   label: string;
@@ -30,10 +33,11 @@ export interface Asset {
   deleted_at: string | null;
 }
 
-export type AssetType = "vehicle" | "equipment" | "location" | "key" | "badge" | "tool" | "device" | "other";
+export type AssetType = "bunk_trailer" | "vehicle" | "equipment" | "location" | "key" | "badge" | "tool" | "device" | "other";
 export type AssetStatus = "available" | "assigned" | "maintenance" | "retired";
 
 export const ASSET_TYPES: { value: AssetType; label: string }[] = [
+  { value: "bunk_trailer", label: "Bunk trailer" },
   { value: "vehicle", label: "Vehicle" },
   { value: "equipment", label: "Equipment" },
   { value: "location", label: "Location" },
@@ -107,6 +111,8 @@ export function useAvailableAssets() {
 }
 
 export interface CreateAssetInput {
+  asset_number?: string | null;
+  room_count?: number;
   type: string;
   label: string;
   description?: string;
@@ -136,6 +142,8 @@ export function useCreateAsset() {
       const { data: { user } } = await supabase.auth.getUser();
 
       const insertData = {
+        asset_number: input.asset_number?.trim() || null,
+        room_count: input.room_count ?? 10,
         type: input.type,
         label: input.label,
         description: input.description,
@@ -173,6 +181,8 @@ export function useCreateAsset() {
 }
 
 export interface UpdateAssetInput {
+  asset_number?: string | null;
+  room_count?: number;
   id: string;
   type?: string;
   label?: string;
@@ -213,6 +223,7 @@ export function useUpdateAsset() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["assets"] });
       queryClient.invalidateQueries({ queryKey: ["asset-assignments"] }); // joined default_day_rate drives billing
+      queryClient.invalidateQueries({ queryKey: ["events"] });
       toast.success("Asset updated successfully");
     },
     onError: (error: Error) => {
