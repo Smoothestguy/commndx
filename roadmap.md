@@ -1,6 +1,6 @@
 # Event Manager SOV
-- [ ] Customer header details, independent event asset history, fuel tracking and measured/manual SOV lines.
-- [ ] Company/date-range SOV customer/internal workbooks, rule tests and browser verification with full fixture cleanup.
+- [x] Customer header details, shared-catalog independent event placement/custody history, cross-project overlap guards, transactional event moves, local military fuel tracking and measured/manual SOV lines with optional protected internal rates.
+- [x] Owner/admin browser saved customer details, assigned a throwaway genset/responsible person, logged 12.5 gallons, bunked/scanned/laundry checked-in a worker; SOV read back 1 lodging/breakfast/bag/equipment day, 12.5 fuel, 2.5 manual. Both nine-sheet workbooks downloaded and financial separation verified; company filter, move/unassign history and 390px fuel form verified. 22 rule tests pass, preview build OK, no runtime errors; verification location/assets/children deleted. Separate manager/field sessions not exercised; manager-only RLS inspected.
 
 # Event Manager refinements
 - [x] Locations wording, dated manager-entered task orders/addendums, server-audited validated lines and same-location company scope; shared authorization dashboard/export math without approval workflow.
