@@ -155,6 +155,13 @@
       "when": 1794166334614,
       "tag": "0021_event_asset_custody_history",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1794177822371,
+      "tag": "0022_bunk_trailer_rooms",
+      "breakpoints": true
     }
   ]
 }

@@ -1213,6 +1213,7 @@ export type Database = {
         Row: {
           access_instructions: string | null
           address: string | null
+          asset_number: string | null
           created_at: string | null
           created_by: string | null
           default_day_rate: number | null
@@ -1228,6 +1229,7 @@ export type Database = {
           ownership: string
           rental_period: string | null
           rental_rate: number | null
+          room_count: number
           serial_number: string | null
           status: string
           type: string
@@ -1238,6 +1240,7 @@ export type Database = {
         Insert: {
           access_instructions?: string | null
           address?: string | null
+          asset_number?: string | null
           created_at?: string | null
           created_by?: string | null
           default_day_rate?: number | null
@@ -1253,6 +1256,7 @@ export type Database = {
           ownership?: string
           rental_period?: string | null
           rental_rate?: number | null
+          room_count?: number
           serial_number?: string | null
           status?: string
           type: string
@@ -1263,6 +1267,7 @@ export type Database = {
         Update: {
           access_instructions?: string | null
           address?: string | null
+          asset_number?: string | null
           created_at?: string | null
           created_by?: string | null
           default_day_rate?: number | null
@@ -1278,6 +1283,7 @@ export type Database = {
           ownership?: string
           rental_period?: string | null
           rental_rate?: number | null
+          room_count?: number
           serial_number?: string | null
           status?: string
           type?: string
@@ -3512,44 +3518,70 @@ export type Database = {
       }
       event_bunks: {
         Row: {
+          asset_id: string | null
           capacity: number
           code: string
           created_at: string
           created_by: string
           event_location_id: string
           id: string
+          placement_id: string | null
+          retired: boolean
+          room_number: number | null
           section: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          asset_id?: string | null
           capacity?: number
           code: string
           created_at?: string
           created_by?: string
           event_location_id: string
           id?: string
+          placement_id?: string | null
+          retired?: boolean
+          room_number?: number | null
           section?: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          asset_id?: string | null
           capacity?: number
           code?: string
           created_at?: string
           created_by?: string
           event_location_id?: string
           id?: string
+          placement_id?: string | null
+          retired?: boolean
+          room_number?: number | null
           section?: string
           updated_at?: string
           updated_by?: string | null
         }
         Relationships: [
           {
+            foreignKeyName: "event_bunks_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "event_bunks_event_location_id_fkey"
             columns: ["event_location_id"]
             isOneToOne: false
             referencedRelation: "event_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_bunks_placement_id_fkey"
+            columns: ["placement_id"]
+            isOneToOne: false
+            referencedRelation: "event_asset_assignments"
             referencedColumns: ["id"]
           },
         ]
@@ -12698,6 +12730,10 @@ export type Database = {
       }
       approve_join_request: { Args: { p_request: string }; Returns: Json }
       asset_catalog: { Args: never; Returns: Json }
+      asset_number_suggestion: {
+        Args: { p_letter?: string; p_year: number }
+        Returns: string
+      }
       asset_placements: {
         Args: {
           p_location_id?: string
@@ -13200,6 +13236,7 @@ export type Database = {
         Args: { p_location: string }
         Returns: undefined
       }
+      sync_trailer_rooms: { Args: { p_placement: string }; Returns: undefined }
       sync_visit_time_entry: { Args: { p_vp: string }; Returns: undefined }
       update_applicant_geo: {
         Args: {
