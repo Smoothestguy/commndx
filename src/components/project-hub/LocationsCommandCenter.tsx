@@ -17,6 +17,10 @@ import { useLocationRequests, KIND_LABEL } from '@/hooks/useLocationRequests';
 import { useReconciliation, closeBlockers } from '@/hooks/useReconciliation';
 import { attention, roleGaps, sortByAttention, worstRole, type Severity } from '@/lib/commandCenter';
 import { FieldRequestsDialog, RequestActions } from './FieldRequestsDialog';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useProjectAssetBilling } from '@/integrations/supabase/hooks/useAssetAssignments';
+import { insuranceExpiringSoon } from '@/lib/assetCost';
+import { format } from 'date-fns';
 
 type FilterKey = 'attention' | 'under' | 'over' | 'assets' | 'join' | 'punches' | 'tos' | 'ext' | 'late' | 'requests';
 const KIND_SHORT: Record<string, string> = { initial: 'Initial', increase: 'Increase', decrease: 'Decrease', demobilization: 'Demobe' };
@@ -30,6 +34,12 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
   const ops = useLocationCommandCenter(projectId, locations);
   const reqs = useLocationRequests(locations.map(l => l.id));
   const recon = useReconciliation(projectId, currentWeekStart(), canWrite);
+  const { isAdmin, isManager } = useUserRole();
+  const assetRows = useProjectAssetBilling(isAdmin || isManager ? projectId : undefined).rows;
+  const insuranceDue = useMemo(() => {
+    const today = format(new Date(), 'yyyy-MM-dd'), seen = new Set<string>();
+    return assetRows.filter(r => r.status === 'active' && !r.end_at && r.assets && insuranceExpiringSoon(r.assets.insurance_expires_on, today) && !seen.has(r.asset_id) && seen.add(r.asset_id));
+  }, [assetRows]);
   const blocks = recon.data ? closeBlockers(recon.data.rows, recon.data.resolutions).length : 0;
   const [filter, setFilter] = useState<FilterKey | null>(null);
   const [status, setStatus] = useState<'all' | 'active' | 'inactive'>('active');
@@ -164,7 +174,9 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
                 className={cn('rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors', c.sev === 'ok' ? 'text-foreground' : tone[c.sev], filter === c.key && 'ring-2 ring-primary')}>{c.text}</button>
             ))}
             {blocks > 0 && <Link to={`/projects/${projectId}?tab=deployment`} className={cn('rounded-full border px-2.5 py-0.5 text-xs font-medium', tone.amber)}>{pl(blocks, 'reconciliation block')}</Link>}
-            {chips.every(c => c.n === 0) && blocks === 0 && <span className="text-xs text-success">All locations on track</span>}
+            {insuranceDue.length > 0 && <Tooltip><TooltipTrigger asChild><Link to={`/projects/${projectId}?tab=crew`} className={cn('rounded-full border px-2.5 py-0.5 text-xs font-medium', tone.amber)}>{pl(insuranceDue.length, 'asset')} · insurance expiring ≤30d</Link></TooltipTrigger>
+              <TooltipContent>{insuranceDue.map(r => `${r.assets?.label} — ${r.assets?.insurance_expires_on}`).join(' · ')}</TooltipContent></Tooltip>}
+            {chips.every(c => c.n === 0) && blocks === 0 && insuranceDue.length === 0 && <span className="text-xs text-success">All locations on track</span>}
           </div>
           {canWrite && openRequests.length > 0 && (
             <ul className="divide-y border-t pt-1">
