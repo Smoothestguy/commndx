@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { fmtMoney0 } from '@/lib/assetBilling';
 import { assetCostBreakdown, insuranceExpiringSoon, marginPct, type AssetCostInputs } from '@/lib/assetCost';
-import { formatLocalDate } from '@/lib/dateUtils';
+import { format } from 'date-fns';
 
 export const COST_NUMBER_KEYS = ['insurance_annual_cost', 'registration_annual_cost', 'maintenance_annual_cost', 'financing_annual_cost', 'other_annual_cost', 'useful_life_years', 'salvage_value', 'daily_cost_override'] as const;
 type NumKey = typeof COST_NUMBER_KEYS[number];
@@ -97,7 +97,7 @@ export function AssetCostBadge({ asset, billRate, className }: { asset: AssetCos
 }
 
 export function InsuranceBadge({ asset }: { asset: AssetCostInputs | null | undefined }) {
-  const today = formatLocalDate(new Date());
+  const today = format(new Date(), 'yyyy-MM-dd');
   if (!asset?.insurance_expires_on || !insuranceExpiringSoon(asset.insurance_expires_on, today)) return null;
   const expired = asset.insurance_expires_on < today;
   return <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-warning/50 text-warning">{expired ? 'Insurance expired' : 'Insurance expires'} {asset.insurance_expires_on.slice(5).replace('-', '/')}</Badge>;
