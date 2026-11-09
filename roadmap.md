@@ -192,3 +192,7 @@
 - [x] Dollar-free My Day at staff/linked-worker Home: authenticated self-only sites, guarded punch links, Chicago weekly hours, POC and pending signature links.
 - [x] Nine rule tests; owner/admin 390px and 1440px real-data read/navigation checks, field presentation-only role override checked (no dollars/Sales), no verification rows or texts created.
 - [ ] Real Jorge field-session/populated end-to-end check blocked: specific-account session approval unavailable; his existing user account has no linked personnel/site assignment. No account data changed.
+
+# Signature requests
+- [x] Signatures centered at 90% of the cell on built-in and template sheets.
+- [x] Multi-day requests: one text/link per person covering all unsigned worked dates (30-day lookback), per-date confirm on one pad, per-person date counts, grouped Request all, Resend (same link, new token only if expired, sent N×, 1/min server limit), audited sends. Browser-verified with a temporary worker; cleaned up.
