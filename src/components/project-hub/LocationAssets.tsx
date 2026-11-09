@@ -184,8 +184,6 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
               )}
               {(() => { const a = isExisting ? projectRows.find(x => x.id === pick.slice(2))?.assets : allAssets.find(x => x.id === pick.slice(2)); const n = rate.trim() === "" ? null : Number(rate);
                 return a ? <div className="flex flex-wrap gap-1"><AssetCostBadge asset={a} billRate={billable ? n : null} /><InsuranceBadge asset={a} /></div> : null; })()}
-              {false && (<span />
-              )}
             </>
           )}
         </div>
