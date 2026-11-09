@@ -183,6 +183,13 @@
       "when": 1794233241527,
       "tag": "0025_multi_day_signature_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794245422412,
+      "tag": "0026_asset_cost_accounting",
+      "breakpoints": true
     }
   ]
 }

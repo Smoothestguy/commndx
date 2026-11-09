@@ -1216,25 +1216,38 @@ export type Database = {
           asset_number: string | null
           created_at: string | null
           created_by: string | null
+          daily_cost_overridden: boolean
+          daily_cost_override: number | null
           default_day_rate: number | null
           deleted_at: string | null
           description: string | null
+          financing_annual_cost: number | null
           gate_code: string | null
           id: string
           instructions: string | null
+          insurance_annual_cost: number | null
+          insurance_carrier: string | null
+          insurance_expires_on: string | null
+          insurance_policy_number: string | null
           label: string
+          maintenance_annual_cost: number | null
           metadata: Json | null
           notes: string | null
           operating_hours: string | null
+          other_annual_cost: number | null
+          other_annual_cost_note: string | null
           ownership: string
+          registration_annual_cost: number | null
           rental_period: string | null
           rental_rate: number | null
           room_count: number
+          salvage_value: number
           serial_number: string | null
           status: string
           type: string
           unit_cost: number | null
           updated_at: string | null
+          useful_life_years: number
           vendor_id: string | null
         }
         Insert: {
@@ -1243,25 +1256,38 @@ export type Database = {
           asset_number?: string | null
           created_at?: string | null
           created_by?: string | null
+          daily_cost_overridden?: boolean
+          daily_cost_override?: number | null
           default_day_rate?: number | null
           deleted_at?: string | null
           description?: string | null
+          financing_annual_cost?: number | null
           gate_code?: string | null
           id?: string
           instructions?: string | null
+          insurance_annual_cost?: number | null
+          insurance_carrier?: string | null
+          insurance_expires_on?: string | null
+          insurance_policy_number?: string | null
           label: string
+          maintenance_annual_cost?: number | null
           metadata?: Json | null
           notes?: string | null
           operating_hours?: string | null
+          other_annual_cost?: number | null
+          other_annual_cost_note?: string | null
           ownership?: string
+          registration_annual_cost?: number | null
           rental_period?: string | null
           rental_rate?: number | null
           room_count?: number
+          salvage_value?: number
           serial_number?: string | null
           status?: string
           type: string
           unit_cost?: number | null
           updated_at?: string | null
+          useful_life_years?: number
           vendor_id?: string | null
         }
         Update: {
@@ -1270,25 +1296,38 @@ export type Database = {
           asset_number?: string | null
           created_at?: string | null
           created_by?: string | null
+          daily_cost_overridden?: boolean
+          daily_cost_override?: number | null
           default_day_rate?: number | null
           deleted_at?: string | null
           description?: string | null
+          financing_annual_cost?: number | null
           gate_code?: string | null
           id?: string
           instructions?: string | null
+          insurance_annual_cost?: number | null
+          insurance_carrier?: string | null
+          insurance_expires_on?: string | null
+          insurance_policy_number?: string | null
           label?: string
+          maintenance_annual_cost?: number | null
           metadata?: Json | null
           notes?: string | null
           operating_hours?: string | null
+          other_annual_cost?: number | null
+          other_annual_cost_note?: string | null
           ownership?: string
+          registration_annual_cost?: number | null
           rental_period?: string | null
           rental_rate?: number | null
           room_count?: number
+          salvage_value?: number
           serial_number?: string | null
           status?: string
           type?: string
           unit_cost?: number | null
           updated_at?: string | null
+          useful_life_years?: number
           vendor_id?: string | null
         }
         Relationships: [
