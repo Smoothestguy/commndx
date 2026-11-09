@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { FieldRequestsDialog } from '@/components/project-hub/FieldRequestsDialog';
 import { LogTimeDialog } from '@/components/personnel/lifecycle/LogTimeDialog';
 import { BulkLogTimesDialog } from '@/components/personnel/lifecycle/BulkLogTimesDialog';
+import { useCustomer } from '@/integrations/supabase/hooks/useCustomers';
 import { useProject } from '@/integrations/supabase/hooks/useProjects';
 import { useProjectLocations } from '@/integrations/supabase/hooks/useProjectLocations';
 import { useLocationStaffingSummary } from '@/integrations/supabase/hooks/useLocationStaffing';
@@ -41,6 +42,7 @@ export default function LocationDetail() {
   const { projectId, locationId } = useParams();
   const { data: project, isLoading: projectLoading, error: projectError } = useProject(projectId);
   const { data: locations = [], isLoading, error } = useProjectLocations(projectId);
+  const { data: customer } = useCustomer(project?.customer_id);
   const location = locations.find(l => l.id === locationId);
   const { isAdmin, isManager } = useUserRole(), canWrite = isAdmin || isManager;
   const { data: staffing } = useLocationStaffingSummary(locationId ? [locationId] : []);
@@ -71,7 +73,7 @@ export default function LocationDetail() {
     <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-4"><Link className="hover:underline" to="/projects">Projects</Link><span>/</span><Link className="hover:underline" to={`/projects/${projectId}?tab=locations`}>{project.name}</Link><span>/</span><Link className="text-foreground hover:underline" to={`/projects/${projectId}/locations/${location.id}`}>{location.name}</Link></nav>
     {location.status==='closed' && <div role="status" className="mb-4 rounded-md border border-muted bg-muted/40 p-3 text-sm"><Lock className="inline h-4 w-4 mr-1"/><b>Closed</b>{location.closeout_date ? ` as of ${location.closeout_date}` : ''} — punching, pre-shift texts and roster alerts are off. History, timesheets and sheets remain available.{location.closeout_notes && <span className="block text-muted-foreground mt-1 whitespace-pre-wrap">{location.closeout_notes}</span>}</div>}
     <section className="border-b pb-4 space-y-3">
-      <div className="flex flex-wrap gap-2 items-center">{location.project_number && <Badge variant="outline">#{location.project_number}</Badge>}{location.lat != null && location.lng != null ? <Badge variant="outline">Geofenced · {location.geofence_radius_m}m</Badge> : <Badge variant="outline" className="text-muted-foreground">No geofence set</Badge>}<Badge variant={location.status==='active'?'default':'secondary'}>{location.status}</Badge><span className="text-sm font-medium">Staffed {summary?.assigned ?? 0}/{summary?.needed ?? 0}</span></div>
+      <div className="flex flex-wrap gap-2 items-center">{location.project_number && <Badge variant="outline">#{location.project_number}</Badge>}{location.lat != null && location.lng != null ? <Badge variant="outline">Geofenced · {location.geofence_radius_m}m</Badge> : <Badge variant="outline" className="text-muted-foreground">No geofence set</Badge>}<Badge variant={location.status==='active'?'default':'secondary'}>{location.status}</Badge>{customer && <span className="text-sm">Customer: <b>{customer.company||customer.name}</b></span>}{project.customer_po && <span className="text-sm">Prime / contract: <b>{project.customer_po}</b></span>}<span className="text-sm font-medium">Staffed {summary?.assigned ?? 0}/{summary?.needed ?? 0}</span></div>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">{address && <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`} target="_blank" rel="noopener noreferrer" className="text-primary inline-flex gap-1 items-center hover:underline"><MapPin className="h-4 w-4 shrink-0"/>{address}</a>}{location.poc_name && <span>{location.poc_name}</span>}{location.poc_phone && <a href={`tel:${location.poc_phone}`} className="text-primary inline-flex gap-1 items-center hover:underline"><Phone className="h-4 w-4"/>{location.poc_phone}</a>}{location.poc_email && <a className="text-primary hover:underline" href={`mailto:${location.poc_email}`}>{location.poc_email}</a>}<span className="text-muted-foreground">Mobe {location.mobe_date?formatLocalDate(location.mobe_date):'—'} → Demobe {location.demobe_date?formatLocalDate(location.demobe_date):'—'}</span></div>
       {location.scope && <p className="text-sm whitespace-pre-wrap text-muted-foreground">{location.scope}</p>}
       <p className="text-sm text-muted-foreground">Timezone: {location.timezone || 'America/Chicago'}</p>{!location.timezone && <p role="alert" className="text-sm text-warning">Location timezone not set — using America/Chicago. Set the location timezone before sending shift texts.</p>}
