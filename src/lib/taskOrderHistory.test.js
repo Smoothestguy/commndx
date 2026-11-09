@@ -1,0 +1,10 @@
+import { it, expect } from 'bun:test';
+import { runningTotals, compactTotals, formatChanges } from './taskOrderHistory';
+const o = (id, kind, day, deltas, extra = {}) => ({ id, number: id, kind, effective_date: day, created_at: day, counts: true, lines: Object.entries(deltas).map(([label, qty_delta]) => ({ label, qty_delta })), ...extra });
+const fcoco = [o('TO-3', 'demobilization', '2026-11-07', { Supervisor: -3, Operator: -7, Truck: -3 }), o('TO-1', 'initial', '2026-11-03', { Supervisor: 3, Operator: 7, Truck: 3 }), o('TO-2', 'increase', '2026-11-04', { Supervisor: 3, Operator: 7, Truck: 3 })];
+it('shows running totals 3/7/3 then 6/14/6 then 3/7/3 in date order', () => expect(runningTotals(fcoco).map(r => compactTotals(r.totals))).toEqual(['3/7/3', '6/14/6', '3/7/3']));
+it('marks a demobilization that zeroes everything as full demobilization', () => { const rows = runningTotals([...fcoco, o('TO-4', 'demobilization', '2026-11-09', { Supervisor: -3, Operator: -7, Truck: -3 })]); expect(rows.at(-1).fullDemob).toBe(true); expect(rows[2].fullDemob).toBe(false); });
+it('never lets a total go below zero', () => expect(runningTotals([o('A', 'initial', '2026-01-01', { Pax: 2 }), o('B', 'decrease', '2026-01-02', { Pax: -5 })])[1].totals[0].qty).toBe(0));
+it('does not count non-accepted orders', () => expect(compactTotals(runningTotals([o('A', 'initial', '2026-01-01', { Pax: 300 }), o('B', 'increase', '2026-01-02', { Pax: 300 }, { counts: false })])[1].totals)).toBe('300'));
+it('floors each company scope separately then adds them', () => expect(runningTotals([o('A', 'initial', '2026-01-01', { Pax: 10 }, { scope: 'x' }), o('B', 'decrease', '2026-01-02', { Pax: -20 }, { scope: 'y' })])[1].totals[0].qty).toBe(10));
+it('abbreviates changes compactly', () => expect(formatChanges(fcoco[1].lines)).toBe('+3 Sup, +7 Op, +3 Truck'));
