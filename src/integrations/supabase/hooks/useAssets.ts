@@ -2,8 +2,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
+import type { AssetCostInputs } from "@/lib/assetCost";
 
-export interface Asset {
+export interface Asset extends Omit<AssetCostInputs, "ownership" | "unit_cost" | "rental_rate" | "rental_period"> {
+  insurance_carrier?: string | null;
+  insurance_policy_number?: string | null;
+  other_annual_cost_note?: string | null;
   asset_number?: string | null;
   raw_label?: string;
   room_count?: number;
@@ -180,7 +184,10 @@ export function useCreateAsset() {
   });
 }
 
-export interface UpdateAssetInput {
+export interface UpdateAssetInput extends Omit<AssetCostInputs, "ownership" | "unit_cost" | "rental_rate" | "rental_period"> {
+  insurance_carrier?: string | null;
+  insurance_policy_number?: string | null;
+  other_annual_cost_note?: string | null;
   asset_number?: string | null;
   room_count?: number;
   id: string;
