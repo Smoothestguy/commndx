@@ -10,15 +10,16 @@ const resultText = (r: HistoryRow) => r.fullDemob ? 'Full demobilization — loc
 export const historyCells = (r: HistoryRow) => [r.number, kindLabel(r.kind) + (r.counts ? '' : ` (${r.status ?? 'not accepted'})`), when(r), formatChanges(r.lines), resultText(r), r.enteredBy ?? ''];
 const HEADERS = ['TO #', 'Kind', 'Effective', 'Changes', 'Resulting totals', 'Entered by'];
 
+const ascii = (t: string) => t.replace(/−/g, '-').replace(/→/g, '->').replace(/—/g, '-');
 export function printTaskOrderHistory(header: HistoryHeader, rows: HistoryRow[], fileBase: string) {
   const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
   const W = pdf.internal.pageSize.getWidth(), H = pdf.internal.pageSize.getHeight(), M = 36;
   let y = M;
   const ensure = (h: number) => { if (y + h > H - M) { pdf.addPage(); y = M; } };
-  pdf.setFont('helvetica', 'bold').setFontSize(15).text(header.title, M, y + 12); y += 26;
+  pdf.setFont('helvetica', 'bold').setFontSize(15).text(ascii(header.title), M, y + 12); y += 26;
   pdf.setFontSize(9);
   for (const [label, value] of header.fields.filter(f => f[1])) {
-    const lines = pdf.setFont('helvetica', 'normal').splitTextToSize(String(value), W - 2 * M - 110) as string[];
+    const lines = pdf.setFont('helvetica', 'normal').splitTextToSize(ascii(String(value)), W - 2 * M - 110) as string[];
     ensure(lines.length * 11 + 2);
     pdf.setFont('helvetica', 'bold').text(`${label}:`, M, y + 9); pdf.setFont('helvetica', 'normal').text(lines, M + 110, y + 9);
     y += lines.length * 11 + 2;
@@ -27,7 +28,7 @@ export function printTaskOrderHistory(header: HistoryHeader, rows: HistoryRow[],
   const widths = [70, 95, 85, 175, 175, W - 2 * M - 600];
   const row = (cells: string[], bold = false) => {
     pdf.setFont('helvetica', bold ? 'bold' : 'normal').setFontSize(9);
-    const wrapped = cells.map((c, i) => pdf.splitTextToSize(c, widths[i] - 8) as string[]);
+    const wrapped = cells.map((c, i) => pdf.splitTextToSize(ascii(c), widths[i] - 8) as string[]);
     const h = Math.max(...wrapped.map(w => w.length)) * 11 + 8;
     ensure(h);
     let x = M;
@@ -39,9 +40,9 @@ export function printTaskOrderHistory(header: HistoryHeader, rows: HistoryRow[],
   y += 14;
   for (const r of rows) {
     const extra = [r.notes ? `Notes: ${r.notes}` : '', r.travel_time != null ? `Travel time: ${r.travel_time ? 'Yes' : 'No'}` : '', ...Object.entries(r.details ?? {}).map(([k, v]) => `${k}: ${v}`)].filter(Boolean);
-    const body = pdf.setFont('helvetica', 'normal').setFontSize(9).splitTextToSize(extra.join('\n') || 'No notes or details.', W - 2 * M) as string[];
+    const body = pdf.setFont('helvetica', 'normal').setFontSize(9).splitTextToSize(ascii(extra.join('\n')) || 'No notes or details.', W - 2 * M) as string[];
     ensure(body.length * 11 + 44);
-    pdf.setFont('helvetica', 'bold').text(`${r.number} — ${kindLabel(r.kind)} — effective ${when(r)}`, M, y + 10); y += 16;
+    pdf.setFont('helvetica', 'bold').text(ascii(`${r.number} - ${kindLabel(r.kind)} - effective ${when(r)}`), M, y + 10); y += 16;
     pdf.setFont('helvetica', 'normal').text(body, M, y + 9); y += body.length * 11 + 6;
     pdf.text(`Entered by: ${r.enteredBy || '—'}      Signature: ______________________________`, M, y + 9); y += 22;
   }
