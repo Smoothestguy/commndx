@@ -1,6 +1,6 @@
 import { localTime, type SheetRow } from './signinSheets';
 import { formatLocalDate } from './dateUtils';
-import { stripWhiteBackground } from './signatureInk';
+import { fitSignatureInCell, stripWhiteBackground } from './signatureInk';
 
 // Customer daily sheets aggregate people; uploaded templates retain their original stay-row semantics.
 export function dailyPeople(rows: SheetRow[]): SheetRow[] {

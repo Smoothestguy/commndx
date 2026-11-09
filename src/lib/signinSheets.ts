@@ -1,5 +1,5 @@
 import type { SignField } from './documentStamp';
-import { stripWhiteBackground } from './signatureInk';
+import { fitSignatureInCell, stripWhiteBackground } from './signatureInk';
 export const localDay = (iso: string, zone: string) => {
   const p = new Intl.DateTimeFormat('en-US', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(iso));
   return `${p.find(x => x.type === 'year')?.value}-${p.find(x => x.type === 'month')?.value}-${p.find(x => x.type === 'day')?.value}`;
