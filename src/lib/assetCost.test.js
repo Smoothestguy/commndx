@@ -3,7 +3,7 @@ import { workingDaysInYear, assetCostBreakdown, marginPct, insuranceExpiringSoon
 
 describe('asset cost recovery', () => {
   it('2026 has 250 working days (261 weekdays − 11 federal holidays)', () => expect(workingDaysInYear(2026)).toBe(250));
-  it('a Saturday New Year observed on Dec 31 counts against the earlier year', () => expect(workingDaysInYear(2021)).toBe(250));
+  it('a Saturday New Year observed on Dec 31 counts against the earlier year (2021 had 12 observed weekday holidays)', () => expect(workingDaysInYear(2021)).toBe(249));
   it('owned truck: 60k/5y + 3.6k insurance + 2.4k maintenance → $90.00/day in 2026', () => {
     const b = assetCostBreakdown({ ownership: 'owned', unit_cost: 60000, useful_life_years: 5, salvage_value: 0, insurance_annual_cost: 3600, maintenance_annual_cost: 2400 }, 2026);
     expect(b.depreciation).toBe(12000); expect(b.annualTotal).toBe(18000); expect(b.perDay).toBe(90);
