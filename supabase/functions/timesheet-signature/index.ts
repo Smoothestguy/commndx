@@ -104,7 +104,7 @@ Deno.serve(async req => {
             const expired = Date.parse(prior.expires_at) <= Date.now();
             // Same link while valid; a fresh token + 7-day window only when expired. 
             // Keep previously listed dates (signed ones show as done) and add any newly missing ones.
-            dates = [...new Set([...datesOf(prior), ...dates])].sort();
+            const todo = dates; dates = [...new Set([...datesOf(prior), ...dates])].sort();
             const patch: any = { dates, sheet_date: dates[0], send_count: (prior.send_count ?? 1) + 1, last_sent_at: nowIso, last_sent_by: u.user.id, sms_status: 'sending', sms_error: null };
             if (expired) { patch.token = crypto.randomUUID(); patch.expires_at = new Date(Date.now() + 7 * 86400000).toISOString(); }
             // Supersede other pending rows that cover any of these dates so the one-pending index stays clean.
@@ -112,9 +112,9 @@ Deno.serve(async req => {
             if (others.length) await db.from('timesheet_signature_requests').update({ status: 'cancelled' }).in('id', others);
             const { data: row, error: ue } = await db.from('timesheet_signature_requests').update(patch).eq('id', prior.id).eq('status', 'pending').select('id,token,send_count').single();
             if (ue || !row) { results.push({ personnel_id: pid, status: 'failed', reason: 'Request changed; refresh' }); continue; }
-            const s = await sendSms(to, requestMessage(loc.name, dates, `${site}/timesheet-sign/${row.token}`));
+            const s = await sendSms(to, requestMessage(loc.name, todo, `${site}/timesheet-sign/${row.token}`));
             await db.from('timesheet_signature_requests').update({ sms_status: s.sms, sms_error: s.err }).eq('id', row.id);
-            await audit(p, to, row.id, dates, 'resend', s, row.send_count);
+            await audit(p, to, row.id, todo, 'resend', s, row.send_count);
             results.push({ personnel_id: pid, status: s.sms === 'failed' ? 'failed' : 'resent', send_count: row.send_count, requested_at: nowIso, dates, reason: s.err });
             continue;
           }
