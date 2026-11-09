@@ -53,8 +53,10 @@ export async function kioskPending(db: any, v: any, locationId: string, projectI
   const ids=rows.map(r=>r.visit_personnel_id),meta:any[]=[];
   for(let offset=0;offset<ids.length;offset+=200){const result=await db.from('visit_personnel').select('id,late_minutes,late_reason').in('id',ids.slice(offset,offset+200));if(result.error)throw result.error;meta.push(...result.data??[]);}
   const stays=rows.map(s=>({...s,...meta.find(m=>m.id===s.visit_personnel_id)}));
-  const requests = await db.from('timesheet_signature_requests').select('sheet_date,status').eq('personnel_id', person).eq('location_id', locationId).eq('status', 'pending'); if (requests.error) throw requests.error;
-  const items = pendingItems(stays, requests.data ?? [], zone, new Date().toISOString());
+  const requests = await db.from('timesheet_signature_requests').select('sheet_date,dates,status').eq('personnel_id', person).eq('location_id', locationId).eq('status', 'pending'); if (requests.error) throw requests.error;
+  // Multi-day links list several dates; expand so each requested date shows as pending.
+  const requested = (requests.data ?? []).flatMap((r: any) => (r.dates?.length ? r.dates : [r.sheet_date]).map((d: string) => ({ sheet_date: d, status: r.status })));
+  const items = pendingItems(stays, requested, zone, new Date().toISOString());
   if (v.action === 'pending') return { ok: true, items };
   const item = items.find(i => i.id === v.stay_id && i.type === v.kind);
   const s = stays.find((s: any) => s.visit_personnel_id === v.stay_id);
@@ -73,7 +75,7 @@ export async function kioskPending(db: any, v: any, locationId: string, projectI
       if (!saved.data?.length) { await db.storage.from('project-documents').remove([path]); } // Only this unused newly created file.
       signed = first;
     }
-    const fulfilled = await db.from('timesheet_signature_requests').update({ status: 'signed', signed_at: now, visit_personnel_id: signed.visit_personnel_id }).eq('personnel_id', person).eq('location_id', locationId).eq('sheet_date', item.date).eq('status', 'pending'); if (fulfilled.error) throw fulfilled.error;
+    const fulfilled = await db.from('timesheet_signature_requests').update({ status: 'signed', signed_at: now, visit_personnel_id: signed.visit_personnel_id }).eq('personnel_id', person).eq('location_id', locationId).eq('sheet_date', item.date).eq('status', 'pending').or('dates.is.null,dates.eq.{' + item.date + '}'); if (fulfilled.error) throw fulfilled.error;
   } else if (v.kind === 'late') {
     if (!v.reason?.trim()) throw new Error('Late reason required');
     let query = db.from('visit_personnel').update({ late_reason: v.reason.trim() }).eq('id', s.visit_personnel_id).eq('personnel_id', person);
