@@ -10722,12 +10722,16 @@ export type Database = {
       }
       timesheet_signature_requests: {
         Row: {
+          dates: string[] | null
           expires_at: string
           id: string
+          last_sent_at: string | null
+          last_sent_by: string | null
           location_id: string
           personnel_id: string
           requested_at: string
           requested_by: string
+          send_count: number
           sheet_date: string
           signed_at: string | null
           sms_error: string | null
@@ -10737,12 +10741,16 @@ export type Database = {
           visit_personnel_id: string | null
         }
         Insert: {
+          dates?: string[] | null
           expires_at?: string
           id?: string
+          last_sent_at?: string | null
+          last_sent_by?: string | null
           location_id: string
           personnel_id: string
           requested_at?: string
           requested_by: string
+          send_count?: number
           sheet_date: string
           signed_at?: string | null
           sms_error?: string | null
@@ -10752,12 +10760,16 @@ export type Database = {
           visit_personnel_id?: string | null
         }
         Update: {
+          dates?: string[] | null
           expires_at?: string
           id?: string
+          last_sent_at?: string | null
+          last_sent_by?: string | null
           location_id?: string
           personnel_id?: string
           requested_at?: string
           requested_by?: string
+          send_count?: number
           sheet_date?: string
           signed_at?: string | null
           sms_error?: string | null
