@@ -11,7 +11,7 @@ export const COST_NUMBER_KEYS = ['insurance_annual_cost', 'registration_annual_c
 type NumKey = typeof COST_NUMBER_KEYS[number];
 export type AssetCostDraft = Record<NumKey | 'insurance_carrier' | 'insurance_policy_number' | 'insurance_expires_on' | 'other_annual_cost_note', string> & { daily_cost_overridden: boolean };
 
-export function costDraftFrom(a: Partial<AssetCostInputs & Record<string, unknown>> | null | undefined): AssetCostDraft {
+export function costDraftFrom(a: (Partial<AssetCostInputs> & { insurance_carrier?: string | null; insurance_policy_number?: string | null; other_annual_cost_note?: string | null }) | null | undefined): AssetCostDraft {
   const s = (v: unknown, d = '') => (v == null ? d : String(v));
   return {
     insurance_carrier: s(a?.insurance_carrier), insurance_policy_number: s(a?.insurance_policy_number), insurance_expires_on: s(a?.insurance_expires_on),
