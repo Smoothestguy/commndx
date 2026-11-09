@@ -196,3 +196,6 @@
 # Signature requests
 - [x] Signatures centered at 90% of the cell on built-in and template sheets.
 - [x] Multi-day requests: one text/link per person covering all unsigned worked dates (30-day lookback), per-date confirm on one pad, per-person date counts, grouped Request all, Resend (same link, new token only if expired, sent N×, 1/min server limit), audited sends. Browser-verified with a temporary worker; cleaned up.
+
+# Task-order history
+- [x] Compact TO table with resulting totals, expandable details, selected/full/per-row PDF and XLSX (project locations + Event Manager). Verified on 5049-FCOCO.
