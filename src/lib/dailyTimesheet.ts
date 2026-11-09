@@ -24,8 +24,8 @@ export async function generateDailyTimesheet(rows: SheetRow[], config: { day: st
   const images = new Map<string, Uint8Array>();
   const image = async (path: string, x: number, y: number, w: number, h: number) => {
     let bytes = images.get(path); if (!bytes) { bytes = await stripWhiteBackground(await loadSignature(path)); images.set(path, bytes); }
-    const props = pdf.getImageProperties(bytes), scale = Math.min(w / props.width, h / props.height);
-    pdf.addImage(bytes, props.fileType, x, y + h - props.height * scale, props.width * scale, props.height * scale);
+    const props = pdf.getImageProperties(bytes), r = fitSignatureInCell({ x, y, width: w, height: h }, props);
+    pdf.addImage(bytes, props.fileType, r.x, r.y, r.width, r.height);
   };
   const text = (value: string, x: number, y: number, width: number, lines = 3) => { pdf.text(pdf.splitTextToSize(value, width - 8).slice(0, lines), x + 4, y + 11); };
   for (let page = 0; page < Math.max(1, Math.ceil(people.length / capacity)); page++) {
@@ -40,7 +40,7 @@ export async function generateDailyTimesheet(rows: SheetRow[], config: { day: st
     for (let i = 0; i < capacity; i++) {
       const y = top + 26 + i * rowH, row = chunk[i]; x = left;
       const values = row ? [row.name, '', row.position, localTime(row.inAt, config.zone), localTime(row.outAt, config.zone), row.hours == null ? '' : row.hours.toFixed(2), config.location] : headers.map(() => '');
-      for (let c = 0; c < widths.length; c++) { pdf.rect(x, y, widths[c], rowH); text(values[c], x, y, widths[c]); if (c === 1 && row?.signature) await image(row.signature, x + 4, y + 3, widths[c] - 8, rowH - 6); x += widths[c]; }
+      for (let c = 0; c < widths.length; c++) { pdf.rect(x, y, widths[c], rowH); text(values[c], x, y, widths[c]); if (c === 1 && row?.signature) await image(row.signature, x, y, widths[c], rowH); x += widths[c]; }
     }
     pdf.setFontSize(9); pdf.text('Customer approval', left, 697);
     pdf.text(`Name: ${config.approval?.name || '________________________'}`, left, 717);

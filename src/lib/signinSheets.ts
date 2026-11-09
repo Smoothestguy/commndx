@@ -75,8 +75,8 @@ export async function generateSigninSheet(original: ArrayBuffer, fields: SignFie
         if ((field.binding || field.kind) === 'signature' && row?.signature) {
           let image = images.get(row.signature);
           if (!image) { image = await output.embedPng(await stripWhiteBackground(await loadSignature(row.signature))); images.set(row.signature, image); }
-          // Inset 1pt inside the field and sit on the row baseline so ink never crosses into neighbouring rows/columns.
-          const size = image.scaleToFit(Math.max(1, w - 2), Math.max(1, h - 2)); page.drawImage(image, { x: x + 1, y: bottom + 1, ...size });
+          // 90% of the cell, centered: fills like a pen signature while keeping a margin inside the borders.
+          page.drawImage(image, fitSignatureInCell({ x, y: bottom, width: w, height: h }, image));
         } else {
           const text = clean(values[field.binding || field.kind] ?? '');
           if (text) { const size = Math.min(10, h * 0.75, Math.max(1,w-4) / Math.max(1, font.widthOfTextAtSize(text, 1))); page.drawText(text, { x, y: bottom + (h - size) / 2, font, size }); }
