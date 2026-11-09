@@ -102,7 +102,9 @@ Deno.serve(async req => {
             const wait = resendWaitMs(prior.last_sent_at ?? prior.requested_at);
             if (wait > 0) { results.push({ personnel_id: pid, status: 'rate_limited', retry_in_s: Math.ceil(wait / 1000) }); continue; }
             const expired = Date.parse(prior.expires_at) <= Date.now();
-            // Same link while valid; a fresh token + 7-day window only when expired. Dates refresh to everything still unsigned.
+            // Same link while valid; a fresh token + 7-day window only when expired. 
+            // Keep previously listed dates (signed ones show as done) and add any newly missing ones.
+            dates = [...new Set([...datesOf(prior), ...dates])].sort();
             const patch: any = { dates, sheet_date: dates[0], send_count: (prior.send_count ?? 1) + 1, last_sent_at: nowIso, last_sent_by: u.user.id, sms_status: 'sending', sms_error: null };
             if (expired) { patch.token = crypto.randomUUID(); patch.expires_at = new Date(Date.now() + 7 * 86400000).toISOString(); }
             // Supersede other pending rows that cover any of these dates so the one-pending index stays clean.
