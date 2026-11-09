@@ -22,6 +22,7 @@ import {
 } from "@/integrations/supabase/hooks/useAssetAssignments";
 import { fmtMoney0 } from "@/lib/assetBilling";
 import { EditAssetDialog, type EditableAsset } from "./EditAssetDialog";
+import { AssetCostBadge, InsuranceBadge } from "./AssetCostFields";
 
 export function AssetIcon({ type, className = "h-3.5 w-3.5" }: { type?: string | null; className?: string }) {
   const I = type === "vehicle" ? Truck : type === "equipment" ? Settings : type === "key" ? Key : type === "location" ? MapPin : Package;
@@ -181,6 +182,8 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
                   <Input type="number" inputMode="decimal" min={0} step="0.01" className="h-11" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="No rate set" />
                 </div>
               )}
+              {(() => { const a = isExisting ? projectRows.find(x => x.id === pick.slice(2))?.assets : allAssets.find(x => x.id === pick.slice(2)); const n = rate.trim() === "" ? null : Number(rate);
+                return a ? <div className="flex flex-wrap gap-1"><AssetCostBadge asset={a} billRate={billable ? n : null} /><InsuranceBadge asset={a} /></div> : null; })()}
             </>
           )}
         </div>
@@ -224,6 +227,8 @@ export function LocationAssets({ projectId, locationId, locationName, canWrite, 
                   {assetBillingText(r)}
                 </Badge>
               )}
+              {canBill && <AssetCostBadge asset={r.assets} billRate={r.billable ? r.rate : null} />}
+              {canBill && <InsuranceBadge asset={r.assets} />}
               {r.end_at && <span className="text-muted-foreground">ended {format(new Date(r.end_at), "M/d")}</span>}
               {canBill && r.assets && (
                 <Tooltip><TooltipTrigger asChild>

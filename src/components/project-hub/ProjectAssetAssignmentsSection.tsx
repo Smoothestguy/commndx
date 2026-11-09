@@ -54,6 +54,17 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { assetBillingText } from "./LocationAssets";
+import { AssetCostBadge, InsuranceBadge } from "./AssetCostFields";
+import { assetCostBreakdown, marginPct } from "@/lib/assetCost";
+
+type CostSort = "ins" | "cost" | "margin" | null;
+const costOf = (r: AssetBillingRow) => (r.assets ? assetCostBreakdown(r.assets).perDay : null);
+const marginOf = (r: AssetBillingRow) => marginPct(r.billable ? r.rate : null, costOf(r));
+function sortRows(rows: AssetBillingRow[], key: CostSort, dir: 1 | -1) {
+  if (!key) return rows;
+  const val = (r: AssetBillingRow): number | string | null => key === "ins" ? (r.assets?.insurance_expires_on ?? null) : key === "cost" ? costOf(r) : marginOf(r);
+  return [...rows].sort((a, b) => { const x = val(a), y = val(b); if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1; return (x < y ? -1 : x > y ? 1 : 0) * dir; });
+}
 
 /** Inline location + billing editors; same asset_assignments row the location views use. */
 function AssetLocationCell({ row, projectId, locations, canEdit }: {
@@ -134,7 +145,15 @@ export function ProjectAssetAssignmentsSection({
   const canEdit = isAdmin || isManager;
   const unassignMutation = useUnassignAsset();
 
-  const activeAssignments = assignments.filter(a => a.status === "active");
+  const [sort, setSort] = useState<{ key: CostSort; dir: 1 | -1 }>({ key: null, dir: 1 });
+  const activeAssignments = sortRows(assignments.filter(a => a.status === "active"), sort.key, sort.dir);
+  const sortHead = (key: Exclude<CostSort, null>, label: string) => (
+    <TableHead aria-sort={sort.key === key ? (sort.dir === 1 ? "ascending" : "descending") : "none"}>
+      <button type="button" className="font-medium hover:text-foreground" onClick={() => setSort(s => ({ key, dir: s.key === key ? (s.dir === 1 ? -1 : 1) : 1 }))}>
+        {label}{sort.key === key ? (sort.dir === 1 ? " ▲" : " ▼") : ""}
+      </button>
+    </TableHead>
+  );
 
   const handleUnassign = (assignmentId: string, assetLabel: string) => {
     setUnassignConfirmId(assignmentId);
@@ -254,6 +273,7 @@ export function ProjectAssetAssignmentsSection({
                           </Badge>
                           <AssetLocationCell row={assignment} projectId={projectId} locations={locations} canEdit={canEdit} />
                           {canEdit && <div className="w-full"><AssetBillingCell row={assignment} projectId={projectId} canEdit={canEdit} /></div>}
+                          {canEdit && <><AssetCostBadge asset={asset} billRate={assignment.billable ? assignment.rate : null} /><InsuranceBadge asset={asset} /></>}
                           {assignment.personnel && (
                             <span className="text-muted-foreground">
                               → {assignment.personnel.first_name} {assignment.personnel.last_name}
@@ -279,6 +299,9 @@ export function ProjectAssetAssignmentsSection({
                         <TableHead>Type</TableHead>
                         <TableHead>Location</TableHead>
                         {canEdit && <TableHead>Bill rate</TableHead>}
+                        {canEdit && sortHead("cost", "Our cost/day")}
+                        {canEdit && sortHead("margin", "Margin")}
+                        {canEdit && sortHead("ins", "Insurance expires")}
                         <TableHead>Assigned To</TableHead>
                         <TableHead>Start Date</TableHead>
                         <TableHead>End Date</TableHead>
@@ -315,6 +338,9 @@ export function ProjectAssetAssignmentsSection({
                             </TableCell>
                             <TableCell><AssetLocationCell row={assignment} projectId={projectId} locations={locations} canEdit={canEdit} /></TableCell>
                             {canEdit && <TableCell><AssetBillingCell row={assignment} projectId={projectId} canEdit={canEdit} /></TableCell>}
+                            {canEdit && <TableCell className="tabular-nums text-xs">{costOf(assignment) != null ? `$${costOf(assignment)!.toFixed(2)}` : "—"}</TableCell>}
+                            {canEdit && <TableCell className={cn("tabular-nums text-xs", (marginOf(assignment) ?? 0) < 0 && "text-destructive")}>{marginOf(assignment) != null ? `${marginOf(assignment)}%` : "—"}</TableCell>}
+                            {canEdit && <TableCell className="text-xs whitespace-nowrap">{asset.insurance_expires_on ?? "—"} <InsuranceBadge asset={asset} /></TableCell>}
                             <TableCell>
                               {assignment.personnel ? (
                                 <span>
