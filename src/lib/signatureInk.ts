@@ -37,3 +37,11 @@ export async function stripWhiteBackground(png: ArrayBuffer | Uint8Array): Promi
     return new Uint8Array(await result.arrayBuffer());
   } finally { bitmap.close(); }
 }
+/** Shared cell placement: scale to `fill` (default 90%) of the cell, keep aspect ratio, center both axes.
+ * Coordinate-origin agnostic (works for top-left jsPDF and bottom-left pdf-lib) and never exceeds the cell. */
+export function fitSignatureInCell(cell: { x: number; y: number; width: number; height: number }, img: { width: number; height: number }, fill = 0.9) {
+  if (!(cell.width > 0 && cell.height > 0 && img.width > 0 && img.height > 0)) return { x: cell.x, y: cell.y, width: 0, height: 0 };
+  const scale = Math.min((cell.width * fill) / img.width, (cell.height * fill) / img.height);
+  const width = img.width * scale, height = img.height * scale;
+  return { x: cell.x + (cell.width - width) / 2, y: cell.y + (cell.height - height) / 2, width, height };
+}
