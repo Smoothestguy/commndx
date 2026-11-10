@@ -601,7 +601,6 @@ export function PersonnelTable({
           rowHref={person => `/personnel/${person.id}`}
           exportName="personnel"
           attention={person => !person.phone ? "Missing phone" : null}
-          bulkActions={bulkActions ? () => bulkActions : undefined}
           selectable={selectionMode}
           selectedIds={new Set(selectedIds)}
           onSelectionChange={(next) => {
