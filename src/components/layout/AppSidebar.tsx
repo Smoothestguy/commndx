@@ -23,7 +23,7 @@ import {
 import { useUserRole } from "@/hooks/useUserRole";
 import { useTotalUnreadCount } from "@/integrations/supabase/hooks/useConversations";
 import { cn } from "@/lib/utils";
-import { sections, isItemVisible, isSectionVisible, type NavItem as Item } from "./navConfig";
+import { sections, isItemVisible, isSectionVisible, isNavItemActive, type NavItem as Item } from "./navConfig";
 
 
 function SidebarNavItem({ item, isActive, unreadCount }: { item: Item; isActive: boolean; unreadCount: number }) {
@@ -31,7 +31,7 @@ function SidebarNavItem({ item, isActive, unreadCount }: { item: Item; isActive:
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={isActive} tooltip={item.name}>
-        <NavLink to={item.href} end={item.href === "/"}>
+        <NavLink to={item.href} end>
           <Icon className="h-4 w-4" />
           <span>{item.name}</span>
         </NavLink>
@@ -47,25 +47,24 @@ function SidebarNavItem({ item, isActive, unreadCount }: { item: Item; isActive:
 
 export function AppSidebar() {
   const modules=useAppModules();
-  const { pathname } = useLocation();
-  const { isAdmin, isManager } = useUserRole();
+  const { pathname, search } = useLocation();
+  const { isAdmin, isManager, isAccounting } = useUserRole();
   const { data: unreadCount = 0 } = useTotalUnreadCount();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const [adminOpen, setAdminOpen] = useState(false);
 
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
+  const isActive = (href: string) => isNavItemActive(href, pathname, search);
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="h-12 border-b border-sidebar-border" />
       <SidebarContent>
         {sections.map((section, idx) => {
-          if (!isSectionVisible(section, isAdmin, isManager)) return null;
+          if (!isSectionVisible(section, isAdmin, isManager, isAccounting)) return null;
 
 
-          const visibleItems = section.items.filter((i) => isItemVisible(i, isAdmin, isManager) && modules.visible(i.href));
+          const visibleItems = section.items.filter((i) => isItemVisible(i, isAdmin, isManager, isAccounting) && modules.visible(i.href));
           if (visibleItems.length === 0) return null;
 
           if (section.collapsible) {

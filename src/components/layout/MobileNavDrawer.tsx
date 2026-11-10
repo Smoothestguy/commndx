@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useTotalUnreadCount } from "@/integrations/supabase/hooks/useConversations";
-import { sections, isItemVisible, isSectionVisible } from "./navConfig";
+import { sections, isItemVisible, isSectionVisible, isNavItemActive } from "./navConfig";
 import logo from "@/assets/logo.png";
 
 interface MobileNavDrawerProps {
@@ -30,15 +30,14 @@ interface MobileNavDrawerProps {
 
 export function MobileNavDrawer({ open, onOpenChange }: MobileNavDrawerProps) {
   const modules=useAppModules();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { isAdmin, isManager } = useUserRole();
+  const { isAdmin, isManager, isAccounting } = useUserRole();
   const { data: unreadCount = 0 } = useTotalUnreadCount();
   const [openSections, setOpenSections] = useState<Record<number, boolean>>({});
 
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
+  const isActive = (href: string) => isNavItemActive(href, pathname, search);
 
   const close = () => onOpenChange(false);
   const go = (href: string) => {
@@ -63,9 +62,9 @@ export function MobileNavDrawer({ open, onOpenChange }: MobileNavDrawerProps) {
         <ScrollArea className="flex-1">
           <nav className="p-2">
             {sections.map((section, idx) => {
-              if (!isSectionVisible(section, isAdmin, isManager)) return null;
+              if (!isSectionVisible(section, isAdmin, isManager, isAccounting)) return null;
               const visibleItems = section.items.filter((i) =>
-                isItemVisible(i, isAdmin, isManager) && modules.visible(i.href),
+                isItemVisible(i, isAdmin, isManager, isAccounting) && modules.visible(i.href),
               );
               if (visibleItems.length === 0) return null;
 
@@ -77,7 +76,7 @@ export function MobileNavDrawer({ open, onOpenChange }: MobileNavDrawerProps) {
                     <NavLink
                       key={item.href}
                       to={item.href}
-                      end={item.href === "/"}
+                      end
                       onClick={close}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
