@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Time24Input } from '@/components/ui/time24-input';
-import { Loader2, Pencil, Plus, AlertTriangle, Clock, CheckCircle2 } from 'lucide-react';
+import { Loader2, Pencil, Plus, AlertTriangle, Clock, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLogManualTime } from '@/integrations/supabase/hooks/useFieldMode';
 import { useEditStayTimes, type StayChange } from '@/hooks/useEditStayTimes';
@@ -143,7 +143,12 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
 
   return <div className="space-y-4">
     <div className="flex flex-wrap items-end gap-3">
-      <div><label htmlFor="att-day" className="text-sm block">Date</label><Input id="att-day" type="date" className="w-44" value={day} onChange={e => { if (e.target.value) { setDay(e.target.value); setSel(new Set()); } }} /></div>
+      <div><label htmlFor="att-day" className="text-sm block">Date</label><div className="flex items-center gap-1">
+        <Button variant="outline" size="icon" aria-label="Previous day" title="Previous day" onClick={() => { const d = new Date(`${day}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - 1); setDay(d.toISOString().slice(0,10)); setSel(new Set()); }}><ChevronLeft className="h-4 w-4" /></Button>
+        <Input id="att-day" type="date" className="w-44" value={day} onChange={e => { if (e.target.value) { setDay(e.target.value); setSel(new Set()); } }} />
+        <Button variant="outline" size="icon" aria-label="Next day" title="Next day" onClick={() => { setDay(nextDay(day)); setSel(new Set()); }}><ChevronRight className="h-4 w-4" /></Button>
+        <Button variant="outline" size="sm" onClick={() => { setDay(today); setSel(new Set()); }}>Today</Button>
+      </div></div>
       <div className="flex flex-wrap items-center gap-2 pb-2"><p className="text-sm text-muted-foreground">{present}/{rows.length} signed in · {total.toFixed(2)} h closed</p><MissingSignatures compact locationId={locationId} day={day} zone={tz} rows={q.data?.sigRows ?? []} /></div>
       {canWrite && <Button className="ml-auto" size="sm" variant="outline" disabled={!sel.size} onClick={() => setBulk({ date: day, inTime: '', outTime: '', note: '' })}><Clock className="h-4 w-4 mr-1" />Set times for {sel.size || ''} selected</Button>}
       {canWrite && <Button size="sm" onClick={() => setAddPerson(true)}><Plus className="h-4 w-4 mr-1" />Add person to this day</Button>}

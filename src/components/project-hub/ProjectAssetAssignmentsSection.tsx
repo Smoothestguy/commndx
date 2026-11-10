@@ -105,7 +105,7 @@ function AssetBillingCell({ row, projectId, canEdit }: { row: AssetBillingRow; p
           onChange={(e) => setRate(e.target.value)}
           onBlur={() => { if (rate !== (row.day_rate != null ? String(row.day_rate) : "")) save(true, rate); }} />
       )}
-      {text && <span className={cn("text-xs whitespace-nowrap", row.rate == null ? "text-warning" : "text-muted-foreground")}>{text}</span>}
+      {row.billable && row.rate == null && <span className="text-xs text-warning">No rate</span>}
     </div>
   );
 }
@@ -166,7 +166,7 @@ export function ProjectAssetAssignmentsSection({
   const fmtDay = (v: string | null | undefined) => (v ? format(new Date(v), "MM/dd/yyyy") : "—");
   const assetColumns: EnhancedColumn<AssetBillingRow>[] = [
     { key: "asset", header: "Asset", width: 240, getValue: r => `${r.assets?.asset_number ?? ""} ${r.assets?.label ?? ""} ${r.assets?.serial_number ?? ""}`.trim(),
-      render: r => <span className="flex items-center gap-2">{getAssetIcon(r.assets?.type ?? "default")}<span className="truncate">{r.assets?.asset_number ? `${r.assets.asset_number} · ` : ""}{r.assets?.label ?? "Asset"}</span><Badge variant="outline" className="text-[10px] px-1">{ownershipText(r.assets)}</Badge></span> },
+      render: r => <span className="flex items-center gap-2">{getAssetIcon(r.assets?.type ?? "default")}<span className="truncate">{r.assets?.asset_number && !r.assets.label.includes(r.assets.asset_number) ? `${r.assets.asset_number} · ` : ""}{r.assets?.label ?? "Asset"}</span><Badge variant="outline" className="text-[10px] px-1">{ownershipText(r.assets)}</Badge></span> },
     { key: "type", header: "Type", getValue: r => r.assets?.type ?? "", render: r => <span className="capitalize">{r.assets?.type}</span> },
     { key: "location", header: "Location", noExport: false, getValue: r => locations.find(l => l.id === r.location_id)?.name ?? "Project-wide", render: r => <AssetLocationCell row={r} projectId={projectId} locations={locations} canEdit={canEdit} /> },
     ...(canEdit ? [

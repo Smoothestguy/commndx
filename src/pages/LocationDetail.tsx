@@ -60,9 +60,12 @@ export default function LocationDetail() {
   useEffect(() => { window.scrollTo(0,0); }, [locationId]);
   useEffect(() => {
     if (!location) return;
-    if (params.get('action') === 'edit' && canWrite) setEdit(true);
-    if (params.get('day') || params.get('action') === 'daily') setSheet({location:location.id,day:params.get('day') || localDay(new Date().toISOString(),location.timezone || 'America/Chicago')});
-  }, [location, params, canWrite]);
+    const editAction = params.get('action') === 'edit' && canWrite;
+    const dailyAction = !!params.get('day') || params.get('action') === 'daily';
+    if (editAction) setEdit(true);
+    if (dailyAction) setSheet({location:location.id,day:params.get('day') || localDay(new Date().toISOString(),location.timezone || 'America/Chicago')});
+    if (editAction || dailyAction) setParams(prev => { const next = new URLSearchParams(prev); next.delete('day'); if (editAction || next.get('action') === 'daily') next.delete('action'); return next; }, { replace: true });
+  }, [location, params, canWrite, setParams]);
   if (isLoading || projectLoading) return <PageLayout title="Location"><Loader2 className="animate-spin"/></PageLayout>;
   if (!project || !location || error || projectError || !projectId) return <PageLayout title="Location unavailable"><Button asChild variant="link"><Link to="/projects">Projects</Link></Button></PageLayout>;
   const address = [location.address,location.city,location.state,location.zip].filter(Boolean).join(', ');

@@ -330,7 +330,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
 
       <div ref={scrollRef} onScroll={e => { try { sessionStorage.setItem(`${scope}:scroll`, JSON.stringify([e.currentTarget.scrollTop, e.currentTarget.scrollLeft])); } catch { /* unavailable storage */ } }} className={cn("overflow-auto", fullscreen && "flex-1")} style={fullscreen ? undefined : { maxHeight }}>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <table style={{ minWidth: leadWidth + visibleColumns.reduce((n, c) => n + (widths[String(c.key)] ?? c.width ?? 150), 0) }} className={cn("w-full table-fixed caption-bottom border-separate border-spacing-0", dense ? "text-xs" : "text-sm")}>
+          <table style={{ width: leadWidth + visibleColumns.reduce((n, c) => n + (widths[String(c.key)] ?? c.width ?? 150), 0) }} className={cn("table-fixed caption-bottom border-separate border-spacing-0", dense ? "text-xs" : "text-sm")}>
             <thead className="sticky top-0 z-20">
               <tr className="bg-table-header">
                 {hasLead && (
