@@ -166,7 +166,7 @@ export default function MasterApplicants() {
 
   const columns: EnhancedColumn<Row>[] = [
     { key: 'name', header: 'Name', width: 280, getValue: r => `${r.first_name} ${r.last_name}`, render: r => <span className="flex items-center gap-2"><ApplicantStarButton applicantId={r.id} starredAt={r.starred_at} /><span><span className="font-medium">{r.first_name} {r.last_name}</span><ApplicantTagBadges applicant={r} certs={certSummary[r.id]} /><ApplicantNoteLine applicant={r} /></span></span> },
-    { key: 'gender', header: 'Gender', width: 100, sortable: true, filterable: true, getValue: (r: any) => r.gender === 'male' ? 'Male' : r.gender === 'female' ? 'Female' : '' },
+    { key: 'gender', header: 'Gender', width: 120, sortable: true, filterable: true, getValue: (r: any) => r.gender === 'male' ? 'Male' : r.gender === 'female' ? 'Female' : '' },
     { key: 'phone', header: 'Phone' }, { key: 'email', header: 'Email', width: 240 },
     { key: 'location', header: 'Location', getValue: formatApplicantLocation },
     { key: 'last_applied_at', header: 'Last applied', render: r => r.last_applied_at ? formatDistanceToNow(new Date(r.last_applied_at), { addSuffix: true }) : 'never' },
