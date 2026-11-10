@@ -326,10 +326,10 @@ export function useActivePersonnelLite(enabled: boolean) {
     enabled,
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await db.from("personnel").select("id, first_name, last_name, phone, status")
+      const { data, error } = await db.from("personnel").select("id, first_name, last_name, phone, status, vendor_id, employer_customer_id, non_billable, on_bench, bench_rank")
         .eq("status", "active").order("first_name", { ascending: true }).limit(2000);
       if (error) throw error;
-      return (data ?? []) as { id: string; first_name: string | null; last_name: string | null; phone: string | null; status: string }[];
+      return (data ?? []) as { id: string; first_name: string | null; last_name: string | null; phone: string | null; status: string; vendor_id: string | null; employer_customer_id: string | null; non_billable: boolean; on_bench: boolean; bench_rank: number | null }[];
     },
   });
 }
