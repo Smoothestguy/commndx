@@ -24,6 +24,8 @@ import { localDay, localTime, midnight, nextDay } from '@/lib/signinSheets';
 import { locationTimeIso } from '@/lib/manualTime';
 import { isHHmm, todayStatus, type TodayStatus } from '@/lib/assignmentRoles';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
+import { PersonnelBulkActions } from '@/components/personnel/PersonnelBulkActions';
 
 type Agencies = { agencyName: (id: string) => string | null | undefined; employerName: (id: string) => string | null | undefined; nonBillableByPerson: Record<string, boolean | undefined> };
 
@@ -55,6 +57,9 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
   const [missionDlg, setMissionDlg] = useState<{ a: LocationAssignment; note: string } | null>(null);
   const [demobOpen, setDemobOpen] = useState(false);
   const endAssignment = useEndAssignment();
+  const [q, setQ] = useState('');
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const toggle = (id: string) => setSel(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const [endDlg, setEndDlg] = useState<{ a: LocationAssignment; date: string; demob: boolean } | null>(null);
   const runEnd = async () => {
     if (!endDlg || !/^\d{4}-\d{2}-\d{2}$/.test(endDlg.date)) return;
@@ -90,18 +95,20 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
   });
 
   const { groups, demob } = useMemo(() => {
-    const active = assignments.filter(a => !a.demobilized);
+    const needle = q.trim().toLowerCase();
+    const match = (a: LocationAssignment) => !needle || `${a.personnel?.first_name ?? ''} ${a.personnel?.last_name ?? ''} ${a.role_label ?? ''}`.toLowerCase().includes(needle);
+    const active = assignments.filter(a => !a.demobilized && match(a));
     const by = new Map<string, LocationAssignment[]>();
     for (const a of active) { const k = a.role_label || 'No role'; by.set(k, [...(by.get(k) ?? []), a]); }
     const rank = (k: string) => /supervisor|lead|foreman/i.test(k) ? 0 : /operator/i.test(k) ? 1 : k === 'No role' ? 9 : 2;
     const name = (a: LocationAssignment) => [a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(' ');
-    for (const [k, v] of Object.entries(byRole)) if (v.needed > 0 && !by.has(k)) by.set(k, []);
+    for (const [k, v] of Object.entries(byRole)) if (!needle && v.needed > 0 && !by.has(k)) by.set(k, []);
     const inNow = (a: LocationAssignment) => (stays.data?.[a.personnel_id] ?? []).some(x => !x.out_at) ? 0 : 1;
     return {
       groups: [...by.entries()].sort((x, y) => rank(x[0]) - rank(y[0]) || x[0].localeCompare(y[0])).map(([k, v]) => [k, v.sort((p, q) => inNow(p) - inNow(q) || name(p).localeCompare(name(q)))] as const),
-      demob: assignments.filter(a => a.demobilized),
+      demob: assignments.filter(a => a.demobilized && match(a)),
     };
-  }, [assignments, byRole, stays.data]);
+  }, [assignments, byRole, stays.data, q]);
 
   const row = (a: LocationAssignment) => {
     const name = [a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(' ') || 'Unknown';
@@ -120,10 +127,11 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
     ];
     return <EntityContextMenu key={a.id} href={`/personnel/${a.personnel_id}`} person actions={actions}>
       <div className={cn('grid grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-1 px-3 py-2 items-center text-sm', COLS)}>
-        <div className="min-w-0">
-          <Link to={`/personnel/${a.personnel_id}`} className="font-medium hover:text-primary hover:underline truncate block">{name}</Link>
+        <div className="min-w-0 flex items-start gap-2">
+          {canWrite && <Checkbox className="mt-0.5" aria-label={`Select ${name}`} checked={sel.has(a.personnel_id)} onCheckedChange={() => toggle(a.personnel_id)} />}
+          <div className="min-w-0"><Link to={`/personnel/${a.personnel_id}`} className="font-medium hover:text-primary hover:underline truncate block">{name}</Link>
           {canWrite && !phones[a.personnel_id] && <Link to={`/personnel/${a.personnel_id}`} className="block text-[11px] text-warning hover:underline">No phone · add phone</Link>}
-        </div>
+        </div></div>
         <div className="flex flex-wrap gap-1 justify-end sm:justify-start sm:order-none order-3 col-span-2 sm:col-span-1">
           <AgencyChip name={(() => { const n = agencies.agencyName(a.personnel_id); return n && n.trim().toLowerCase() !== name.trim().toLowerCase() ? n : undefined; })()} />
           <NonBillableChip value={agencies.nonBillableByPerson[a.personnel_id]} employer={agencies.employerName(a.personnel_id)} />
@@ -154,7 +162,19 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
 
   const header = <div className={cn('hidden sm:grid gap-2 px-3 py-1.5 text-[11px] uppercase tracking-wide text-muted-foreground border-b', COLS)}><span>Name</span><span>Agency / employer</span><span>Today here</span><span>Last texted</span><span /></div>;
 
+  const selectedPeople = assignments.filter((a, i, all) => sel.has(a.personnel_id) && all.findIndex(b => b.personnel_id === a.personnel_id) === i)
+    .map(a => ({ id: a.personnel_id, first_name: a.personnel?.first_name ?? '', last_name: a.personnel?.last_name ?? '', phone: phones[a.personnel_id] ?? null }));
+  const worksFor = (p: { id: string }) => agencies.employerName(p.id) || agencies.agencyName(p.id) || 'FRG';
+
   return <div className="space-y-4">
+    <div className="flex flex-wrap items-center gap-2">
+      <Input aria-label="Search roster" placeholder="Search name or position…" value={q} onChange={e => setQ(e.target.value)} className="h-8 w-56" />
+      {canWrite && selectedPeople.length > 0 && <>
+        <span className="text-sm font-medium">{selectedPeople.length} selected</span>
+        <PersonnelBulkActions people={selectedPeople} worksFor={worksFor} onDone={() => setSel(new Set())} />
+        <Button size="sm" variant="ghost" onClick={() => setSel(new Set())}>Clear</Button>
+      </>}
+    </div>
     {groups.length === 0 && <p className="text-sm text-muted-foreground">No one actively assigned.</p>}
     {groups.map(([role, list]) => <section key={role} className="border rounded-md bg-card" aria-label={`${role} group`}>
       <h3 className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm font-semibold border-b bg-muted/40">{role === 'No role' ? 'No role' : `${role}s`}
