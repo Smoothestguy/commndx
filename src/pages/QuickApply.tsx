@@ -10,6 +10,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, CheckCircle2, AlertTriangle, MapPin, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { SEO } from "@/components/SEO";
+import { IntakeConsentBlock } from "@/components/intake/IntakeConsentBlock";
+import { GenderRadio } from "@/components/intake/GenderRadio";
+import { ProfilePhotoCapture } from "@/components/intake/ProfilePhotoCapture";
+import { INTAKE_TEXT, IntakeLang, SMS_CONSENT_VERSION, PHOTO_CONSENT_VERSION } from "@/lib/intakeConsents";
 
 type Applicant = {
   id: string;
@@ -51,6 +55,12 @@ export default function QuickApply() {
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [lang, setLang] = useState<IntakeLang>(() => (searchParams.get("lang") === "es" || navigator.language?.startsWith("es") ? "es" : "en"));
+  const [consents, setConsents] = useState({ sms: false, photo: false });
+  const [gender, setGender] = useState<"male" | "female" | null>(null);
+  const [newPhoto, setNewPhoto] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [errs, setErrs] = useState<{ sms?: string | null; photo?: string | null; gender?: string | null; pic?: string | null }>({});
 
   useEffect(() => {
     if (!token) return;
@@ -70,6 +80,16 @@ export default function QuickApply() {
 
   const handleConfirm = async () => {
     if (!token) return;
+    const t = INTAKE_TEXT[lang];
+    const needsPhoto = !invite?.applicant?.photo_url && !newPhoto;
+    const e = {
+      sms: consents.sms ? null : t.smsError,
+      photo: consents.photo ? null : t.photoError,
+      gender: gender ? null : t.genderError,
+      pic: needsPhoto ? t.photoRequired : null,
+    };
+    setErrs(e);
+    if (e.sms || e.photo || e.gender || e.pic || photoBusy) { toast.error(e.sms || e.photo || e.gender || e.pic || t.uploading); return; }
     setSubmitting(true);
     try {
       const agency=searchParams.get('agency');
@@ -81,6 +101,14 @@ export default function QuickApply() {
       if (error) throw error;
       const res = data as any;
       if (!res?.success) throw new Error(res?.error || "Failed to submit");
+      if (res.application_id) {
+        const { error: ie } = await supabase.rpc("record_applicant_intake" as any, {
+          _application_id: res.application_id, _gender: gender, _photo_url: newPhoto,
+          _sms_consent: consents.sms, _sms_version: SMS_CONSENT_VERSION,
+          _photo_consent: consents.photo, _photo_version: PHOTO_CONSENT_VERSION, _language: lang,
+        });
+        if (ie) console.warn("[QuickApply] intake record failed", ie.message);
+      }
       setSubmitted(true);
     } catch (e: any) {
       toast.error(e?.message || "Something went wrong");
@@ -190,7 +218,7 @@ export default function QuickApply() {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3">
               <Avatar className="h-14 w-14">
-                {a.photo_url ? <AvatarImage src={a.photo_url} alt="" /> : null}
+                {(newPhoto || a.photo_url) ? <AvatarImage src={newPhoto || a.photo_url || ""} alt="" /> : null}
                 <AvatarFallback>{initials || "?"}</AvatarFallback>
               </Avatar>
               <div>
@@ -221,6 +249,15 @@ export default function QuickApply() {
                 </div>
               </div>
             )}
+
+            <div className="flex justify-end gap-1 text-xs">
+              {(["en", "es"] as const).map((l) => (
+                <Button key={l} type="button" size="sm" variant={lang === l ? "secondary" : "ghost"} onClick={() => setLang(l)}>{l === "en" ? "English" : "Español"}</Button>
+              ))}
+            </div>
+            <IntakeConsentBlock lang={lang} value={consents} onChange={(v) => { setConsents(v); setErrs((x) => ({ ...x, sms: null, photo: null })); }} errors={{ sms: errs.sms, photo: errs.photo }} />
+            <GenderRadio lang={lang} value={gender} onChange={(g) => { setGender(g); setErrs((x) => ({ ...x, gender: null })); }} error={errs.gender} />
+            <ProfilePhotoCapture lang={lang} value={newPhoto || a.photo_url} onChange={(u) => { setNewPhoto(u); setErrs((x) => ({ ...x, pic: null })); }} consented={consents.photo} required={!a.photo_url} error={errs.pic} onUploadingChange={setPhotoBusy} onError={(m) => toast.error(m)} />
 
             <Alert>
               <AlertTitle className="text-sm">One-tap apply</AlertTitle>
