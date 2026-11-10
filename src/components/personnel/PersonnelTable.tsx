@@ -72,6 +72,7 @@ interface PersonnelTableProps {
   onClearSelection: () => void;
   onPrintBadges: () => void;
   tagsByPerson?: Record<string, string[]>;
+  bulkActions?: React.ReactNode;
   customerName?: (id: string) => string | undefined;
 }
 
@@ -90,6 +91,7 @@ export function PersonnelTable({
   onPrintBadges,
   tagsByPerson,
   customerName,
+  bulkActions,
 }: PersonnelTableProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -571,6 +573,7 @@ export function PersonnelTable({
               <Printer className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
               Print Badges
             </Button>
+            {bulkActions}
             <Button
               size="sm"
               variant="outline"
