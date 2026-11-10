@@ -199,3 +199,11 @@
 
 # Task-order history
 - [x] Compact TO table with resulting totals, expandable details, selected/full/per-row PDF and XLSX (project locations + Event Manager). Verified on 5049-FCOCO.
+
+# Personnel overhaul
+- [x] Employer segmentation tabs (FRG / Agency / Customer / Bench) with counts; customer name + Non-billable chips; FRG→agency→customer grouping in Assign personnel.
+- [x] Bench (on_bench/rank/note), bench tab, row + bulk add/remove, star marker.
+- [x] Capability tags (personnel_capabilities) with type-ahead editor, directory + assign-dialog tag filters.
+- [x] Profile History (assignments + hours + manager note).
+- [x] Light table header token app-wide.
+- [ ] Roll the shared bulk/search/tag behaviors into project/location rosters, applicant pool, assets, attendance and Event Manager grids (directory + bench + assign dialog done).

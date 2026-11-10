@@ -22,6 +22,10 @@ import { SendSiteTextDialog, TextedCaption, useLastSiteTexts } from "./SendSiteT
 import { autoMobilize, useInvalidateStatus } from "@/integrations/supabase/hooks/usePersonnelStatus";
 import { ROLE_TAGS } from "@/lib/roleTags";
 import { cn } from "@/lib/utils";
+import { usePersonnelTags } from "@/hooks/usePersonnelTags";
+import { BenchStar, TagChips, TagFilter } from "@/components/personnel/PersonnelTags";
+import { NonBillableChip } from "@/components/personnel/NonBillableChip";
+import { SEGMENT_LABEL, matchesAllTags, personnelSegment, pickerCompare } from "@/lib/personnelSegment";
 import {
   LocationStaffingSummary, useActivePersonnelLite, useAddLocationRequirement, useAssignPersonnel,
   useDeleteLocationRequirement, useLocationAssignments, useLocationRequirements, useUnassignPersonnel,
@@ -115,6 +119,8 @@ export function AssignDialog({ locationId, open, onOpenChange, assignedIds, role
   const [quick, setQuick] = useState(false);
   const [quickText, setQuickText] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const { data: tagData } = usePersonnelTags();
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [role, setRole] = useState(defaultRole ?? "");
   const [seenDefault, setSeenDefault] = useState(defaultRole);
@@ -124,33 +130,38 @@ export function AssignDialog({ locationId, open, onOpenChange, assignedIds, role
     const s = q.trim().toLowerCase();
     const digits = s.replace(/\D/g, "");
     return people.filter((p) => {
+      if (!matchesAllTags(tagData?.byPerson[p.id], tags)) return false;
       if (!s) return true;
       const name = `${p.first_name ?? ""} ${p.last_name ?? ""}`.toLowerCase();
       return name.includes(s) || (!!digits && (p.phone ?? "").replace(/\D/g, "").includes(digits));
-    }).slice(0, 200);
-  }, [people, q]);
+    }).sort(pickerCompare).slice(0, 200);
+  }, [people, q, tags, tagData]);
 
   const toggle = (id: string) => setSel((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const opts = roleOptions.length ? roleOptions : ([...ROLE_TAGS] as string[]);
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) { setSel(new Set()); setQ(""); setRole(defaultRole ?? ""); } onOpenChange(o); }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { setSel(new Set()); setQ(""); setTags([]); setRole(defaultRole ?? ""); } onOpenChange(o); }}>
       <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
         <DialogHeader><DialogTitle>Assign personnel</DialogTitle></DialogHeader>
         {(isAdmin || isManager) && <Button size="sm" variant="outline" onClick={() => setQuick(v => !v)}><Plus className="h-4 w-4 mr-1" />Quick add</Button>}
         {quick && <QuickAddPerson locationId={locationId} role={role} onDone={(id, hasPhone) => { setQuick(false); if (hasPhone) setQuickText(id); else { onOpenChange(false); } }} />}
         {!quick && <><Input placeholder="Search name or phone" value={q} onChange={(e) => setQ(e.target.value)} />
+        <TagFilter value={tags} onChange={setTags} />
         <div className="max-h-[50vh] overflow-y-auto border rounded-md divide-y">
           {isLoading ? <div className="p-4"><Loader2 className="h-4 w-4 animate-spin" /></div> :
             filtered.length === 0 ? <p className="p-4 text-sm text-muted-foreground">No matches.</p> :
-            filtered.map((p) => {
+            filtered.map((p, i) => {
               const already = assignedIds.has(p.id);
-              return (
-                <label key={p.id} className={cn("flex items-center gap-3 px-3 py-2 min-h-11 cursor-pointer", already && "opacity-60 cursor-not-allowed")}>
+              const segment = personnelSegment(p);
+              const header = i === 0 || personnelSegment(filtered[i - 1]) !== segment;
+              return (<div key={p.id}>
+                {header && <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground bg-muted/50">{SEGMENT_LABEL[segment]}</div>}
+                <label className={cn("flex items-center gap-3 px-3 py-2 min-h-11 cursor-pointer", already && "opacity-60 cursor-not-allowed")}>
                   <Checkbox checked={already || sel.has(p.id)} disabled={already} onCheckedChange={() => toggle(p.id)} />
-                  <span className="flex-1 min-w-0 text-sm truncate">{[p.first_name, p.last_name].filter(Boolean).join(" ")}</span>
+                  <span className="flex-1 min-w-0 text-sm truncate"><BenchStar on={p.on_bench} /> {[p.first_name, p.last_name].filter(Boolean).join(" ")} <NonBillableChip value={p.non_billable} /> <TagChips tags={tagData?.byPerson[p.id]} max={3} /></span>
                   <span className="text-xs text-muted-foreground shrink-0">{already ? "Assigned" : p.phone}</span>
-                </label>
+                </label></div>
               );
             })}
         </div>

@@ -53,6 +53,8 @@ import { MobilePersonnelCard } from "./MobilePersonnelCard";
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { TablePagination } from "@/components/shared/TablePagination";
 import { PersonnelRolesDialog } from "./PersonnelRolesDialog";
+import { BenchStar, TagChips } from "./PersonnelTags";
+import { NonBillableChip } from "./NonBillableChip";
 
 type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
 
@@ -69,6 +71,9 @@ interface PersonnelTableProps {
   onSelectAll: () => void;
   onClearSelection: () => void;
   onPrintBadges: () => void;
+  tagsByPerson?: Record<string, string[]>;
+  bulkActions?: React.ReactNode;
+  customerName?: (id: string) => string | undefined;
 }
 
 export function PersonnelTable({
@@ -84,6 +89,9 @@ export function PersonnelTable({
   onSelectAll,
   onClearSelection,
   onPrintBadges,
+  tagsByPerson,
+  customerName,
+  bulkActions,
 }: PersonnelTableProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -194,19 +202,6 @@ export function PersonnelTable({
 
   // Define columns for EnhancedDataTable
   const columns: EnhancedColumn<Personnel>[] = [
-    ...(selectionMode ? [{
-      key: "select",
-      header: "",
-      sortable: false,
-      filterable: false,
-      render: (person: Personnel) => (
-        <Checkbox
-          checked={selectedIds.includes(person.id)}
-          onCheckedChange={() => onToggleSelection(person.id)}
-          onClick={(e: React.MouseEvent) => e.stopPropagation()}
-        />
-      ),
-    }] : []),
     {
       key: "action",
       header: "Action",
@@ -296,6 +291,8 @@ export function PersonnelTable({
           >
             {person.first_name} {person.last_name}
           </Link>
+          <BenchStar on={person.on_bench} />
+          {person.employer_customer_id && <NonBillableChip value employer={customerName?.(person.employer_customer_id) ? `${customerName(person.employer_customer_id)} (customer)` : undefined} />}
           <ComplianceBadge personnel={person} compact />
           {(person as any).portal_required === false && (
             <Badge variant="outline" className="gap-1 text-xs">
@@ -380,27 +377,36 @@ export function PersonnelTable({
     },
     {
       key: "vendor",
-      header: "Vendor",
+      header: "Works for",
       sortable: true,
       filterable: true,
-      getValue: (person) => getVendor(person.vendor_id)?.name || "",
+      getValue: (person) => person.employer_customer_id ? (customerName?.(person.employer_customer_id) || "Customer") : getVendor(person.vendor_id)?.name || "FRG",
       render: (person: Personnel) => {
+        if (person.employer_customer_id) {
+          const n = customerName?.(person.employer_customer_id);
+          return <NonBillableChip value employer={n ? `${n} (customer)` : undefined} />;
+        }
         const vendor = getVendor(person.vendor_id);
         return vendor ? (
-          <Link
-            to={`/vendors/${vendor.id}`}
-            className="text-primary hover:underline flex items-center gap-1 text-sm"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Building2 className="h-3 w-3 shrink-0" />
-            <span className="max-w-[100px] truncate">
-              {vendor.name}
-            </span>
-          </Link>
+          <span className="inline-flex items-center gap-1">
+            <Link to={`/vendors/${vendor.id}`} className="text-primary hover:underline flex items-center gap-1 text-sm" onClick={(e) => e.stopPropagation()}>
+              <Building2 className="h-3 w-3 shrink-0" />
+              <span className="max-w-[120px] truncate">{vendor.name}</span>
+            </Link>
+            <NonBillableChip value={person.non_billable} />
+          </span>
         ) : (
-          <span className="text-muted-foreground">—</span>
+          <span className="inline-flex items-center gap-1 text-muted-foreground text-sm">FRG <NonBillableChip value={person.non_billable} /></span>
         );
       },
+    },
+    {
+      key: "tags",
+      header: "Tags",
+      sortable: true,
+      filterable: true,
+      getValue: (person) => (tagsByPerson?.[person.id] ?? []).join(", "),
+      render: (person: Personnel) => <TagChips tags={tagsByPerson?.[person.id]} max={3} />,
     },
     {
       key: "rate",
@@ -554,6 +560,7 @@ export function PersonnelTable({
               <Printer className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
               Print Badges
             </Button>
+            {bulkActions}
             <Button
               size="sm"
               variant="outline"
@@ -590,6 +597,13 @@ export function PersonnelTable({
           data={personnel}
           columns={columns}
           rowHref={person => `/personnel/${person.id}`}
+          selectable={selectionMode}
+          selectedIds={new Set(selectedIds)}
+          onSelectionChange={(next) => {
+            const cur = new Set(selectedIds);
+            for (const id of next) if (!cur.has(id)) onToggleSelection(id);
+            for (const id of cur) if (!next.has(id) && personnel.some(p => p.id === id)) onToggleSelection(id);
+          }}
         />
       </div>
 

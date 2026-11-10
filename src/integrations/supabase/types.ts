@@ -5756,6 +5756,8 @@ export type Database = {
           bank_routing_number_encrypted: string | null
           banking_info_updated_at: string | null
           banking_info_updated_by: string | null
+          bench_note: string | null
+          bench_rank: number | null
           bill_rate: number | null
           citizenship_status: string | null
           city: string | null
@@ -5793,6 +5795,7 @@ export type Database = {
           merged_into_id: string | null
           non_billable: boolean
           notes: string | null
+          on_bench: boolean
           onboarding_completed_at: string | null
           onboarding_status: string | null
           pay_rate: number | null
@@ -5833,6 +5836,8 @@ export type Database = {
           bank_routing_number_encrypted?: string | null
           banking_info_updated_at?: string | null
           banking_info_updated_by?: string | null
+          bench_note?: string | null
+          bench_rank?: number | null
           bill_rate?: number | null
           citizenship_status?: string | null
           city?: string | null
@@ -5870,6 +5875,7 @@ export type Database = {
           merged_into_id?: string | null
           non_billable?: boolean
           notes?: string | null
+          on_bench?: boolean
           onboarding_completed_at?: string | null
           onboarding_status?: string | null
           pay_rate?: number | null
@@ -5910,6 +5916,8 @@ export type Database = {
           bank_routing_number_encrypted?: string | null
           banking_info_updated_at?: string | null
           banking_info_updated_by?: string | null
+          bench_note?: string | null
+          bench_rank?: number | null
           bill_rate?: number | null
           citizenship_status?: string | null
           city?: string | null
@@ -5947,6 +5955,7 @@ export type Database = {
           merged_into_id?: string | null
           non_billable?: boolean
           notes?: string | null
+          on_bench?: boolean
           onboarding_completed_at?: string | null
           onboarding_status?: string | null
           pay_rate?: number | null
@@ -6288,6 +6297,68 @@ export type Database = {
             columns: ["personnel_id"]
             isOneToOne: false
             referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personnel_engagement_notes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          location_id: string | null
+          note: string
+          personnel_id: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          location_id?: string | null
+          note?: string
+          personnel_id: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          location_id?: string | null
+          note?: string
+          personnel_id?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_engagement_notes_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_engagement_notes_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_engagement_notes_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_engagement_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]

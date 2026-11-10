@@ -33,6 +33,8 @@ import { useGetOrCreateConversation } from "@/integrations/supabase/hooks/useCon
 import { useMessageDrawer } from "@/contexts/MessageDrawerContext";
 import { InviteToPortalDialog } from "@/components/personnel/InviteToPortalDialog";
 import { StatusHistoryCard } from "@/components/personnel/lifecycle/StatusHistoryCard";
+import { PersonnelHistory } from '@/components/personnel/PersonnelHistory';
+import { BenchStar, PersonnelTagEditor } from '@/components/personnel/PersonnelTags';
 import { PersonnelProjectsList } from "@/components/personnel/PersonnelProjectsList";
 import { PersonnelCommunicationLog } from "@/components/personnel/PersonnelCommunicationLog";
 import { W9FormView } from "@/components/personnel/W9FormView";
@@ -394,7 +396,7 @@ const PersonnelDetail = () => {
                     <Select value={personnel.employer_customer_id || "__none__"} onValueChange={v => updatePersonnel.mutate({ id: personnel.id, updates: v === "__none__" ? { employer_customer_id: null } : employerIds(v, null) })} disabled={updatePersonnel.isPending}><SelectTrigger aria-label="Employer (customer)" className="h-8 w-full sm:w-64"><SelectValue placeholder="Employer (customer)" /></SelectTrigger><SelectContent><SelectItem value="__none__">No customer employer</SelectItem>{customers.map(customer => <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>)}</SelectContent></Select>
                   </>}
                   <NonBillableChip value={personnel.non_billable} employer={personnel.employer_customer_id ? (customers.find(c => c.id === personnel.employer_customer_id)?.name ? `${customers.find(c => c.id === personnel.employer_customer_id)?.name} (customer)` : undefined) : agencies.find(v => v.id === personnel.vendor_id)?.name} />
-                  {personnel.employer_customer_id && <Badge variant="outline" className="text-muted-foreground font-normal">{customers.find(c => c.id === personnel.employer_customer_id)?.name || 'Employer'} (customer)</Badge>}
+                  {(isAdmin || isManager) ? <Button size="sm" variant={personnel.on_bench ? "secondary" : "outline"} className="h-8" disabled={updatePersonnel.isPending} onClick={() => updatePersonnel.mutate({ id: personnel.id, updates: personnel.on_bench ? { on_bench: false, bench_rank: null } : { on_bench: true } })}><BenchStar on className={personnel.on_bench ? "" : "fill-none"} />&nbsp;{personnel.on_bench ? "On bench" : "Add to bench"}</Button> : <BenchStar on={personnel.on_bench} />}
                   {!personnel.employer_customer_id && personnel.vendor_id && (
                     <Link to={`/vendors/${personnel.vendor_id}`}>
                       <Badge variant="outline" className="gap-1 cursor-pointer hover:bg-accent">
@@ -583,7 +585,7 @@ const PersonnelDetail = () => {
           <ScrollArea className="w-full whitespace-nowrap">
             <TabsList className="inline-flex w-max min-w-full h-auto gap-1 p-1">
               <TabsTrigger value="personal" className="px-3 py-1.5">Personal</TabsTrigger>
-              <TabsTrigger value="projects" className="px-3 py-1.5">Projects</TabsTrigger>
+              <TabsTrigger value="projects" className="px-3 py-1.5">Projects & History</TabsTrigger>
               <TabsTrigger value="assets" className="px-3 py-1.5">Assets</TabsTrigger>
               <TabsTrigger value="documents" className="px-3 py-1.5">Documents</TabsTrigger>
               <TabsTrigger value="i9" className="px-3 py-1.5">I-9</TabsTrigger>
@@ -679,6 +681,8 @@ const PersonnelDetail = () => {
           </TabsContent>
 
           <TabsContent value="projects" className="space-y-4">
+            <Card><CardHeader className="pb-2"><CardTitle className="text-base">Capability tags</CardTitle></CardHeader><CardContent><PersonnelTagEditor personnelId={personnel.id} canEdit={isAdmin || isManager} /></CardContent></Card>
+            <Card><CardHeader className="pb-2"><CardTitle className="text-base">History</CardTitle></CardHeader><CardContent><PersonnelHistory personnelId={personnel.id} canEdit={isAdmin || isManager} /></CardContent></Card>
             <StatusHistoryCard personnelId={personnel.id} />
             <PersonnelProjectsList personnelId={personnel.id} />
           </TabsContent>
