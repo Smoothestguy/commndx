@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { MessageSquare, Star, StarOff, Tag, Download, UserCog } from 'lucide-react';
+import { MessageSquare, Star, StarOff, Tag, Download, UserCog, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { SendSiteTextDialog } from '@/components/project-hub/SendSiteTextDialog';
 import { TagInput } from './PersonnelTags';
+import { BulkAssignLocationDialog } from './BulkAssignLocationDialog';
 import { useAddTags, useBulkPersonnelUpdate } from '@/hooks/usePersonnelTags';
 import { toast } from 'sonner';
 
@@ -18,6 +19,7 @@ export function PersonnelBulkActions({ people, worksFor, tagsByPerson, onDone }:
 }) {
   const [textOpen, setTextOpen] = useState(false);
   const [tagOpen, setTagOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
   const upd = useBulkPersonnelUpdate();
   const addTags = useAddTags();
   const ids = people.map(p => p.id);
@@ -33,6 +35,7 @@ export function PersonnelBulkActions({ people, worksFor, tagsByPerson, onDone }:
   if (!ids.length) return null;
   return (
     <>
+      <Button size="sm" variant="outline" onClick={() => setAssignOpen(true)}><MapPin className="h-4 w-4 mr-1" />Assign to location</Button>
       <Button size="sm" variant="outline" onClick={() => setTextOpen(true)}><MessageSquare className="h-4 w-4 mr-1" />Text punch link</Button>
       <Button size="sm" variant="outline" disabled={upd.isPending} onClick={() => bench(true)}><Star className="h-4 w-4 mr-1" />Add to bench</Button>
       <Button size="sm" variant="outline" disabled={upd.isPending} onClick={() => bench(false)}><StarOff className="h-4 w-4 mr-1" />Remove from bench</Button>
@@ -53,6 +56,7 @@ export function PersonnelBulkActions({ people, worksFor, tagsByPerson, onDone }:
         </DropdownMenuContent>
       </DropdownMenu>
       <Button size="sm" variant="outline" onClick={exportCsv}><Download className="h-4 w-4 mr-1" />Export</Button>
+      <BulkAssignLocationDialog open={assignOpen} onOpenChange={setAssignOpen} personnelIds={ids} onDone={onDone} />
       <SendSiteTextDialog open={textOpen} onOpenChange={setTextOpen} personnelIds={ids} />
     </>
   );
