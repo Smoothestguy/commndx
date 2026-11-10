@@ -292,6 +292,7 @@ export function PersonnelTable({
             {person.first_name} {person.last_name}
           </Link>
           <BenchStar on={person.on_bench} />
+          {person.employer_customer_id && <NonBillableChip value employer={customerName?.(person.employer_customer_id) ? `${customerName(person.employer_customer_id)} (customer)` : undefined} />}
           <ComplianceBadge personnel={person} compact />
           {(person as any).portal_required === false && (
             <Badge variant="outline" className="gap-1 text-xs">
