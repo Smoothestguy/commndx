@@ -206,4 +206,5 @@
 - [x] Capability tags (personnel_capabilities) with type-ahead editor, directory + assign-dialog tag filters.
 - [x] Profile History (assignments + hours + manager note).
 - [x] Light table header token app-wide.
-- [ ] Roll the shared bulk/search/tag behaviors into project/location rosters, applicant pool, assets, attendance and Event Manager grids (directory + bench + assign dialog done).
+- [x] Location roster: search + row select + shared bulk bar (verified 5049-FCOCO). Applicant pool already selectable via shared table.
+- [ ] Roll shared bulk/search into assets, attendance and Event Manager grids; add "Assign to location" bulk action.
