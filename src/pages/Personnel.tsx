@@ -40,6 +40,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useSessionState } from "@/hooks/useSessionState";
 import { SearchInput } from "@/components/ui/search-input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -54,21 +55,21 @@ import { matchesAllTags, personnelSegment } from "@/lib/personnelSegment";
 type Seg = "all" | "frg" | "agency" | "customer" | "bench";
 
 const Personnel = () => {
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("active");
-  const [everifyStatus, setEverifyStatus] = useState("all");
-  const [vendorId, setVendorId] = useState("all");
+  const [search, setSearch] = useSessionState("personnel:search", "");
+  const [status, setStatus] = useSessionState("personnel:status", "active");
+  const [everifyStatus, setEverifyStatus] = useSessionState("personnel:everify", "all");
+  const [vendorId, setVendorId] = useSessionState("personnel:vendor", "all");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [bulkBadgeDialogOpen, setBulkBadgeDialogOpen] = useState(false);
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectionMode, setSelectionMode] = useSessionState("personnel:selMode", true);
+  const [selectedIds, setSelectedIds] = useSessionState<string[]>("personnel:selected", []);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [seg, setSeg] = useState<Seg>("all");
-  const [customerId, setCustomerId] = useState("all");
-  const [tagFilter, setTagFilter] = useState<string[]>([]);
+  const [seg, setSeg] = useSessionState<Seg>("personnel:seg", "all");
+  const [customerId, setCustomerId] = useSessionState("personnel:customer", "all");
+  const [tagFilter, setTagFilter] = useSessionState<string[]>("personnel:tags", []);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const { isAdmin, isManager } = useUserRole();
@@ -307,10 +308,7 @@ const Personnel = () => {
           </div>
         ) : visible.length > 0 ? (
           <PersonnelTable
-            personnel={visible.slice(
-              (currentPage - 1) * rowsPerPage,
-              currentPage * rowsPerPage
-            )}
+            personnel={visible}
             totalCount={visible.length}
             currentPage={currentPage}
             rowsPerPage={rowsPerPage}
