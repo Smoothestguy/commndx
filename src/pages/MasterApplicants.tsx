@@ -1,3 +1,5 @@
+import { EnhancedDataTable, type EnhancedColumn } from "@/components/shared/EnhancedDataTable";
+import { useSessionState } from "@/hooks/useSessionState";
 import { ApplicantTagBadges, ApplicantNoteLine } from "@/components/staffing/ApplicantMetaInline";
 import { useApplicantCertSummary } from "@/hooks/useApplicantCertSummary";
 import { formatApplicantLocation } from "@/lib/applicantLocation";
@@ -99,12 +101,14 @@ export default function MasterApplicants() {
   const { data: rawData, isLoading } = useMasterApplicants();
   const resolveLocation = useApplicantLocations(rawData ?? []);
   const data = useMemo(() => rawData?.map(resolveLocation), [rawData, resolveLocation]);
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<string>("all");
-  const [hasPhone, setHasPhone] = useState<string>("all");
+  const [search, setSearch] = useSessionState("master-applicants:search", "");
+  const [status, setStatus] = useSessionState("master-applicants:status", "all");
+  const [hasPhone, setHasPhone] = useSessionState("master-applicants:phone", "all");
   const [sortKey, setSortKey] = useState<SortKey>("last_applied_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selection, setSelection] = useSessionState<string[]>("master-applicants:selection", []);
+  const selected = new Set(selection);
+  const setSelected = (next: Set<string> | ((prev: Set<string>) => Set<string>)) => setSelection(prev => [...(typeof next === "function" ? next(new Set(prev)) : next)]);
   const [inviteOpen, setInviteOpen] = useState(false);
 
   const filtered = useMemo(() => {
@@ -159,6 +163,15 @@ export default function MasterApplicants() {
     else { setSortKey(k); setSortDir(k === "name" || k === "city" ? "asc" : "desc"); }
   };
 
+  const columns: EnhancedColumn<Row>[] = [
+    { key: 'name', header: 'Name', width: 280, getValue: r => `${r.first_name} ${r.last_name}`, render: r => <span className="flex items-center gap-2"><ApplicantStarButton applicantId={r.id} starredAt={r.starred_at} /><span><span className="font-medium">{r.first_name} {r.last_name}</span><ApplicantTagBadges applicant={r} certs={certSummary[r.id]} /><ApplicantNoteLine applicant={r} /></span></span> },
+    { key: 'phone', header: 'Phone' }, { key: 'email', header: 'Email', width: 240 },
+    { key: 'location', header: 'Location', getValue: formatApplicantLocation },
+    { key: 'last_applied_at', header: 'Last applied', render: r => r.last_applied_at ? formatDistanceToNow(new Date(r.last_applied_at), { addSuffix: true }) : 'never' },
+    { key: 'last_posting_title', header: 'Last position' }, { key: 'application_count', header: '# apps' },
+    { key: 'status', header: 'Status', render: r => <Badge variant="outline">{r.status}</Badge> },
+  ];
+
   return (
     <div className="p-4 sm:p-6 space-y-4">
       <div className="flex items-center gap-3">
@@ -202,81 +215,10 @@ export default function MasterApplicants() {
           </div>
         </CardHeader>
         <CardContent>
-          {selected.size > 0 && (
-            <div className="flex items-center justify-between mb-3 rounded-md border bg-muted/40 px-3 py-2">
-              <div className="text-sm font-medium">{selected.size} selected</div>
-              <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}>Clear</Button>
-                <Button size="sm" onClick={() => setInviteOpen(true)}>
-                  <Send className="h-4 w-4 mr-1" /> Invite to Job
-                </Button>
-              </div>
-            </div>
-          )}
-
-          <div className="rounded-md border overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
-                    <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
-                  </TableHead>
-                  <TableHead className="cursor-pointer" onClick={() => clickSort("name")}>Name</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead className="cursor-pointer" onClick={() => clickSort("city")}>Location</TableHead>
-                  <TableHead className="cursor-pointer" onClick={() => clickSort("last_applied_at")}>Last applied</TableHead>
-                  <TableHead className="cursor-pointer text-right" onClick={() => clickSort("application_count")}># apps</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
-                ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No applicants match your filters.</TableCell></TableRow>
-                ) : filtered.map((r) => {
-                  const initials = `${r.first_name?.[0] ?? ""}${r.last_name?.[0] ?? ""}`.toUpperCase();
-                  const loc = formatApplicantLocation(r);
-                  return (
-                    <TableRow key={r.id} data-state={selected.has(r.id) ? "selected" : undefined}>
-                      <TableCell><Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} /></TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <ApplicantStarButton applicantId={r.id} starredAt={r.starred_at} />
-                          <Avatar className="h-8 w-8">
-                            {r.photo_url ? <AvatarImage src={r.photo_url} alt="" /> : null}
-                            <AvatarFallback className="text-xs">{initials || "?"}</AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="font-medium">{r.first_name} {r.last_name}</span>
-                              <ApplicantTagBadges applicant={r} certs={certSummary[r.id]} />
-                            </div>
-                            <ApplicantNoteLine applicant={r} className="max-w-[260px]" />
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        <div>{r.phone || <span className="text-muted-foreground">no phone</span>}</div>
-                        <div className="text-xs text-muted-foreground">{r.email}</div>
-                      </TableCell>
-                      <TableCell className="text-sm">{loc || <span className="text-muted-foreground">—</span>}</TableCell>
-                      <TableCell className="text-sm">
-                        {r.last_applied_at ? (
-                          <div>
-                            <div>{formatDistanceToNow(new Date(r.last_applied_at), { addSuffix: true })}</div>
-                            <div className="text-xs text-muted-foreground truncate max-w-[220px]">{r.last_posting_title || "—"}</div>
-                          </div>
-                        ) : <span className="text-muted-foreground">never</span>}
-                      </TableCell>
-                      <TableCell className="text-right">{r.application_count}</TableCell>
-                      <TableCell><Badge variant="outline" className="capitalize">{r.status}</Badge></TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+          <EnhancedDataTable tableId="master-applicants" data={filtered} columns={columns} selectedIds={selected} onSelectionChange={setSelected}
+            defaultSortKey="last_applied_at" defaultSortDirection="desc" exportName="applicant-pool" attention={r => !r.phone ? 'Missing phone' : null}
+            pinFirst={r => !!r.starred_at} emptyText={isLoading ? 'Loading…' : 'No applicants match your filters.'}
+            bulkActions={() => <Button size="sm" variant="outline" onClick={() => setInviteOpen(true)}><Send className="h-3.5 w-3.5 mr-1" />Invite to Job</Button>} />
 
           <div className="text-xs text-muted-foreground mt-2">
             Showing {filtered.length} of {data?.length ?? 0} applicants

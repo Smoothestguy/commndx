@@ -1,3 +1,5 @@
+import { EnhancedDataTable, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
+import { PersonnelBulkActions } from './PersonnelBulkActions';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -40,43 +42,18 @@ export function BenchList({ people, tagsByPerson, selected, onToggle, onToggleAl
   const upd = useBulkPersonnelUpdate();
   const [, force] = useState(0);
   if (!rows.length) return <p className="text-sm text-muted-foreground py-8 text-center">Nobody on the bench yet. Select people and choose “Add to bench”.</p>;
-  const allOn = rows.every(r => selected.has(r.id));
-  return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-muted/50">
-            <TableHead className="w-8"><Checkbox aria-label="Select all bench" checked={allOn} onCheckedChange={() => onToggleAll(rows.map(r => r.id))} /></TableHead>
-            <TableHead className="w-16">Rank</TableHead><TableHead>Name</TableHead><TableHead>Availability</TableHead>
-            <TableHead>Phone</TableHead><TableHead>Tags</TableHead><TableHead>Last project</TableHead><TableHead>Note</TableHead><TableHead className="w-10" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map(p => (
-            <TableRow key={p.id} data-state={selected.has(p.id) ? 'selected' : undefined}>
-              <TableCell><Checkbox aria-label={`Select ${p.first_name} ${p.last_name}`} checked={selected.has(p.id)} onCheckedChange={() => onToggle(p.id)} /></TableCell>
-              <TableCell>
-                {canEdit ? <Input type="number" min={1} defaultValue={p.bench_rank ?? ''} aria-label="Bench rank" className="h-8 w-14"
-                  onBlur={e => { const v = e.target.value ? Math.max(1, parseInt(e.target.value)) : null; if (v !== (p.bench_rank ?? null)) upd.mutate({ ids: [p.id], patch: { bench_rank: v } }); }} />
-                  : p.bench_rank ?? '—'}
-              </TableCell>
-              <TableCell className="font-medium whitespace-nowrap"><BenchStar on /> <Link to={`/personnel/${p.id}`} className="hover:underline hover:text-primary">{p.first_name} {p.last_name}</Link></TableCell>
-              <TableCell>{p.status !== 'active' ? <Badge variant="secondary">{p.status === 'do_not_hire' ? 'DNH' : 'Inactive'}</Badge>
-                : active[p.id] ? <Badge variant="outline" className="font-normal">On {active[p.id]}</Badge> : <Badge className="font-normal">Available</Badge>}</TableCell>
-              <TableCell className="whitespace-nowrap text-sm">{p.phone ? <a href={`tel:${p.phone}`} className="hover:underline">{p.phone}</a> : <span className="text-muted-foreground">—</span>}</TableCell>
-              <TableCell><TagChips tags={tagsByPerson?.[p.id]} /></TableCell>
-              <TableCell className="text-sm">{last[p.id] ?? <span className="text-muted-foreground">—</span>}</TableCell>
-              <TableCell className="min-w-[10rem]">
-                {canEdit ? <Input defaultValue={p.bench_note ?? ''} placeholder="Note" aria-label="Bench note" className="h-8"
-                  onBlur={e => { const v = e.target.value.trim() || null; if (v !== (p.bench_note ?? null)) upd.mutate({ ids: [p.id], patch: { bench_note: v } }); }} />
-                  : <span className="text-sm">{p.bench_note}</span>}
-              </TableCell>
-              <TableCell>{canEdit && <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Remove from bench"
-                onClick={() => upd.mutate({ ids: [p.id], patch: { on_bench: false, bench_rank: null } }, { onSuccess: () => force(x => x + 1) })}><StarOff className="h-4 w-4" /></Button>}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
+  const columns: EnhancedColumn<P>[] = [
+    { key: 'name', header: 'Name', width: 240, getValue: p => `${p.first_name} ${p.last_name}`, render: p => <span><BenchStar on /><Link to={`/personnel/${p.id}`} className="hover:underline">{p.first_name} {p.last_name}</Link></span> },
+    { key: 'bench_rank', header: 'Rank', render: p => canEdit ? <Input type="number" min={1} defaultValue={p.bench_rank ?? ''} aria-label="Bench rank" className="h-7 w-16" onBlur={e => { const n = Number(e.target.value); const v = e.target.value && Number.isFinite(n) ? Math.max(1, Math.floor(n)) : null; if (v !== (p.bench_rank ?? null)) upd.mutate({ ids: [p.id], patch: { bench_rank: v } }); }} /> : p.bench_rank ?? '—' },
+    { key: 'available', header: 'Availability', getValue: p => p.status !== 'active' ? p.status ?? '' : active[p.id] ? `On ${active[p.id]}` : 'Available' },
+    { key: 'phone', header: 'Phone' },
+    { key: 'tags', header: 'Tags', getValue: p => tagsByPerson?.[p.id]?.join(', ') ?? '', render: p => <TagChips tags={tagsByPerson?.[p.id]} /> },
+    { key: 'last', header: 'Last project', getValue: p => last[p.id] ?? '' },
+    { key: 'bench_note', header: 'Note', width: 240, render: p => canEdit ? <Input defaultValue={p.bench_note ?? ''} aria-label="Bench note" className="h-7" onBlur={e => { const v = e.target.value.trim() || null; if (v !== (p.bench_note ?? null)) upd.mutate({ ids: [p.id], patch: { bench_note: v } }); }} /> : p.bench_note },
+    { key: 'actions', header: 'Actions', sortable: false, filterable: false, noExport: true, render: p => canEdit && <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Remove from bench" onClick={() => upd.mutate({ ids: [p.id], patch: { on_bench: false, bench_rank: null } }, { onSuccess: () => force(x => x + 1) })}><StarOff className="h-3.5 w-3.5" /></Button> },
+  ];
+  return <EnhancedDataTable tableId="personnel-bench" data={rows} columns={columns} selectedIds={selected}
+    onSelectionChange={next => { for (const p of rows) if (next.has(p.id) !== selected.has(p.id)) onToggle(p.id); }}
+    exportName="bench" defaultSortKey="bench_rank" defaultSortDirection="asc" attention={p => !p.phone ? 'Missing phone' : null}
+    bulkActions={canEdit ? (people, clear) => <PersonnelBulkActions people={people} worksFor={() => 'FRG'} tagsByPerson={tagsByPerson} onDone={clear} /> : undefined} />;
 }

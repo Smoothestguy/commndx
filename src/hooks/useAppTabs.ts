@@ -21,7 +21,7 @@ const STORAGE_KEY = "workspaceTabs";
 const MAX_TABS = 15;
 export const HOME_KEY = "/";
 
-const EXCLUDED_PREFIXES = ["/auth", "/unauthorized", "/apply", "/onboarding", "/portal", "/vendor", "/subcontractor", "/punch", "/kiosk", "/sign", "/agency", "/customer-portal", "/join"];
+const EXCLUDED_PREFIXES = ["/vendors/onboarding", "/auth", "/unauthorized", "/apply", "/onboarding", "/portal", "/subcontractor", "/punch", "/kiosk", "/sign", "/agency", "/customer-portal", "/join"];
 
 const shouldTrack = (pathname: string) => !EXCLUDED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
@@ -76,6 +76,20 @@ export function useAppTabs() {
     });
   }, [activeKey, currentPath, location.pathname]);
 
+  // Capture scroll on every navigation, including links that open a new workspace tab.
+  useEffect(() => {
+    const save = () => {
+      if (!activeKey) return;
+      setTabs(prev => {
+        const next = prev.map(t => t.key === activeKey ? { ...t, scrollY: window.scrollY } : t);
+        writeStored(next);
+        return next;
+      });
+    };
+    window.addEventListener('scroll', save, { passive: true });
+    return () => window.removeEventListener('scroll', save);
+  }, [activeKey]);
+
   // Restore scroll after flipping to a tab.
   useEffect(() => {
     if (pendingScroll.current == null) return;
@@ -123,7 +137,8 @@ export function useAppTabs() {
     const keep = tabs.filter((t) => t.key === key || t.key === HOME_KEY);
     setTabs(keep);
     writeStored(keep);
-  }, [tabs]);
+    if (key !== activeKey) navigate(keep.find(t => t.key === key)?.path ?? key);
+  }, [tabs, activeKey, navigate]);
 
   const closeAll = useCallback(() => {
     const keep = [tabs.find((t) => t.key === HOME_KEY) ?? home()];

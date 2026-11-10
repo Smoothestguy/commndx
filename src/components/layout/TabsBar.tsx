@@ -34,6 +34,7 @@ export function TabsBar() {
             <ContextMenuTrigger asChild>
               <div
                 role="tab"
+                aria-label={tab.label}
                 aria-selected={isActive}
                 tabIndex={0}
                 onClick={() => activateTab(tab.key)}
@@ -48,14 +49,15 @@ export function TabsBar() {
                 <Icon className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">{tab.label}</span>
                 {!pinned && (
-                  <button
+                  <Button
+                    variant="ghost" size="icon"
                     type="button"
                     onClick={(e) => { e.stopPropagation(); closeTab(tab.key); }}
-                    className={cn("rounded p-0.5 hover:bg-muted-foreground/20 opacity-60 group-hover:opacity-100", isActive && "opacity-100")}
+                    className={cn("h-5 w-5 rounded p-0.5 hover:bg-muted-foreground/20 opacity-60 group-hover:opacity-100", isActive && "opacity-100")}
                     aria-label={`Close ${tab.label}`}
                   >
                     <X className="h-3 w-3" />
-                  </button>
+                  </Button>
                 )}
               </div>
             </ContextMenuTrigger>

@@ -73,6 +73,7 @@ interface ApplicationsTableProps {
   selectable?: boolean;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
+  bulkActions?: (rows: Application[], clear: () => void) => React.ReactNode;
 }
 
 export function ApplicationsTable({
@@ -87,6 +88,7 @@ export function ApplicationsTable({
   selectable = false,
   selectedIds,
   onSelectionChange,
+  bulkActions,
 }: ApplicationsTableProps) {
   const applications = useMemo(
     () => sortStarredFirst(rawApplications, (a) => a.applicants as any),
@@ -146,6 +148,7 @@ export function ApplicationsTable({
     },
     {
       key: "applicant",
+      frozen: true,
       header: "Applicant",
       sortable: true,
       filterable: true,
@@ -389,6 +392,9 @@ export function ApplicationsTable({
       selectable={selectable}
       selectedIds={selectedIds}
       onSelectionChange={onSelectionChange}
+      exportName="applicant-pool"
+      bulkActions={bulkActions}
+      attention={app => !app.applicants?.phone ? "Missing phone" : null}
     />
   );
 }

@@ -1,3 +1,4 @@
+import { useSessionState } from "@/hooks/useSessionState";
 import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { buildApplyUrl, buildApplyShareUrl } from "@/lib/applyLinks";
@@ -119,11 +120,11 @@ const findExperienceArray = (
 
 export default function StaffingApplications() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
-  const [projectFilter, setProjectFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [experienceFilter, setExperienceFilter] = useState<string>("all");
-  const [postingFilter, setPostingFilter] = useState<string>("all");
+  const [search, setSearch] = useSessionState("applicant-pool:search", "");
+  const [projectFilter, setProjectFilter] = useSessionState("applicant-pool:projectFilter", "all");
+  const [statusFilter, setStatusFilter] = useSessionState("applicant-pool:statusFilter", "all");
+  const [experienceFilter, setExperienceFilter] = useSessionState("applicant-pool:experienceFilter", "all");
+  const [postingFilter, setPostingFilter] = useSessionState("applicant-pool:postingFilter", "all");
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -131,7 +132,9 @@ export default function StaffingApplications() {
   const [showEditTaskOrderDialog, setShowEditTaskOrderDialog] = useState(false);
   const [editingPosting, setEditingPosting] = useState<{ id: string; formTemplateId: string | null } | null>(null);
   const [editingTaskOrder, setEditingTaskOrder] = useState<TaskOrder | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useSessionState<string[]>("applicant-pool:selection", []);
+  const selectedIds = new Set(selected);
+  const setSelectedIds = (next: Set<string> | ((prev: Set<string>) => Set<string>)) => setSelected(prev => [...(typeof next === "function" ? next(new Set(prev)) : next)]);
   const [activePostingsOpen, setActivePostingsOpen] = useState(false);
   
   // Pagination state
@@ -304,13 +307,6 @@ export default function StaffingApplications() {
       return true;
     });
   }, [applications, search, experienceFilter, postingFilter, formTemplates, neverApprovedApplicantIds]);
-
-  // Paginated applications
-  const paginatedApplications = useMemo(() => {
-    if (!filteredApplications) return [];
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    return filteredApplications.slice(startIndex, startIndex + rowsPerPage);
-  }, [filteredApplications, currentPage, rowsPerPage]);
 
   // Reset page when filters change
   useEffect(() => {
@@ -707,7 +703,7 @@ export default function StaffingApplications() {
 
       {/* Bulk Actions Bar */}
       {selectedIds.size > 0 && (
-        <Card className="border-primary/50 bg-primary/5">
+        <Card className="md:hidden border-primary/50 bg-primary/5">
           <CardContent className="py-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">
@@ -790,11 +786,12 @@ export default function StaffingApplications() {
       <Card>
         <CardContent className="p-0">
           <ApplicationsTable
-            applications={paginatedApplications}
+            applications={filteredApplications ?? []}
         isLoading={isLoading}
         selectable
         selectedIds={selectedIds}
         onSelectionChange={setSelectedIds}
+        bulkActions={(rows) => <Button size="sm" variant="outline" onClick={() => exportApplicationsToPDF(rows)}><File className="h-3.5 w-3.5 mr-1" />Selected PDF</Button>}
         onViewApplication={(app) => {
           setSelectedApp(app);
           setShowDetailDialog(true);
@@ -825,16 +822,7 @@ export default function StaffingApplications() {
         }}
         onToggleContacted={handleToggleContacted}
           />
-          <TablePagination
-            currentPage={currentPage}
-            totalCount={filteredApplications?.length || 0}
-            rowsPerPage={rowsPerPage}
-            onPageChange={setCurrentPage}
-            onRowsPerPageChange={(size) => {
-              setRowsPerPage(size);
-              setCurrentPage(1);
-            }}
-          />
+
         </CardContent>
       </Card>
 

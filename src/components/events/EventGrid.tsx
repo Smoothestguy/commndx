@@ -1,5 +1,13 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, isValidElement, type ReactNode } from 'react';
+import { useSessionState } from '@/hooks/useSessionState';
 import { EnhancedDataTable, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
+
+const plainText = (node: ReactNode): string => {
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(plainText).join(' ');
+  if (isValidElement<{ children?: ReactNode }>(node)) return plainText(node.props.children);
+  return '';
+};
 
 type Row = { id: string; cells: ReactNode[]; sort?: string[] };
 
@@ -8,14 +16,20 @@ export function EventGrid({ headers, rows, mobile = false, empty = 'No records y
   headers: string[]; rows: Row[]; empty?: string; mobile?: boolean; gridId?: string; selectable?: boolean;
   bulkActions?: (selected: Row[], clear: () => void) => ReactNode; exportName?: string;
 }) {
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const tableId = `event:${gridId ?? headers.join('|')}:${window.location.pathname}`;
+  const [ids, setIds] = useSessionState<string[]>(`${tableId}:selected`, []);
+  const selected = new Set(ids);
+  const setSelected = (next: Set<string>) => setIds([...next]);
   const columns = useMemo<EnhancedColumn<Row>[]>(() => headers.map((h, i) => ({
     key: `c${i}`,
     header: h,
     render: (r) => r.cells[i],
-    getValue: (r) => r.sort?.[i] ?? (typeof r.cells[i] === 'string' || typeof r.cells[i] === 'number' ? String(r.cells[i]) : null),
+    noExport: /^actions?$/i.test(h),
+    sortable: !/^actions?$/i.test(h),
+    filterable: !/^actions?$/i.test(h),
+    getValue: (r) => r.sort?.[i] ?? plainText(r.cells[i]),
   })), [headers]);
-  const tableId = `event:${gridId ?? headers.join('|')}`;
+
   return <>
     <div className={mobile ? 'hidden md:block' : ''}>
       <EnhancedDataTable

@@ -56,11 +56,11 @@ export function useTablePreferences({
     localStorage.setItem(getStorageKey(tableId), JSON.stringify(preferences));
   }, [tableId, preferences]);
 
-  const setSort = useCallback((key: string) => {
+  const setSort = useCallback((key: string, direction?: 'asc' | 'desc') => {
     setPreferences(prev => ({
       ...prev,
       sortKey: key,
-      sortDirection: prev.sortKey === key && prev.sortDirection === 'asc' ? 'desc' : 'asc',
+      sortDirection: direction ?? (prev.sortKey === key && prev.sortDirection === 'asc' ? 'desc' : 'asc'),
     }));
   }, []);
 

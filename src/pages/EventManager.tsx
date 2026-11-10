@@ -1,3 +1,4 @@
+import { useSessionState } from '@/hooks/useSessionState';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,8 +30,8 @@ const emptyData:CampData={companies:[],people:[],bunks:[],assignments:[],meals:[
 export default function EventManager() {const {isAdmin,isManager,loading}=useUserRole();if(loading)return <p className="p-6">Loading…</p>;if(!eventAccess([...(isAdmin?['admin']:[]),...(isManager?['manager']:[])]))return <Navigate to="/unauthorized" replace/>;return <CampWorkspace/>;}
 function CampWorkspace() {
  const {campId}=useParams();const catalog=useAssets();const api=useEventManager(campId);const customers=useQuery({queryKey:['events','customer-links'],queryFn:async()=>{const {data,error}=await supabase.from('customers').select('id,name,company').order('name').limit(1000);if(error)throw error;return data;}});const camp=api.camps.data?.find(c=>c.id===campId);const data=api.detail.data??emptyData;const zone=camp?.timezone??'America/Chicago';
- const [selectedDay,setDay]=useState(''),day=selectedDay||localDay(new Date().toISOString(),zone);
- const [form,setForm]=useState<FormSpec|null>(null),[tab,setTab]=useState('dashboard'),[search,setSearch]=useState(''),[companyFilter,setCompanyFilter]=useState(''),[selectedPerson,setPerson]=useState(''),[meal,setMeal]=useState('breakfast'),[tag,setTag]=useState(''),[scan,setScan]=useState(false),[badge,setBadge]=useState<{name:string;image:string;id:string}|null>(null),[busy,setBusy]=useState(false),[feedback,setFeedback]=useState(''),[from,setFrom]=useState(''),[to,setTo]=useState('');
+ const [selectedDay,setDay]=useSessionState(`event:${campId}:day`,''),day=selectedDay||localDay(new Date().toISOString(),zone);
+ const [form,setForm]=useState<FormSpec|null>(null),[tab,setTab]=useSessionState(`event:${campId}:tab`,'dashboard'),[search,setSearch]=useSessionState(`event:${campId}:search`,''),[companyFilter,setCompanyFilter]=useSessionState(`event:${campId}:companyFilter`,''),[selectedPerson,setPerson]=useState(''),[meal,setMeal]=useState('breakfast'),[tag,setTag]=useState(''),[scan,setScan]=useState(false),[badge,setBadge]=useState<{name:string;image:string;id:string}|null>(null),[busy,setBusy]=useState(false),[feedback,setFeedback]=useState(''),[from,setFrom]=useSessionState(`event:${campId}:from`,''),[to,setTo]=useSessionState(`event:${campId}:to`,'');
  const closed=camp?.status==='closed';
  const companyOptions=data.companies.map(c=>({value:c.id,label:c.name}));const personOptions=data.people.filter(p=>p.status==='in_camp').map(p=>({value:p.id,label:names(p)}));
  const companyName=(id:string)=>data.companies.find(c=>c.id===id)?.name??'—';const person=(id:string)=>data.people.find(p=>p.id===id);

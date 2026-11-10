@@ -53,6 +53,8 @@ export interface EnhancedColumn<T> {
   hideBelow?: 'sm' | 'md' | 'lg' | 'xl';
   /** Exclude from XLSX/CSV export (e.g. action columns). */
   noExport?: boolean;
+  /** Freeze this column instead of the first visible column. */
+  frozen?: boolean;
   /** Initial width in px; columns are resizable from the header edge. */
   width?: number;
 }
@@ -101,7 +103,7 @@ export function StatusPill({ value }: { value: string | null | undefined }) {
   return <span className={cn("inline-flex items-center rounded-full border px-2 py-px text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap", tone)}>{String(value).replace(/_/g, " ")}</span>;
 }
 
-function SortableHeader({ id, children, className, width, onResize }: { id: string; children: React.ReactNode; className?: string; width?: number; onResize: (w: number) => void }) {
+function SortableHeader({ id, children, className, width, onResize, left }: { left?: number; id: string; children: React.ReactNode; className?: string; width?: number; onResize: (w: number) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const ref = useRef<HTMLTableCellElement | null>(null);
   const startResize = (e: React.PointerEvent) => {
@@ -114,7 +116,7 @@ function SortableHeader({ id, children, className, width, onResize }: { id: stri
   return (
     <th
       ref={(n) => { setNodeRef(n); ref.current = n; }}
-      style={{ transform: CSS.Transform.toString(transform), transition, width, minWidth: width, maxWidth: width }}
+      style={{ transform: CSS.Transform.toString(transform), transition, width, minWidth: width, maxWidth: width, left }}
       className={cn("group relative text-left align-middle", className, isDragging && "opacity-50")}
       {...attributes}
     >
@@ -140,9 +142,9 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   columns,
   onRowClick,
   rowHref,
-  selectable = false,
-  selectedIds = new Set(),
-  onSelectionChange,
+  selectable = true,
+  selectedIds: controlledIds,
+  onSelectionChange: controlledSelection,
   defaultSortKey,
   defaultSortDirection = 'desc',
   pinFirst,
@@ -168,6 +170,15 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   const [pageSize, setPageSize] = useSessionState(`${scope}:size`, defaultPageSize);
   const [dense, setDense] = useSessionState(`grid:${tableId}:dense`, true);
   const [widths, setWidths] = useSessionState<Record<string, number>>(`grid:${tableId}:widths`, {});
+  const [selection, setSelection] = useSessionState<string[]>(`${scope}:selection`, []);
+  const selectedIds = controlledIds ?? new Set(selection);
+  const onSelectionChange = controlledSelection ?? ((ids: Set<string>) => setSelection([...ids]));
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    try { const pos = JSON.parse(sessionStorage.getItem(`${scope}:scroll`) ?? "[0,0]"); el.scrollTop = pos[0]; el.scrollLeft = pos[1]; } catch { /* unavailable storage */ }
+  }, [scope, data.length]);
   const [fullscreen, setFullscreen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -193,7 +204,8 @@ export function EnhancedDataTable<T extends { id: string | number }>({
       .filter((col): col is EnhancedColumn<T> => col !== undefined);
     // Columns added after preferences were saved still show.
     const missing = columns.filter(c => !preferences.columnOrder.includes(String(c.key)));
-    return [...ordered, ...missing];
+    const all = [...ordered, ...missing];
+    return [...all.filter(c => c.frozen), ...all.filter(c => !c.frozen)];
   }, [columns, preferences.columnOrder, preferences.visibleColumns]);
 
   const columnConfigs: ColumnConfig[] = useMemo(() => columns.map(col => ({
@@ -260,13 +272,10 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   };
   const clearSelection = () => onSelectionChange?.(new Set());
 
-  const handleSort = (key: string, direction: 'asc' | 'desc') => {
-    if (preferences.sortKey !== key) { setSort(key); if (direction === 'desc') setTimeout(() => setSort(key), 0); }
-    else if (preferences.sortDirection !== direction) setSort(key);
-  };
+  const handleSort = (key: string, direction: 'asc' | 'desc') => setSort(key, direction);
 
-  const exportRows = (format: "xlsx" | "csv") => {
-    const rows = selectedRows.length ? processedData.filter(i => selectedIds.has(String(i.id))) : processedData;
+  const exportRows = (format: "xlsx" | "csv", selected = false) => {
+    const rows = selected ? selectedRows : processedData;
     const cols = visibleColumns.filter(c => !c.noExport && c.header);
     const sheet = XLSX.utils.json_to_sheet(rows.map(r => Object.fromEntries(cols.map(c => [c.header, cellText(r, c)]))));
     const wb = XLSX.utils.book_new();
@@ -297,7 +306,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input ref={searchRef} value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} placeholder={searchPlaceholder} aria-label="Search grid" className="h-8 pl-7 pr-7 text-xs" />
-              {search && <button type="button" onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Clear search"><X className="h-3.5 w-3.5" /></button>}
+              {search && <Button variant="ghost" size="icon" type="button" onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Clear search"><X className="h-3.5 w-3.5" /></Button>}
             </div>
           )}
           {toolbar}
@@ -314,14 +323,14 @@ export function EnhancedDataTable<T extends { id: string | number }>({
         <div className="flex flex-wrap items-center gap-2 px-3 py-1.5 border-b border-border bg-primary/5 text-xs" role="region" aria-label="Bulk actions">
           <span className="font-semibold">{selectedRows.length} selected</span>
           {bulkActions?.(selectedRows, clearSelection)}
-          {exportName && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => exportRows("xlsx")}><Download className="h-3 w-3 mr-1" />Export selected</Button>}
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => exportRows("xlsx", true)}><Download className="h-3 w-3 mr-1" />Export selected</Button>
           <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={clearSelection}>Clear</Button>
         </div>
       )}
 
-      <div className={cn("overflow-auto", fullscreen && "flex-1")} style={fullscreen ? undefined : { maxHeight }}>
+      <div ref={scrollRef} onScroll={e => { try { sessionStorage.setItem(`${scope}:scroll`, JSON.stringify([e.currentTarget.scrollTop, e.currentTarget.scrollLeft])); } catch { /* unavailable storage */ } }} className={cn("overflow-auto", fullscreen && "flex-1")} style={fullscreen ? undefined : { maxHeight }}>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <table className={cn("w-full caption-bottom border-separate border-spacing-0", dense ? "text-xs" : "text-sm")}>
+          <table style={{ minWidth: leadWidth + visibleColumns.reduce((n, c) => n + (widths[String(c.key)] ?? c.width ?? 150), 0) }} className={cn("w-full table-fixed caption-bottom border-separate border-spacing-0", dense ? "text-xs" : "text-sm")}>
             <thead className="sticky top-0 z-20">
               <tr className="bg-table-header">
                 {hasLead && (
@@ -341,7 +350,8 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                       <SortableHeader
                         key={key}
                         id={key}
-                        width={widths[key] ?? column.width}
+                        width={widths[key] ?? column.width ?? 150}
+                        left={ci === 0 ? leadWidth : undefined}
                         onResize={(w) => setWidths(prev => ({ ...prev, [key]: w }))}
                         className={cn(
                           "bg-table-header text-table-header-foreground font-semibold whitespace-nowrap border-b border-table-border",
@@ -360,7 +370,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                           )}
                         </div>
                         <ColumnHeaderMenu
-                          column={columnConfigs.find(c => c.key === key)!}
+                          column={{ key, header: column.header, sortable: column.sortable, filterable: column.filterable }}
                           allColumns={columnConfigs}
                           visibleColumns={preferences.visibleColumns}
                           sortKey={preferences.sortKey}
@@ -397,7 +407,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                       </td>
                     )}
                     {visibleColumns.map((column, ci) => {
-                      const w = widths[String(column.key)] ?? column.width;
+                      const w = widths[String(column.key)] ?? column.width ?? 150;
                       return (
                         <td
                           key={String(column.key)}
@@ -410,8 +420,8 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                         >
                           <div className="truncate">
                             {rowHref && ci === 0
-                              ? <Link to={rowHref(item)} className="hover:text-primary hover:underline">{column.render ? column.render(item) : String((item as Record<string, unknown>)[String(column.key)] ?? '')}</Link>
-                              : column.render ? column.render(item) : String((item as Record<string, unknown>)[String(column.key)] ?? "")}
+                              ? <Link to={rowHref(item)} className="hover:text-primary hover:underline">{column.render ? column.render(item) : cellText(item, column)}</Link>
+                              : column.render ? column.render(item) : cellText(item, column)}
                           </div>
                         </td>
                       );
@@ -440,18 +450,19 @@ export function EnhancedDataTable<T extends { id: string | number }>({
             <DropdownMenuLabel className="text-xs">Columns</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {columns.filter(c => c.header).map(c => (
-              <DropdownMenuCheckboxItem key={String(c.key)} checked={preferences.visibleColumns.includes(String(c.key))} onCheckedChange={() => toggleColumnVisibility(String(c.key))} onSelect={e => e.preventDefault()} className="text-xs">{c.header}</DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem key={String(c.key)} checked={preferences.visibleColumns.includes(String(c.key))} disabled={visibleColumns.length === 1 && preferences.visibleColumns.includes(String(c.key))} onCheckedChange={() => toggleColumnVisibility(String(c.key))} onSelect={e => e.preventDefault()} className="text-xs">{c.header}</DropdownMenuCheckboxItem>
             ))}
             {Object.keys(widths).length > 0 && (<><DropdownMenuSeparator /><DropdownMenuItem className="text-xs" onSelect={() => setWidths({})}>Reset widths</DropdownMenuItem></>)}
           </DropdownMenuContent>
         </DropdownMenu>
-        {exportName && (
+        {(
           <DropdownMenu>
             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" title="Export" aria-label="Export"><Download className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              <DropdownMenuLabel className="text-xs">{selectedRows.length ? `Export ${selectedRows.length} selected` : `Export ${total} filtered rows`}</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs">{`Export ${total} filtered rows`}</DropdownMenuLabel>
               <DropdownMenuItem className="text-xs" onSelect={() => exportRows("xlsx")}>Excel (.xlsx)</DropdownMenuItem>
               <DropdownMenuItem className="text-xs" onSelect={() => exportRows("csv")}>CSV (.csv)</DropdownMenuItem>
+              {selectedRows.length > 0 && <><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => exportRows("xlsx", true)}>Selected Excel (.xlsx)</DropdownMenuItem><DropdownMenuItem onSelect={() => exportRows("csv", true)}>Selected CSV (.csv)</DropdownMenuItem></>}
             </DropdownMenuContent>
           </DropdownMenu>
         )}

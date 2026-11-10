@@ -1,3 +1,7 @@
+import { EnhancedDataTable, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
+import { useSessionState } from '@/hooks/useSessionState';
+import { assetCostBreakdown, marginPct } from '@/lib/assetCost';
+import { toast } from 'sonner';
 import { AssetResponsiblePicker } from './AssetResponsiblePicker';
 import {AssetNumberFields} from './AssetNumberFields';
 import { AssetOwnershipFields, emptyOwnership } from './AssetOwnershipFields';
@@ -208,6 +212,22 @@ export function LocationAssets({ projectId, locationId, locationName, canWrite, 
   const unassign = useUnassignAsset();
   const [open, setOpen] = useState(false);
   const [editAsset, setEditAsset] = useState<EditableAsset | null>(null);
+  const [selected, setSelected] = useSessionState<string[]>(`location-assets:${locationId}:selection`, []);
+  const [bulkEnd, setBulkEnd] = useState<AssetBillingRow[] | null>(null);
+  const columns: EnhancedColumn<AssetBillingRow>[] = [
+    { key: 'asset', header: 'Asset', width: 250, getValue: r => r.assets?.label ?? 'Asset', render: r => <span className="flex items-center gap-1"><AssetIcon type={r.assets?.type} />{r.assets?.asset_number && !r.assets?.label?.includes(r.assets.asset_number) && `${r.assets.asset_number} · `}{r.assets?.label ?? 'Asset'}</span> },
+    { key: 'ownership', header: 'Ownership', getValue: r => ownershipText(r.assets) },
+    { key: 'person', header: 'Responsible', getValue: r => r.personnel ? `${r.personnel.first_name} ${r.personnel.last_name}` : '' },
+    { key: 'type', header: 'Type', getValue: r => r.assets?.type ?? '' },
+    { key: 'start_at', header: 'Arrival', render: r => r.start_at ? format(new Date(r.start_at), 'MM/dd/yyyy HH:mm') : '—' }, { key: 'end_at', header: 'Departure', render: r => r.end_at ? format(new Date(r.end_at), 'MM/dd/yyyy HH:mm') : 'On site' }, { key: 'days', header: 'Days' },
+    ...(canBill ? [
+      { key: 'bill', header: 'Bill rate', getValue: (r: AssetBillingRow) => r.billable ? r.rate : null },
+      { key: 'cost', header: 'Our cost/day', getValue: (r: AssetBillingRow) => r.assets ? assetCostBreakdown(r.assets).perDay : null },
+      { key: 'margin', header: 'Margin %', getValue: (r: AssetBillingRow) => marginPct(r.billable ? r.rate : null, r.assets ? assetCostBreakdown(r.assets).perDay : null) },
+      { key: 'insurance', header: 'Insurance expires', getValue: (r: AssetBillingRow) => r.assets?.insurance_expires_on ?? '', render: (r: AssetBillingRow) => <span>{r.assets?.insurance_expires_on}<InsuranceBadge asset={r.assets} /></span> },
+    ] : []),
+    { key: 'actions', header: 'Actions', sortable: false, filterable: false, noExport: true, render: r => <span className="flex items-center gap-1">{canBill && <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit asset" onClick={() => setEditAsset(r.assets ?? null)}><Pencil className="h-3.5 w-3.5" /></Button>}{canWrite && !r.end_at && <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="End assignment" onClick={() => setBulkEnd([r])}><Square className="h-3.5 w-3.5" /></Button>}</span> },
+  ];
 
   return (
     <div className="space-y-1.5">
@@ -216,39 +236,18 @@ export function LocationAssets({ projectId, locationId, locationName, canWrite, 
         <span className="text-xs font-medium text-muted-foreground">Assets{here.length ? ` (${here.length})` : ""}</span>
         {canWrite && <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setOpen(true)}><Plus className="h-3 w-3 mr-1" />Assign asset</Button>}
       </div>
-      {here.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {here.map((r) => (
-            <span key={r.id} className="inline-flex items-center gap-1 rounded-md border bg-muted/40 pl-2 pr-1 py-0.5 text-xs">
-              <AssetIcon type={r.assets?.type} />
-              <span className="font-medium">{assetCareLabel(r.assets?.label ?? "Asset", r.personnel)}</span><Badge variant="outline">{ownershipText(r.assets)}</Badge>
-              {canBill && r.billable && (
-                <Badge variant="outline" className={r.rate == null ? "text-[10px] px-1.5 py-0 border-warning/50 text-warning" : "text-[10px] px-1.5 py-0 border-success/50 text-success"}>
-                  {assetBillingText(r)}
-                </Badge>
-              )}
-              {canBill && <AssetCostBadge asset={r.assets} billRate={r.billable ? r.rate : null} />}
-              {canBill && <InsuranceBadge asset={r.assets} />}
-              {r.end_at && <span className="text-muted-foreground">ended {format(new Date(r.end_at), "M/d")}</span>}
-              {canBill && r.assets && (
-                <Tooltip><TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" type="button" className="h-7 w-7" aria-label="Edit asset" onClick={() => setEditAsset(r.assets as EditableAsset)}><Pencil className="h-3 w-3" /></Button>
-                </TooltipTrigger><TooltipContent>Edit asset (registry)</TooltipContent></Tooltip>
-              )}
-              {canWrite && !r.end_at && (
-                <Tooltip><TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" type="button" className="h-7 w-7" aria-label="End assignment" onClick={() => end.mutate(r.id)}><Square className="h-3 w-3" /></Button>
-                </TooltipTrigger><TooltipContent>End (stop day-rate clock)</TooltipContent></Tooltip>
-              )}
-              {canWrite && (
-                <Tooltip><TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" type="button" className="h-7 w-7" aria-label="Unassign asset" onClick={() => unassign.mutate(r.id)}><X className="h-3 w-3" /></Button>
-                </TooltipTrigger><TooltipContent>Return to registry</TooltipContent></Tooltip>
-              )}
-            </span>
-          ))}
-        </div>
-      )}
+      <EnhancedDataTable tableId={`location-assets:${locationId}:${canBill ? 'manager' : 'field'}`} data={here} columns={columns}
+        selectedIds={new Set(selected)} onSelectionChange={ids => setSelected([...ids])} exportName="location-assets"
+        attention={r => canBill && r.billable && r.rate == null ? 'Billable without a bill rate' : null}
+        bulkActions={canWrite ? (selectedRows) => <Button size="sm" variant="outline" onClick={() => setBulkEnd(selectedRows)}>End selected assignments</Button> : undefined} />
+      <Dialog open={!!bulkEnd} onOpenChange={o => !o && setBulkEnd(null)}><DialogContent><DialogHeader><DialogTitle>End {bulkEnd?.length} asset assignment(s)?</DialogTitle></DialogHeader>
+        <DialogFooter><Button variant="outline" onClick={() => setBulkEnd(null)}>Cancel</Button><Button disabled={end.isPending} onClick={async () => {
+          if (!bulkEnd) return;
+          const failed: AssetBillingRow[] = [];
+          for (const r of bulkEnd) { try { await end.mutateAsync(r.id); } catch { failed.push(r); } }
+          setSelected(failed.map(r => r.id)); setBulkEnd(null);
+          if (failed.length) toast.error(`${failed.length} assignments could not be ended`); else toast.success('Assignments ended; history retained');
+        }}>Confirm</Button></DialogFooter></DialogContent></Dialog>
       {canWrite && (
         <AssignLocationAssetDialog open={open} onOpenChange={setOpen} projectId={projectId} locationId={locationId}
           locationName={locationName} rows={rows} locationNames={locationNames} />

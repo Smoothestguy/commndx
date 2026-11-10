@@ -1,3 +1,5 @@
+import { EnhancedDataTable, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
+import { useSessionState } from '@/hooks/useSessionState';
 import {useAttendanceRoster} from '@/hooks/useAttendanceRoster';
 import { MissingSignatures } from '@/components/signin/MissingSignatures';
 import { useMemo, useState } from 'react';
@@ -30,10 +32,12 @@ const dayLabel = (iso: string, tz: string) => new Date(iso).toLocaleDateString('
 /** Day-first attendance for one location: every roster person with in/out, late, geo, totals and manager inline/bulk edits. */
 export function LocationDayAttendance({ projectId, locationId, timezone, canWrite }: { projectId: string; locationId: string; timezone?: string | null; canWrite: boolean }) {
   const tz = timezone || 'America/Chicago';
-  const [day, setDay] = useState(() => localDay(new Date().toISOString(), tz));
+  const [day, setDay] = useSessionState(`attendance:${locationId}:day`, localDay(new Date().toISOString(), tz));
   const [edit, setEdit] = useState<{ ids: string[]; name: string; day?: string } | null>(null);
   const [log, setLog] = useState<{ id: string; name: string } | null>(null);
-  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useSessionState<string[]>(`attendance:${locationId}:selection`, []);
+  const sel = new Set(selected);
+  const setSel = (ids: Set<string>) => setSelected([...ids]);
   const [bulk, setBulk] = useState<{ date: string; inTime: string; outTime: string; note: string } | null>(null);
   const [ack, setAck] = useState<{ stay: Stay; preset: string; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -72,10 +76,6 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   const stale = (q.data?.openStays ?? []).filter(s => localDay(s.in_at, tz) < today);
   const present = rows.filter(r => r.stays.length).length;
   const total = rows.reduce((s, r) => s + r.stays.reduce((h, x) => h + (x.out_at ? Number(x.hours) || 0 : 0), 0), 0);
-  const allSel = rows.length > 0 && rows.every(r => sel.has(r.id));
-  const toggle = (id: string) => setSel(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const COLS = canWrite ? 'sm:grid-cols-[1.75rem_minmax(0,2fr)_4.5rem_4.5rem_minmax(0,2fr)_4rem_5.5rem]' : 'sm:grid-cols-[minmax(0,2fr)_4.5rem_4.5rem_minmax(0,2fr)_4rem]';
-
   const runBulk = async () => {
     if (!bulk) return;
     const inAt = bulk.inTime ? locationTimeIso(bulk.date, bulk.inTime, tz) : null;
@@ -118,6 +118,29 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
     toast.success('Late check-in acknowledged'); setAck(null); void q.refetch();
   };
 
+  type AttendanceRow = typeof rows[number];
+  const columns: EnhancedColumn<AttendanceRow>[] = [
+    { key: 'name', header: 'Person', width: 250, render: r => <span>{r.name || 'Unnamed'} {r.demobilized && <Badge variant="outline">Demobilized</Badge>}</span> },
+    { key: 'role', header: 'Position' },
+    { key: 'in', header: 'In', getValue: r => r.stays[0] ? hm(r.stays[0].in_at, tz) : '—' },
+    { key: 'out', header: 'Out', getValue: r => { const last = r.stays.at(-1); return last ? last.out_at ? hm(last.out_at, tz) : 'open' : '—'; } },
+    { key: 'status', header: 'Status', width: 300,
+      getValue: r => [r.demobilized ? 'Demobilized' : '', r.offRoster ? 'Not on roster this day' : '', !r.stays.length ? 'Not signed in' : r.stays.some(st => (st.late_minutes ?? 0) > 0) ? 'Late' : 'On time', r.stays.some(st => st.in_geofence === false || st.offsite_reason) ? 'Off-site' : ''].filter(Boolean).join(' · '),
+      render: r => { const late = r.stays.find(st => (st.late_minutes ?? 0) > 0); return <span className="flex flex-wrap items-center gap-1">
+        {!r.stays.length && <Badge variant="outline">Not signed in</Badge>}
+        {r.offRoster && <Badge variant="outline">Not on roster this day</Badge>}
+        {late ? <Badge variant="outline" className={late.late_ack_reason ? 'text-warning' : 'text-destructive'} title={[late.late_reason, late.late_ack_reason].filter(Boolean).join(' · ')}>LATE {late.late_minutes}m{late.late_ack_reason ? ' · approved' : ''}</Badge> : r.stays.length > 0 && <Badge variant="outline" className="text-success">On time</Badge>}
+        {late && canWrite && <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setAck({ stay: late, preset: '', text: '' })}><CheckCircle2 className="h-3 w-3 mr-1" />{late.late_ack_reason ? 'Change approval' : 'Approve late'}</Button>}
+        {r.stays.some(st => st.in_geofence === false || st.offsite_reason) && <Badge variant="outline" className="text-warning" title={r.stays.find(st => st.offsite_reason)?.offsite_reason || undefined}>Off-site</Badge>}
+        {r.stays.some(st => st.in_geofence) && <Badge variant="outline">In geofence</Badge>}
+        {r.stays.some(st => st.synced_late) && <Badge variant="outline">synced late</Badge>}
+      </span>; } },
+    { key: 'hours', header: 'Hours', getValue: r => r.stays.reduce((n, st) => n + (st.out_at ? Number(st.hours) || 0 : 0), 0) },
+    { key: 'stays', header: 'Stays', width: 250, getValue: r => r.stays.map(st => `${hm(st.in_at, tz)} → ${hm(st.out_at, tz)}`).join('; '),
+      render: r => <div className="space-y-1">{r.stays.map((st, i) => <div key={st.id} className="flex items-center gap-1"><span>{hm(st.in_at, tz)} → {hm(st.out_at, tz)}</span>{canWrite && <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={r.stays.length === 1 ? `Edit times for ${r.name}` : `Edit stay ${i + 1} for ${r.name}`} onClick={() => setEdit({ ids: [st.id], name: r.name, day })}><Pencil className="h-3 w-3" /></Button>}</div>)}</div> },
+    ...(canWrite ? [{ key: 'actions', header: 'Actions', noExport: true, sortable: false, filterable: false, render: (r: AttendanceRow) => <Button size="sm" variant="ghost" aria-label={r.stays.length ? `Add entry for ${r.name}` : `Set arrival for ${r.name}`} onClick={() => setLog({ id: r.id, name: r.name })}><Plus className="h-3.5 w-3.5 mr-1" />{r.stays.length ? 'Add entry' : 'Arrival'}</Button> }] : []),
+  ];
+
   return <div className="space-y-4">
     <div className="flex flex-wrap items-end gap-3">
       <div><label htmlFor="att-day" className="text-sm block">Date</label><Input id="att-day" type="date" className="w-44" value={day} onChange={e => { if (e.target.value) { setDay(e.target.value); setSel(new Set()); } }} /></div>
@@ -130,37 +153,12 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
       <ul className="divide-y">{stale.map(s => <li key={s.id} className="flex items-center justify-between gap-2 py-1.5 text-sm"><span>{s.name} · in {dayLabel(s.in_at, tz)} {hm(s.in_at, tz)}</span>{canWrite && <Button size="sm" variant="outline" onClick={() => setEdit({ ids: [s.id], name: s.name })}>Close / fix</Button>}</li>)}</ul>
     </div>}
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : q.error ? <p role="alert" className="text-sm text-destructive">Attendance could not be loaded.</p> :
-      <div className="border rounded-md divide-y">
-        <div className={cn('hidden sm:grid gap-2 px-3 py-2 text-xs text-muted-foreground items-center', COLS)}>{canWrite && <Checkbox aria-label="Select all" checked={allSel} onCheckedChange={() => setSel(allSel ? new Set() : new Set(rows.map(r => r.id)))} />}<span>Person</span><span>In</span><span>Out</span><span>Status</span><span className="text-right">Hours</span>{canWrite && <span />}</div>
-        {canWrite && rows.length > 0 && <label className="sm:hidden flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground"><Checkbox checked={allSel} onCheckedChange={() => setSel(allSel ? new Set() : new Set(rows.map(r => r.id)))} />Select all</label>}
-        {rows.length === 0 && <p className="p-3 text-sm text-muted-foreground">No one assigned or signed in on this day.</p>}
-        {rows.map(r => { const first = r.stays[0], last = r.stays[r.stays.length - 1]; const hrs = r.stays.reduce((h, x) => h + (x.out_at ? Number(x.hours) || 0 : 0), 0); const late = r.stays.find(s => (s.late_minutes ?? 0) > 0);
-          const lateTip = late ? [late.late_reason && `Worker: ${late.late_reason}`, late.late_ack_reason && `Approved: ${late.late_ack_reason}`].filter(Boolean).join(' · ') : '';
-          return <div key={r.id} className={cn('grid grid-cols-[auto_1fr_1fr] gap-x-2 gap-y-1 px-3 py-2 items-center text-sm', COLS, sel.has(r.id) && 'bg-primary/5')}>
-            {canWrite && <Checkbox aria-label={`Select ${r.name}`} checked={sel.has(r.id)} onCheckedChange={() => toggle(r.id)} className="row-span-2 sm:row-span-1" />}
-            <span className="col-span-2 sm:col-span-1 font-medium truncate">{r.name || 'Unnamed'}{r.role && <span className="text-xs text-muted-foreground font-normal"> · {r.role}</span>}</span>
-            <span className="tabular-nums"><span className="sm:hidden text-muted-foreground">In </span>{first ? hm(first.in_at, tz) : '—'}</span>
-            <span className="tabular-nums"><span className="sm:hidden text-muted-foreground">Out </span>{last ? (last.out_at ? hm(last.out_at, tz) : <span className="text-warning">open</span>) : '—'}</span>
-            <span className="col-span-3 sm:col-span-1 flex flex-wrap gap-1">
-              {!first && <Badge variant="outline" className="text-muted-foreground">Not signed in</Badge>}
-              {r.demobilized&&<Badge variant="outline" className="text-muted-foreground">Demobilized</Badge>}{r.offRoster && <Badge variant="outline" className="bg-muted text-muted-foreground" title="Has time here this day but was not assigned to this site on this date">Not on roster this day</Badge>}
-              {late ? <Badge variant="outline" className={cn(late.late_ack_reason ? 'text-warning border-warning/40' : 'text-destructive border-destructive/40')} title={lateTip || undefined}>LATE {late.late_minutes}m{late.late_reason ? ` · ${late.late_reason}` : ''}{late.late_ack_reason ? ' · approved' : ''}</Badge> : first && <Badge variant="outline" className="text-success border-success/40">On time</Badge>}
-              {late && canWrite && <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs" onClick={() => setAck({ stay: late, preset: '', text: '' })}><CheckCircle2 className="h-3 w-3 mr-1" />{late.late_ack_reason ? 'Change approval' : 'Approve late'}</Button>}
-              {r.stays.some(s => s.in_geofence === false || s.offsite_reason) ? <Badge variant="outline" className="text-warning border-warning/40" title={r.stays.find(s => s.offsite_reason)?.offsite_reason || undefined}>Off-site</Badge> : r.stays.some(s => s.in_geofence) ? <Badge variant="outline">In geofence</Badge> : null}
-              {r.stays.length > 1 && <Badge variant="outline">{r.stays.length} stays</Badge>}
-              {r.stays.some(s => s.synced_late) && <Badge variant="outline">synced late</Badge>}
-            </span>
-            <span className="tabular-nums sm:text-right">{first ? hrs.toFixed(2) : '—'}</span>
-            {canWrite && <span className="col-span-2 sm:col-span-1 flex justify-end gap-0.5">
-              {r.stays.length === 1 && <Button size="sm" variant="ghost" className="px-2" onClick={() => setEdit({ ids: [first.id], name: r.name, day })} aria-label={`Edit times for ${r.name}`}><Pencil className="h-4 w-4" /></Button>}
-              <Button size="sm" variant="ghost" className="px-2" onClick={() => setLog({ id: r.id, name: r.name })} aria-label={first ? `Add entry for ${r.name}` : `Set arrival for ${r.name}`} title={first ? 'Add another stay' : 'Set arrival'}><Plus className="h-4 w-4" />{!first && <span className="ml-1">Arrival</span>}</Button></span>}
-            {r.stays.length > 1 && <ul className="col-span-full divide-y border-l-2 border-muted ml-1 sm:ml-8" aria-label={`Stays for ${r.name}`}>{r.stays.map((st, i) => <li key={st.id} className="flex items-center gap-3 py-1 pl-3 text-xs tabular-nums">
-              <span className="text-muted-foreground w-12">Stay {i + 1}</span><span>{hm(st.in_at, tz)} → {st.out_at ? hm(st.out_at, tz) : <span className="text-warning">open</span>}</span>
-              <span className="ml-auto">{st.out_at ? (Number(st.hours) || 0).toFixed(2) + ' h' : '—'}</span>
-              {canWrite && <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEdit({ ids: [st.id], name: `${r.name} · stay ${i + 1}`, day })} aria-label={`Edit stay ${i + 1} for ${r.name}`}><Pencil className="h-3.5 w-3.5" /></Button>}
-            </li>)}</ul>}
-          </div>; })}
-      </div>}
+      <EnhancedDataTable tableId={`attendance:${locationId}`} data={rows} columns={columns}
+        selectable={canWrite} selectedIds={sel} onSelectionChange={setSel} exportName={`attendance-${day}`}
+        attention={r => r.stays.some(st => !st.out_at) ? 'Open punch' : r.stays.some(st => (st.late_minutes ?? 0) > 0 && !st.late_ack_reason) ? 'Late approval needed' : null}
+        emptyText="No one assigned or signed in on this day."
+        bulkActions={() => <Button size="sm" variant="outline" onClick={() => setBulk({ date: day, inTime: '', outTime: '', note: '' })}><Clock className="h-3.5 w-3.5 mr-1" />Set times</Button>}
+      />}
     {edit && <EditStayTimesDialog projectId={projectId} ids={edit.ids} personName={edit.name} day={edit.day} onClose={() => { setEdit(null); void q.refetch(); }} />}
     {log && <LogTimeDialog open onOpenChange={o => { if (!o) { setLog(null); void q.refetch(); } }} projectId={projectId} personnelId={log.id} personName={log.name} locationId={locationId} defaultDate={day} />}
     {addPerson && <LogTimeDialog open addToDay onOpenChange={o => { if (!o) { setAddPerson(false); void q.refetch(); } }} projectId={projectId} locationId={locationId} defaultDate={day} />}
