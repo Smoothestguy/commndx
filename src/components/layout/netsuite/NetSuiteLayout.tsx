@@ -43,7 +43,6 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
             <BackgroundMediaLayer />
 
             <TopNavBar onMobileMenuToggle={() => setMobileMenuOpen(true)} />
-            <div className="sticky top-12 z-30"><TabsBar /></div>
 
             <MobileNavDrawer open={mobileMenuOpen} onOpenChange={setMobileMenuOpen} />
 
@@ -57,6 +56,7 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
                   shouldShowBackground && "bg-transparent",
                 )}
               >
+                <div className="sticky top-12 z-30"><TabsBar /></div>
                 {children ?? <Outlet />}
               </main>
 
