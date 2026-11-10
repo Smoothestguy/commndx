@@ -420,7 +420,6 @@ export function PersonnelTable({
       getValue: (person) => (tagsByPerson?.[person.id] ?? []).join(", "),
       render: (person: Personnel) => <TagChips tags={tagsByPerson?.[person.id]} max={3} />,
     },
-    },
     {
       key: "rate",
       header: "Rate",
