@@ -37,3 +37,4 @@
 - Close-out: `project_locations.status='closed'`; triggers enforce manager close (blocked by open punches/requests), admin reopen, closed-site writes and all-closed project close. Ends assignments, zeroes authorization via demob TO or manual saver.
 - Live production app: verification-only rows (projects, locations, people, visits, tokens, requests) are deleted in the same run; destructive flows never touch owner data.
 - Attendance/manual pickers use dated assignment/work eligibility. Shared signature lists offer individual/bulk requests; token signing targets worked stays.
+- List views use the shared `EnhancedDataTable` grid (search, column menus, footer paging/export, sticky header/first column); grid and screen filter state lives in sessionStorage (`useSessionState`) so workspace tabs (pathname-keyed, `useAppTabs`) restore it on flip.
