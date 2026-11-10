@@ -1,3 +1,5 @@
+import { EnhancedDataTable, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
+import { useSessionState } from '@/hooks/useSessionState';
 import { assetCareLabel, ownershipText } from '@/lib/assetDetails';
 import type { AssetAssignmentWithDetails } from '@/integrations/supabase/hooks/useAssetAssignments';
 import { useMemo, useState } from 'react';
@@ -57,9 +59,11 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
   const [missionDlg, setMissionDlg] = useState<{ a: LocationAssignment; note: string } | null>(null);
   const [demobOpen, setDemobOpen] = useState(false);
   const endAssignment = useEndAssignment();
-  const [q, setQ] = useState('');
-  const [sel, setSel] = useState<Set<string>>(new Set());
-  const toggle = (id: string) => setSel(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const [q, setQ] = useSessionState(`roster:${locationId}:search`, '');
+  const [selected, setSelected] = useSessionState<string[]>(`roster:${locationId}:selection`, []);
+  const sel = new Set(selected);
+  const setSel = (ids: Set<string>) => setSelected([...ids]);
+  const toggle = (id: string) => { const n = new Set(sel); n.has(id) ? n.delete(id) : n.add(id); setSel(n); };
   const [endDlg, setEndDlg] = useState<{ a: LocationAssignment; date: string; demob: boolean } | null>(null);
   const runEnd = async () => {
     if (!endDlg || !/^\d{4}-\d{2}-\d{2}$/.test(endDlg.date)) return;
@@ -110,34 +114,17 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
     };
   }, [assignments, byRole, stays.data, q]);
 
-  const row = (a: LocationAssignment) => {
-    const name = [a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(' ') || 'Unknown';
-    const s = todayStatus({ demobilized: !!a.demobilized, stays: stays.data?.[a.personnel_id] ?? [], missionToday: a.mission_day === today, missionNote: a.mission_note ?? null });
-    // Scoped by location id: same address under another project is a different site.
-    const os = onSite[a.personnel_id];
-    const elsewhere = os && os.location_id !== locationId ? `${os.location_name ?? 'site'}${os.project_id !== projectId ? ` (${otherProjects.data?.[os.project_id] ?? 'other project'})` : ''}` : null;
-    const actions = [
-      { label: 'Send site text', run: () => onText([a.personnel_id]) },
-      ...(canWrite ? [
-        { label: 'Log time', run: () => onLog(a.personnel_id) },
-        { label: 'Add expense', run: () => onExpense(a.personnel_id) },
-        { label: 'Remove from site as of…', run: () => setEndDlg({ a, date: today, demob: false }) },
-        { label: 'Unassign', run: () => onUnassign(a), destructive: true },
-      ] : []),
-    ];
-    return <EntityContextMenu key={a.id} href={`/personnel/${a.personnel_id}`} person actions={actions}>
-      <div className={cn('grid grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-1 px-3 py-2 items-center text-sm', COLS)}>
-        <div className="min-w-0 flex items-start gap-2">
-          {canWrite && <Checkbox className="mt-0.5" aria-label={`Select ${name}`} checked={sel.has(a.personnel_id)} onCheckedChange={() => toggle(a.personnel_id)} />}
-          <div className="min-w-0"><Link to={`/personnel/${a.personnel_id}`} className="font-medium hover:text-primary hover:underline truncate block">{name}</Link>
-          {canWrite && !phones[a.personnel_id] && <Link to={`/personnel/${a.personnel_id}`} className="block text-[11px] text-warning hover:underline">No phone · add phone</Link>}
-        </div></div>
-        <div className="flex flex-wrap gap-1 justify-end sm:justify-start sm:order-none order-3 col-span-2 sm:col-span-1">
-          <AgencyChip name={(() => { const n = agencies.agencyName(a.personnel_id); return n && n.trim().toLowerCase() !== name.trim().toLowerCase() ? n : undefined; })()} />
-          <NonBillableChip value={agencies.nonBillableByPerson[a.personnel_id]} employer={agencies.employerName(a.personnel_id)} />
-        </div>
-        <div className="sm:order-none order-2 justify-self-end sm:justify-self-start"><StatusPill s={s} tz={tz} elsewhere={elsewhere} /></div>
-        <div className="text-xs text-muted-foreground order-4 sm:order-none"><TextedCaption at={texted[`${a.personnel_id}:${locationId}`]} /></div>
+  const personName = (a: LocationAssignment) => [a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(' ') || 'Unknown';
+  const statusFor = (a: LocationAssignment) => todayStatus({ demobilized: !!a.demobilized, stays: stays.data?.[a.personnel_id] ?? [], missionToday: a.mission_day === today, missionNote: a.mission_note ?? null });
+  type GridRow = LocationAssignment & { assignment: LocationAssignment };
+  const columns: EnhancedColumn<GridRow>[] = [
+    { key: 'name', header: 'Name', width: 240, getValue: a => personName(a), render: a => <Link to={`/personnel/${a.personnel_id}`} className="hover:text-primary hover:underline">{personName(a)}</Link> },
+    { key: 'role_label', header: 'Position' },
+    { key: 'employer', header: 'Agency / employer', getValue: a => agencies.employerName(a.personnel_id) || agencies.agencyName(a.personnel_id) || 'FRG', render: a => <><AgencyChip name={agencies.agencyName(a.personnel_id)} /><NonBillableChip value={agencies.nonBillableByPerson[a.personnel_id]} employer={agencies.employerName(a.personnel_id)} /></> },
+    { key: 'phone', header: 'Phone', getValue: a => phones[a.personnel_id] ?? '' },
+    { key: 'status', header: 'Today here', getValue: a => statusFor(a).kind, render: a => { const os = onSite[a.personnel_id]; const elsewhere = os && os.location_id !== locationId ? `${os.location_name ?? 'site'}${os.project_id !== projectId ? ` (${otherProjects.data?.[os.project_id] ?? 'other project'})` : ''}` : null; return <StatusPill s={statusFor(a)} tz={tz} elsewhere={elsewhere} />; } },
+    { key: 'texted', header: 'Last texted', getValue: a => texted[`${a.personnel_id}:${locationId}`] ?? '', render: a => <TextedCaption at={texted[`${a.personnel_id}:${locationId}`]} /> },
+    { key: 'actions', header: 'Actions', noExport: true, sortable: false, filterable: false, render: item => { const a = item.assignment; const name = personName(a); return (
         <div className="flex items-center justify-end gap-0.5 order-5 sm:order-none">
           <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Send site text to ${name}`} onClick={() => onText([a.personnel_id])}><MessageSquare className="h-4 w-4" /></Button>
           {canWrite && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${name}`}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
@@ -156,37 +143,20 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
               <DropdownMenuItem className="text-destructive" onClick={() => onUnassign(a)}>Unassign…</DropdownMenuItem>
             </DropdownMenuContent></DropdownMenu>}
         </div>
-      </div>
-    </EntityContextMenu>;
-  };
-
-  const header = <div className={cn('hidden sm:grid gap-2 px-3 py-1.5 text-[11px] uppercase tracking-wide text-muted-foreground border-b', COLS)}><span>Name</span><span>Agency / employer</span><span>Today here</span><span>Last texted</span><span /></div>;
+    ); } },
+  ];
 
   const selectedPeople = assignments.filter((a, i, all) => sel.has(a.personnel_id) && all.findIndex(b => b.personnel_id === a.personnel_id) === i)
     .map(a => ({ id: a.personnel_id, first_name: a.personnel?.first_name ?? '', last_name: a.personnel?.last_name ?? '', phone: phones[a.personnel_id] ?? null }));
   const worksFor = (p: { id: string }) => agencies.employerName(p.id) || agencies.agencyName(p.id) || 'FRG';
 
   return <div className="space-y-4">
-    <div className="flex flex-wrap items-center gap-2">
-      <Input aria-label="Search roster" placeholder="Search name or position…" value={q} onChange={e => setQ(e.target.value)} className="h-8 w-56" />
-      {canWrite && selectedPeople.length > 0 && <>
-        <span className="text-sm font-medium">{selectedPeople.length} selected</span>
-        <PersonnelBulkActions people={selectedPeople} worksFor={worksFor} onDone={() => setSel(new Set())} />
-        <Button size="sm" variant="ghost" onClick={() => setSel(new Set())}>Clear</Button>
-      </>}
-    </div>
-    {groups.length === 0 && <p className="text-sm text-muted-foreground">No one actively assigned.</p>}
-    {groups.map(([role, list]) => <section key={role} className="border rounded-md bg-card" aria-label={`${role} group`}>
-      <h3 className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm font-semibold border-b bg-muted/40">{role === 'No role' ? 'No role' : `${role}s`}
-        <span className={cn('tabular-nums', byRole[role]?.needed ? (list.length >= byRole[role].needed ? 'text-success' : 'text-warning') : 'text-muted-foreground')}>{list.length}{byRole[role]?.needed ? `/${byRole[role].needed}` : ''}</span>
-        {canWrite && byRole[role]?.rate != null && <Badge variant="outline" className="font-normal">${Number(byRole[role].rate).toLocaleString(undefined, { maximumFractionDigits: 2 })}/hr</Badge>}</h3>
-      {list.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">No one assigned.</p>}
-      {header}<div className="divide-y">{list.map(row)}</div>
-    </section>)}
-    {demob.length > 0 && <Collapsible open={demobOpen} onOpenChange={setDemobOpen} className="border rounded-md bg-card">
-      <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 text-sm font-semibold text-muted-foreground"><span>Demobilized · not counted as staffed</span><span className="flex items-center gap-2"><Badge variant="outline">{demob.length}</Badge><ChevronDown className={cn('h-4 w-4 transition-transform', demobOpen && 'rotate-180')} /></span></CollapsibleTrigger>
-      <CollapsibleContent>{header}<div className="divide-y border-t">{demob.map(row)}</div></CollapsibleContent>
-    </Collapsible>}
+    <div className="flex flex-wrap gap-2">{groups.map(([role, list]) => <Badge key={role} variant="outline">{role}: {list.length}{byRole[role]?.needed ? `/${byRole[role].needed}` : ''}</Badge>)}</div>
+    <EnhancedDataTable tableId={`location-roster:${locationId}`} data={assignments.map(a => ({ ...a, id: a.personnel_id, assignment: a }))} columns={columns}
+      selectable={canWrite} selectedIds={sel} onSelectionChange={setSel} exportName="location-roster" searchPlaceholder="Search roster…"
+      attention={a => !phones[a.personnel_id] ? 'Missing phone' : null}
+      bulkActions={(_, clear) => <><Button size="sm" variant="outline" onClick={() => onText([...sel])}><MessageSquare className="h-3.5 w-3.5 mr-1" />Text this site</Button><PersonnelBulkActions people={selectedPeople} worksFor={worksFor} onDone={clear} /></>}
+    />
     <section className="border rounded-md bg-card" aria-label="Assets group">
       <h3 className="flex items-center justify-between px-3 py-2 text-sm font-semibold border-b bg-muted/40">Assets / Trucks<Badge variant="secondary">{assets.data?.length ?? 0}</Badge></h3>
       {assets.isLoading ? <Loader2 className="m-3 h-4 w-4 animate-spin" /> : !assets.data?.length ? <p className="px-3 py-2 text-sm text-muted-foreground">No equipment assigned. Manage in the Assets tab.</p> :
