@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Plus,
@@ -41,6 +41,17 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SearchInput } from "@/components/ui/search-input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
+import { useVendors } from "@/integrations/supabase/hooks/useVendors";
+import { usePersonnelTags } from "@/hooks/usePersonnelTags";
+import { TagFilter } from "@/components/personnel/PersonnelTags";
+import { PersonnelBulkActions } from "@/components/personnel/PersonnelBulkActions";
+import { BenchList } from "@/components/personnel/BenchList";
+import { matchesAllTags, personnelSegment } from "@/lib/personnelSegment";
+
+type Seg = "all" | "frg" | "agency" | "customer" | "bench";
 
 const Personnel = () => {
   const [search, setSearch] = useState("");
@@ -55,6 +66,9 @@ const Personnel = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [seg, setSeg] = useState<Seg>("all");
+  const [customerId, setCustomerId] = useState("all");
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const { isAdmin, isManager } = useUserRole();
@@ -90,9 +104,7 @@ const Personnel = () => {
   };
 
   const handleSelectAll = () => {
-    if (personnel) {
-      setSelectedIds(personnel.map((p) => p.id));
-    }
+    setSelectedIds(visible.map((p) => p.id));
   };
 
   const handleClearSelection = () => {
@@ -127,6 +139,31 @@ const Personnel = () => {
   };
 
   const { data: personnel, isLoading } = usePersonnel(filters);
+  const { data: tagData } = usePersonnelTags();
+  const { data: customers = [] } = useCustomers();
+  const { data: vendorList = [] } = useVendors();
+  const customerName = (id: string) => customers.find((c) => c.id === id)?.name;
+  const vendorName = (id: string) => vendorList.find((v) => v.id === id)?.name;
+  const tagged = useMemo(() => (personnel ?? []).filter((p) => matchesAllTags(tagData?.byPerson[p.id], tagFilter)), [personnel, tagData, tagFilter]);
+  const counts = useMemo(() => {
+    const c = { all: tagged.length, frg: 0, agency: 0, customer: 0, bench: 0 };
+    for (const p of tagged) { c[personnelSegment(p)]++; if (p.on_bench) c.bench++; }
+    return c;
+  }, [tagged]);
+  const visible = useMemo(() => tagged.filter((p) =>
+    seg === "all" ? true : seg === "bench" ? p.on_bench : personnelSegment(p) === seg
+  ).filter((p) => seg !== "customer" || customerId === "all" || p.employer_customer_id === customerId)
+   .sort((a, b) => seg === "agency" || seg === "customer"
+      ? (customerName(a.employer_customer_id ?? "") ?? vendorName(a.vendor_id ?? "") ?? "").localeCompare(customerName(b.employer_customer_id ?? "") ?? vendorName(b.vendor_id ?? "") ?? "")
+      : 0), [tagged, seg, customerId, customers, vendorList]);
+  useEffect(() => { setCurrentPage(1); }, [seg, customerId, tagFilter.length]);
+  const selectedPeople = (personnel ?? []).filter((p) => selectedIds.includes(p.id));
+  const worksFor = (p: { id: string }) => {
+    const r = (personnel ?? []).find((x) => x.id === p.id);
+    if (!r) return "";
+    return r.employer_customer_id ? `${customerName(r.employer_customer_id) ?? "Customer"} (customer, non-billable)` : r.vendor_id ? vendorName(r.vendor_id) ?? "Agency" : "FRG";
+  };
+  const bulk = canManage ? <PersonnelBulkActions people={selectedPeople} worksFor={worksFor} tagsByPerson={tagData?.byPerson} /> : null;
 
   return (
     <PageLayout title="Personnel Management">
@@ -141,6 +178,16 @@ const Personnel = () => {
         {/* Pending Registrations */}
         {canManage && <PendingRegistrations />}
 
+
+        <Tabs value={seg} onValueChange={(v) => { setSeg(v as Seg); if (v === "agency" || v === "customer") setVendorId("all"); }}>
+          <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="all">All <Badge variant="secondary" className="ml-1.5">{counts.all}</Badge></TabsTrigger>
+            <TabsTrigger value="frg">FRG Workforce <Badge variant="secondary" className="ml-1.5">{counts.frg}</Badge></TabsTrigger>
+            <TabsTrigger value="agency">Agency <Badge variant="secondary" className="ml-1.5">{counts.agency}</Badge></TabsTrigger>
+            <TabsTrigger value="customer">Customer personnel <Badge variant="secondary" className="ml-1.5">{counts.customer}</Badge></TabsTrigger>
+            <TabsTrigger value="bench">Bench <Badge variant="secondary" className="ml-1.5">{counts.bench}</Badge></TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         {/* Search input */}
         <SearchInput
@@ -168,6 +215,16 @@ const Personnel = () => {
             onVendorChange={setVendorId}
             inline
           />
+          <TagFilter value={tagFilter} onChange={setTagFilter} />
+          {seg === "customer" && (
+            <Select value={customerId} onValueChange={setCustomerId}>
+              <SelectTrigger className="h-9 w-56" aria-label="Customer"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All customers</SelectItem>
+                {customers.filter((c) => (personnel ?? []).some((p) => p.employer_customer_id === c.id)).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
 
           {!selectionMode ? (
             <>
@@ -241,13 +298,20 @@ const Personnel = () => {
           <div className="flex justify-center py-8 sm:py-12">
             <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
           </div>
-        ) : personnel && personnel.length > 0 ? (
+        ) : seg === "bench" ? (
+          <div className="space-y-2">
+            {selectedIds.length > 0 && bulk && <div className="flex flex-wrap items-center gap-2 p-3 bg-muted rounded-lg"><span className="text-sm font-medium">{selectedIds.length} selected</span>{bulk}<Button size="sm" variant="ghost" onClick={handleClearSelection}>Clear</Button></div>}
+            <BenchList people={visible} tagsByPerson={tagData?.byPerson} canEdit={canManage}
+              selected={new Set(selectedIds)} onToggle={handleToggleSelection}
+              onToggleAll={(ids) => setSelectedIds((prev) => ids.every((i) => prev.includes(i)) ? prev.filter((i) => !ids.includes(i)) : [...new Set([...prev, ...ids])])} />
+          </div>
+        ) : visible.length > 0 ? (
           <PersonnelTable
-            personnel={personnel.slice(
+            personnel={visible.slice(
               (currentPage - 1) * rowsPerPage,
               currentPage * rowsPerPage
             )}
-            totalCount={personnel.length}
+            totalCount={visible.length}
             currentPage={currentPage}
             rowsPerPage={rowsPerPage}
             onPageChange={setCurrentPage}
@@ -261,6 +325,9 @@ const Personnel = () => {
             onSelectAll={handleSelectAll}
             onClearSelection={handleClearSelection}
             onPrintBadges={handlePrintBadges}
+            tagsByPerson={tagData?.byPerson}
+            customerName={customerName}
+            bulkActions={bulk}
           />
         ) : (
           <PersonnelEmptyState onAddClick={() => setAddDialogOpen(true)} />
