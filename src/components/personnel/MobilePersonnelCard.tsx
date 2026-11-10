@@ -1,3 +1,4 @@
+import { useUserRole } from "@/hooks/useUserRole";
 import { useState } from "react";
 import { PersonnelStatusButton } from "@/components/personnel/lifecycle/PersonnelStatusButton";
 import { useNavigate, Link } from "react-router-dom";
@@ -71,6 +72,7 @@ export const MobilePersonnelCard = ({
   onSelect,
   onPrintBadge,
 }: MobilePersonnelCardProps) => {
+  const { isAdmin, isManager } = useUserRole();
   const navigate = useNavigate();
   const { data: vendors } = useVendors();
   const deletePersonnel = useDeletePersonnel();
@@ -316,7 +318,7 @@ export const MobilePersonnelCard = ({
               )}
             </div>
 
-            {(personnel.hourly_rate ?? 0) > 0 && (
+            {(isAdmin || isManager) && (personnel.hourly_rate ?? 0) > 0 && (
               <div className="text-xs font-medium">
                 Rate: ${personnel.hourly_rate}/hr
               </div>
