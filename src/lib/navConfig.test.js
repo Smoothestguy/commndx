@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sections, isItemVisible, isSectionVisible, isNavItemActive } from "./navConfig";
+import { sections, isItemVisible, isSectionVisible, isNavItemActive } from "../components/layout/navConfig";
 
 const visibleFor = (admin: boolean, manager: boolean, accounting = false) =>
   sections

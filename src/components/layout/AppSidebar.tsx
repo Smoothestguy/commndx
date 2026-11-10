@@ -28,10 +28,6 @@ import { sections, isItemVisible, isSectionVisible, isNavItemActive, type NavIte
 
 function SidebarNavItem({ item, isActive, unreadCount }: { item: Item; isActive: boolean; unreadCount: number }) {
   const Icon = item.icon;
-  // Keep a collapsed group open when it contains the current page.
-  const sectionOpen = (idx: number, items: Item[]) =>
-    openSections[idx] ?? items.some((i) => isActive(i.href));
-
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={isActive} tooltip={item.name}>
