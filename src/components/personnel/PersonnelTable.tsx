@@ -329,6 +329,13 @@ export function PersonnelTable({
       render: (person: Personnel) => getStatusBadge(person.status),
     },
     {
+      key: "gender",
+      header: "Gender",
+      sortable: true,
+      filterable: true,
+      getValue: (person) => ((person as any).gender === "male" ? "Male" : (person as any).gender === "female" ? "Female" : ""),
+    },
+    {
       key: "lifecycle",
       header: "Deployment",
       render: (person: Personnel) => <PersonnelStatusButton personnelId={person.id} />,
