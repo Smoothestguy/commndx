@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { sections, isItemVisible, isSectionVisible, isNavItemActive } from "../components/layout/navConfig";
 
-const visibleFor = (admin: boolean, manager: boolean, accounting = false) =>
+const visibleFor = (admin, manager, accounting = false) =>
   sections
     .filter((s) => isSectionVisible(s, admin, manager, accounting))
     .flatMap((s) => s.items.filter((i) => isItemVisible(i, admin, manager, accounting)).map((i) => i.href));
