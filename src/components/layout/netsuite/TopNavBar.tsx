@@ -43,7 +43,7 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
   const hasUnread = messages.length > 0 && messages[messages.length - 1].role === "assistant";
 
   return (
-    <header className="sticky top-0 z-50 h-12 bg-header-background border-b border-header-background/20">
+    <header className="sticky top-0 z-50 h-12 bg-header border-b border-border">
       <div className="flex items-center justify-between h-full px-3">
         {/* Left Section: Mobile Menu + Logo + Navigation */}
         <div className="flex items-center gap-2">
