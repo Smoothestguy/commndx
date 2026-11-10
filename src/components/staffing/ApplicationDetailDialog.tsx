@@ -1,3 +1,4 @@
+import { IntakeProfileCard } from "@/components/intake/IntakeProfileCard";
 import { ApplicantStarButton } from "./ApplicantStarButton";
 import { ApplicantMetaEditor } from "./ApplicantMetaEditor";
 import { formatApplicantLocation } from "@/lib/applicantLocation";
@@ -740,6 +741,7 @@ export function ApplicationDetailDialog({
                   staffNotes={(applicant as any)?.staff_notes}
                 />
                 <ApplicationCertifications applicantId={application.applicant_id} />
+                <IntakeProfileCard table="applicants" id={application.applicant_id} canEdit />
 
                 <Separator />
 
