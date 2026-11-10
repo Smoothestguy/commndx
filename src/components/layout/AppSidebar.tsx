@@ -28,6 +28,10 @@ import { sections, isItemVisible, isSectionVisible, isNavItemActive, type NavIte
 
 function SidebarNavItem({ item, isActive, unreadCount }: { item: Item; isActive: boolean; unreadCount: number }) {
   const Icon = item.icon;
+  // Keep a collapsed group open when it contains the current page.
+  const sectionOpen = (idx: number, items: Item[]) =>
+    openSections[idx] ?? items.some((i) => isActive(i.href));
+
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={isActive} tooltip={item.name}>
@@ -52,13 +56,18 @@ export function AppSidebar() {
   const { data: unreadCount = 0 } = useTotalUnreadCount();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const [adminOpen, setAdminOpen] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<number, boolean>>({});
 
   const isActive = (href: string) => isNavItemActive(href, pathname, search);
 
+  // Keep a collapsed group open when it contains the current page.
+  const sectionOpen = (idx: number, items: Item[]) =>
+    openSections[idx] ?? items.some((i) => isActive(i.href));
+
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarHeader className="h-12 border-b border-sidebar-border" />
+      {/* Spacer under the fixed top bar (which holds the logo) so menu items never slide beneath it. */}
+      <SidebarHeader className="h-12 shrink-0 p-0 border-b border-sidebar-border" aria-hidden />
       <SidebarContent>
         {sections.map((section, idx) => {
           if (!isSectionVisible(section, isAdmin, isManager, isAccounting)) return null;
@@ -71,8 +80,8 @@ export function AppSidebar() {
             return (
               <Collapsible
                 key={idx}
-                open={adminOpen}
-                onOpenChange={setAdminOpen}
+                open={sectionOpen(idx, visibleItems)}
+                onOpenChange={(v) => setOpenSections((s) => ({ ...s, [idx]: v }))}
                 className="group/collapsible"
               >
                 <SidebarGroup>
@@ -82,7 +91,7 @@ export function AppSidebar() {
                       <ChevronDown
                         className={cn(
                           "h-3.5 w-3.5 transition-transform",
-                          adminOpen && "rotate-180",
+                          sectionOpen(idx, visibleItems) && "rotate-180",
                         )}
                       />
                     </CollapsibleTrigger>

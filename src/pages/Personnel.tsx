@@ -75,6 +75,9 @@ const Personnel = () => {
   const { isAdmin, isManager } = useUserRole();
   const { data: pendingCount } = usePendingRegistrationsCount();
   const canManage = isAdmin || isManager;
+  // Sidebar "Bench" link deep-links into the bench segment.
+  const urlSegment = searchParams.get("segment");
+  useEffect(() => { if (urlSegment === "bench") setSeg("bench"); }, [urlSegment]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const registrationUrl = `${window.location.origin}/personnel/register`;
 
@@ -180,7 +183,7 @@ const Personnel = () => {
         {canManage && <PendingRegistrations />}
 
 
-        <Tabs value={seg} onValueChange={(v) => { setSeg(v as Seg); if (v === "agency" || v === "customer") setVendorId("all"); }}>
+        <Tabs value={seg} onValueChange={(v) => { setSeg(v as Seg); if (searchParams.get("segment") && v !== "bench") { const n = new URLSearchParams(searchParams); n.delete("segment"); setSearchParams(n, { replace: true }); } if (v === "agency" || v === "customer") setVendorId("all"); }}>
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="all">All <Badge variant="secondary" className="ml-1.5">{counts.all}</Badge></TabsTrigger>
             <TabsTrigger value="frg">FRG Workforce <Badge variant="secondary" className="ml-1.5">{counts.frg}</Badge></TabsTrigger>
