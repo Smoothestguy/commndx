@@ -381,7 +381,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                 const id = String(item.id);
                 const isSelected = selectedIds.has(id);
                 const warn = attention?.(item);
-                const rowBg = isSelected ? "bg-accent" : index % 2 === 1 ? "bg-table-stripe" : "bg-card";
+                const rowBg = isSelected ? "bg-secondary" : index % 2 === 1 ? "bg-table-stripe" : "bg-card";
                 return (
                   <tr
                     key={id}
