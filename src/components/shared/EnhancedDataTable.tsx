@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import * as XLSX from "xlsx";
 import {
   DndContext,
   closestCenter,
@@ -17,21 +18,28 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { IndeterminateCheckbox } from "@/components/ui/indeterminate-checkbox";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { ArrowUp, ArrowDown, ArrowUpDown, GripVertical } from "lucide-react";
+import {
+  ArrowUp, ArrowDown, ArrowUpDown, GripVertical, Search, Filter, Rows3, Rows4, Maximize2, Minimize2,
+  Settings2, Download, ChevronLeft, ChevronRight, X,
+} from "lucide-react";
 import { ColumnHeaderMenu, ColumnConfig } from "./ColumnHeaderMenu";
 import { useTablePreferences } from "@/hooks/useTablePreferences";
-import { useUIDensity } from "@/contexts/UIDensityContext";
+import { useSessionState } from "@/hooks/useSessionState";
 
 export interface EnhancedColumn<T> {
   key: keyof T | string;
@@ -43,6 +51,10 @@ export interface EnhancedColumn<T> {
   getValue?: (item: T) => string | number | null;
   /** Hide column at specific breakpoints: 'sm' | 'md' | 'lg' | 'xl' */
   hideBelow?: 'sm' | 'md' | 'lg' | 'xl';
+  /** Exclude from XLSX/CSV export (e.g. action columns). */
+  noExport?: boolean;
+  /** Initial width in px; columns are resizable from the header edge. */
+  width?: number;
 }
 
 interface EnhancedDataTableProps<T> {
@@ -59,52 +71,68 @@ interface EnhancedDataTableProps<T> {
   defaultSortDirection?: 'asc' | 'desc';
   /** Rows returning true stay above others regardless of column sort (stable). */
   pinFirst?: (item: T) => boolean;
+  /** Instant search box top-left (default true). */
+  searchable?: boolean;
+  searchPlaceholder?: string;
+  /** Extra controls rendered next to the search box. */
+  toolbar?: React.ReactNode;
+  /** Bulk actions bar content shown while rows are selected. */
+  bulkActions?: (selected: T[], clear: () => void) => React.ReactNode;
+  /** Return a reason to show a warning dot (e.g. missing phone/signature). */
+  attention?: (item: T) => string | null | undefined;
+  /** File name stem for XLSX/CSV export (enables footer export). */
+  exportName?: string;
+  /** Rows per page (default 50). Use 0 to disable paging. */
+  defaultPageSize?: number;
+  /** Max height of the scroll area (sticky header). */
+  maxHeight?: string;
+  emptyText?: string;
 }
 
-interface SortableHeaderProps {
-  id: string;
-  children: React.ReactNode;
-  className?: string;
+/** Colored status pill used across grids (ACTIVE green etc.). */
+export function StatusPill({ value }: { value: string | null | undefined }) {
+  const v = String(value ?? "").toLowerCase();
+  const tone =
+    /^(active|approved|open|in[_ ]camp|signed|ok|completed|paid|assigned|available)$/.test(v) ? "bg-success/15 text-success border-success/30"
+    : /^(pending|draft|requested|in[_ ]progress|partial|on[_ ]hold|late)$/.test(v) ? "bg-warning/15 text-warning border-warning/30"
+    : /^(inactive|closed|terminated|denied|rejected|void|demobilized|do[_ ]not[_ ]hire|checked[_ ]out|expired)$/.test(v) ? "bg-destructive/10 text-destructive border-destructive/30"
+    : "bg-muted text-muted-foreground border-border";
+  if (!v) return null;
+  return <span className={cn("inline-flex items-center rounded-full border px-2 py-px text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap", tone)}>{String(value).replace(/_/g, " ")}</span>;
 }
 
-function SortableHeader({ id, children, className }: SortableHeaderProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+function SortableHeader({ id, children, className, width, onResize }: { id: string; children: React.ReactNode; className?: string; width?: number; onResize: (w: number) => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const ref = useRef<HTMLTableCellElement | null>(null);
+  const startResize = (e: React.PointerEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    const startX = e.clientX; const startW = ref.current?.offsetWidth ?? 120;
+    const move = (ev: PointerEvent) => onResize(Math.max(48, startW + ev.clientX - startX));
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
   };
-
   return (
-    <TableHead
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        className,
-        isDragging && "opacity-50 bg-muted",
-        "group relative"
-      )}
+    <th
+      ref={(n) => { setNodeRef(n); ref.current = n; }}
+      style={{ transform: CSS.Transform.toString(transform), transition, width, minWidth: width, maxWidth: width }}
+      className={cn("group relative text-left align-middle", className, isDragging && "opacity-50")}
       {...attributes}
     >
-      <div className="flex items-center gap-1">
-        <div
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+      <div className="flex items-center gap-1 pr-1">
+        <div {...listeners} className="cursor-grab active:cursor-grabbing -ml-1 opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Drag column">
+          <GripVertical className="h-3 w-3 text-muted-foreground" />
         </div>
         {children}
       </div>
-    </TableHead>
+      <span onPointerDown={startResize} className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40" aria-hidden />
+    </th>
   );
 }
+
+const cellText = <T,>(item: T, column: EnhancedColumn<T>) => {
+  const v = column.getValue ? column.getValue(item) : (item as Record<string, unknown>)[String(column.key)];
+  return v == null ? "" : typeof v === "object" ? "" : String(v);
+};
 
 export function EnhancedDataTable<T extends { id: string | number }>({
   tableId,
@@ -115,36 +143,38 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   selectable = false,
   selectedIds = new Set(),
   onSelectionChange,
-  compact = true,
   defaultSortKey,
   defaultSortDirection = 'desc',
   pinFirst,
+  searchable = true,
+  searchPlaceholder = "Search…",
+  toolbar,
+  bulkActions,
+  attention,
+  exportName,
+  defaultPageSize = 50,
+  maxHeight = "70vh",
+  emptyText = "No results found",
 }: EnhancedDataTableProps<T>) {
-  const { isSpreadsheetMode, is2K1Mode, isCompactMode } = useUIDensity();
   const defaultColumnKeys = columns.map(col => String(col.key));
-  
-  const {
-    preferences,
-    setSort,
-    toggleColumnVisibility,
-    setColumnOrder,
-    setColumnFilter,
-  } = useTablePreferences({
-    tableId,
-    defaultColumns: defaultColumnKeys,
-    defaultSortKey,
-    defaultSortDirection,
+  const { preferences, setSort, toggleColumnVisibility, setColumnOrder, setColumnFilter } = useTablePreferences({
+    tableId, defaultColumns: defaultColumnKeys, defaultSortKey, defaultSortDirection,
   });
 
+  // Per-screen grid state preserved for the session (workspace tabs).
+  const scope = `grid:${tableId}:${typeof window !== "undefined" ? window.location.pathname : ""}`;
+  const [search, setSearch] = useSessionState(`${scope}:q`, "");
+  const [page, setPage] = useSessionState(`${scope}:page`, 0);
+  const [pageSize, setPageSize] = useSessionState(`${scope}:size`, defaultPageSize);
+  const [dense, setDense] = useSessionState(`grid:${tableId}:dense`, true);
+  const [widths, setWidths] = useSessionState<Record<string, number>>(`grid:${tableId}:widths`, {});
+  const [fullscreen, setFullscreen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -156,42 +186,36 @@ export function EnhancedDataTable<T extends { id: string | number }>({
     }
   };
 
-  // Filter and sort columns based on preferences
   const visibleColumns = useMemo(() => {
-    return preferences.columnOrder
+    const ordered = preferences.columnOrder
       .filter(key => preferences.visibleColumns.includes(key))
       .map(key => columns.find(col => String(col.key) === key))
       .filter((col): col is EnhancedColumn<T> => col !== undefined);
+    // Columns added after preferences were saved still show.
+    const missing = columns.filter(c => !preferences.columnOrder.includes(String(c.key)));
+    return [...ordered, ...missing];
   }, [columns, preferences.columnOrder, preferences.visibleColumns]);
 
-  // Column configs for the menu
-  const columnConfigs: ColumnConfig[] = useMemo(() => {
-    return columns.map(col => ({
-      key: String(col.key),
-      header: col.header,
-      sortable: col.sortable,
-      filterable: col.filterable,
-    }));
-  }, [columns]);
+  const columnConfigs: ColumnConfig[] = useMemo(() => columns.map(col => ({
+    key: String(col.key), header: col.header, sortable: col.sortable, filterable: col.filterable,
+  })), [columns]);
 
-  // Apply column filters and sorting
   const processedData = useMemo(() => {
     let result = [...data];
-
-    // Apply column filters
+    const q = search.trim().toLowerCase();
+    if (q) {
+      const terms = q.split(/\s+/);
+      result = result.filter(item => {
+        const hay = columns.map(c => cellText(item, c)).join(" ").toLowerCase();
+        return terms.every(t => hay.includes(t));
+      });
+    }
     Object.entries(preferences.columnFilters).forEach(([key, filterValue]) => {
-      if (filterValue) {
-        const column = columns.find(col => String(col.key) === key);
-        result = result.filter(item => {
-          const value = column?.getValue 
-            ? column.getValue(item) 
-            : item[key as keyof T];
-          return String(value ?? '').toLowerCase().includes(filterValue.toLowerCase());
-        });
-      }
+      if (!filterValue) return;
+      const column = columns.find(col => String(col.key) === key);
+      if (!column) return;
+      result = result.filter(item => cellText(item, column).toLowerCase().includes(filterValue.toLowerCase()));
     });
-
-    // Apply sorting
     if (preferences.sortKey) {
       const column = columns.find(col => String(col.key) === preferences.sortKey);
       result.sort((a, b) => {
@@ -199,248 +223,251 @@ export function EnhancedDataTable<T extends { id: string | number }>({
           const pa = pinFirst(a), pb = pinFirst(b);
           if (pa !== pb) return pa ? -1 : 1;
         }
-        const aValue = column?.getValue ? column.getValue(a) : a[preferences.sortKey as keyof T];
-        const bValue = column?.getValue ? column.getValue(b) : b[preferences.sortKey as keyof T];
-        
+        const aValue = column?.getValue ? column.getValue(a) : (a as Record<string, unknown>)[preferences.sortKey as string];
+        const bValue = column?.getValue ? column.getValue(b) : (b as Record<string, unknown>)[preferences.sortKey as string];
         if (aValue == null && bValue == null) return 0;
         if (aValue == null) return 1;
         if (bValue == null) return -1;
-        
-        const comparison = String(aValue).localeCompare(String(bValue), undefined, { numeric: true });
+        const comparison = typeof aValue === "number" && typeof bValue === "number" ? aValue - bValue : String(aValue).localeCompare(String(bValue), undefined, { numeric: true });
         return preferences.sortDirection === 'asc' ? comparison : -comparison;
       });
     }
-
     return result;
-  }, [data, preferences.columnFilters, preferences.sortKey, preferences.sortDirection, columns, pinFirst]);
+  }, [data, search, preferences.columnFilters, preferences.sortKey, preferences.sortDirection, columns, pinFirst]);
 
+  const total = processedData.length;
+  const effectiveSize = pageSize > 0 ? pageSize : Math.max(total, 1);
+  const pageCount = Math.max(1, Math.ceil(total / effectiveSize));
+  const safePage = Math.min(page, pageCount - 1);
+  useEffect(() => { if (safePage !== page) setPage(safePage); }, [safePage, page, setPage]);
+  const pageRows = pageSize > 0 ? processedData.slice(safePage * effectiveSize, (safePage + 1) * effectiveSize) : processedData;
+
+  const selectedRows = useMemo(() => data.filter(i => selectedIds.has(String(i.id))), [data, selectedIds]);
   const allSelected = processedData.length > 0 && processedData.every(item => selectedIds.has(String(item.id)));
   const someSelected = processedData.some(item => selectedIds.has(String(item.id))) && !allSelected;
 
   const handleSelectAll = (checked: boolean) => {
     if (!onSelectionChange) return;
-    if (checked) {
-      const newSet = new Set(selectedIds);
-      processedData.forEach(item => newSet.add(String(item.id)));
-      onSelectionChange(newSet);
-    } else {
-      const newSet = new Set(selectedIds);
-      processedData.forEach(item => newSet.delete(String(item.id)));
-      onSelectionChange(newSet);
-    }
+    const next = new Set(selectedIds);
+    processedData.forEach(item => checked ? next.add(String(item.id)) : next.delete(String(item.id)));
+    onSelectionChange(next);
   };
-
   const handleSelectOne = (id: string, checked: boolean) => {
     if (!onSelectionChange) return;
-    const newSet = new Set(selectedIds);
-    if (checked) {
-      newSet.add(id);
-    } else {
-      newSet.delete(id);
-    }
-    onSelectionChange(newSet);
+    const next = new Set(selectedIds);
+    if (checked) next.add(id); else next.delete(id);
+    onSelectionChange(next);
   };
+  const clearSelection = () => onSelectionChange?.(new Set());
 
   const handleSort = (key: string, direction: 'asc' | 'desc') => {
-    setSort(key);
-    // Force the direction if explicitly requested
-    if (preferences.sortKey === key && preferences.sortDirection !== direction) {
-      setSort(key); // Toggle again to get correct direction
-    }
+    if (preferences.sortKey !== key) { setSort(key); if (direction === 'desc') setTimeout(() => setSort(key), 0); }
+    else if (preferences.sortDirection !== direction) setSort(key);
   };
 
-  // Helper to get responsive visibility classes
-  const getResponsiveClass = (hideBelow?: 'sm' | 'md' | 'lg' | 'xl') => {
-    if (!hideBelow) return '';
-    const breakpointMap = {
-      'sm': 'hidden sm:table-cell',
-      'md': 'hidden md:table-cell',
-      'lg': 'hidden lg:table-cell',
-      'xl': 'hidden xl:table-cell',
-    };
-    return breakpointMap[hideBelow];
+  const exportRows = (format: "xlsx" | "csv") => {
+    const rows = selectedRows.length ? processedData.filter(i => selectedIds.has(String(i.id))) : processedData;
+    const cols = visibleColumns.filter(c => !c.noExport && c.header);
+    const sheet = XLSX.utils.json_to_sheet(rows.map(r => Object.fromEntries(cols.map(c => [c.header, cellText(r, c)]))));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, sheet, "Data");
+    const stamp = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `${exportName ?? tableId}-${stamp}.${format}`, { bookType: format });
   };
 
-  // Density mode styling
-  // Spreadsheet: Ultra compact (24px rows, 11px text)
-  // 2K1: Condensed (~30% tighter than normal, 28px rows, 12px text)
-  // Normal: Standard padding
-  const isUltraCompact = isSpreadsheetMode;
-  const isCondensed = is2K1Mode;
-  
-  // Get text size class based on density
-  const getTextClass = () => {
-    if (isUltraCompact) return "text-[11px]";
-    if (isCondensed) return "text-xs";
-    return compact ? "text-xs" : "text-sm";
-  };
-  
+  const getResponsiveClass = (hideBelow?: 'sm' | 'md' | 'lg' | 'xl') =>
+    hideBelow ? { sm: 'hidden sm:table-cell', md: 'hidden md:table-cell', lg: 'hidden lg:table-cell', xl: 'hidden xl:table-cell' }[hideBelow] : '';
+
+  const cellPad = dense ? "py-1 px-2 h-7" : "py-2 px-3 h-10";
+  const hasLead = selectable || !!attention;
+  const leadWidth = (selectable ? 32 : 0) + (attention ? 16 : 0);
+  const activeFilters = Object.values(preferences.columnFilters).filter(Boolean).length;
+  const from = total === 0 ? 0 : safePage * effectiveSize + 1;
+  const to = Math.min(total, (safePage + 1) * effectiveSize);
+
   return (
     <div className={cn(
-      "overflow-hidden",
-      isUltraCompact 
-        ? "border border-border" 
-        : isCondensed
-        ? "bg-card rounded border border-border shadow-sm"
-        : "bg-card rounded-lg border border-border shadow-sm"
+      "flex flex-col bg-card border border-border rounded-md shadow-sm overflow-hidden",
+      fullscreen && "fixed inset-0 z-50 rounded-none"
     )}>
-      <div className="overflow-x-auto">
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <Table className={getTextClass()}>
-          <TableHeader>
-            <TableRow className={cn(
-              "border-b border-table-border",
-              isUltraCompact 
-                ? "bg-muted/50 hover:bg-muted/50" 
-                : "bg-table-header hover:bg-table-header"
-            )}>
-              {selectable && (
-                <TableHead className={cn(
-                  "w-8 text-table-header-foreground font-semibold",
-                  isUltraCompact ? "py-0.5 px-1.5 h-6" : 
-                  isCondensed ? "py-1 px-2 h-7" :
-                  compact ? "py-2 px-3 h-9" : "py-3 px-4"
-                )}>
-                  <IndeterminateCheckbox
-                    checked={allSelected}
-                    indeterminate={someSelected}
-                    onCheckedChange={handleSelectAll}
-                    aria-label="Select all"
-                    className={cn(
-                      "border-table-header-foreground/50", 
-                      isUltraCompact && "h-3.5 w-3.5",
-                      isCondensed && "h-3.5 w-3.5"
-                    )}
-                  />
-                </TableHead>
-              )}
-              <SortableContext
-                items={visibleColumns.map(col => String(col.key))}
-                strategy={horizontalListSortingStrategy}
-              >
-                {visibleColumns.map((column) => {
-                  const key = String(column.key);
-                  const isSorted = preferences.sortKey === key;
-                  const SortIcon = isSorted
-                    ? preferences.sortDirection === 'asc' ? ArrowUp : ArrowDown
-                    : ArrowUpDown;
+      {/* Top bar: instant search + toolbar */}
+      {(searchable || toolbar) && (
+        <div className="flex flex-wrap items-center gap-2 px-2 py-1.5 border-b border-border bg-card">
+          {searchable && (
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input ref={searchRef} value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} placeholder={searchPlaceholder} aria-label="Search grid" className="h-8 pl-7 pr-7 text-xs" />
+              {search && <button type="button" onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Clear search"><X className="h-3.5 w-3.5" /></button>}
+            </div>
+          )}
+          {toolbar}
+          {activeFilters > 0 && (
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => Object.keys(preferences.columnFilters).forEach(k => setColumnFilter(k, ""))}>
+              Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
+            </Button>
+          )}
+        </div>
+      )}
 
-                  return (
-                    <SortableHeader
-                      key={key}
-                      id={key}
-                      className={cn(
-                        "text-table-header-foreground font-semibold whitespace-nowrap",
-                        isUltraCompact ? "py-0.5 px-1.5 h-6" : 
-                        isCondensed ? "py-1 px-1.5 md:px-2 h-7" :
-                        compact ? "py-2 px-2 md:px-3 h-9" : "py-3 px-4",
-                        column.className,
-                        getResponsiveClass(column.hideBelow)
-                      )}
-                    >
-                      <div 
+      {/* Bulk actions bar */}
+      {selectable && selectedRows.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 px-3 py-1.5 border-b border-border bg-primary/5 text-xs" role="region" aria-label="Bulk actions">
+          <span className="font-semibold">{selectedRows.length} selected</span>
+          {bulkActions?.(selectedRows, clearSelection)}
+          {exportName && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => exportRows("xlsx")}><Download className="h-3 w-3 mr-1" />Export selected</Button>}
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={clearSelection}>Clear</Button>
+        </div>
+      )}
+
+      <div className={cn("overflow-auto", fullscreen && "flex-1")} style={fullscreen ? undefined : { maxHeight }}>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <table className={cn("w-full caption-bottom border-separate border-spacing-0", dense ? "text-xs" : "text-sm")}>
+            <thead className="sticky top-0 z-20">
+              <tr className="bg-table-header">
+                {hasLead && (
+                  <th className={cn("sticky left-0 z-30 bg-table-header border-b border-table-border text-left", cellPad)} style={{ width: leadWidth, minWidth: leadWidth }}>
+                    <div className="flex items-center gap-1">
+                      {selectable && <IndeterminateCheckbox checked={allSelected} indeterminate={someSelected} onCheckedChange={handleSelectAll} aria-label="Select all" className="h-3.5 w-3.5" />}
+                    </div>
+                  </th>
+                )}
+                <SortableContext items={visibleColumns.map(col => String(col.key))} strategy={horizontalListSortingStrategy}>
+                  {visibleColumns.map((column, ci) => {
+                    const key = String(column.key);
+                    const isSorted = preferences.sortKey === key;
+                    const SortIcon = isSorted ? (preferences.sortDirection === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+                    const filterVal = preferences.columnFilters[key] || "";
+                    return (
+                      <SortableHeader
+                        key={key}
+                        id={key}
+                        width={widths[key] ?? column.width}
+                        onResize={(w) => setWidths(prev => ({ ...prev, [key]: w }))}
                         className={cn(
-                          "flex items-center gap-0.5 flex-1",
-                          column.sortable !== false && "cursor-pointer select-none"
+                          "bg-table-header text-table-header-foreground font-semibold whitespace-nowrap border-b border-table-border",
+                          cellPad, column.className, getResponsiveClass(column.hideBelow),
+                          ci === 0 && "sticky z-30 border-r border-table-border"
                         )}
-                        onClick={() => column.sortable !== false && setSort(key)}
                       >
-                        <span>{column.header}</span>
-                        {column.sortable !== false && (
-                          <SortIcon className={cn(
-                            isUltraCompact || isCondensed ? "h-3 w-3" : "h-3.5 w-3.5",
-                            isSorted ? "text-primary" : "text-table-header-foreground/50"
-                          )} />
-                        )}
-                      </div>
-                      <ColumnHeaderMenu
-                        column={columnConfigs.find(c => c.key === key)!}
-                        allColumns={columnConfigs}
-                        visibleColumns={preferences.visibleColumns}
-                        sortKey={preferences.sortKey}
-                        sortDirection={preferences.sortDirection}
-                        columnFilter={preferences.columnFilters[key] || ''}
-                        onSort={handleSort}
-                        onToggleColumn={toggleColumnVisibility}
-                        onFilterChange={setColumnFilter}
-                      />
-                    </SortableHeader>
-                  );
-                })}
-              </SortableContext>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {processedData.map((item, index) => {
-              const isSelected = selectedIds.has(String(item.id));
-              return (
-                <TableRow
-                  key={item.id}
-                  onClick={rowHref ? undefined : e => { if (e.target instanceof Element && e.target.closest('a,button,input,[role="button"]')) return; if (!e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) onRowClick?.(item); }}
-                  className={cn(
-                    "border-b border-table-border transition-colors duration-75",
-                    index % 2 === 1 && "bg-table-stripe",
-                    (onRowClick || rowHref) && "hover:bg-muted/50",
-                    isSelected && "bg-primary/5",
-                    isUltraCompact && "h-6",
-                    isCondensed && "h-7"
-                  )}
-                >
-                  {selectable && (
-                    <TableCell className={cn(
-                      "w-8",
-                      isUltraCompact ? "py-0.5 px-1.5" : 
-                      isCondensed ? "py-0.5 px-2" :
-                      compact ? "py-1.5 px-3" : "py-2 px-4"
-                    )}>
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={(checked) => handleSelectOne(String(item.id), !!checked)}
-                        onClick={(e) => e.stopPropagation()}
-                        aria-label="Select row"
-                        className={isUltraCompact || isCondensed ? "h-3.5 w-3.5" : undefined}
-                      />
-                    </TableCell>
-                  )}
-                  {visibleColumns.map((column, columnIndex) => (
-                    <TableCell
-                      key={String(column.key)}
-                      className={cn(
-                        "text-foreground min-w-0",
-                        isUltraCompact ? "py-0.5 px-1.5" : 
-                        isCondensed ? "py-1 px-1.5 md:px-2" :
-                        compact ? "py-1.5 px-2 md:px-3" : "py-2 px-4",
-                        column.className,
-                        getResponsiveClass(column.hideBelow)
-                      )}
-                    >
-                      <div className="truncate">
-                        {rowHref && !column.render && columnIndex === 0 ? <Link to={rowHref(item)} className="hover:text-primary hover:underline">{String(item[column.key as keyof T] ?? '')}</Link> : column.render
-                          ? column.render(item)
-                          : String(item[column.key as keyof T] ?? "")}
-                      </div>
-                    </TableCell>
-                  ))}
-                </TableRow>
-              );
-            })}
-            {processedData.length === 0 && (
-              <TableRow>
-                <TableCell
-                  colSpan={visibleColumns.length + (selectable ? 1 : 0)}
-                  className="h-24 text-center text-muted-foreground"
-                >
-                  No results found
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </DndContext>
+                        <div className="flex flex-col flex-1 min-w-0" style={undefined}>
+                          <div className={cn("flex items-center gap-0.5", column.sortable !== false && "cursor-pointer select-none")} onClick={() => column.sortable !== false && setSort(key)}>
+                            <span className="truncate">{column.header}</span>
+                            {column.sortable !== false && <SortIcon className={cn("h-3 w-3 shrink-0", isSorted ? "text-primary" : "text-table-header-foreground/40")} />}
+                            {filterVal && <Filter className="h-3 w-3 text-primary shrink-0" />}
+                          </div>
+                          {showFilters && column.filterable !== false && (
+                            <Input value={filterVal} onChange={e => { setColumnFilter(key, e.target.value); setPage(0); }} onClick={e => e.stopPropagation()} placeholder="Filter" aria-label={`Filter ${column.header}`} className="h-6 mt-1 px-1.5 text-[11px] font-normal" />
+                          )}
+                        </div>
+                        <ColumnHeaderMenu
+                          column={columnConfigs.find(c => c.key === key)!}
+                          allColumns={columnConfigs}
+                          visibleColumns={preferences.visibleColumns}
+                          sortKey={preferences.sortKey}
+                          sortDirection={preferences.sortDirection}
+                          columnFilter={filterVal}
+                          onSort={handleSort}
+                          onToggleColumn={toggleColumnVisibility}
+                          onFilterChange={setColumnFilter}
+                        />
+                      </SortableHeader>
+                    );
+                  })}
+                </SortableContext>
+              </tr>
+            </thead>
+            <tbody>
+              {pageRows.map((item, index) => {
+                const id = String(item.id);
+                const isSelected = selectedIds.has(id);
+                const warn = attention?.(item);
+                const rowBg = isSelected ? "bg-accent" : index % 2 === 1 ? "bg-table-stripe" : "bg-card";
+                return (
+                  <tr
+                    key={id}
+                    onClick={rowHref ? undefined : e => { if (e.target instanceof Element && e.target.closest('a,button,input,[role="button"],[role="switch"],[role="checkbox"]')) return; if (!e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) onRowClick?.(item); }}
+                    className={cn("group/row", rowBg, (onRowClick || rowHref) && "cursor-pointer")}
+                  >
+                    {hasLead && (
+                      <td className={cn("sticky left-0 z-10 border-b border-table-border group-hover/row:bg-muted", rowBg, cellPad)}>
+                        <div className="flex items-center gap-1">
+                          {selectable && <Checkbox checked={isSelected} onCheckedChange={(c) => handleSelectOne(id, !!c)} onClick={(e) => e.stopPropagation()} aria-label="Select row" className="h-3.5 w-3.5" />}
+                          {attention && (warn ? <span className="h-2 w-2 rounded-full bg-warning shrink-0" title={warn} aria-label={warn} /> : <span className="h-2 w-2 shrink-0" />)}
+                        </div>
+                      </td>
+                    )}
+                    {visibleColumns.map((column, ci) => {
+                      const w = widths[String(column.key)] ?? column.width;
+                      return (
+                        <td
+                          key={String(column.key)}
+                          style={{ width: w, minWidth: w, maxWidth: w, ...(ci === 0 ? { left: hasLead ? leadWidth : 0 } : {}) }}
+                          className={cn(
+                            "text-foreground border-b border-table-border group-hover/row:bg-muted align-middle",
+                            cellPad, column.className, getResponsiveClass(column.hideBelow),
+                            ci === 0 && cn("sticky z-10 font-medium border-r", rowBg)
+                          )}
+                        >
+                          <div className="truncate">
+                            {rowHref && ci === 0
+                              ? <Link to={rowHref(item)} className="hover:text-primary hover:underline">{column.render ? column.render(item) : String((item as Record<string, unknown>)[String(column.key)] ?? '')}</Link>
+                              : column.render ? column.render(item) : String((item as Record<string, unknown>)[String(column.key)] ?? "")}
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+              {pageRows.length === 0 && (
+                <tr><td colSpan={visibleColumns.length + (hasLead ? 1 : 0)} className="h-24 text-center text-muted-foreground">{emptyText}</td></tr>
+              )}
+            </tbody>
+          </table>
+        </DndContext>
+      </div>
+
+      {/* Footer bar */}
+      <div className="flex flex-wrap items-center gap-1 px-2 py-1 border-t border-border bg-muted/30 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground mr-2">{total.toLocaleString()} row{total === 1 ? "" : "s"}</span>
+        {searchable && <Button variant="ghost" size="icon" className="h-7 w-7" title="Quick search" aria-label="Quick search" onClick={() => searchRef.current?.focus()}><Search className="h-3.5 w-3.5" /></Button>}
+        <Button variant={showFilters ? "secondary" : "ghost"} size="icon" className="h-7 w-7" title="Column filters" aria-label="Column filters" onClick={() => setShowFilters(v => !v)}><Filter className="h-3.5 w-3.5" /></Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7" title={dense ? "Comfortable rows" : "Dense rows"} aria-label="Toggle density" onClick={() => setDense(!dense)}>{dense ? <Rows3 className="h-3.5 w-3.5" /> : <Rows4 className="h-3.5 w-3.5" />}</Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7" title={fullscreen ? "Exit fullscreen" : "Fullscreen"} aria-label="Toggle fullscreen" onClick={() => setFullscreen(v => !v)}>{fullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}</Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" title="Columns" aria-label="Column settings"><Settings2 className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="max-h-80 overflow-auto">
+            <DropdownMenuLabel className="text-xs">Columns</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {columns.filter(c => c.header).map(c => (
+              <DropdownMenuCheckboxItem key={String(c.key)} checked={preferences.visibleColumns.includes(String(c.key))} onCheckedChange={() => toggleColumnVisibility(String(c.key))} onSelect={e => e.preventDefault()} className="text-xs">{c.header}</DropdownMenuCheckboxItem>
+            ))}
+            {Object.keys(widths).length > 0 && (<><DropdownMenuSeparator /><DropdownMenuItem className="text-xs" onSelect={() => setWidths({})}>Reset widths</DropdownMenuItem></>)}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {exportName && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" title="Export" aria-label="Export"><Download className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuLabel className="text-xs">{selectedRows.length ? `Export ${selectedRows.length} selected` : `Export ${total} filtered rows`}</DropdownMenuLabel>
+              <DropdownMenuItem className="text-xs" onSelect={() => exportRows("xlsx")}>Excel (.xlsx)</DropdownMenuItem>
+              <DropdownMenuItem className="text-xs" onSelect={() => exportRows("csv")}>CSV (.csv)</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        <div className="flex-1" />
+        {defaultPageSize > 0 && (
+          <>
+            <span className="hidden sm:inline">Rows</span>
+            <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setPage(0); }}>
+              <SelectTrigger className="h-7 w-[72px] text-xs" aria-label="Page size"><SelectValue /></SelectTrigger>
+              <SelectContent>{[25, 50, 100, 250, 500].map(n => <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>)}</SelectContent>
+            </Select>
+            <span className="tabular-nums px-1" aria-live="polite">{from}–{to} of {total.toLocaleString()}</span>
+            <Button variant="ghost" size="icon" className="h-7 w-7" disabled={safePage === 0} onClick={() => setPage(safePage - 1)} aria-label="Previous page"><ChevronLeft className="h-3.5 w-3.5" /></Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7" disabled={safePage >= pageCount - 1} onClick={() => setPage(safePage + 1)} aria-label="Next page"><ChevronRight className="h-3.5 w-3.5" /></Button>
+          </>
+        )}
       </div>
     </div>
   );
