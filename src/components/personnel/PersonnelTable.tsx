@@ -202,19 +202,6 @@ export function PersonnelTable({
 
   // Define columns for EnhancedDataTable
   const columns: EnhancedColumn<Personnel>[] = [
-    ...(selectionMode ? [{
-      key: "select",
-      header: "",
-      sortable: false,
-      filterable: false,
-      render: (person: Personnel) => (
-        <Checkbox
-          checked={selectedIds.includes(person.id)}
-          onCheckedChange={() => onToggleSelection(person.id)}
-          onClick={(e: React.MouseEvent) => e.stopPropagation()}
-        />
-      ),
-    }] : []),
     {
       key: "action",
       header: "Action",
@@ -609,6 +596,13 @@ export function PersonnelTable({
           data={personnel}
           columns={columns}
           rowHref={person => `/personnel/${person.id}`}
+          selectable={selectionMode}
+          selectedIds={new Set(selectedIds)}
+          onSelectionChange={(next) => {
+            const cur = new Set(selectedIds);
+            for (const id of next) if (!cur.has(id)) onToggleSelection(id);
+            for (const id of cur) if (!next.has(id) && personnel.some(p => p.id === id)) onToggleSelection(id);
+          }}
         />
       </div>
 
