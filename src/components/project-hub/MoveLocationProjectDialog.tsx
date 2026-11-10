@@ -26,6 +26,6 @@ export function MoveLocationProjectDialog({ location, onClose }: { location: Pro
         const { error } = await supabase.rpc('move_location_project', { p_location_id: location.id, p_target_project_id: target, p_expected_project_id: location.project_id, p_reason: reason.trim() });
         if (error) throw error;
         await qc.invalidateQueries(); toast.success('Location moved; history retained'); onClose(); navigate(`/projects/${target}/locations/${location.id}`);
-      } catch (e) { toast.error(e instanceof Error ? e.message : 'Location move failed'); } finally { setBusy(false); }
+      } catch (e) { toast.error(e && typeof e === 'object' && 'message' in e ? String(e.message) : 'Location move failed'); } finally { setBusy(false); }
     }}>Confirm move</Button></DialogFooter></DialogContent></Dialog>;
 }
