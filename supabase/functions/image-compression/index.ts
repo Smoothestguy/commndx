@@ -50,8 +50,10 @@ Deno.serve(async req => {
           const write = await bucket.upload(optimizedPath, compressed, { contentType: 'image/jpeg', upsert: true });
           if (write.error) throw write.error;
           // Verify the stored bytes before recording completion.
-          const read = await bucket.download(optimizedPath);
-          if (read.error || !read.data || await hash(new Uint8Array(await read.data.arrayBuffer())) !== await hash(compressed)) throw new Error('Stored image verification failed');
+          const signed = await bucket.createSignedUrl(optimizedPath, 60);
+          if (signed.error || !signed.data) throw new Error('Stored image verification failed');
+          const read = await fetch(`${signed.data.signedUrl}&verify=${crypto.randomUUID()}`, { cache: 'no-store' });
+          if (!read.ok || await hash(new Uint8Array(await read.arrayBuffer())) !== await hash(compressed)) throw new Error('Stored image verification failed');
           savedBytes = compressed.length;
         }
         const record = await db.from('image_optimizations').upsert({ bucket_id: row.bucket_id, object_path: row.object_path, thumbnail_path: thumbPath, optimized_path: receipt && compressed.length < bytes.length ? optimizedPath : null, original_bytes: bytes.length, optimized_bytes: savedBytes, thumbnail_bytes: thumb.length, original_sha256: digest });
