@@ -4,7 +4,7 @@ import { EnhancedDataTable, type EnhancedColumn } from '@/components/shared/Enha
 type Row = { id: string; cells: ReactNode[]; sort?: string[] };
 
 /** Event Manager grid: shared data grid (search, column menus, footer, export) with phone cards. */
-export function EventGrid({ headers, rows, mobile = false, empty = 'No records yet.', gridId, selectable = false, bulkActions, exportName }: {
+export function EventGrid({ headers, rows, mobile = false, empty = 'No records yet.', gridId, selectable = true, bulkActions, exportName }: {
   headers: string[]; rows: Row[]; empty?: string; mobile?: boolean; gridId?: string; selectable?: boolean;
   bulkActions?: (selected: Row[], clear: () => void) => ReactNode; exportName?: string;
 }) {
