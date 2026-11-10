@@ -330,7 +330,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
 
       <div ref={scrollRef} onScroll={e => { try { sessionStorage.setItem(`${scope}:scroll`, JSON.stringify([e.currentTarget.scrollTop, e.currentTarget.scrollLeft])); } catch { /* unavailable storage */ } }} className={cn("overflow-auto", fullscreen && "flex-1")} style={fullscreen ? undefined : { maxHeight }}>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <table className={cn("w-full caption-bottom border-separate border-spacing-0", dense ? "text-xs" : "text-sm")}>
+          <table style={{ minWidth: leadWidth + visibleColumns.reduce((n, c) => n + (widths[String(c.key)] ?? c.width ?? 150), 0) }} className={cn("w-full table-fixed caption-bottom border-separate border-spacing-0", dense ? "text-xs" : "text-sm")}>
             <thead className="sticky top-0 z-20">
               <tr className="bg-table-header">
                 {hasLead && (
@@ -350,7 +350,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                       <SortableHeader
                         key={key}
                         id={key}
-                        width={widths[key] ?? column.width}
+                        width={widths[key] ?? column.width ?? 150}
                         left={ci === 0 ? leadWidth : undefined}
                         onResize={(w) => setWidths(prev => ({ ...prev, [key]: w }))}
                         className={cn(
@@ -407,7 +407,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                       </td>
                     )}
                     {visibleColumns.map((column, ci) => {
-                      const w = widths[String(column.key)] ?? column.width;
+                      const w = widths[String(column.key)] ?? column.width ?? 150;
                       return (
                         <td
                           key={String(column.key)}
@@ -420,8 +420,8 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                         >
                           <div className="truncate">
                             {rowHref && ci === 0
-                              ? <Link to={rowHref(item)} className="hover:text-primary hover:underline">{column.render ? column.render(item) : String((item as Record<string, unknown>)[String(column.key)] ?? '')}</Link>
-                              : column.render ? column.render(item) : String((item as Record<string, unknown>)[String(column.key)] ?? "")}
+                              ? <Link to={rowHref(item)} className="hover:text-primary hover:underline">{column.render ? column.render(item) : cellText(item, column)}</Link>
+                              : column.render ? column.render(item) : cellText(item, column)}
                           </div>
                         </td>
                       );

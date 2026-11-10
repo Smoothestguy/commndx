@@ -215,11 +215,11 @@ export function LocationAssets({ projectId, locationId, locationName, canWrite, 
   const [selected, setSelected] = useSessionState<string[]>(`location-assets:${locationId}:selection`, []);
   const [bulkEnd, setBulkEnd] = useState<AssetBillingRow[] | null>(null);
   const columns: EnhancedColumn<AssetBillingRow>[] = [
-    { key: 'asset', header: 'Asset', width: 250, getValue: r => `${r.assets?.asset_number ?? ''} ${r.assets?.label ?? 'Asset'}`.trim(), render: r => <span className="flex items-center gap-1"><AssetIcon type={r.assets?.type} />{r.assets?.asset_number && `${r.assets.asset_number} · `}{r.assets?.label ?? 'Asset'}</span> },
+    { key: 'asset', header: 'Asset', width: 250, getValue: r => r.assets?.label ?? 'Asset', render: r => <span className="flex items-center gap-1"><AssetIcon type={r.assets?.type} />{r.assets?.asset_number && !r.assets?.label?.includes(r.assets.asset_number) && `${r.assets.asset_number} · `}{r.assets?.label ?? 'Asset'}</span> },
     { key: 'ownership', header: 'Ownership', getValue: r => ownershipText(r.assets) },
     { key: 'person', header: 'Responsible', getValue: r => r.personnel ? `${r.personnel.first_name} ${r.personnel.last_name}` : '' },
     { key: 'type', header: 'Type', getValue: r => r.assets?.type ?? '' },
-    { key: 'start_at', header: 'Arrival' }, { key: 'end_at', header: 'Departure' }, { key: 'days', header: 'Days' },
+    { key: 'start_at', header: 'Arrival', render: r => r.start_at ? format(new Date(r.start_at), 'MM/dd/yyyy HH:mm') : '—' }, { key: 'end_at', header: 'Departure', render: r => r.end_at ? format(new Date(r.end_at), 'MM/dd/yyyy HH:mm') : 'On site' }, { key: 'days', header: 'Days' },
     ...(canBill ? [
       { key: 'bill', header: 'Bill rate', getValue: (r: AssetBillingRow) => r.billable ? r.rate : null },
       { key: 'cost', header: 'Our cost/day', getValue: (r: AssetBillingRow) => r.assets ? assetCostBreakdown(r.assets).perDay : null },
