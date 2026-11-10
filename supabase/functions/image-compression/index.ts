@@ -22,7 +22,7 @@ Deno.serve(async req => {
     if (input.data.dry_run) return json({ dry_run: true, eligible: candidates.data.length, bytes: candidates.data.reduce((s: number, r: { bytes: number }) => s + Number(r.bytes), 0) });
     let processed = 0, originalBytes = 0, optimizedBytes = 0, thumbnailBytes = 0;
     const failures: string[] = [];
-    for (const row of candidates.data) {
+    for (const row of candidates.data.slice(0, 1)) {
       if (!imageEligible(row.bucket_id, row.object_path, row.mime)) continue;
       try {
         const bucket = db.storage.from(row.bucket_id);
@@ -33,10 +33,10 @@ Deno.serve(async req => {
         const image = decodeImage(bytes);
         if (image.width * image.height > 12_000_000) throw new Error('Image too large for safe processing');
         const [width, height] = imageDimensions(image.width, image.height);
-        image.resize('linear', width, height);
+        image.resize('nearest', width, height);
         const thumbnail = image.clone();
         const side = Math.min(thumbnail.width, thumbnail.height);
-        thumbnail.crop('box', Math.floor((thumbnail.width - side) / 2), Math.floor((thumbnail.height - side) / 2), side, side).resize('linear', THUMBNAIL_SIZE, THUMBNAIL_SIZE);
+        thumbnail.crop('box', Math.floor((thumbnail.width - side) / 2), Math.floor((thumbnail.height - side) / 2), side, side).resize('nearest', THUMBNAIL_SIZE, THUMBNAIL_SIZE);
         const thumb = encodeImage(thumbnail, JPEG_QUALITY);
         const compressed = encodeImage(image, JPEG_QUALITY);
         const thumbPath = `${row.object_path}.thumb.jpg`;

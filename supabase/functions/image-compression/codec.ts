@@ -11,7 +11,7 @@ export function decodeImage(bytes: Uint8Array) {
     return new Frame(result.width, result.height, result.framebuffer);
   }
   // libjpeg scales during decoding, avoiding a full-resolution bitmap allocation.
-  const result = jpeg.decode(bytes, 1600, 1600);
+  const result = jpeg.decode(bytes, 800, 800);
   const pixels = new Uint8Array(result.width * result.height * 4);
   pixels.fill(255);
   for (let i = 0; i < result.width * result.height; i++) {
