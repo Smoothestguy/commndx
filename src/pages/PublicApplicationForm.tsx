@@ -37,6 +37,10 @@ import { SignaturePad } from "@/components/form-builder/SignaturePad";
 import { FormFileUpload } from "@/components/form-builder/FormFileUpload";
 import { useApplicantLookup, FoundApplicantData, LookupResult } from "@/hooks/useApplicantLookup";
 import { SEO } from "@/components/SEO";
+import { IntakeConsentBlock } from "@/components/intake/IntakeConsentBlock";
+import { GenderRadio } from "@/components/intake/GenderRadio";
+import { ProfilePhotoCapture } from "@/components/intake/ProfilePhotoCapture";
+import { INTAKE_TEXT, intakeLang, SMS_CONSENT_VERSION, PHOTO_CONSENT_VERSION } from "@/lib/intakeConsents";
 import { PublicJobFactsPanel } from "@/components/staffing/PublicJobFactsPanel";
 import { SocialPrefillButtons, SocialProfile } from "@/components/staffing/SocialPrefillButtons";
 import { CertificationsFormSection, saveCertifications, type CertEntry } from "@/components/staffing/CertificationsFormSection";
@@ -177,6 +181,10 @@ export default function PublicApplicationForm() {
 
   const [smsConsent, setSmsConsent] = useState(false);
   const [smsConsentError, setSmsConsentError] = useState<string | null>(null);
+  const [photoConsent, setPhotoConsent] = useState(false);
+  const [photoConsentError, setPhotoConsentError] = useState<string | null>(null);
+  const [gender, setGender] = useState<"male" | "female" | null>(null);
+  const [genderError, setGenderError] = useState<string | null>(null);
   
   // Returning applicant auto-fill state
   const [isReturningApplicant, setIsReturningApplicant] = useState(false);
@@ -824,10 +832,23 @@ export default function PublicApplicationForm() {
     setSubmitFailureMessage(null);
     setCustomFieldErrors({});
 
+    const it = INTAKE_TEXT[intakeLang(currentLanguage)];
+    setPhotoConsentError(null);
+    setGenderError(null);
+    let consentBlocked = false;
+    if (!smsConsent) { setSmsConsentError(it.smsError); consentBlocked = true; }
+    if (!photoConsent) { setPhotoConsentError(it.photoError); consentBlocked = true; }
+    if (!isExpressMode && !gender) { setGenderError(it.genderError); consentBlocked = true; }
+    if (consentBlocked) {
+      logEvent("submit_blocked", { stage: "intake_consents_required" });
+      toast.error(!smsConsent ? it.smsError : !photoConsent ? it.photoError : it.genderError);
+      return;
+    }
+
     // Validate required profile photo (skipped in express mode)
     const requiresPhoto = !isExpressMode && coreFields.profilePicture && (formSettings.requireProfilePhoto !== false);
     if (requiresPhoto && !data.photo_url) {
-      setPhotoError("Profile photo is required");
+      setPhotoError(it.photoRequired);
       logEvent("submit_blocked", { stage: "photo_required" });
       toast.error("Please upload a profile photo to submit your application");
       return;
@@ -934,8 +955,25 @@ export default function PublicApplicationForm() {
         userAgent: navigator.userAgent,
         smsConsent: smsConsent,
         smsConsentPhone: smsConsent ? data.phone : undefined,
-        smsConsentTextVersion: smsConsent ? 'v1.0' : undefined,
+        smsConsentTextVersion: smsConsent ? SMS_CONSENT_VERSION : undefined,
       });
+      {
+        const r = submitResult as any;
+        const appId = r?.application?.id ?? r?.id ?? null;
+        if (appId) {
+          const { error: intakeErr } = await supabase.rpc("record_applicant_intake" as any, {
+            _application_id: appId,
+            _gender: gender,
+            _photo_url: data.photo_url || null,
+            _sms_consent: smsConsent,
+            _sms_version: SMS_CONSENT_VERSION,
+            _photo_consent: photoConsent,
+            _photo_version: PHOTO_CONSENT_VERSION,
+            _language: intakeLang(currentLanguage),
+          });
+          if (intakeErr) logEvent("submit_error", { stage: "intake_consents", message: intakeErr.message });
+        }
+      }
       logEvent("submit_success", { stage: isExpressMode ? "express" : "full" });
       if (certEntries.some((c) => c.cert_type)) {
         const r = submitResult as any;
@@ -1638,35 +1676,38 @@ export default function PublicApplicationForm() {
                   </Alert>
                 )}
                 
-                {/* Profile Picture - Core Field (skipped in express mode) */}
+                <IntakeConsentBlock
+                  lang={intakeLang(currentLanguage)}
+                  value={{ sms: smsConsent, photo: photoConsent }}
+                  onChange={(v) => {
+                    setSmsConsent(v.sms); if (v.sms) setSmsConsentError(null);
+                    setPhotoConsent(v.photo); if (v.photo) setPhotoConsentError(null);
+                  }}
+                  errors={{ sms: smsConsentError, photo: photoConsentError }}
+                  privacyUrl={formSettings.privacyPolicyUrl}
+                  termsUrl={formSettings.termsOfServiceUrl}
+                />
+                {!isExpressMode && (
+                  <GenderRadio
+                    lang={intakeLang(currentLanguage)}
+                    value={gender}
+                    onChange={(g) => { setGender(g); setGenderError(null); }}
+                    error={genderError}
+                  />
+                )}
+                {/* Profile Picture - Core Field (skipped in express mode); locked until photo consent */}
                 {!isExpressMode && coreFields.profilePicture && (
-                  <div className="space-y-2">
-                    <FormFileUpload
-                      value={form.watch("photo_url") || null}
-                      onChange={(url) => {
-                        form.setValue("photo_url", url || "");
-                        setPhotoError(null);
-                      }}
-                      onUploadStateChange={(isUploading) => handleFileUploadStateChange("core_photo", isUploading)}
-                      onUploadError={handleUploadError}
-                      label={`${getCoreLabel('profilePicture')}${formSettings.requireProfilePhoto !== false ? ' *' : ''}`}
-                      required={formSettings.requireProfilePhoto !== false}
-                      helpText={coreFieldsLocked && foundApplicant?.photo_url
-                        ? "Using your existing photo from previous application"
-                        : formSettings.requireProfilePhoto !== false 
-                          ? "A clear photo is required — JPG or PNG only (no HEIC, max 10MB)" 
-                          : "Upload a clear photo of yourself (JPG or PNG, optional)"
-                      }
-                      acceptedFileTypes={["image/jpeg", "image/jpg", "image/png"]}
-                      maxFileSize={10}
-                      storageBucket="application-files"
-                      storagePath="profile-photos"
-                      disabled={coreFieldsLocked && !!foundApplicant?.photo_url}
-                    />
-                    {photoError && (
-                      <p className="text-sm font-medium text-destructive">{photoError}</p>
-                    )}
-                  </div>
+                  <ProfilePhotoCapture
+                    lang={intakeLang(currentLanguage)}
+                    value={form.watch("photo_url") || null}
+                    onChange={(url) => { form.setValue("photo_url", url || ""); setPhotoError(null); }}
+                    consented={photoConsent}
+                    required={formSettings.requireProfilePhoto !== false}
+                    error={photoError}
+                    onUploadingChange={(b) => handleFileUploadStateChange("core_photo", b)}
+                    onError={(m) => handleUploadError(m as any)}
+                    disabled={coreFieldsLocked && !!foundApplicant?.photo_url}
+                  />
                 )}
 
                 {/* Core Fields */}
@@ -1842,56 +1883,7 @@ export default function PublicApplicationForm() {
                   );
                 })()}
 
-                {/* SMS Consent Checkbox - TCPA Compliant */}
-                {formSettings.requireSmsConsent && (
-                  <div className="space-y-3 pt-4 border-t">
-                    <div className="flex items-start space-x-3">
-                      <Checkbox
-                        id="sms-consent"
-                        checked={smsConsent}
-                        onCheckedChange={(checked) => {
-                          setSmsConsent(checked === true);
-                          if (checked) setSmsConsentError(null);
-                        }}
-                        className="mt-0.5"
-                      />
-                      <div className="space-y-2">
-                      <Label htmlFor="sms-consent" className="text-sm leading-relaxed cursor-pointer">
-                          I agree to receive SMS notifications about my contractor status, 
-                          assignment updates, and payment information. Message frequency: up to 
-                          3 messages per week. Msg & data rates may apply. *
-                        </Label>
-                        <div className="flex gap-3 text-xs">
-                          {formSettings.privacyPolicyUrl && (
-                            <a 
-                              href={formSettings.privacyPolicyUrl} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline"
-                            >
-                              Privacy Policy
-                            </a>
-                          )}
-                          {formSettings.termsOfServiceUrl && (
-                            <a 
-                              href={formSettings.termsOfServiceUrl} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline"
-                            >
-                              Terms of Service
-                            </a>
-                          )}
-                        </div>
-                        {smsConsentError && (
-                          <p className="text-sm font-medium text-destructive">{smsConsentError}</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <CertificationsFormSection entries={certEntries} onChange={setCertEntries} />
+<CertificationsFormSection entries={certEntries} onChange={setCertEntries} />
 
                 {submitFailureMessage && (
                   <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
