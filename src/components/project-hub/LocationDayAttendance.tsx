@@ -136,8 +136,8 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
         {r.stays.some(st => st.synced_late) && <Badge variant="outline">synced late</Badge>}
       </span>; } },
     { key: 'hours', header: 'Hours', getValue: r => r.stays.reduce((n, st) => n + (st.out_at ? Number(st.hours) || 0 : 0), 0) },
-    { key: 'stays', header: 'Stays', width: 250, getValue: r => r.stays.map(st => `${hm(st.in_at, tz)} → ${hm(st.out_at, tz)}`).join('; '),
-      render: r => <div className="space-y-1">{r.stays.map((st, i) => <div key={st.id} className="flex items-center gap-1"><span>{hm(st.in_at, tz)} → {hm(st.out_at, tz)}</span>{canWrite && <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={r.stays.length === 1 ? `Edit times for ${r.name}` : `Edit stay ${i + 1} for ${r.name}`} onClick={() => setEdit({ ids: [st.id], name: r.name, day })}><Pencil className="h-3 w-3" /></Button>}</div>)}</div> },
+    { key: 'stays', header: 'Stays', width: 180, getValue: r => r.stays.length,
+      render: r => <div className="space-y-1">{r.stays.map((st, i) => <div key={st.id} className="flex items-center gap-1"><span>Stay {i + 1}</span>{canWrite && <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={r.stays.length === 1 ? `Edit times for ${r.name}` : `Edit stay ${i + 1} for ${r.name}`} onClick={() => setEdit({ ids: [st.id], name: r.name, day })}><Pencil className="h-3 w-3" /></Button>}</div>)}</div> },
     ...(canWrite ? [{ key: 'actions', header: 'Actions', noExport: true, sortable: false, filterable: false, render: (r: AttendanceRow) => <Button size="sm" variant="ghost" aria-label={r.stays.length ? `Add entry for ${r.name}` : `Set arrival for ${r.name}`} onClick={() => setLog({ id: r.id, name: r.name })}><Plus className="h-3.5 w-3.5 mr-1" />{r.stays.length ? 'Add entry' : 'Arrival'}</Button> }] : []),
   ];
 
