@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { getSignedUrl } from "@/utils/signedUrlUtils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useOptimizedPhoto } from '@/hooks/useOptimizedPhoto';
 
 interface SecureImageProps {
   bucket: string;
@@ -26,12 +27,14 @@ export function SecureImage({
   onLoad,
   onError 
 }: SecureImageProps) {
+  const optimized = useOptimizedPhoto(bucket, path, false);
+  const imagePath = optimized.loading ? null : optimized.photo;
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
-    if (!path) {
+    if (!imagePath) {
       setLoading(false);
       setUrl(null);
       return;
@@ -41,7 +44,7 @@ export function SecureImage({
     setLoading(true);
     setImageError(false);
     
-    getSignedUrl(bucket, path)
+    getSignedUrl(optimized.bucket ?? bucket, imagePath)
       .then((signedUrl) => {
         if (!cancelled) {
           setUrl(signedUrl);
@@ -61,7 +64,7 @@ export function SecureImage({
     return () => {
       cancelled = true;
     };
-  }, [bucket, path]);
+  }, [bucket, imagePath, optimized.bucket]);
 
   const handleLoad = () => {
     onLoad?.();

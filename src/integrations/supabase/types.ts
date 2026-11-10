@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "13.0.5"
   }
   public: {
     Tables: {
@@ -1098,6 +1098,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      archived_purge_exports: {
+        Row: {
+          applicant_ids: string[]
+          created_at: string
+          id: string
+          purged_at: string | null
+          snapshot: Json
+          user_id: string
+        }
+        Insert: {
+          applicant_ids: string[]
+          created_at?: string
+          id?: string
+          purged_at?: string | null
+          snapshot: Json
+          user_id: string
+        }
+        Update: {
+          applicant_ids?: string[]
+          created_at?: string
+          id?: string
+          purged_at?: string | null
+          snapshot?: Json
+          user_id?: string
+        }
+        Relationships: []
       }
       asset_assignments: {
         Row: {
@@ -4262,6 +4289,42 @@ export type Database = {
           record_id?: string
           record_type?: string
           success?: boolean
+        }
+        Relationships: []
+      }
+      image_optimizations: {
+        Row: {
+          bucket_id: string
+          object_path: string
+          optimized_at: string
+          optimized_bytes: number
+          optimized_path: string | null
+          original_bytes: number
+          original_sha256: string
+          thumbnail_bytes: number
+          thumbnail_path: string | null
+        }
+        Insert: {
+          bucket_id: string
+          object_path: string
+          optimized_at?: string
+          optimized_bytes: number
+          optimized_path?: string | null
+          original_bytes: number
+          original_sha256: string
+          thumbnail_bytes?: number
+          thumbnail_path?: string | null
+        }
+        Update: {
+          bucket_id?: string
+          object_path?: string
+          optimized_at?: string
+          optimized_bytes?: number
+          optimized_path?: string | null
+          original_bytes?: number
+          original_sha256?: string
+          thumbnail_bytes?: number
+          thumbnail_path?: string | null
         }
         Relationships: []
       }
@@ -12833,6 +12896,7 @@ export type Database = {
       }
     }
     Functions: {
+      _archived_purge_snapshot: { Args: { p_ids: string[] }; Returns: Json }
       _hygiene_applicant_candidates: { Args: never; Returns: string[] }
       _hygiene_personnel_candidates: { Args: never; Returns: string[] }
       _punch_core:
@@ -13106,6 +13170,7 @@ export type Database = {
         Returns: string
       }
       expire_old_invitations: { Args: never; Returns: undefined }
+      export_archived_applicants: { Args: never; Returns: Json }
       find_applicant_id_by_contact: {
         Args: { _email: string; _phone?: string }
         Returns: string
@@ -13251,6 +13316,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      image_compression_candidates: {
+        Args: { p_limit: number }
+        Returns: {
+          bucket_id: string
+          bytes: number
+          mime: string
+          object_path: string
+        }[]
+      }
       increment_unread_count: {
         Args: {
           p_conversation_id: string
@@ -13363,6 +13437,10 @@ export type Database = {
           p_target_project_id: string
         }
         Returns: Json
+      }
+      purge_archived_applicants: {
+        Args: { p_confirmation: string; p_export_id: string }
+        Returns: number
       }
       record_applicant_intake: {
         Args: {

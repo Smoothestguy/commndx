@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSecureUrl } from "@/hooks/useSecureUrl";
 import { cn } from "@/lib/utils";
 import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
+import { useOptimizedPhoto } from '@/hooks/useOptimizedPhoto';
 
 interface SecureAvatarProps {
   bucket: string;
@@ -26,8 +27,10 @@ export function SecureAvatar({
   className,
   enableLightbox = false,
 }: SecureAvatarProps) {
-  const { url: secureUrl, loading } = useSecureUrl(bucket, photoUrl);
+  const optimized = useOptimizedPhoto(bucket, photoUrl);
+  const { url: secureUrl, loading } = useSecureUrl(optimized.bucket ?? bucket, optimized.loading ? null : optimized.photo);
   const [open, setOpen] = useState(false);
+  const { url: fullUrl } = useSecureUrl(bucket, open ? photoUrl : null);
   const clickable = enableLightbox && !!secureUrl;
 
   return (
@@ -47,7 +50,7 @@ export function SecureAvatar({
       </Avatar>
       {clickable && (
         <PhotoLightbox
-          photos={[{ url: secureUrl as string, caption: alt }]}
+          photos={[{ url: fullUrl ?? secureUrl ?? '', caption: alt }]}
           open={open}
           onOpenChange={setOpen}
         />

@@ -37,4 +37,4 @@
 - Live production app: verification-only rows (projects, locations, people, visits, tokens, requests) are deleted in the same run; destructive flows never touch owner data.
 - Attendance/manual pickers use dated assignment/work eligibility. Shared signature lists offer individual/bulk requests; token signing targets worked stays.
 - Lists use shared `EnhancedDataTable` with frozen identity columns and explicit export projections; keyed `useSessionState` restores filters, selection and scroll across workspace tabs without changing authorization.
-- Sidebar/drawer share navConfig: one entry per destination; role gating is UI-only.
+- Sidebar/drawer share navConfig; role gating is UI-only.
