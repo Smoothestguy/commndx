@@ -110,6 +110,7 @@ function AssetBillingCell({ row, projectId, canEdit }: { row: AssetBillingRow; p
   );
 }
 import { AssignAssetDialog } from "./AssignAssetDialog";
+import { EditAssetPlacementDates } from './EditAssetPlacementDates';
 
 interface ProjectAssetAssignmentsSectionProps {
   projectId: string;
@@ -141,6 +142,8 @@ export function ProjectAssetAssignmentsSection({
   const [assetToUnassign, setAssetToUnassign] = useState<{ label: string } | null>(null);
   const [isOpen, setIsOpen] = useSessionState(`assets:${projectId}:open`, false);
   const [editAsset, setEditAsset] = useState<EditableAsset | null>(null);
+  const [dates, setDates] = useState<AssetBillingRow | null>(null);
+  const [history, setHistory] = useState(false);
   
   const { rows: assignments, isLoading } = useProjectAssetBilling(projectId);
   const { data: locations = [] } = useProjectLocations(projectId);
@@ -149,7 +152,7 @@ export function ProjectAssetAssignmentsSection({
   const unassignMutation = useUnassignAsset();
 
   const [sort, setSort] = useState<{ key: CostSort; dir: 1 | -1 }>({ key: null, dir: 1 });
-  const activeAssignments = sortRows(assignments.filter(a => a.status === "active"), sort.key, sort.dir);
+  const activeAssignments = sortRows(assignments.filter(a => history || a.status === "active"), sort.key, sort.dir);
   const sortHead = (key: Exclude<CostSort, null>, label: string) => (
     <TableHead aria-sort={sort.key === key ? (sort.dir === 1 ? "ascending" : "descending") : "none"}>
       <button type="button" className="font-medium hover:text-foreground" onClick={() => setSort(s => ({ key, dir: s.key === key ? (s.dir === 1 ? -1 : 1) : 1 }))}>
@@ -182,6 +185,7 @@ export function ProjectAssetAssignmentsSection({
     { key: "actions", header: "", sortable: false, filterable: false, noExport: true, render: r => (
       <span className="flex">
         {canEdit && <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Edit asset" title="Edit asset" onClick={() => setEditAsset(r.assets ?? null)}><Pencil className="h-3.5 w-3.5" /></Button>}
+        {canEdit && <Button size="sm" variant="ghost" onClick={() => setDates(r)}>Edit dates</Button>}
         {canEdit && <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" aria-label="Unassign asset" onClick={() => handleUnassign(r.id, r.assets?.label ?? "Asset")}><UserMinus className="h-3.5 w-3.5" /></Button>}
       </span>) },
   ];
@@ -218,6 +222,7 @@ export function ProjectAssetAssignmentsSection({
 
   return (
     <>
+      {dates && canEdit && <EditAssetPlacementDates row={dates} timezone={locations.find(l => l.id === dates.location_id)?.timezone || 'America/Chicago'} onClose={() => setDates(null)} />}
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <Card>
           <CollapsibleTrigger asChild>
@@ -249,6 +254,7 @@ export function ProjectAssetAssignmentsSection({
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent>
+              <Button size="sm" variant="outline" className="mb-2" onClick={() => setHistory(!history)}>{history ? 'Current placements' : 'Show history'}</Button>
               {activeAssignments.length === 0 ? (
                 <div className="text-center py-8">
                   <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
