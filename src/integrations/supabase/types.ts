@@ -4298,6 +4298,7 @@ export type Database = {
           object_path: string
           optimized_at: string
           optimized_bytes: number
+          optimized_path: string | null
           original_bytes: number
           original_sha256: string
           thumbnail_bytes: number
@@ -4308,6 +4309,7 @@ export type Database = {
           object_path: string
           optimized_at?: string
           optimized_bytes: number
+          optimized_path?: string | null
           original_bytes: number
           original_sha256: string
           thumbnail_bytes?: number
@@ -4318,6 +4320,7 @@ export type Database = {
           object_path?: string
           optimized_at?: string
           optimized_bytes?: number
+          optimized_path?: string | null
           original_bytes?: number
           original_sha256?: string
           thumbnail_bytes?: number
@@ -13312,6 +13315,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      image_compression_candidates: {
+        Args: { p_limit: number }
+        Returns: {
+          bucket_id: string
+          bytes: number
+          mime: string
+          object_path: string
+        }[]
       }
       increment_unread_count: {
         Args: {

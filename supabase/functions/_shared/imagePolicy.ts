@@ -3,6 +3,7 @@ export function imageEligible(bucket: string, path: string, mime: string) {
   if (/(signature|signed|countersign|locked|\.pdf|optimized\/)/i.test(path)) return false;
   return bucket === 'personnel-photos' ||
     (['application-files', 'form-uploads'].includes(bucket) && path.startsWith('profile-photos/')) ||
+    (bucket === 'document-attachments' && path.startsWith('reimbursement-receipts/')) ||
     (bucket === 'project-documents' && /^field-captures\/kiosk\/[^/]+\/[^/]+\/selfie\.jpg$/.test(path));
 }
 export function imageDimensions(width: number, height: number, cap = 1600) {
