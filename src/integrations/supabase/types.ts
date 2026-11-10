@@ -546,14 +546,18 @@ export type Database = {
           address: string | null
           availability_status: string
           available_from: string | null
+          background_consent_at: string | null
+          background_consent_version: string | null
           capabilities_classified_at: string | null
           capabilities_model: string | null
           city: string | null
+          consent_language: string | null
           created_at: string
           do_not_rehire: boolean
           do_not_rehire_reason: string | null
           email: string
           first_name: string
+          gender: string | null
           geocode_source: string | null
           geocoded_at: string | null
           home_lat: number | null
@@ -563,8 +567,12 @@ export type Database = {
           is_geocodable: boolean | null
           last_name: string
           phone: string | null
+          photo_consent_at: string | null
+          photo_consent_version: string | null
           photo_url: string | null
           role_tags: string[]
+          sms_consent_at: string | null
+          sms_consent_version: string | null
           sms_opted_out: boolean
           staff_notes: string | null
           starred_at: string | null
@@ -578,14 +586,18 @@ export type Database = {
           address?: string | null
           availability_status?: string
           available_from?: string | null
+          background_consent_at?: string | null
+          background_consent_version?: string | null
           capabilities_classified_at?: string | null
           capabilities_model?: string | null
           city?: string | null
+          consent_language?: string | null
           created_at?: string
           do_not_rehire?: boolean
           do_not_rehire_reason?: string | null
           email: string
           first_name: string
+          gender?: string | null
           geocode_source?: string | null
           geocoded_at?: string | null
           home_lat?: number | null
@@ -595,8 +607,12 @@ export type Database = {
           is_geocodable?: boolean | null
           last_name: string
           phone?: string | null
+          photo_consent_at?: string | null
+          photo_consent_version?: string | null
           photo_url?: string | null
           role_tags?: string[]
+          sms_consent_at?: string | null
+          sms_consent_version?: string | null
           sms_opted_out?: boolean
           staff_notes?: string | null
           starred_at?: string | null
@@ -610,14 +626,18 @@ export type Database = {
           address?: string | null
           availability_status?: string
           available_from?: string | null
+          background_consent_at?: string | null
+          background_consent_version?: string | null
           capabilities_classified_at?: string | null
           capabilities_model?: string | null
           city?: string | null
+          consent_language?: string | null
           created_at?: string
           do_not_rehire?: boolean
           do_not_rehire_reason?: string | null
           email?: string
           first_name?: string
+          gender?: string | null
           geocode_source?: string | null
           geocoded_at?: string | null
           home_lat?: number | null
@@ -627,8 +647,12 @@ export type Database = {
           is_geocodable?: boolean | null
           last_name?: string
           phone?: string | null
+          photo_consent_at?: string | null
+          photo_consent_version?: string | null
           photo_url?: string | null
           role_tags?: string[]
+          sms_consent_at?: string | null
+          sms_consent_version?: string | null
           sms_opted_out?: boolean
           staff_notes?: string | null
           starred_at?: string | null
@@ -5747,6 +5771,8 @@ export type Database = {
         Row: {
           address: string | null
           applicant_id: string | null
+          background_consent_at: string | null
+          background_consent_version: string | null
           bank_account_last4: string | null
           bank_account_number: string | null
           bank_account_number_encrypted: string | null
@@ -5774,6 +5800,7 @@ export type Database = {
           everify_status: Database["public"]["Enums"]["everify_status"] | null
           everify_verified_at: string | null
           first_name: string
+          gender: string | null
           geocode_source: string | null
           geocoded_at: string | null
           home_lat: number | null
@@ -5801,9 +5828,13 @@ export type Database = {
           pay_rate: number | null
           personnel_number: string
           phone: string | null
+          photo_consent_at: string | null
+          photo_consent_version: string | null
           photo_url: string | null
           portal_required: boolean | null
           rating: number | null
+          sms_consent_at: string | null
+          sms_consent_version: string | null
           ssn_full: string | null
           ssn_last_four: string | null
           state: string | null
@@ -5827,6 +5858,8 @@ export type Database = {
         Insert: {
           address?: string | null
           applicant_id?: string | null
+          background_consent_at?: string | null
+          background_consent_version?: string | null
           bank_account_last4?: string | null
           bank_account_number?: string | null
           bank_account_number_encrypted?: string | null
@@ -5854,6 +5887,7 @@ export type Database = {
           everify_status?: Database["public"]["Enums"]["everify_status"] | null
           everify_verified_at?: string | null
           first_name: string
+          gender?: string | null
           geocode_source?: string | null
           geocoded_at?: string | null
           home_lat?: number | null
@@ -5881,9 +5915,13 @@ export type Database = {
           pay_rate?: number | null
           personnel_number: string
           phone?: string | null
+          photo_consent_at?: string | null
+          photo_consent_version?: string | null
           photo_url?: string | null
           portal_required?: boolean | null
           rating?: number | null
+          sms_consent_at?: string | null
+          sms_consent_version?: string | null
           ssn_full?: string | null
           ssn_last_four?: string | null
           state?: string | null
@@ -5907,6 +5945,8 @@ export type Database = {
         Update: {
           address?: string | null
           applicant_id?: string | null
+          background_consent_at?: string | null
+          background_consent_version?: string | null
           bank_account_last4?: string | null
           bank_account_number?: string | null
           bank_account_number_encrypted?: string | null
@@ -5934,6 +5974,7 @@ export type Database = {
           everify_status?: Database["public"]["Enums"]["everify_status"] | null
           everify_verified_at?: string | null
           first_name?: string
+          gender?: string | null
           geocode_source?: string | null
           geocoded_at?: string | null
           home_lat?: number | null
@@ -5961,9 +6002,13 @@ export type Database = {
           pay_rate?: number | null
           personnel_number?: string
           phone?: string | null
+          photo_consent_at?: string | null
+          photo_consent_version?: string | null
           photo_url?: string | null
           portal_required?: boolean | null
           rating?: number | null
+          sms_consent_at?: string | null
+          sms_consent_version?: string | null
           ssn_full?: string | null
           ssn_last_four?: string | null
           state?: string | null
@@ -13314,6 +13359,21 @@ export type Database = {
           p_target_project_id: string
         }
         Returns: Json
+      }
+      record_applicant_intake: {
+        Args: {
+          _application_id: string
+          _background_consent?: boolean
+          _background_version?: string
+          _gender?: string
+          _language?: string
+          _photo_consent?: boolean
+          _photo_url?: string
+          _photo_version?: string
+          _sms_consent?: boolean
+          _sms_version?: string
+        }
+        Returns: boolean
       }
       request_shift_extension: {
         Args: { p_reason: string; p_token: string; p_until: string }

@@ -1,3 +1,4 @@
+import { IntakeProfileCard } from "@/components/intake/IntakeProfileCard";
 import { PersonnelAssetCare } from '@/components/personnel/PersonnelAssetCare';
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { useCustomers } from '@/integrations/supabase/hooks/useCustomers';
@@ -529,6 +530,7 @@ const PersonnelDetail = () => {
             </div>
           </CardContent>
         </Card>
+        {(isAdmin || isManager) && <IntakeProfileCard table="personnel" id={personnel.id} canEdit />}
 
         {complianceIssues.length > 0 && (
           <Card className="border-destructive/50 bg-destructive/5">

@@ -27,6 +27,7 @@ import { formatDistanceToNow } from "date-fns";
 
 type Row = {
   vendor_id: string | null;
+  gender?: string | null;
   id: string;
   first_name: string;
   last_name: string;
@@ -53,7 +54,7 @@ const useMasterApplicants = () =>
     queryFn: async (): Promise<Row[]> => {
       const { data: applicants, error } = await supabase
         .from("applicants")
-        .select("id, vendor_id, first_name, last_name, email, phone, photo_url, city, state, home_zip, starred_at, role_tags, staff_notes, status, created_at")
+        .select("id, vendor_id, first_name, last_name, email, phone, photo_url, gender, city, state, home_zip, starred_at, role_tags, staff_notes, status, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
 
@@ -165,6 +166,7 @@ export default function MasterApplicants() {
 
   const columns: EnhancedColumn<Row>[] = [
     { key: 'name', header: 'Name', width: 280, getValue: r => `${r.first_name} ${r.last_name}`, render: r => <span className="flex items-center gap-2"><ApplicantStarButton applicantId={r.id} starredAt={r.starred_at} /><span><span className="font-medium">{r.first_name} {r.last_name}</span><ApplicantTagBadges applicant={r} certs={certSummary[r.id]} /><ApplicantNoteLine applicant={r} /></span></span> },
+    { key: 'gender', header: 'Gender', width: 120, sortable: true, filterable: true, getValue: (r: any) => r.gender === 'male' ? 'Male' : r.gender === 'female' ? 'Female' : '' },
     { key: 'phone', header: 'Phone' }, { key: 'email', header: 'Email', width: 240 },
     { key: 'location', header: 'Location', getValue: formatApplicantLocation },
     { key: 'last_applied_at', header: 'Last applied', render: r => r.last_applied_at ? formatDistanceToNow(new Date(r.last_applied_at), { addSuffix: true }) : 'never' },
