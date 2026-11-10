@@ -58,10 +58,12 @@ export function ColumnHeaderMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
+          aria-label={`Column menu ${column.header || "Actions"}`}
+          title={`Column menu ${column.header || "Actions"}`}
           variant="ghost"
           size="sm"
           className={cn(
-            "h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity",
+            "h-6 w-6 p-0 opacity-70 group-hover:opacity-100 transition-opacity",
             (isSorted || hasFilter) && "opacity-100"
           )}
         >
@@ -89,6 +91,7 @@ export function ColumnHeaderMenu({
           </>
         )}
 
+        <DropdownMenuItem disabled={visibleColumns.length === 1} onSelect={() => onToggleColumn(column.key)}>Hide column</DropdownMenuItem>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <Columns3 className="mr-2 h-4 w-4" />

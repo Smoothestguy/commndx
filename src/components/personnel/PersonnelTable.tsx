@@ -206,6 +206,7 @@ export function PersonnelTable({
   const columns: EnhancedColumn<Personnel>[] = [
     {
       key: "action",
+      noExport: true,
       header: "Action",
       sortable: false,
       filterable: false,
@@ -280,6 +281,7 @@ export function PersonnelTable({
     },
     {
       key: "name",
+      frozen: true,
       header: "Name",
       sortable: true,
       filterable: true,
@@ -549,7 +551,7 @@ export function PersonnelTable({
     <div className="space-y-3 sm:space-y-4">
       {/* Bulk Action Bar */}
       {selectionMode && selectedIds.length > 0 && (
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 bg-muted rounded-lg">
+        <div className="flex min-[1180px]:hidden flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 bg-muted rounded-lg">
           <span className="text-xs sm:text-sm font-medium">
             {selectedIds.length} selected
           </span>
@@ -600,6 +602,7 @@ export function PersonnelTable({
           columns={columns}
           rowHref={person => `/personnel/${person.id}`}
           exportName="personnel"
+          bulkActions={() => <><Button size="sm" variant="outline" onClick={onPrintBadges}><Printer className="h-3.5 w-3.5 mr-1" />Print badges</Button>{bulkActions}</>}
           attention={person => !person.phone ? "Missing phone" : null}
           selectable={selectionMode}
           selectedIds={new Set(selectedIds)}

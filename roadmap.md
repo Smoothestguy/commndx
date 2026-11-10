@@ -208,3 +208,8 @@
 - [x] Light table header token app-wide.
 - [x] Location roster: search + row select + shared bulk bar (verified 5049-FCOCO). Applicant pool already selectable via shared table.
 - [ ] Roll shared bulk/search into assets, attendance and Event Manager grids; add "Assign to location" bulk action.
+
+# Data-grid and workspace-tabs completion
+- [ ] Finish shared column controls, frozen name/header, sizing, pagination, selection/export and scroll restoration.
+- [ ] Connect Personnel, project/location rosters, applicant pool, assets, attendance, Event Manager, Projects and location command center; retain applicable manager bulk actions.
+- [ ] Verify desktop controls, three workspace tabs/state restoration and asset selection; run focused tests and inspect preview errors. No live-record writes required.
