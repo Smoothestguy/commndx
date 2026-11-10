@@ -116,7 +116,7 @@ export default function MasterApplicants() {
     if (!data) return [];
     const s = search.trim().toLowerCase();
     const filtered = data.filter((r) => {
-      if (status !== "all" && r.status !== status) return false;
+      if (status === "all" ? r.status === "archived" : r.status !== status) return false;
       if (hasPhone === "yes" && !r.phone) return false;
       if (hasPhone === "no" && r.phone) return false;
       if (!s) return true;
@@ -199,11 +199,12 @@ export default function MasterApplicants() {
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger className="w-full md:w-40"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="all">All (excl. archived)</SelectItem>
                 <SelectItem value="new">New</SelectItem>
                 <SelectItem value="contacted">Contacted</SelectItem>
                 <SelectItem value="hired">Hired</SelectItem>
                 <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
               </SelectContent>
             </Select>
             <Select value={hasPhone} onValueChange={setHasPhone}>
