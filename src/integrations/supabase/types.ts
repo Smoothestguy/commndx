@@ -12973,6 +12973,16 @@ export type Database = {
         Args: { _email?: string; _phone?: string; _token: string }
         Returns: Json
       }
+      correct_asset_placement_dates: {
+        Args: {
+          p_assignment_id: string
+          p_end_at: string
+          p_expected_updated_at: string
+          p_reason: string
+          p_start_at: string
+        }
+        Returns: undefined
+      }
       create_applicant_return_id: {
         Args: {
           _address?: string
@@ -13294,6 +13304,15 @@ export type Database = {
       }
       merge_applicants: {
         Args: { _keep_id: string; _merge_id: string }
+        Returns: Json
+      }
+      move_location_project: {
+        Args: {
+          p_expected_project_id: string
+          p_location_id: string
+          p_reason: string
+          p_target_project_id: string
+        }
         Returns: Json
       }
       request_shift_extension: {

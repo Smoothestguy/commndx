@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Time24Input } from '@/components/ui/time24-input';
-import { Loader2, Pencil, Plus, AlertTriangle, Clock, CheckCircle2 } from 'lucide-react';
+import { Loader2, Pencil, Plus, AlertTriangle, Clock, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLogManualTime } from '@/integrations/supabase/hooks/useFieldMode';
 import { useEditStayTimes, type StayChange } from '@/hooks/useEditStayTimes';
@@ -136,14 +136,19 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
         {r.stays.some(st => st.synced_late) && <Badge variant="outline">synced late</Badge>}
       </span>; } },
     { key: 'hours', header: 'Hours', getValue: r => r.stays.reduce((n, st) => n + (st.out_at ? Number(st.hours) || 0 : 0), 0) },
-    { key: 'stays', header: 'Stays', width: 250, getValue: r => r.stays.map(st => `${hm(st.in_at, tz)} → ${hm(st.out_at, tz)}`).join('; '),
-      render: r => <div className="space-y-1">{r.stays.map((st, i) => <div key={st.id} className="flex items-center gap-1"><span>{hm(st.in_at, tz)} → {hm(st.out_at, tz)}</span>{canWrite && <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={r.stays.length === 1 ? `Edit times for ${r.name}` : `Edit stay ${i + 1} for ${r.name}`} onClick={() => setEdit({ ids: [st.id], name: r.name, day })}><Pencil className="h-3 w-3" /></Button>}</div>)}</div> },
+    { key: 'stays', header: 'Stays', width: 180, getValue: r => r.stays.length,
+      render: r => <div className="space-y-1">{r.stays.map((st, i) => <div key={st.id} className="flex items-center gap-1"><span>Stay {i + 1}</span>{canWrite && <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={r.stays.length === 1 ? `Edit times for ${r.name}` : `Edit stay ${i + 1} for ${r.name}`} onClick={() => setEdit({ ids: [st.id], name: r.name, day })}><Pencil className="h-3 w-3" /></Button>}</div>)}</div> },
     ...(canWrite ? [{ key: 'actions', header: 'Actions', noExport: true, sortable: false, filterable: false, render: (r: AttendanceRow) => <Button size="sm" variant="ghost" aria-label={r.stays.length ? `Add entry for ${r.name}` : `Set arrival for ${r.name}`} onClick={() => setLog({ id: r.id, name: r.name })}><Plus className="h-3.5 w-3.5 mr-1" />{r.stays.length ? 'Add entry' : 'Arrival'}</Button> }] : []),
   ];
 
   return <div className="space-y-4">
     <div className="flex flex-wrap items-end gap-3">
-      <div><label htmlFor="att-day" className="text-sm block">Date</label><Input id="att-day" type="date" className="w-44" value={day} onChange={e => { if (e.target.value) { setDay(e.target.value); setSel(new Set()); } }} /></div>
+      <div><label htmlFor="att-day" className="text-sm block">Date</label><div className="flex items-center gap-1">
+        <Button variant="outline" size="icon" aria-label="Previous day" title="Previous day" onClick={() => { const d = new Date(`${day}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - 1); setDay(d.toISOString().slice(0,10)); setSel(new Set()); }}><ChevronLeft className="h-4 w-4" /></Button>
+        <Input id="att-day" type="date" className="w-44" value={day} onChange={e => { if (e.target.value) { setDay(e.target.value); setSel(new Set()); } }} />
+        <Button variant="outline" size="icon" aria-label="Next day" title="Next day" onClick={() => { setDay(nextDay(day)); setSel(new Set()); }}><ChevronRight className="h-4 w-4" /></Button>
+        <Button variant="outline" size="sm" onClick={() => { setDay(today); setSel(new Set()); }}>Today</Button>
+      </div></div>
       <div className="flex flex-wrap items-center gap-2 pb-2"><p className="text-sm text-muted-foreground">{present}/{rows.length} signed in · {total.toFixed(2)} h closed</p><MissingSignatures compact locationId={locationId} day={day} zone={tz} rows={q.data?.sigRows ?? []} /></div>
       {canWrite && <Button className="ml-auto" size="sm" variant="outline" disabled={!sel.size} onClick={() => setBulk({ date: day, inTime: '', outTime: '', note: '' })}><Clock className="h-4 w-4 mr-1" />Set times for {sel.size || ''} selected</Button>}
       {canWrite && <Button size="sm" onClick={() => setAddPerson(true)}><Plus className="h-4 w-4 mr-1" />Add person to this day</Button>}

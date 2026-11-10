@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Pencil, MapPin, Phone, Loader2, Clock, Inbox, Lock, LockOpen } from 'lucide-react';
 import { LocationCloseoutDialog } from '@/components/project-hub/LocationCloseoutDialog';
+import { MoveLocationProjectDialog } from '@/components/project-hub/MoveLocationProjectDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -55,14 +56,18 @@ export default function LocationDetail() {
   const [logOpen,setLogOpen] = useState(false);
   const [reqOpen,setReqOpen] = useState(false);
   const [closeOpen,setCloseOpen] = useState(false);
+  const [moveOpen,setMoveOpen] = useState(false);
   const qc = useQueryClient();
   const [sheet,setSheet] = useState<{location:string;day:string}>();
   useEffect(() => { window.scrollTo(0,0); }, [locationId]);
   useEffect(() => {
     if (!location) return;
-    if (params.get('action') === 'edit' && canWrite) setEdit(true);
-    if (params.get('day') || params.get('action') === 'daily') setSheet({location:location.id,day:params.get('day') || localDay(new Date().toISOString(),location.timezone || 'America/Chicago')});
-  }, [location, params, canWrite]);
+    const editAction = params.get('action') === 'edit' && canWrite;
+    const dailyAction = !!params.get('day') || params.get('action') === 'daily';
+    if (editAction) setEdit(true);
+    if (dailyAction) setSheet({location:location.id,day:params.get('day') || localDay(new Date().toISOString(),location.timezone || 'America/Chicago')});
+    if (editAction || dailyAction) setParams(prev => { const next = new URLSearchParams(prev); next.delete('day'); if (editAction || next.get('action') === 'daily') next.delete('action'); return next; }, { replace: true });
+  }, [location, params, canWrite, setParams]);
   if (isLoading || projectLoading) return <PageLayout title="Location"><Loader2 className="animate-spin"/></PageLayout>;
   if (!project || !location || error || projectError || !projectId) return <PageLayout title="Location unavailable"><Button asChild variant="link"><Link to="/projects">Projects</Link></Button></PageLayout>;
   const address = [location.address,location.city,location.state,location.zip].filter(Boolean).join(', ');
@@ -70,6 +75,8 @@ export default function LocationDetail() {
   const shifts=resolveShifts(location,project);
   return <PageLayout title={location.name} actions={canWrite&&<><Button variant="outline" size="sm" onClick={()=>setEdit(true)}><Pencil className="h-4 w-4 mr-1"/>Edit</Button><Button variant="outline" size="sm" onClick={()=>setLogOpen(true)}><Clock className="h-4 w-4 mr-1"/>Log time</Button><Button variant="outline" size="sm" onClick={()=>setReqOpen(true)}><Inbox className="h-4 w-4 mr-1"/>Field requests</Button>{location.status!=='closed' ? <Button variant="outline" size="sm" onClick={()=>setCloseOpen(true)}><Lock className="h-4 w-4 mr-1"/>Close out location</Button> : isAdmin && <Button variant="outline" size="sm" onClick={async()=>{if(!window.confirm('Reopen this location? The close-out task order stays in history; assignments are not restored.'))return;const {error}=await supabase.from('project_locations').update({status:'active'}).eq('id',location.id);if(error){toast.error(error.message);return;}toast.success('Location reopened');qc.invalidateQueries({queryKey:['project-locations']});}}><LockOpen className="h-4 w-4 mr-1"/>Reopen</Button>}</>}>
     <SEO title={`${location.name} | Command X`} description={`Location operations for ${project.name}`}/>
+    {canWrite && <div className="flex justify-end mb-3"><Button variant="outline" size="sm" onClick={() => setMoveOpen(true)}>Move to another project</Button></div>}
+    {moveOpen && canWrite && <MoveLocationProjectDialog location={location} onClose={() => setMoveOpen(false)} />}
     <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-4"><Link className="hover:underline" to="/projects">Projects</Link><span>/</span><Link className="hover:underline" to={`/projects/${projectId}?tab=locations`}>{project.name}</Link><span>/</span><Link className="text-foreground hover:underline" to={`/projects/${projectId}/locations/${location.id}`}>{location.name}</Link></nav>
     {location.status==='closed' && <div role="status" className="mb-4 rounded-md border border-muted bg-muted/40 p-3 text-sm"><Lock className="inline h-4 w-4 mr-1"/><b>Closed</b>{location.closeout_date ? ` as of ${location.closeout_date}` : ''} — punching, pre-shift texts and roster alerts are off. History, timesheets and sheets remain available.{location.closeout_notes && <span className="block text-muted-foreground mt-1 whitespace-pre-wrap">{location.closeout_notes}</span>}</div>}
     <section className="border-b pb-4 space-y-3">

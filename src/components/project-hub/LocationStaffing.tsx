@@ -190,7 +190,7 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
   locationId: string; summary?: LocationStaffingSummary; canWrite: boolean; projectId?: string; locationName?: string; timezone?: string | null;
 }) {
   const authorization = useLocationAuthorization([{id:locationId,timezone}]);
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const [logFor,setLogFor] = useState<string>();
   const [expenseFor,setExpenseFor] = useState<string>();
   const [replacementRole,setReplacementRole]=useState<string|undefined>();
@@ -209,7 +209,14 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
   const needed = summary?.needed ?? 0;
   const assigned = summary?.assigned ?? assignments.filter(a=>!a.demobilized).length;
 
-  useEffect(()=>{if(params.get('action')==='assign' && canWrite)setAsgOpen(true); if(params.get('action')==='text')setTextIds(assignments.map(a=>a.personnel_id));},[params,canWrite,assignments]);
+  useEffect(() => {
+    const action = params.get('action');
+    if (!canWrite || (action !== 'assign' && action !== 'text')) return;
+    if (action === 'text' && !assignments.length) return;
+    if (action === 'assign') setAsgOpen(true);
+    else setTextIds(assignments.map(a => a.personnel_id));
+    setParams(prev => { const next = new URLSearchParams(prev); next.delete('action'); return next; }, { replace: true });
+  }, [params, canWrite, assignments, setParams]);
   const removePerson = (a: (typeof assignments)[number]) => unassign.mutate({ id:a.id,location_id:locationId }, {onSuccess:async()=>{const result=await authorization.refetch();if(result.data?.[locationId]?.under)toast.success('Under authorized staffing',{action:{label:'Find replacement',onClick:()=>{setReplacementRole(a.role_label||undefined);setAsgOpen(true);}}});}});
   return (
     <div className="pt-2 border-t space-y-2">

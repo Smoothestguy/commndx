@@ -213,3 +213,10 @@
 - [x] Shared column sort/filter/hide, drag/resize, frozen identity/header, footer paging/density/fullscreen, warning indicators and selected/filtered export.
 - [x] Connected Personnel/Bench, project/location rosters, Applicant Pool and Applications, project/location assets, attendance, Event Manager, Projects and location command center; context bulk actions plus selected export. Phone personnel rate display now manager/admin gated.
 - [x] Owner/admin desktop verified Personnel menus/filter/hide/density/paging/CSV and preserved filter/selection/page size across Personnel–Location–Event Manager tabs and reload; assets selection, attendance Set times 0730 (cancelled), Applicant Pool/Event Manager/Projects rendered. TypeScript and nine tests passed; latest preview build OK, no runtime errors, live writes, messages or test rows. Separate manager/field login not exercised.
+
+# Grid bug batch and location transfer
+- [x] Fixed explicit table width so resized columns grow right without distributing spare width; removed repeated Personnel customer labels, asset numbers/bill-rate text and attendance stay-time duplication. Rosters/EventGrid use one rendered cell value.
+- [x] Attendance previous/next/Today; reproduced Attendance/Staffing URL-action dialog reopening on filter changes, consumed one-shot actions, same reproduction now stays closed.
+- [x] Manager audited/expected-version/overlap-guarded date corrections; ended truck departure Nov 4→5 saved, status retained, billing derives corrected periods. History toggles expose ended placements.
+- [x] Manager transactional location transfer reconciles base location+project keys, indirect time/document/clock links, exclusive personnel status history, destination eligibility; evidence paths retained, shared documents and locked/financial time guarded. Browser moved test location and both project lists updated.
+- [x] Owner/admin browser checks, 20 rule tests, test records/audits cleaned. Manager-specific session and physical devices not exercised.

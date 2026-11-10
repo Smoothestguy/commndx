@@ -1,4 +1,5 @@
 import { EnhancedDataTable, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
+import { EditAssetPlacementDates } from './EditAssetPlacementDates';
 import { useSessionState } from '@/hooks/useSessionState';
 import { assetCostBreakdown, marginPct } from '@/lib/assetCost';
 import { toast } from 'sonner';
@@ -25,6 +26,7 @@ import {
   AssetBillingRow, useAssignAssetToLocation, useEndAssetAssignment, useProjectAssetBilling, useUnassignAsset,
 } from "@/integrations/supabase/hooks/useAssetAssignments";
 import { fmtMoney0 } from "@/lib/assetBilling";
+import { locationTimeIso } from '@/lib/manualTime';
 import { EditAssetDialog, type EditableAsset } from "./EditAssetDialog";
 import { AssetCostBadge, InsuranceBadge } from "./AssetCostFields";
 
@@ -83,6 +85,7 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
   const [billable, setBillable] = useState(false);
   const [rate, setRate] = useState("");
   const [start, setStart] = useState(format(new Date(), "yyyy-MM-dd"));
+  const locationZone = useQuery({ queryKey: ['asset-location-zone', locationId], enabled: open, queryFn: async () => { const { data, error } = await supabase.from('project_locations').select('timezone').eq('id', locationId).single(); if (error) throw error; return data.timezone || 'America/Chicago'; } });
   const [lastOpen, setLastOpen] = useState(false);
   if (open !== lastOpen) { setLastOpen(open); if (open) { setResponsible(null); setOwnership(emptyOwnership); setCareEdit(false); setCreating(false); setNw({ label: "", type: "vehicle", serial: "" }); setPick(""); setBillable(false); setRate(""); setStart(format(new Date(), "yyyy-MM-dd")); } }
 
@@ -115,7 +118,7 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
       assignmentId: isExisting ? pick.slice(2) : undefined,
       assetId: !isExisting ? pick.slice(2) : undefined,
       ...(canBill ? { billable, dayRate: n != null && Number.isFinite(n) ? n : null } : {}),
-      startAt: careEdit ? undefined : new Date(`${start}T08:00:00`).toISOString(),
+      startAt: careEdit ? undefined : locationTimeIso(start, '08:00', locationZone.data || 'America/Chicago'),
     }, { onSuccess: () => onOpenChange(false) });
   };
 
@@ -207,7 +210,10 @@ export function LocationAssets({ projectId, locationId, locationName, canWrite, 
   const { isAdmin, isManager } = useUserRole();
   const canBill = isAdmin || isManager;
   const { rows } = useProjectAssetBilling(projectId);
-  const here = useMemo(() => assetsAtLocation(rows, locationId), [rows, locationId]);
+  const [showHistory, setShowHistory] = useState(false);
+  const here = useMemo(() => showHistory ? rows.filter(r => r.location_id === locationId) : assetsAtLocation(rows, locationId), [rows, locationId, showHistory]);
+  const [dates, setDates] = useState<AssetBillingRow | null>(null);
+  const zone = useQuery({ queryKey: ['asset-location-zone', locationId], queryFn: async () => { const { data, error } = await supabase.from('project_locations').select('timezone').eq('id', locationId).single(); if (error) throw error; return data.timezone || 'America/Chicago'; } });
   const end = useEndAssetAssignment();
   const unassign = useUnassignAsset();
   const [open, setOpen] = useState(false);
@@ -216,7 +222,7 @@ export function LocationAssets({ projectId, locationId, locationName, canWrite, 
   const [bulkEnd, setBulkEnd] = useState<AssetBillingRow[] | null>(null);
   const columns: EnhancedColumn<AssetBillingRow>[] = [
     { key: 'asset', header: 'Asset', width: 250, getValue: r => r.assets?.label ?? 'Asset', render: r => <span className="flex items-center gap-1"><AssetIcon type={r.assets?.type} />{r.assets?.asset_number && !r.assets?.label?.includes(r.assets.asset_number) && `${r.assets.asset_number} · `}{r.assets?.label ?? 'Asset'}</span> },
-    { key: 'ownership', header: 'Ownership', getValue: r => ownershipText(r.assets) },
+    { key: 'ownership', header: 'Ownership', getValue: r => ownershipText(r.assets), render: r => <Badge variant="outline">{ownershipText(r.assets)}</Badge> },
     { key: 'person', header: 'Responsible', getValue: r => r.personnel ? `${r.personnel.first_name} ${r.personnel.last_name}` : '' },
     { key: 'type', header: 'Type', getValue: r => r.assets?.type ?? '' },
     { key: 'start_at', header: 'Arrival', render: r => r.start_at ? format(new Date(r.start_at), 'MM/dd/yyyy HH:mm') : '—' }, { key: 'end_at', header: 'Departure', render: r => r.end_at ? format(new Date(r.end_at), 'MM/dd/yyyy HH:mm') : 'On site' }, { key: 'days', header: 'Days' },
@@ -226,14 +232,16 @@ export function LocationAssets({ projectId, locationId, locationName, canWrite, 
       { key: 'margin', header: 'Margin %', getValue: (r: AssetBillingRow) => marginPct(r.billable ? r.rate : null, r.assets ? assetCostBreakdown(r.assets).perDay : null) },
       { key: 'insurance', header: 'Insurance expires', getValue: (r: AssetBillingRow) => r.assets?.insurance_expires_on ?? '', render: (r: AssetBillingRow) => <span>{r.assets?.insurance_expires_on}<InsuranceBadge asset={r.assets} /></span> },
     ] : []),
-    { key: 'actions', header: 'Actions', sortable: false, filterable: false, noExport: true, render: r => <span className="flex items-center gap-1">{canBill && <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit asset" onClick={() => setEditAsset(r.assets ?? null)}><Pencil className="h-3.5 w-3.5" /></Button>}{canWrite && !r.end_at && <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="End assignment" onClick={() => setBulkEnd([r])}><Square className="h-3.5 w-3.5" /></Button>}</span> },
+    { key: 'actions', header: 'Actions', sortable: false, filterable: false, noExport: true, render: r => <span className="flex items-center gap-1">{canBill && <><Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit asset" onClick={() => setEditAsset(r.assets ?? null)}><Pencil className="h-3.5 w-3.5" /></Button><Button size="sm" variant="ghost" onClick={() => setDates(r)}>Edit dates</Button></>}{canWrite && !r.end_at && <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="End assignment" onClick={() => setBulkEnd([r])}><Square className="h-3.5 w-3.5" /></Button>}</span> },
   ];
 
   return (
     <div className="space-y-1.5">
+      {dates && canBill && <EditAssetPlacementDates row={dates} timezone={zone.data} onClose={() => setDates(null)} />}
       {canBill && <EditAssetDialog asset={editAsset} open={!!editAsset} onOpenChange={(o) => !o && setEditAsset(null)} />}
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">Assets{here.length ? ` (${here.length})` : ""}</span>
+        <Button size="sm" variant={showHistory ? 'secondary' : 'ghost'} onClick={() => setShowHistory(!showHistory)}>{showHistory ? 'Current placements' : 'Show history'}</Button>
         {canWrite && <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setOpen(true)}><Plus className="h-3 w-3 mr-1" />Assign asset</Button>}
       </div>
       <EnhancedDataTable tableId={`location-assets:${locationId}:${canBill ? 'manager' : 'field'}`} data={here} columns={columns}
