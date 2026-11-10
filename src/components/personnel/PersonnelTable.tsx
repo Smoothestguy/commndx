@@ -1,3 +1,4 @@
+import { useUserRole } from "@/hooks/useUserRole";
 import { useState } from "react";
 import { PersonnelStatusButton } from "@/components/personnel/lifecycle/PersonnelStatusButton";
 import { useNavigate, Link } from "react-router-dom";
@@ -93,6 +94,7 @@ export function PersonnelTable({
   customerName,
   bulkActions,
 }: PersonnelTableProps) {
+  const { isAdmin, isManager } = useUserRole();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { data: vendors } = useVendors();
@@ -599,7 +601,7 @@ export function PersonnelTable({
         <EnhancedDataTable
           tableId="personnel"
           data={personnel}
-          columns={columns}
+          columns={columns.filter(c => c.key !== "rate" || isAdmin || isManager)}
           rowHref={person => `/personnel/${person.id}`}
           exportName="personnel"
           bulkActions={() => <><Button size="sm" variant="outline" onClick={onPrintBadges}><Printer className="h-3.5 w-3.5 mr-1" />Print badges</Button>{bulkActions}</>}

@@ -1,3 +1,5 @@
+import { EnhancedDataTable, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
+import { useSessionState } from '@/hooks/useSessionState';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNowStrict } from 'date-fns';
@@ -41,8 +43,8 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
     return assetRows.filter(r => r.status === 'active' && !r.end_at && r.assets && insuranceExpiringSoon(r.assets.insurance_expires_on, today) && !seen.has(r.asset_id) && seen.add(r.asset_id));
   }, [assetRows]);
   const blocks = recon.data ? closeBlockers(recon.data.rows, recon.data.resolutions).length : 0;
-  const [filter, setFilter] = useState<FilterKey | null>(null);
-  const [status, setStatus] = useState<'all' | 'active' | 'inactive'>('active');
+  const [filter, setFilter] = useSessionState<FilterKey | null>(`locations:${projectId}:filter`, null);
+  const [status, setStatus] = useSessionState<'all' | 'active' | 'inactive'>(`locations:${projectId}:status`, 'active');
   const [reqFor, setReqFor] = useState<ProjectLocation | null>(null);
 
   const rows = useMemo(() => sortByAttention(locations.map(l => {
@@ -59,7 +61,7 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
 
   const live = useMemo(() => rows.filter(r => r.l.status !== 'closed'), [rows]);
   const closedRows = useMemo(() => rows.filter(r => r.l.status === 'closed').sort((a, b) => a.name.localeCompare(b.name)), [rows]);
-  const [showClosed, setShowClosed] = useState(false);
+  const [showClosed, setShowClosed] = useSessionState(`locations:${projectId}:closed`, false);
   const totals = useMemo(() => ({
     crew: live.reduce((n, r) => n + (staffing?.[r.l.id]?.assigned ?? 0), 0),
     under: live.filter(r => r.gaps.some(g => g.under > 0)).length,
@@ -127,7 +129,7 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
     <span className="inline-flex gap-2 text-xs tabular-nums">
       <span className="text-success" title="On site now">● {r.o?.onSite ?? 0}</span>
       <span className="text-muted-foreground" title="Not checked in today">○ {r.notChecked}</span>
-      {(r.o?.late ?? 0) > 0 && <span className="text-destructive" title="Late today">{r.o!.late} late</span>}
+      {(r.o?.late ?? 0) > 0 && <span className="text-destructive" title="Late today">{r.o?.late} late</span>}
     </span>
   );
   const OpenItems = ({ r }: { r: (typeof rows)[number] }) => {
@@ -161,6 +163,21 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
       <Inbox className="h-3.5 w-3.5 mr-1" />{r.openReqs.length || ''}
     </Button>
   );
+
+  type LocationRow = typeof rows[number] & { id: string };
+  const columns: EnhancedColumn<LocationRow>[] = [
+    { key: 'name', header: 'Location', width: 320, render: r => <NameCell r={r} /> },
+    { key: 'status', header: 'Status', getValue: r => r.l.status },
+    { key: 'staffed', header: 'Staffed', getValue: r => r.actual, render: r => <StaffCell r={r} /> },
+    { key: 'today', header: 'Today', getValue: r => r.o?.onSite ?? 0, render: r => <TodayCell r={r} /> },
+    { key: 'assets', header: 'Assets', getValue: r => r.a?.actualAssets ?? 0, render: r => <AssetCell r={r} /> },
+    { key: 'open', header: 'Open items', getValue: r => r.openReqs.length + (r.o?.joinPending ?? 0) + (r.o?.openPunches ?? 0) + (r.o?.pendingTOs ?? 0) + (r.o?.extPending ?? 0), render: r => <OpenItems r={r} /> },
+    { key: 'upcoming', header: 'Upcoming', getValue: r => r.o?.next?.date ?? '', render: r => <NextCell r={r} /> },
+    { key: 'dates', header: 'Mobe → Demobe', getValue: r => [r.l.mobe_date, r.l.demobe_date].filter(Boolean).join(' → '), render: r => <Dates l={r.l} /> },
+    { key: 'poc', header: 'POC', getValue: r => [r.l.poc_name, r.l.poc_phone].filter(Boolean).join(' · ') },
+    { key: 'activity', header: 'Last activity', getValue: r => r.o?.lastActivity ?? '', render: r => <Last r={r} /> },
+    { key: 'actions', header: 'Actions', noExport: true, sortable: false, filterable: false, render: r => <ReqButton r={r} /> },
+  ];
 
   const openRequests = (reqs.data ?? []).filter(r => r.status === 'open' && locations.find(l => l.id === r.location_id)?.status !== 'closed');
   return (
@@ -200,43 +217,8 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
           <span className="text-xs text-muted-foreground ml-auto">{visible.length} shown</span>
         </div>
 
-        <div className="hidden md:block border rounded-md overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-xs text-muted-foreground text-left">
-              <tr><th className="px-2 py-1.5 font-medium">Location</th><th className="px-2 py-1.5 font-medium">Staffed</th><th className="px-2 py-1.5 font-medium">Today</th><th className="px-2 py-1.5 font-medium">Assets</th><th className="px-2 py-1.5 font-medium">Open items</th><th className="px-2 py-1.5 font-medium">Upcoming</th><th className="px-2 py-1.5 font-medium">Mobe → Demobe</th><th className="px-2 py-1.5 font-medium">POC</th><th className="px-2 py-1.5 font-medium">Last activity</th><th className="px-2 py-1.5" /></tr>
-            </thead>
-            <tbody className="divide-y">
-              {visible.map(r => (
-                <tr key={r.l.id} className={cn('cursor-pointer hover:bg-muted/40', r.severity === 'red' && 'bg-destructive/5')} onClick={() => navigate(locationHref(projectId, r.l.id))}>
-                  <td className="px-2 py-1.5 min-w-[16rem] max-w-[24rem]"><NameCell r={r} /></td>
-                  <td className="px-2 py-1.5 whitespace-nowrap"><StaffCell r={r} /></td>
-                  <td className="px-2 py-1.5 whitespace-nowrap"><TodayCell r={r} /></td>
-                  <td className="px-2 py-1.5 whitespace-nowrap text-xs"><AssetCell r={r} /></td>
-                  <td className="px-2 py-1.5"><OpenItems r={r} /></td>
-                  <td className="px-2 py-1.5 whitespace-nowrap"><NextCell r={r} /></td>
-                  <td className="px-2 py-1.5"><Dates l={r.l} /></td>
-                  <td className="px-2 py-1.5 text-xs max-w-[10rem] truncate" title={[r.l.poc_name, r.l.poc_phone].filter(Boolean).join(' · ')}>{r.l.poc_name || <span className="text-muted-foreground">—</span>}</td>
-                  <td className="px-2 py-1.5"><Last r={r} /></td>
-                  <td className="px-2 py-1.5 text-right"><ReqButton r={r} /></td>
-                </tr>
-              ))}
-              {visible.length === 0 && <tr><td colSpan={10} className="px-2 py-6 text-center text-muted-foreground text-sm">No locations match.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="md:hidden space-y-2">
-          {visible.map(r => (
-            <div key={r.l.id} role="link" tabIndex={0} onClick={() => navigate(locationHref(projectId, r.l.id))} onKeyDown={e => { if (e.key === 'Enter') navigate(locationHref(projectId, r.l.id)); }}
-              className={cn('border rounded-md p-2.5 space-y-1.5 text-sm', r.severity === 'red' && 'border-destructive/40', r.severity === 'amber' && 'border-warning/40')}>
-              <div className="flex items-center justify-between gap-2"><NameCell r={r} /><ReqButton r={r} /></div>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1"><StaffCell r={r} /><TodayCell r={r} /></div>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"><span>Assets <AssetCell r={r} /></span><NextCell r={r} /><Dates l={r.l} /></div>
-              <div className="flex flex-wrap items-center justify-between gap-2"><OpenItems r={r} /><Last r={r} /></div>
-            </div>
-          ))}
-          {visible.length === 0 && <p className="text-center text-muted-foreground text-sm py-6">No locations match.</p>}
-        </div>
+        <EnhancedDataTable tableId={`locations-command:${projectId}`} data={visible.map(r => ({ ...r, id: r.l.id }))} columns={columns}
+          rowHref={r => locationHref(projectId, r.l.id)} exportName="locations" attention={r => r.severity !== 'ok' ? 'Needs attention' : null} emptyText="No locations match." />
 
         {closedRows.length > 0 && <div className="border rounded-md" aria-label="Closed locations">
           <button type="button" className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium" aria-expanded={showClosed} onClick={() => setShowClosed(v => !v)}>

@@ -1,3 +1,4 @@
+import { useSessionState } from "@/hooks/useSessionState";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { SEO } from "@/components/SEO";
@@ -70,10 +71,12 @@ const Projects = () => {
   const { data: assignmentCounts } = useAssignmentCountsByProject(projectIds);
   const { data: jobPostingCounts } = useJobPostingCountsByProject(projectIds);
 
-  const [search, setSearch] = useState("");
-  const [filterStage, setFilterStage] = useState<string>("all");
-  const [filterCategory, setFilterCategory] = useState<ProjectCategory>("all");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useSessionState("projects:search", "");
+  const [filterStage, setFilterStage] = useSessionState<string>("projects:stage", "all");
+  const [filterCategory, setFilterCategory] = useSessionState<ProjectCategory>("projects:category", "all");
+  const [selected, setSelected] = useSessionState<string[]>("projects:selection", []);
+  const selectedIds = new Set(selected);
+  const setSelectedIds = (next: Set<string> | ((prev: Set<string>) => Set<string>)) => setSelected(prev => [...(typeof next === "function" ? next(new Set(prev)) : next)]);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -391,6 +394,8 @@ const Projects = () => {
       selectable
       selectedIds={selectedIds}
       onSelectionChange={setSelectedIds}
+      exportName="projects"
+      bulkActions={() => canArchive ? <Button size="sm" variant="outline" disabled={archiveProject.isPending || unarchiveProject.isPending} onClick={isArchivedTab ? handleBulkUnarchive : handleBulkArchive}>{isArchivedTab ? "Unarchive selected" : "Archive selected"}</Button> : null}
     />
   );
 
@@ -564,7 +569,7 @@ const Projects = () => {
 
         {/* Floating bulk action bar */}
         {canArchive && selectedIds.size > 0 && (
-          <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-popover border border-border shadow-xl rounded-full px-4 py-2 flex items-center gap-3">
+          <div className="min-[1180px]:hidden fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-popover border border-border shadow-xl rounded-full px-4 py-2 flex items-center gap-3">
             <span className="text-sm font-medium">{selectedIds.size} selected</span>
             {isArchivedTab ? (
               <Button size="sm" onClick={handleBulkUnarchive} disabled={unarchiveProject.isPending}>

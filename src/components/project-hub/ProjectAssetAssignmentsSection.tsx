@@ -1,3 +1,4 @@
+import { useSessionState } from '@/hooks/useSessionState';
 import { ownershipText } from '@/lib/assetDetails';
 import { useState } from "react";
 import { toast } from "sonner";
@@ -138,7 +139,7 @@ export function ProjectAssetAssignmentsSection({
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [unassignConfirmId, setUnassignConfirmId] = useState<string | null>(null);
   const [assetToUnassign, setAssetToUnassign] = useState<{ label: string } | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useSessionState(`assets:${projectId}:open`, false);
   const [editAsset, setEditAsset] = useState<EditableAsset | null>(null);
   
   const { rows: assignments, isLoading } = useProjectAssetBilling(projectId);
@@ -157,20 +158,22 @@ export function ProjectAssetAssignmentsSection({
     </TableHead>
   );
 
-  const [selectedAssets, setSelectedAssets] = useState<Set<string>>(new Set());
+  const [selection, setSelection] = useSessionState<string[]>(`assets:${projectId}:selection`, []);
+  const selectedAssets = new Set(selection);
+  const setSelectedAssets = (next: Set<string>) => setSelection([...next]);
   const [bulkUnassign, setBulkUnassign] = useState<string[] | null>(null);
   const bulkAssign = useAssignAssetToLocation();
   const fmtDay = (v: string | null | undefined) => (v ? format(new Date(v), "MM/dd/yyyy") : "—");
   const assetColumns: EnhancedColumn<AssetBillingRow>[] = [
     { key: "asset", header: "Asset", width: 240, getValue: r => `${r.assets?.asset_number ?? ""} ${r.assets?.label ?? ""} ${r.assets?.serial_number ?? ""}`.trim(),
-      render: r => <span className="flex items-center gap-2">{getAssetIcon(r.assets!.type)}<span className="truncate">{r.assets!.label}</span><Badge variant="outline" className="text-[10px] px-1">{ownershipText(r.assets!)}</Badge></span> },
+      render: r => <span className="flex items-center gap-2">{getAssetIcon(r.assets?.type ?? "default")}<span className="truncate">{r.assets?.asset_number ? `${r.assets.asset_number} · ` : ""}{r.assets?.label ?? "Asset"}</span><Badge variant="outline" className="text-[10px] px-1">{ownershipText(r.assets)}</Badge></span> },
     { key: "type", header: "Type", getValue: r => r.assets?.type ?? "", render: r => <span className="capitalize">{r.assets?.type}</span> },
     { key: "location", header: "Location", noExport: false, getValue: r => locations.find(l => l.id === r.location_id)?.name ?? "Project-wide", render: r => <AssetLocationCell row={r} projectId={projectId} locations={locations} canEdit={canEdit} /> },
     ...(canEdit ? [
       { key: "bill", header: "Bill rate", getValue: (r: AssetBillingRow) => (r.billable ? r.rate : null), render: (r: AssetBillingRow) => <AssetBillingCell row={r} projectId={projectId} canEdit={canEdit} /> },
-      { key: "cost", header: "Our cost/day", getValue: (r: AssetBillingRow) => costOf(r), render: (r: AssetBillingRow) => <span className="tabular-nums">{costOf(r) != null ? `$${costOf(r)!.toFixed(2)}` : "—"}</span> },
+      { key: "cost", header: "Our cost/day", getValue: (r: AssetBillingRow) => costOf(r), render: (r: AssetBillingRow) => <span className="tabular-nums">{costOf(r) != null ? `$${costOf(r)?.toFixed(2)}` : "—"}</span> },
       { key: "margin", header: "Margin", getValue: (r: AssetBillingRow) => marginOf(r), render: (r: AssetBillingRow) => <span className={cn("tabular-nums", (marginOf(r) ?? 0) < 0 && "text-destructive")}>{marginOf(r) != null ? `${marginOf(r)}%` : "—"}</span> },
-      { key: "ins", header: "Insurance expires", getValue: (r: AssetBillingRow) => r.assets?.insurance_expires_on ?? null, render: (r: AssetBillingRow) => <span className="whitespace-nowrap">{r.assets?.insurance_expires_on ?? "—"} <InsuranceBadge asset={r.assets!} /></span> },
+      { key: "ins", header: "Insurance expires", getValue: (r: AssetBillingRow) => r.assets?.insurance_expires_on ?? null, render: (r: AssetBillingRow) => <span className="whitespace-nowrap">{r.assets?.insurance_expires_on ?? "—"} <InsuranceBadge asset={r.assets} /></span> },
     ] as EnhancedColumn<AssetBillingRow>[] : []),
     { key: "person", header: "Responsible", getValue: r => r.personnel ? `${r.personnel.first_name} ${r.personnel.last_name}` : "" , render: r => r.personnel ? `${r.personnel.first_name} ${r.personnel.last_name}` : <span className="text-muted-foreground">—</span> },
     { key: "start", header: "Start", getValue: r => r.start_at ?? null, render: r => fmtDay(r.start_at) },
@@ -178,8 +181,8 @@ export function ProjectAssetAssignmentsSection({
     { key: "status", header: "Status", getValue: r => r.status, render: r => <StatusPill value={r.status} /> },
     { key: "actions", header: "", sortable: false, filterable: false, noExport: true, render: r => (
       <span className="flex">
-        {canEdit && <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Edit asset" title="Edit asset" onClick={() => setEditAsset(r.assets!)}><Pencil className="h-3.5 w-3.5" /></Button>}
-        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" aria-label="Unassign asset" onClick={() => handleUnassign(r.id, r.assets!.label)}><UserMinus className="h-3.5 w-3.5" /></Button>
+        {canEdit && <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Edit asset" title="Edit asset" onClick={() => setEditAsset(r.assets ?? null)}><Pencil className="h-3.5 w-3.5" /></Button>}
+        {canEdit && <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" aria-label="Unassign asset" onClick={() => handleUnassign(r.id, r.assets?.label ?? "Asset")}><UserMinus className="h-3.5 w-3.5" /></Button>}
       </span>) },
   ];
 
@@ -344,9 +347,9 @@ export function ProjectAssetAssignmentsSection({
                           </SelectContent>
                         </Select>
                       )}
-                      <Button size="sm" variant="outline" className="h-7 text-xs text-destructive" onClick={() => setBulkUnassign(rows.map(r => r.id))}>
+                      {canEdit && <Button size="sm" variant="outline" className="h-7 text-xs text-destructive" onClick={() => setBulkUnassign(rows.map(r => r.id))}>
                         <UserMinus className="h-3 w-3 mr-1" />Unassign
-                      </Button>
+                      </Button>}
                     </>
                   )}
                 />
