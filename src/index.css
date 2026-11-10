@@ -95,8 +95,8 @@
     --sidebar-muted: 220 9% 45%;
 
     /* Table styling */
-    --table-header-bg: 220 15% 15%;
-    --table-header-fg: 0 0% 100%;
+    --table-header-bg: 220 14% 96%;
+    --table-header-fg: 220 15% 25%;
     --table-stripe: 40 15% 97%;
     --table-border: 220 13% 90%;
 
@@ -233,8 +233,8 @@
     --sidebar-ring: 142 72% 42%;
     --sidebar-muted: 0 0% 55%;
 
-    --table-header-bg: 0 0% 4%;
-    --table-header-fg: 0 0% 100%;
+    --table-header-bg: 0 0% 12%;
+    --table-header-fg: 0 0% 85%;
     --table-stripe: 0 0% 10%;
     --table-border: 0 0% 17%;
 
