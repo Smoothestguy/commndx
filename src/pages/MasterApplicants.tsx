@@ -27,6 +27,7 @@ import { formatDistanceToNow } from "date-fns";
 
 type Row = {
   vendor_id: string | null;
+  gender?: string | null;
   id: string;
   first_name: string;
   last_name: string;
