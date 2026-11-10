@@ -207,9 +207,9 @@
 - [x] Profile History (assignments + hours + manager note).
 - [x] Light table header token app-wide.
 - [x] Location roster: search + row select + shared bulk bar (verified 5049-FCOCO). Applicant pool already selectable via shared table.
-- [ ] Roll shared bulk/search into assets, attendance and Event Manager grids; add "Assign to location" bulk action.
+- [x] Shared bulk/search in assets, attendance and Event Manager; manager bulk Assign to location in Personnel.
 
 # Data-grid and workspace-tabs completion
-- [ ] Finish shared column controls, frozen name/header, sizing, pagination, selection/export and scroll restoration.
-- [ ] Connect Personnel, project/location rosters, applicant pool, assets, attendance, Event Manager, Projects and location command center; retain applicable manager bulk actions.
-- [ ] Verify desktop controls, three workspace tabs/state restoration and asset selection; run focused tests and inspect preview errors. No live-record writes required.
+- [x] Shared column sort/filter/hide, drag/resize, frozen identity/header, footer paging/density/fullscreen, warning indicators and selected/filtered export.
+- [x] Connected Personnel/Bench, project/location rosters, Applicant Pool and Applications, project/location assets, attendance, Event Manager, Projects and location command center; context bulk actions plus selected export. Phone personnel rate display now manager/admin gated.
+- [x] Owner/admin desktop verified Personnel menus/filter/hide/density/paging/CSV and preserved filter/selection/page size across Personnel–Location–Event Manager tabs and reload; assets selection, attendance Set times 0730 (cancelled), Applicant Pool/Event Manager/Projects rendered. TypeScript and nine tests passed; latest preview build OK, no runtime errors, live writes, messages or test rows. Separate manager/field login not exercised.
