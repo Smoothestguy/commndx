@@ -1,4 +1,5 @@
-import { ReactNode, useState } from "react";
+import { RouteSkeleton } from "../RouteSkeleton";
+import { ReactNode, useState, Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { TopNavBar } from "./TopNavBar";
@@ -57,7 +58,7 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
                 )}
               >
                 <div className="bg-background"><TabsBar /></div>
-                {children ?? <Outlet />}
+                <Suspense fallback={<RouteSkeleton />}>{children ?? <Outlet />}</Suspense>
               </main>
 
               {!isMobile && (
