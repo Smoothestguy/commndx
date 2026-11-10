@@ -53,6 +53,8 @@ import { MobilePersonnelCard } from "./MobilePersonnelCard";
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { TablePagination } from "@/components/shared/TablePagination";
 import { PersonnelRolesDialog } from "./PersonnelRolesDialog";
+import { BenchStar, TagChips } from "./PersonnelTags";
+import { NonBillableChip } from "./NonBillableChip";
 
 type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
 
@@ -69,6 +71,8 @@ interface PersonnelTableProps {
   onSelectAll: () => void;
   onClearSelection: () => void;
   onPrintBadges: () => void;
+  tagsByPerson?: Record<string, string[]>;
+  customerName?: (id: string) => string | undefined;
 }
 
 export function PersonnelTable({
@@ -84,6 +88,8 @@ export function PersonnelTable({
   onSelectAll,
   onClearSelection,
   onPrintBadges,
+  tagsByPerson,
+  customerName,
 }: PersonnelTableProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -296,6 +302,7 @@ export function PersonnelTable({
           >
             {person.first_name} {person.last_name}
           </Link>
+          <BenchStar on={person.on_bench} />
           <ComplianceBadge personnel={person} compact />
           {(person as any).portal_required === false && (
             <Badge variant="outline" className="gap-1 text-xs">
@@ -380,27 +387,37 @@ export function PersonnelTable({
     },
     {
       key: "vendor",
-      header: "Vendor",
+      header: "Works for",
       sortable: true,
       filterable: true,
-      getValue: (person) => getVendor(person.vendor_id)?.name || "",
+      getValue: (person) => person.employer_customer_id ? (customerName?.(person.employer_customer_id) || "Customer") : getVendor(person.vendor_id)?.name || "FRG",
       render: (person: Personnel) => {
+        if (person.employer_customer_id) {
+          const n = customerName?.(person.employer_customer_id);
+          return <NonBillableChip value employer={n ? `${n} (customer)` : undefined} />;
+        }
         const vendor = getVendor(person.vendor_id);
         return vendor ? (
-          <Link
-            to={`/vendors/${vendor.id}`}
-            className="text-primary hover:underline flex items-center gap-1 text-sm"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Building2 className="h-3 w-3 shrink-0" />
-            <span className="max-w-[100px] truncate">
-              {vendor.name}
-            </span>
-          </Link>
+          <span className="inline-flex items-center gap-1">
+            <Link to={`/vendors/${vendor.id}`} className="text-primary hover:underline flex items-center gap-1 text-sm" onClick={(e) => e.stopPropagation()}>
+              <Building2 className="h-3 w-3 shrink-0" />
+              <span className="max-w-[120px] truncate">{vendor.name}</span>
+            </Link>
+            <NonBillableChip value={person.non_billable} />
+          </span>
         ) : (
-          <span className="text-muted-foreground">—</span>
+          <span className="inline-flex items-center gap-1 text-muted-foreground text-sm">FRG <NonBillableChip value={person.non_billable} /></span>
         );
       },
+    },
+    {
+      key: "tags",
+      header: "Tags",
+      sortable: true,
+      filterable: true,
+      getValue: (person) => (tagsByPerson?.[person.id] ?? []).join(", "),
+      render: (person: Personnel) => <TagChips tags={tagsByPerson?.[person.id]} max={3} />,
+    },
     },
     {
       key: "rate",
