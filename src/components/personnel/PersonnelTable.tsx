@@ -109,6 +109,8 @@ export function PersonnelTable({
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [rolesDialogPerson, setRolesDialogPerson] = useState<Personnel | null>(null);
 
+  const pageRows = personnel.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
   const getVendor = (vendorId: string | null) => {
     if (!vendorId) return null;
     return vendors?.find((v) => v.id === vendorId);
@@ -577,7 +579,7 @@ export function PersonnelTable({
       {/* Mobile/Tablet Cards - hidden on desktop (1180px+) */}
       <div className="block min-[1180px]:hidden">
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-          {personnel.map((person) => (
+          {pageRows.map((person) => (
             <MobilePersonnelCard
               key={person.id}
               personnel={person}
@@ -597,6 +599,8 @@ export function PersonnelTable({
           data={personnel}
           columns={columns}
           rowHref={person => `/personnel/${person.id}`}
+          exportName="personnel"
+          attention={person => !person.phone ? "Missing phone" : null}
           selectable={selectionMode}
           selectedIds={new Set(selectedIds)}
           onSelectionChange={(next) => {
@@ -607,7 +611,8 @@ export function PersonnelTable({
         />
       </div>
 
-      {/* Pagination */}
+      {/* Pagination (phone cards; the desktop grid has its own footer) */}
+      <div className="min-[1180px]:hidden">
       <TablePagination
         currentPage={currentPage}
         totalCount={totalCount}
@@ -616,6 +621,7 @@ export function PersonnelTable({
         onRowsPerPageChange={onRowsPerPageChange}
         rowsPerPageOptions={[10, 20, 30, 40]}
       />
+      </div>
 
       {/* Deactivate Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

@@ -2,6 +2,7 @@ import { ReactNode, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { TopNavBar } from "./TopNavBar";
+import { TabsBar } from "../TabsBar";
 import { RightPanel } from "./RightPanel";
 import { MobileNavDrawer } from "../MobileNavDrawer";
 import { BottomNav } from "../BottomNav";
@@ -55,6 +56,7 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
                   shouldShowBackground && "bg-transparent",
                 )}
               >
+                <div className="bg-background"><TabsBar /></div>
                 {children ?? <Outlet />}
               </main>
 

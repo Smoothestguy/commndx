@@ -1,5 +1,7 @@
 import { ownershipText } from '@/lib/assetDetails';
 import { useState } from "react";
+import { toast } from "sonner";
+import { EnhancedDataTable, StatusPill, type EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { format } from "date-fns";
 import { 
   Package, 
@@ -155,6 +157,32 @@ export function ProjectAssetAssignmentsSection({
     </TableHead>
   );
 
+  const [selectedAssets, setSelectedAssets] = useState<Set<string>>(new Set());
+  const [bulkUnassign, setBulkUnassign] = useState<string[] | null>(null);
+  const bulkAssign = useAssignAssetToLocation();
+  const fmtDay = (v: string | null | undefined) => (v ? format(new Date(v), "MM/dd/yyyy") : "—");
+  const assetColumns: EnhancedColumn<AssetBillingRow>[] = [
+    { key: "asset", header: "Asset", width: 240, getValue: r => `${r.assets?.asset_number ?? ""} ${r.assets?.label ?? ""} ${r.assets?.serial_number ?? ""}`.trim(),
+      render: r => <span className="flex items-center gap-2">{getAssetIcon(r.assets!.type)}<span className="truncate">{r.assets!.label}</span><Badge variant="outline" className="text-[10px] px-1">{ownershipText(r.assets!)}</Badge></span> },
+    { key: "type", header: "Type", getValue: r => r.assets?.type ?? "", render: r => <span className="capitalize">{r.assets?.type}</span> },
+    { key: "location", header: "Location", noExport: false, getValue: r => locations.find(l => l.id === r.location_id)?.name ?? "Project-wide", render: r => <AssetLocationCell row={r} projectId={projectId} locations={locations} canEdit={canEdit} /> },
+    ...(canEdit ? [
+      { key: "bill", header: "Bill rate", getValue: (r: AssetBillingRow) => (r.billable ? r.rate : null), render: (r: AssetBillingRow) => <AssetBillingCell row={r} projectId={projectId} canEdit={canEdit} /> },
+      { key: "cost", header: "Our cost/day", getValue: (r: AssetBillingRow) => costOf(r), render: (r: AssetBillingRow) => <span className="tabular-nums">{costOf(r) != null ? `$${costOf(r)!.toFixed(2)}` : "—"}</span> },
+      { key: "margin", header: "Margin", getValue: (r: AssetBillingRow) => marginOf(r), render: (r: AssetBillingRow) => <span className={cn("tabular-nums", (marginOf(r) ?? 0) < 0 && "text-destructive")}>{marginOf(r) != null ? `${marginOf(r)}%` : "—"}</span> },
+      { key: "ins", header: "Insurance expires", getValue: (r: AssetBillingRow) => r.assets?.insurance_expires_on ?? null, render: (r: AssetBillingRow) => <span className="whitespace-nowrap">{r.assets?.insurance_expires_on ?? "—"} <InsuranceBadge asset={r.assets!} /></span> },
+    ] as EnhancedColumn<AssetBillingRow>[] : []),
+    { key: "person", header: "Responsible", getValue: r => r.personnel ? `${r.personnel.first_name} ${r.personnel.last_name}` : "" , render: r => r.personnel ? `${r.personnel.first_name} ${r.personnel.last_name}` : <span className="text-muted-foreground">—</span> },
+    { key: "start", header: "Start", getValue: r => r.start_at ?? null, render: r => fmtDay(r.start_at) },
+    { key: "end", header: "End", getValue: r => r.end_at ?? null, render: r => fmtDay(r.end_at) },
+    { key: "status", header: "Status", getValue: r => r.status, render: r => <StatusPill value={r.status} /> },
+    { key: "actions", header: "", sortable: false, filterable: false, noExport: true, render: r => (
+      <span className="flex">
+        {canEdit && <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Edit asset" title="Edit asset" onClick={() => setEditAsset(r.assets!)}><Pencil className="h-3.5 w-3.5" /></Button>}
+        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" aria-label="Unassign asset" onClick={() => handleUnassign(r.id, r.assets!.label)}><UserMinus className="h-3.5 w-3.5" /></Button>
+      </span>) },
+  ];
+
   const handleUnassign = (assignmentId: string, assetLabel: string) => {
     setUnassignConfirmId(assignmentId);
     setAssetToUnassign({ label: assetLabel });
@@ -290,104 +318,38 @@ export function ProjectAssetAssignmentsSection({
                   })}
                 </div>
               ) : (
-                // Desktop Table View
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Asset</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Location</TableHead>
-                        {canEdit && <TableHead>Bill rate</TableHead>}
-                        {canEdit && sortHead("cost", "Our cost/day")}
-                        {canEdit && sortHead("margin", "Margin")}
-                        {canEdit && sortHead("ins", "Insurance expires")}
-                        <TableHead>Assigned To</TableHead>
-                        <TableHead>Start Date</TableHead>
-                        <TableHead>End Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="w-[100px]">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {activeAssignments.map((assignment) => {
-                        const asset = assignment.assets;
-                        if (!asset) return null;
-                        
-                        return (
-                          <TableRow key={assignment.id}>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                                  {getAssetIcon(asset.type)}
-                                </div>
-                                <div>
-                                  <p className="font-medium">{asset.label}</p><Badge variant="outline">{ownershipText(asset)}</Badge>
-                                  {asset.serial_number && (
-                                    <p className="text-xs text-muted-foreground">
-                                      SN: {asset.serial_number}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="secondary" className="capitalize">
-                                {asset.type}
-                              </Badge>
-                            </TableCell>
-                            <TableCell><AssetLocationCell row={assignment} projectId={projectId} locations={locations} canEdit={canEdit} /></TableCell>
-                            {canEdit && <TableCell><AssetBillingCell row={assignment} projectId={projectId} canEdit={canEdit} /></TableCell>}
-                            {canEdit && <TableCell className="tabular-nums text-xs">{costOf(assignment) != null ? `$${costOf(assignment)!.toFixed(2)}` : "—"}</TableCell>}
-                            {canEdit && <TableCell className={cn("tabular-nums text-xs", (marginOf(assignment) ?? 0) < 0 && "text-destructive")}>{marginOf(assignment) != null ? `${marginOf(assignment)}%` : "—"}</TableCell>}
-                            {canEdit && <TableCell className="text-xs whitespace-nowrap">{asset.insurance_expires_on ?? "—"} <InsuranceBadge asset={asset} /></TableCell>}
-                            <TableCell>
-                              {assignment.personnel ? (
-                                <span>
-                                  {assignment.personnel.first_name} {assignment.personnel.last_name}
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground">Project-wide</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {assignment.start_at 
-                                ? format(new Date(assignment.start_at), "MMM d, yyyy")
-                                : "—"
-                              }
-                            </TableCell>
-                            <TableCell>
-                              {assignment.end_at 
-                                ? format(new Date(assignment.end_at), "MMM d, yyyy")
-                                : "—"
-                              }
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className={statusColors[assignment.status]}>
-                                {assignment.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {canEdit && (
-                                <Button variant="ghost" size="icon" aria-label="Edit asset" title="Edit asset" onClick={() => setEditAsset(asset)}>
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                onClick={() => handleUnassign(assignment.id, asset.label)}
-                              >
-                                <UserMinus className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
+                // Desktop data grid (shared): sort, search, column menus, bulk actions
+                <EnhancedDataTable<AssetBillingRow>
+                  tableId={canEdit ? "project-assets-mgr" : "project-assets"}
+                  data={activeAssignments.filter(a => !!a.assets)}
+                  columns={assetColumns}
+                  selectable
+                  selectedIds={selectedAssets}
+                  onSelectionChange={setSelectedAssets}
+                  exportName="assets"
+                  searchPlaceholder="Search assets…"
+                  attention={r => canEdit && r.billable && r.rate == null ? "Billable without a bill rate" : null}
+                  bulkActions={(rows, clear) => (
+                    <>
+                      {canEdit && (
+                        <Select onValueChange={async (v) => {
+                          for (const r of rows) await bulkAssign.mutateAsync({ projectId, assignmentId: r.id, locationId: v === "none" ? null : v });
+                          toast.success(`${rows.length} asset${rows.length > 1 ? "s" : ""} moved`);
+                          clear();
+                        }}>
+                          <SelectTrigger className="h-7 w-48 text-xs" aria-label="Move selected to location"><SelectValue placeholder="Move to location…" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Project-wide</SelectItem>
+                            {locations.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <Button size="sm" variant="outline" className="h-7 text-xs text-destructive" onClick={() => setBulkUnassign(rows.map(r => r.id))}>
+                        <UserMinus className="h-3 w-3 mr-1" />Unassign
+                      </Button>
+                    </>
+                  )}
+                />
               )}
             </CardContent>
           </CollapsibleContent>
@@ -401,6 +363,24 @@ export function ProjectAssetAssignmentsSection({
         onOpenChange={setIsAssignDialogOpen}
         projectId={projectId}
       />
+
+      <AlertDialog open={!!bulkUnassign} onOpenChange={(o) => !o && setBulkUnassign(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unassign {bulkUnassign?.length} assets</AlertDialogTitle>
+            <AlertDialogDescription>Each placement ends today; its history is kept.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              const ids = bulkUnassign ?? [];
+              for (const id of ids) await unassignMutation.mutateAsync(id);
+              setBulkUnassign(null); setSelectedAssets(new Set());
+              toast.success(`${ids.length} assets unassigned`);
+            }}>Unassign</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Unassign Confirmation Dialog */}
       <AlertDialog open={!!unassignConfirmId} onOpenChange={() => setUnassignConfirmId(null)}>
