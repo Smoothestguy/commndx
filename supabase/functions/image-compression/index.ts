@@ -1,6 +1,6 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
-import { Image } from 'https://deno.land/x/imagescript@1.3.0/mod.ts';
+import { decodeImage, encodeImage } from './codec.ts';
 import { service, authorize, json } from '../_shared/signinJobs.ts';
 import { authenticateCronRequest } from '../_shared/cron-auth.ts';
 import { imageEligible, imageDimensions, JPEG_QUALITY, THUMBNAIL_SIZE } from '../_shared/imagePolicy.ts';
@@ -30,15 +30,15 @@ Deno.serve(async req => {
         if (source.error || !source.data) throw source.error ?? new Error('Download failed');
         const bytes = new Uint8Array(await source.data.arrayBuffer());
         const digest = await hash(bytes);
-        const image = await Image.decode(bytes);
+        const image = decodeImage(bytes);
         if (image.width * image.height > 12_000_000) throw new Error('Image too large for safe processing');
         const [width, height] = imageDimensions(image.width, image.height);
+        image.resize('linear', width, height);
         const thumbnail = image.clone();
         const side = Math.min(thumbnail.width, thumbnail.height);
-        thumbnail.crop(Math.floor((thumbnail.width - side) / 2), Math.floor((thumbnail.height - side) / 2), side, side).resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE);
-        const thumb = await thumbnail.encodeJPEG(JPEG_QUALITY);
-        image.resize(width, height);
-        const compressed = await image.encodeJPEG(JPEG_QUALITY);
+        thumbnail.crop('box', Math.floor((thumbnail.width - side) / 2), Math.floor((thumbnail.height - side) / 2), side, side).resize('linear', THUMBNAIL_SIZE, THUMBNAIL_SIZE);
+        const thumb = encodeImage(thumbnail, JPEG_QUALITY);
+        const compressed = encodeImage(image, JPEG_QUALITY);
         const thumbPath = `${row.object_path}.thumb.jpg`;
         // Receipt originals remain accounting evidence. Only their viewing copy changes.
         const receipt = row.bucket_id === 'document-attachments';
