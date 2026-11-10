@@ -1,3 +1,5 @@
+import { ApplicationsTable } from "@/components/staffing/ApplicationsTable";
+import { useSessionState } from "@/hooks/useSessionState";
 import { ApplicantTagBadges, ApplicantNoteLine } from "@/components/staffing/ApplicantMetaInline";
 import { useApplicantCertSummary } from "@/hooks/useApplicantCertSummary";
 import { useState, useMemo, useEffect } from "react";
@@ -121,8 +123,8 @@ export function ProjectApplicantsSection({
   const getOrCreateConversation = useGetOrCreateConversation();
   const { openConversationWith } = useMessageDrawer();
 
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"pending" | "approved">("pending");
+  const [isOpen, setIsOpen] = useSessionState(`project-applicants:${projectId}:open`, false);
+  const [activeTab, setActiveTab] = useSessionState<"pending" | "approved">(`project-applicants:${projectId}:tab`, "pending");
   const [selectedApplication, setSelectedApplication] =
     useState<Application | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
@@ -707,23 +709,8 @@ export function ProjectApplicantsSection({
                         {pendingApplications.map(renderMobileCard)}
                       </div>
                     ) : (
-                      <div className="rounded-md border">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <SortableHeader column="name" label="Applicant" />
-                              <SortableHeader column="position" label="Position" />
-                              <SortableHeader column="city" label="Location" />
-                              <SortableHeader column="status" label="Status" />
-                              <SortableHeader column="submitted" label="Applied" />
-                              <TableHead className="w-[120px]">Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {pendingApplications.map(renderApplicationRow)}
-                          </TableBody>
-                        </Table>
-                      </div>
+                      <ApplicationsTable applications={pendingApplications} isLoading={isLoading} selectable
+                        onViewApplication={handleViewApplication} onApprove={handleApproveClick} onReject={handleReject} />
                     )}
                   </TabsContent>
 
@@ -735,23 +722,8 @@ export function ProjectApplicantsSection({
                         {approvedApplications.map(renderMobileCard)}
                       </div>
                     ) : (
-                      <div className="rounded-md border">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <SortableHeader column="name" label="Applicant" />
-                              <SortableHeader column="position" label="Position" />
-                              <SortableHeader column="city" label="Location" />
-                              <SortableHeader column="status" label="Status" />
-                              <SortableHeader column="submitted" label="Applied" />
-                              <TableHead className="w-[120px]">Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {approvedApplications.map(renderApplicationRow)}
-                          </TableBody>
-                        </Table>
-                      </div>
+                      <ApplicationsTable applications={approvedApplications} isLoading={isLoading} selectable
+                        onViewApplication={handleViewApplication} onApprove={handleApproveClick} onReject={handleReject} />
                     )}
                   </TabsContent>
                 </Tabs>

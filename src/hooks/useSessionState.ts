@@ -6,19 +6,17 @@ import { useCallback, useState, type Dispatch, type SetStateAction } from "react
  */
 export function useSessionState<T>(key: string, initial: T): [T, Dispatch<SetStateAction<T>>] {
   const storageKey = `ss:${key}`;
-  const [value, setValue] = useState<T>(() => {
-    try {
-      const raw = sessionStorage.getItem(storageKey);
-      return raw != null ? (JSON.parse(raw) as T) : initial;
-    } catch {
-      return initial;
-    }
-  });
+  const read = () => {
+    try { const raw = sessionStorage.getItem(storageKey); return raw != null ? JSON.parse(raw) as T : initial; } catch { return initial; }
+  };
+  const [state, setState] = useState<{ key: string; value: T }>(() => ({ key: storageKey, value: read() }));
+  const value = state.key === storageKey ? state.value : read();
   const set = useCallback<Dispatch<SetStateAction<T>>>((next) => {
-    setValue((prev) => {
-      const resolved = typeof next === "function" ? (next as (p: T) => T)(prev) : next;
-      try { sessionStorage.setItem(storageKey, JSON.stringify(resolved)); } catch { /* ignore */ }
-      return resolved;
+    setState(prev => {
+      const current = prev.key === storageKey ? prev.value : read();
+      const resolved = typeof next === "function" ? (next as (p: T) => T)(current) : next;
+      try { sessionStorage.setItem(storageKey, JSON.stringify(resolved)); } catch { /* unavailable storage */ }
+      return { key: storageKey, value: resolved };
     });
   }, [storageKey]);
   return [value, set];
