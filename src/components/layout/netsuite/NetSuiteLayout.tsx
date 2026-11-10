@@ -2,6 +2,7 @@ import { ReactNode, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { TopNavBar } from "./TopNavBar";
+import { TabsBar } from "../TabsBar";
 import { RightPanel } from "./RightPanel";
 import { MobileNavDrawer } from "../MobileNavDrawer";
 import { BottomNav } from "../BottomNav";
@@ -42,6 +43,7 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
             <BackgroundMediaLayer />
 
             <TopNavBar onMobileMenuToggle={() => setMobileMenuOpen(true)} />
+            <div className="sticky top-14 z-30"><TabsBar /></div>
 
             <MobileNavDrawer open={mobileMenuOpen} onOpenChange={setMobileMenuOpen} />
 
