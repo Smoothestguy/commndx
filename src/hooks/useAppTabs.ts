@@ -76,6 +76,20 @@ export function useAppTabs() {
     });
   }, [activeKey, currentPath, location.pathname]);
 
+  // Capture scroll on every navigation, including links that open a new workspace tab.
+  useEffect(() => {
+    const save = () => {
+      if (!activeKey) return;
+      setTabs(prev => {
+        const next = prev.map(t => t.key === activeKey ? { ...t, scrollY: window.scrollY } : t);
+        writeStored(next);
+        return next;
+      });
+    };
+    window.addEventListener('scroll', save, { passive: true });
+    return () => window.removeEventListener('scroll', save);
+  }, [activeKey]);
+
   // Restore scroll after flipping to a tab.
   useEffect(() => {
     if (pendingScroll.current == null) return;

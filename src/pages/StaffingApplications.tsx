@@ -308,13 +308,6 @@ export default function StaffingApplications() {
     });
   }, [applications, search, experienceFilter, postingFilter, formTemplates, neverApprovedApplicantIds]);
 
-  // Paginated applications
-  const paginatedApplications = useMemo(() => {
-    if (!filteredApplications) return [];
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    return filteredApplications.slice(startIndex, startIndex + rowsPerPage);
-  }, [filteredApplications, currentPage, rowsPerPage]);
-
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
@@ -829,16 +822,7 @@ export default function StaffingApplications() {
         }}
         onToggleContacted={handleToggleContacted}
           />
-          <TablePagination
-            currentPage={currentPage}
-            totalCount={filteredApplications?.length || 0}
-            rowsPerPage={rowsPerPage}
-            onPageChange={setCurrentPage}
-            onRowsPerPageChange={(size) => {
-              setRowsPerPage(size);
-              setCurrentPage(1);
-            }}
-          />
+
         </CardContent>
       </Card>
 
