@@ -213,3 +213,10 @@
 - [x] Shared column sort/filter/hide, drag/resize, frozen identity/header, footer paging/density/fullscreen, warning indicators and selected/filtered export.
 - [x] Connected Personnel/Bench, project/location rosters, Applicant Pool and Applications, project/location assets, attendance, Event Manager, Projects and location command center; context bulk actions plus selected export. Phone personnel rate display now manager/admin gated.
 - [x] Owner/admin desktop verified Personnel menus/filter/hide/density/paging/CSV and preserved filter/selection/page size across Personnel–Location–Event Manager tabs and reload; assets selection, attendance Set times 0730 (cancelled), Applicant Pool/Event Manager/Projects rendered. TypeScript and nine tests passed; latest preview build OK, no runtime errors, live writes, messages or test rows. Separate manager/field login not exercised.
+
+# Grid bug batch and location transfer
+- [ ] Anchored column sizing and duplicate label audit.
+- [ ] Attendance previous/next/Today and repeated-dialog diagnosis.
+- [ ] Audited asset placement date corrections, including ended placements.
+- [ ] Transactional location transfer with denormalized-record reconciliation and confirmation.
+- [ ] Browser verification, rule tests and temporary-record cleanup.
