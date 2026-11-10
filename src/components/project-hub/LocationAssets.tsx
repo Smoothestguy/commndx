@@ -26,6 +26,7 @@ import {
   AssetBillingRow, useAssignAssetToLocation, useEndAssetAssignment, useProjectAssetBilling, useUnassignAsset,
 } from "@/integrations/supabase/hooks/useAssetAssignments";
 import { fmtMoney0 } from "@/lib/assetBilling";
+import { locationTimeIso } from '@/lib/manualTime';
 import { EditAssetDialog, type EditableAsset } from "./EditAssetDialog";
 import { AssetCostBadge, InsuranceBadge } from "./AssetCostFields";
 
@@ -84,6 +85,7 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
   const [billable, setBillable] = useState(false);
   const [rate, setRate] = useState("");
   const [start, setStart] = useState(format(new Date(), "yyyy-MM-dd"));
+  const locationZone = useQuery({ queryKey: ['asset-location-zone', locationId], enabled: open, queryFn: async () => { const { data, error } = await supabase.from('project_locations').select('timezone').eq('id', locationId).single(); if (error) throw error; return data.timezone || 'America/Chicago'; } });
   const [lastOpen, setLastOpen] = useState(false);
   if (open !== lastOpen) { setLastOpen(open); if (open) { setResponsible(null); setOwnership(emptyOwnership); setCareEdit(false); setCreating(false); setNw({ label: "", type: "vehicle", serial: "" }); setPick(""); setBillable(false); setRate(""); setStart(format(new Date(), "yyyy-MM-dd")); } }
 
@@ -116,7 +118,7 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
       assignmentId: isExisting ? pick.slice(2) : undefined,
       assetId: !isExisting ? pick.slice(2) : undefined,
       ...(canBill ? { billable, dayRate: n != null && Number.isFinite(n) ? n : null } : {}),
-      startAt: careEdit ? undefined : new Date(`${start}T08:00:00`).toISOString(),
+      startAt: careEdit ? undefined : locationTimeIso(start, '08:00', locationZone.data || 'America/Chicago'),
     }, { onSuccess: () => onOpenChange(false) });
   };
 

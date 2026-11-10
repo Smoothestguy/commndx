@@ -26,7 +26,7 @@ export function EditAssetPlacementDates({ row, timezone = 'America/Chicago', onC
     </div><DialogFooter><Button variant="outline" disabled={busy} onClick={onClose}>Cancel</Button><Button disabled={busy || !start || !reason.trim() || (!!end && end < start) || ((!end) && (row.status !== 'active' || !!row.end_at))} onClick={async () => {
       setBusy(true);
       try {
-        const { error } = await supabase.rpc('correct_asset_placement_dates', { p_assignment_id: row.id, p_start_at: locationTimeIso(start, '00:00', timezone), p_end_at: end ? locationTimeIso(end, '23:59', timezone) : null, p_reason: reason.trim(), p_expected_updated_at: row.updated_at });
+        const { error } = await supabase.rpc('correct_asset_placement_dates', { p_assignment_id: row.id, p_start_at: locationTimeIso(start, '08:00', timezone), p_end_at: end ? locationTimeIso(end, '17:00', timezone) : null, p_reason: reason.trim(), p_expected_updated_at: row.updated_at });
         if (error) throw error;
         await qc.invalidateQueries(); toast.success('Placement dates corrected'); onClose();
       } catch (e) { toast.error(e instanceof Error ? e.message : 'Date correction failed'); } finally { setBusy(false); }
