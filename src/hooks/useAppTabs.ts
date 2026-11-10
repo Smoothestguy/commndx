@@ -25,6 +25,11 @@ const EXCLUDED_PREFIXES = ["/auth", "/unauthorized", "/apply", "/onboarding", "/
 
 const shouldTrack = (pathname: string) => !EXCLUDED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
+const labelFor = (pathname: string) =>
+  /\/locations\/[^/]+$/.test(pathname) ? "Location"
+  : /^\/events(\/|$)/.test(pathname) ? (pathname === "/events" ? "Event Manager" : "Event location")
+  : getPageName(pathname);
+
 const home = (): AppTab => ({ key: HOME_KEY, path: HOME_KEY, label: "Home", openedAt: 0 });
 
 const readStored = (): AppTab[] => {
@@ -58,9 +63,9 @@ export function useAppTabs() {
       const existing = prev.find((t) => t.key === activeKey);
       let next: AppTab[];
       if (existing) {
-        next = prev.map((t) => (t.key === activeKey ? { ...t, path: currentPath, label: activeKey === HOME_KEY ? "Home" : getPageName(location.pathname) } : t));
+        next = prev.map((t) => (t.key === activeKey ? { ...t, path: currentPath, label: activeKey === HOME_KEY ? "Home" : labelFor(location.pathname) } : t));
       } else {
-        next = [...prev, { key: activeKey, path: currentPath, label: getPageName(location.pathname), openedAt: Date.now() }];
+        next = [...prev, { key: activeKey, path: currentPath, label: labelFor(location.pathname), openedAt: Date.now() }];
         if (next.length > MAX_TABS) {
           const oldest = next.filter((t) => t.key !== activeKey && t.key !== HOME_KEY).sort((a, b) => a.openedAt - b.openedAt)[0];
           if (oldest) next = next.filter((t) => t.key !== oldest.key);
