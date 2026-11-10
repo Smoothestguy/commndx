@@ -184,7 +184,13 @@ import USANetworkMapDemo from "./pages/USANetworkMapDemo";
 import VendorOnboarding from "./pages/VendorOnboarding";
 import VendorOnboardingComplete from "./pages/VendorOnboardingComplete";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } },
+});
+// Rarely-changing lookups: reuse for 5 minutes; mutations still invalidate them.
+for (const key of ["customers", "vendors", "projects", "products", "expense-categories"]) {
+  queryClient.setQueryDefaults([key], { staleTime: 5 * 60_000 });
+}
 
 const clearOnboardingDrafts = () => {
   try {

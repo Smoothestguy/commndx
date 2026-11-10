@@ -75,6 +75,7 @@ export const useWorkforcePool = () =>
         .select(
           "id, first_name, last_name, email, phone, photo_url, city, state, home_zip, starred_at, role_tags, staff_notes, status, created_at, capabilities_classified_at, do_not_rehire, do_not_rehire_reason, sms_opted_out, availability_status, available_from, home_lat, home_lng"
         )
+        .neq("status", "archived")
         .order("created_at", { ascending: false });
       if (error) throw error;
 
