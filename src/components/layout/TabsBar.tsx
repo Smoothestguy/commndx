@@ -34,6 +34,7 @@ export function TabsBar() {
             <ContextMenuTrigger asChild>
               <div
                 role="tab"
+                aria-label={tab.label}
                 aria-selected={isActive}
                 tabIndex={0}
                 onClick={() => activateTab(tab.key)}
