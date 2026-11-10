@@ -12833,6 +12833,8 @@ export type Database = {
       }
     }
     Functions: {
+      _hygiene_applicant_candidates: { Args: never; Returns: string[] }
+      _hygiene_personnel_candidates: { Args: never; Returns: string[] }
       _punch_core:
         | {
             Args: {
@@ -13088,6 +13090,8 @@ export type Database = {
         }
         Returns: Json
       }
+      data_hygiene_preview: { Args: never; Returns: Json }
+      data_hygiene_run: { Args: never; Returns: Json }
       deny_join_request: { Args: { p_request: string }; Returns: Json }
       event_move_asset: {
         Args: {
@@ -13491,7 +13495,12 @@ export type Database = {
         | "personnel"
         | "vendor"
         | "accounting"
-      applicant_status: "new" | "approved" | "rejected" | "inactive"
+      applicant_status:
+        | "new"
+        | "approved"
+        | "rejected"
+        | "inactive"
+        | "archived"
       application_status:
         | "submitted"
         | "reviewing"
@@ -13755,7 +13764,7 @@ export const Constants = {
         "vendor",
         "accounting",
       ],
-      applicant_status: ["new", "approved", "rejected", "inactive"],
+      applicant_status: ["new", "approved", "rejected", "inactive", "archived"],
       application_status: [
         "submitted",
         "reviewing",
