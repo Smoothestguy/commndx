@@ -5,7 +5,8 @@
 - [x] Allow-listed older-photo compression and thumbnail generation; weekly authenticated Sunday 09:00 UTC schedule, bounded one-image worker. Sample 9,076,847→203,451 bytes +8,451 thumbnail: 8,864,945 bytes net saved.
 - [x] Export-first confirmed archived-applicant purge with linked/evidence protection and audit; zero-row XLSX browser download checked, no owner rows purged.
 - [x] Browser navigation/export/compression verified; three policy tests passed, no hygiene run or deactivation change.
-- [ ] Populated grid thumbnail fetch and non-empty purge verification remain unverified; sample photo is not in visible directory rows.
+- [x] Completion pass: TypeScript clean, function redeployed, weekly schedule confirmed; signed-in nav Personnel 12.9–14.9s cold, project list 1.1–1.4s, project detail 6.5–7.7s, Settings 1.1s; sidebar visible throughout; two button runs each saved 8,864,945 bytes.
+- [ ] Non-empty purge and populated-grid thumbnails unverified (zero archived applicants; optimized photos not in visible rows).
 
 - [x] Unique optional asset numbers and editable year/letter suggestion, bunk-trailer type, configurable generated placement rooms, grouped phone/desktop board and per-trailer occupancy. Catalog/placement labels carry numbers; immutable placement history and locked occupied-departure checks retain lodging continuity. Existing room count was zero; unlinked legacy rows remain supported without invented asset identities.
 - [x] Signed-in owner/admin browser created 26B01 with ten rooms, assigned trailer, checked person into room 03, read dashboard 1/10 and Lodging PPPD 1; occupied departure refused, checkout/move generated destination rooms, edit expanded rooms to twelve, 390px actions visible. 27 focused tests pass, latest preview build OK, no runtime errors; all test locations/assets/rooms and children deleted, zero counts confirmed. Separate manager login not exercised.
