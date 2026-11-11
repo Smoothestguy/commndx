@@ -1,3 +1,4 @@
+import { punchTimeDetail } from '@/lib/punchTimes';
 import { useLateStays } from '@/hooks/useLateStays';
 import { localDay } from '@/lib/signinSheets';
 import { maxLate } from '@/lib/lateAttendance';
@@ -121,7 +122,7 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
                       const late = maxLate(cellStays.filter(e => localDay(e.in_at, locations.find(l => l.id === e.location_id)?.timezone || 'America/Chicago') === d).map(e => lateStays[e.id.split(':')[0]] || {}));
                       const manual = cellStays.some(e => e.source === 'Manual' || editedIds?.has(e.id.split(':')[0]));
                       return (
-                        <td key={d} className={`text-right px-1 whitespace-nowrap ${(late.late_minutes ?? 0) > 0 ? "bg-destructive/10 text-destructive" : ""}`}>
+                        <td key={d} title={cellStays.flatMap(e=>{const z=locations.find(l=>l.id===e.location_id)?.timezone||'America/Chicago';return [punchTimeDetail(e.actual_in_at,e.in_at,z),punchTimeDetail(e.actual_out_at,e.out_at,z)].filter(Boolean);}).join(' · ')||undefined} className={`text-right px-1 whitespace-nowrap ${(late.late_minutes ?? 0) > 0 ? "bg-destructive/10 text-destructive" : ""}`}>
                           {canEdit && cellStays.length > 0 ? <Button variant="ghost" size="sm" className="h-7 px-1 tabular-nums" aria-label={`Edit times for ${r.name} ${d}`} onClick={() => setEdit({ ids: cellStays.map(e => e.id.split(':')[0]), name: r.name, date: d })}>{h > 0 ? fmtH(h) : <Timer className="h-3 w-3 text-warning" aria-label="Still running" />}</Button> : h > 0 && (both ? (
                             <Tooltip><TooltipTrigger asChild><span className="underline decoration-dotted">{fmtH(h)}</span></TooltipTrigger>
                               <TooltipContent>D {fmtH(c.day)} / N {fmtH(c.night)}</TooltipContent></Tooltip>

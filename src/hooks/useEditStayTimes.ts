@@ -58,7 +58,7 @@ export function useEditStayTimes(projectId: string) {
           if (linkedError) throw linkedError;
           const { data: audit, error: ae } = await supabase.from('audit_logs').insert({ user_id: user.id, user_email: user.email || 'unknown', action_type: s.remove ? 'stay_delete' : 'stay_times_edit', resource_type: 'visit_personnel', resource_id: s.id, changes_before: before, changes_after: after, metadata: { project_id: projectId, location_id: s.locationId }, success: false }).select('id').single();
           if (ae) throw ae;
-          let query = s.remove ? supabase.from('visit_personnel').delete() : supabase.from('visit_personnel').update({ checked_in_at: s.inAt, checked_out_at: s.outAt });
+          let query = s.remove ? supabase.from('visit_personnel').delete() : supabase.from('visit_personnel').update({ checked_in_at: s.inAt, checked_out_at: s.outAt, manual_time_override: true });
           query = query.eq('id', s.id);
           query = s.stay.checked_in_at ? query.eq('checked_in_at', s.stay.checked_in_at) : query.is('checked_in_at', null);
           query = s.stay.checked_out_at ? query.eq('checked_out_at', s.stay.checked_out_at) : query.is('checked_out_at', null);

@@ -23,9 +23,10 @@ import { localDay, localTime, midnight, nextDay } from '@/lib/signinSheets';
 import { locationTimeIso } from '@/lib/manualTime';
 import { isHHmm } from '@/lib/assignmentRoles';
 import { LATE_ACK_PRESETS, lateAckText } from '@/lib/lateAck';
+import { punchTimeDetail } from '@/lib/punchTimes';
 import { cn } from '@/lib/utils';
 
-type Stay = { id: string; personnel_id: string; name: string; in_at: string; out_at: string | null; hours: number | null; late_minutes: number | null; late_reason: string | null; late_ack_reason: string | null; in_geofence: boolean | null; offsite_reason: string | null; synced_late: boolean | null };
+type Stay = { id: string; personnel_id: string; name: string; in_at: string; out_at: string | null; actual_in_at?: string | null; actual_out_at?: string | null; hours: number | null; late_minutes: number | null; late_reason: string | null; late_ack_reason: string | null; in_geofence: boolean | null; offsite_reason: string | null; synced_late: boolean | null };
 const hm = (iso: string | null, tz: string) => iso ? localTime(iso, tz) : '—';
 const dayLabel = (iso: string, tz: string) => new Date(iso).toLocaleDateString('en-US', { timeZone: tz, month: '2-digit', day: '2-digit' });
 
@@ -56,9 +57,9 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
       if (win.error) throw win.error; if (open.error) throw open.error;
       const rows = [...(win.data ?? []).filter(r => r.in_at && localDay(r.in_at, tz) === day), ...(open.data ?? [])];
       const ids = [...new Set(rows.flatMap(r => r.visit_personnel_id ? [r.visit_personnel_id] : []))];
-      const meta = ids.length ? await supabase.from('visit_personnel').select('id,late_minutes,late_reason,late_ack_reason,in_geofence,offsite_reason,synced_late').in('id', ids) : { data: [], error: null };
+      const meta = ids.length ? await supabase.from('visit_personnel').select('id,actual_in_at,actual_out_at,late_minutes,late_reason,late_ack_reason,in_geofence,offsite_reason,synced_late').in('id', ids) : { data: [], error: null };
       if (meta.error) throw meta.error;
-      const toStay = (r: typeof rows[number]): Stay => { const m = meta.data?.find(x => x.id === r.visit_personnel_id); return { id: r.visit_personnel_id ?? '', personnel_id: r.personnel_id ?? '', name: [r.first_name, r.last_name].filter(Boolean).join(' '), in_at: r.in_at ?? '', out_at: r.out_at, hours: r.hours, late_minutes: m?.late_minutes ?? null, late_reason: m?.late_reason ?? null, late_ack_reason: m?.late_ack_reason ?? null, in_geofence: m?.in_geofence ?? null, offsite_reason: m?.offsite_reason ?? null, synced_late: m?.synced_late ?? null }; };
+      const toStay = (r: typeof rows[number]): Stay => { const m = meta.data?.find(x => x.id === r.visit_personnel_id); return { id: r.visit_personnel_id ?? '', personnel_id: r.personnel_id ?? '', name: [r.first_name, r.last_name].filter(Boolean).join(' '), in_at: r.in_at ?? '', out_at: r.out_at, actual_in_at: m?.actual_in_at, actual_out_at: m?.actual_out_at, hours: r.hours, late_minutes: m?.late_minutes ?? null, late_reason: m?.late_reason ?? null, late_ack_reason: m?.late_ack_reason ?? null, in_geofence: m?.in_geofence ?? null, offsite_reason: m?.offsite_reason ?? null, synced_late: m?.synced_late ?? null }; };
       const dayStays = (win.data ?? []).filter(r => r.visit_personnel_id && r.in_at && localDay(r.in_at, tz) === day).map(toStay);
       const openStays = (open.data ?? []).filter(r => r.visit_personnel_id && r.in_at).map(toStay);
       const sigRows = (win.data ?? []).filter(r => r.personnel_id && r.in_at && localDay(r.in_at, tz) === day).map(r => ({ personnelId: r.personnel_id ?? '', name: [r.first_name, r.last_name].filter(Boolean).join(' '), signature: r.signature_url }));
@@ -122,8 +123,8 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   const columns: EnhancedColumn<AttendanceRow>[] = [
     { key: 'name', header: 'Person', width: 250, render: r => <span>{r.name || 'Unnamed'} {r.demobilized && <Badge variant="outline">Demobilized</Badge>}</span> },
     { key: 'role', header: 'Position' },
-    { key: 'in', header: 'In', getValue: r => r.stays[0] ? hm(r.stays[0].in_at, tz) : '—' },
-    { key: 'out', header: 'Out', getValue: r => { const last = r.stays.at(-1); return last ? last.out_at ? hm(last.out_at, tz) : 'open' : '—'; } },
+    { key: 'in', header: 'In', getValue: r => r.stays[0] ? hm(r.stays[0].in_at, tz) : '—', render: r => { const st=r.stays[0]; return <span title={punchTimeDetail(st?.actual_in_at,st?.in_at,tz)}>{st ? hm(st.in_at,tz) : '—'}</span>; } },
+    { key: 'out', header: 'Out', getValue: r => { const last = r.stays.at(-1); return last ? last.out_at ? hm(last.out_at, tz) : 'open' : '—'; }, render: r => { const st=r.stays.at(-1); return <span title={punchTimeDetail(st?.actual_out_at,st?.out_at,tz)}>{st ? st.out_at ? hm(st.out_at,tz) : 'open' : '—'}</span>; } },
     { key: 'status', header: 'Status', width: 300,
       getValue: r => [r.demobilized ? 'Demobilized' : '', r.offRoster ? 'Not on roster this day' : '', !r.stays.length ? 'Not signed in' : r.stays.some(st => (st.late_minutes ?? 0) > 0) ? 'Late' : 'On time', r.stays.some(st => st.in_geofence === false || st.offsite_reason) ? 'Off-site' : ''].filter(Boolean).join(' · '),
       render: r => { const late = r.stays.find(st => (st.late_minutes ?? 0) > 0); return <span className="flex flex-wrap items-center gap-1">
@@ -137,7 +138,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
       </span>; } },
     { key: 'hours', header: 'Hours', getValue: r => r.stays.reduce((n, st) => n + (st.out_at ? Number(st.hours) || 0 : 0), 0) },
     { key: 'stays', header: 'Stays', width: 180, getValue: r => r.stays.length,
-      render: r => <div className="space-y-1">{r.stays.map((st, i) => <div key={st.id} className="flex items-center gap-1"><span>Stay {i + 1}</span>{canWrite && <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={r.stays.length === 1 ? `Edit times for ${r.name}` : `Edit stay ${i + 1} for ${r.name}`} onClick={() => setEdit({ ids: [st.id], name: r.name, day })}><Pencil className="h-3 w-3" /></Button>}</div>)}</div> },
+      render: r => <div className="space-y-1">{r.stays.map((st, i) => <div key={st.id}><div className="flex items-center gap-1"><span>Stay {i + 1}</span>{canWrite && <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={r.stays.length === 1 ? `Edit times for ${r.name}` : `Edit stay ${i + 1} for ${r.name}`} onClick={() => setEdit({ ids: [st.id], name: r.name, day })}><Pencil className="h-3 w-3" /></Button>}</div>{(punchTimeDetail(st.actual_in_at,st.in_at,tz)||punchTimeDetail(st.actual_out_at,st.out_at,tz))&&<details className="text-xs text-muted-foreground"><summary>Tap record</summary><p>{punchTimeDetail(st.actual_in_at,st.in_at,tz)}</p><p>{punchTimeDetail(st.actual_out_at,st.out_at,tz)}</p></details>}</div>)}</div> },
     ...(canWrite ? [{ key: 'actions', header: 'Actions', noExport: true, sortable: false, filterable: false, render: (r: AttendanceRow) => <Button size="sm" variant="ghost" aria-label={r.stays.length ? `Add entry for ${r.name}` : `Set arrival for ${r.name}`} onClick={() => setLog({ id: r.id, name: r.name })}><Plus className="h-3.5 w-3.5 mr-1" />{r.stays.length ? 'Add entry' : 'Arrival'}</Button> }] : []),
   ];
 
