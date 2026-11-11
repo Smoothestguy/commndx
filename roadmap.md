@@ -1,6 +1,7 @@
 # Bunk trailer correction
 
 # Scheduled punch counting
+- [x] Nov 11 completion pass: TypeScript and 40 focused tests clean; live columns/backfill have zero gaps, self/kiosk/badge wrappers share core. Rolled-back core tests passed early/late clamps, notification, approval/denial rounding, manual overrides and overnight ledger. Real owner/admin 5049 browser verified attendance/weekly tap titles, saved/read back temporary 0700–2017 manual override, and live public/kiosk night-shift notes. Verification worker, stays, ledger, links, notifications and audits removed; owner data and job settings untouched. Physical badge/scanner not exercised.
 - [x] Preserve immutable actual taps and frozen schedules; universal core clamps with audited, lock-guarded early/extension approval recounts; historical counted values unchanged and manual overrides excluded.
 - [x] Public/kiosk schedule notes and reminder copy; attendance expandable tap records, trail/weekly tooltips; evidence saving uses actual taps.
 - [x] Rolled-back SQL checks: early 0712→0730, late 1942→1800, approved→1930/12h, denied→1800, beyond-window reason/approval, free-form manual edits and overnight checkout. Signed-in owner/admin attendance and authenticated approval readback, public schedule note verified; 24 tests and TypeScript clean. All browser fixtures/notifications/audits removed; no hygiene/schedule changes. Physical kiosk/badge interactions not separately exercised.
