@@ -7,7 +7,7 @@ test('5049 0730 Eastern has 0725 Eastern reminder, not Central',()=>{
  const p=preshiftAt(now,'America/New_York','07:30:00','19:30:00',5);
  assert.equal(p?.start,Date.parse('2026-11-07T12:30:00Z'));
  assert.equal(localStamp(now,'America/New_York'),'2026-11-07 0725 Eastern (America/New_York)');
- assert.equal(preshiftMessage(p.time,'America/New_York',p.start,'5049-FCOCO','[signing link]'),'FRG: Clock in for your 0730 Eastern shift at 5049-FCOCO: [signing link]');
+ assert.equal(preshiftMessage(p.time,'America/New_York',p.start,'5049-FCOCO','[signing link]'),'FRG: Clock in for your 0730 Eastern shift at 5049-FCOCO. Early taps count from 0730; extra time requires approval: [signing link]');
  assert.equal(preshiftAt(Date.parse('2026-11-07T12:24:59Z'),'America/New_York','07:30','19:30',5),null);
  assert.equal(preshiftAt(p.start,'America/New_York','07:30','19:30',5),null);
 });

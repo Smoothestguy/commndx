@@ -13,10 +13,13 @@ Deno.serve(async req=>{
  try{const parsed=schema.safeParse(await req.json());if(!parsed.success)return json({error:'Invalid shift request'},400);const v=parsed.data,db=service();
   if(v.action==='info'){
    const {data:t,error}=await db.from('site_checkin_tokens').select('personnel_id,location_id,expires_at').eq('id',v.token).maybeSingle();if(error)throw error;if(!t||Date.parse(t.expires_at)<=Date.now())return json({error:'Inactive link'},403);
-   const {data:l,error:le}=await db.from('project_locations').select('timezone,project_id').eq('id',t.location_id).single();if(le)throw le;const {data:project,error:pe}=await db.from('projects').select('*').eq('id',l.project_id).single();if(pe)throw pe;const timezone=locationZone(l,project),day=new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+   const {data:l,error:le}=await db.from('project_locations').select('timezone,project_id,day_shift_start,night_shift_start,day_shift_end,night_shift_end').eq('id',t.location_id).single();if(le)throw le;const {data:project,error:pe}=await db.from('projects').select('*').eq('id',l.project_id).single();if(pe)throw pe;const timezone=locationZone(l,project),day=new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
    const {data:extension,error:ee}=await db.from('shift_extensions').select('status,until_at').eq('personnel_id',t.personnel_id).eq('location_id',t.location_id).eq('ext_date',day).maybeSingle();if(ee)throw ee;
-   const {data:end,error:endError}=await db.rpc('_shift_end_for',{p_location:t.location_id,p_in:new Date().toISOString()});if(endError)throw endError;
-   return json({timezone,shift_end:end,extension});
+   const {data:open,error:oe}=await db.from('visit_personnel').select('scheduled_start_at,scheduled_end_at,checked_in_at,location_visits!inner(location_id)').eq('personnel_id',t.personnel_id).eq('location_visits.location_id',t.location_id).is('checked_out_at',null).order('checked_in_at',{ascending:false}).limit(1).maybeSingle();if(oe)throw oe;
+   const {data:start,error:se}=await db.rpc('_shift_start_for',{p_location:t.location_id,p_at:new Date().toISOString()});if(se)throw se;
+   const begins=open?.scheduled_start_at||start;
+   const {data:end,error:endError}=await db.rpc('_shift_end_for',{p_location:t.location_id,p_in:open?.checked_in_at||begins||new Date().toISOString()});if(endError)throw endError;
+   return json({timezone,timezone_missing:!l.timezone,shift_start:begins,shift_end:open?.scheduled_end_at||end,extension});
   }
   if(v.action==='review'){
    const auth=await authorize(req,db);if(!auth?.uid)return json({error:'Manager access required'},403);

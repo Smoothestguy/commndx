@@ -7,9 +7,9 @@ export async function kioskMedia(db: SupabaseClient, body: { token: string; pers
   const { data: assignment, error: ae } = await db.from('location_assignments').select('id').eq('location_id', token.location_id).eq('personnel_id', body.personnel_id).eq('status', 'active').limit(1).maybeSingle();
   if (ae) throw ae;
   if (!assignment) return { status: 403, body: { error: 'Person is not on this roster' } };
-  const { data: stay, error: se } = await db.from('personnel_location_trail').select('in_at,out_at,signature_url,visit_personnel_id').eq('visit_personnel_id', body.stay_id).eq('location_id', token.location_id).eq('personnel_id', body.personnel_id).maybeSingle();
+  const { data: stay, error: se } = await db.from('personnel_location_trail').select('in_at,out_at,actual_in_at,signature_url,visit_personnel_id').eq('visit_personnel_id', body.stay_id).eq('location_id', token.location_id).eq('personnel_id', body.personnel_id).maybeSingle();
   if (se) throw se;
-  if (!stay || stay.out_at || Math.abs(Date.now() - Date.parse(stay.in_at)) > 15 * 60000) return { status: 409, body: { error: 'Matching open check-in unavailable' } };
+  if (!stay || stay.out_at || Math.abs(Date.now() - Date.parse(stay.actual_in_at||stay.in_at)) > 15 * 60000) return { status: 409, body: { error: 'Matching open check-in unavailable' } };
   let selfie: Uint8Array, signature: Uint8Array;
   try { selfie = Uint8Array.from(atob(body.selfie), c => c.charCodeAt(0)); signature = Uint8Array.from(atob(body.signature), c => c.charCodeAt(0)); }
   catch { return { status: 400, body: { error: 'Invalid image' } }; }
