@@ -1,9 +1,14 @@
 # Bunk trailer correction
 
 # Public link previews
+- [ ] Paused at owner's request; plan awaits hosting decision. Do not implement while pending.
 - [ ] Serve crawler-readable per-link metadata and branded job cards; generic punch/sign previews, visibility-safe job fields.
 - [ ] Centralize public copy/text/QR URLs and verify crawler tags plus human redirects.
 - [ ] Same-domain share routing prerequisite: current SPA hosting cannot proxy paths to functions; choose configurable domain proxy or approved server-rendering upgrade before changing live link generators.
+
+# Email health check
+- [x] RESEND_API_KEY set; existing app uses direct Resend API/SDK. Resend lists fairfieldrg.com verified with verified SPF/DKIM; Lovable Emails setup is separate and not configured.
+- [x] Exactly one owner-only test from careers@fairfieldrg.com to jgarcia@fairfieldgp.com, subject “Command X email test”: HTTP 200, id 01a1cc22-aebc-7ed2-9354-be28f20935be, subsequent provider last_event delivered. No app rows or code changed. Applicant messages: 176 SMS sent, 4 failed, zero email rows; invitation UI defaults SMS. Older change-order senders use unverified commndx.lovable.app; onboarding confirmation/watchdog use restricted resend.dev sandbox. DMARC external lookup unavailable; no DNS changes.
 
 # Scheduled punch counting
 - [x] Nov 11 completion pass: TypeScript and 40 focused tests clean; live columns/backfill have zero gaps, self/kiosk/badge wrappers share core. Rolled-back core tests passed early/late clamps, notification, approval/denial rounding, manual overrides and overnight ledger. Real owner/admin 5049 browser verified attendance/weekly tap titles, saved/read back temporary 0700–2017 manual override, and live public/kiosk night-shift notes. Verification worker, stays, ledger, links, notifications and audits removed; owner data and job settings untouched. Physical badge/scanner not exercised.
