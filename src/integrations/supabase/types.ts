@@ -12193,6 +12193,8 @@ export type Database = {
       visit_personnel: {
         Row: {
           accuracy_m: number | null
+          actual_in_at: string | null
+          actual_out_at: string | null
           checked_in_at: string | null
           checked_in_by: string | null
           checked_out_at: string | null
@@ -12206,10 +12208,13 @@ export type Database = {
           late_ack_reason: string | null
           late_minutes: number | null
           late_reason: string | null
+          manual_time_override: boolean
           offsite_approved_at: string | null
           offsite_approved_by: string | null
           offsite_reason: string | null
           personnel_id: string
+          scheduled_end_at: string | null
+          scheduled_start_at: string | null
           selfie_url: string | null
           signature_url: string | null
           signed_at: string | null
@@ -12218,6 +12223,8 @@ export type Database = {
         }
         Insert: {
           accuracy_m?: number | null
+          actual_in_at?: string | null
+          actual_out_at?: string | null
           checked_in_at?: string | null
           checked_in_by?: string | null
           checked_out_at?: string | null
@@ -12231,10 +12238,13 @@ export type Database = {
           late_ack_reason?: string | null
           late_minutes?: number | null
           late_reason?: string | null
+          manual_time_override?: boolean
           offsite_approved_at?: string | null
           offsite_approved_by?: string | null
           offsite_reason?: string | null
           personnel_id: string
+          scheduled_end_at?: string | null
+          scheduled_start_at?: string | null
           selfie_url?: string | null
           signature_url?: string | null
           signed_at?: string | null
@@ -12243,6 +12253,8 @@ export type Database = {
         }
         Update: {
           accuracy_m?: number | null
+          actual_in_at?: string | null
+          actual_out_at?: string | null
           checked_in_at?: string | null
           checked_in_by?: string | null
           checked_out_at?: string | null
@@ -12256,10 +12268,13 @@ export type Database = {
           late_ack_reason?: string | null
           late_minutes?: number | null
           late_reason?: string | null
+          manual_time_override?: boolean
           offsite_approved_at?: string | null
           offsite_approved_by?: string | null
           offsite_reason?: string | null
           personnel_id?: string
+          scheduled_end_at?: string | null
+          scheduled_start_at?: string | null
           selfie_url?: string | null
           signature_url?: string | null
           signed_at?: string | null
@@ -12809,6 +12824,8 @@ export type Database = {
       }
       personnel_location_trail: {
         Row: {
+          actual_in_at: string | null
+          actual_out_at: string | null
           checked_in_by: string | null
           crew_id: string | null
           first_name: string | null
@@ -12897,6 +12914,10 @@ export type Database = {
     }
     Functions: {
       _archived_purge_snapshot: { Args: { p_ids: string[] }; Returns: Json }
+      _guard_punch_recount: {
+        Args: { p_in: string; p_out: string; p_stay: string }
+        Returns: undefined
+      }
       _hygiene_applicant_candidates: { Args: never; Returns: string[] }
       _hygiene_personnel_candidates: { Args: never; Returns: string[] }
       _punch_core:
@@ -12926,6 +12947,10 @@ export type Database = {
             }
             Returns: Json
           }
+      _refresh_punch_attendance: {
+        Args: { p_stay: string }
+        Returns: undefined
+      }
       _shift_end_for: {
         Args: { p_in: string; p_location: string }
         Returns: string

@@ -246,6 +246,13 @@
       "when": 1794339028325,
       "tag": "0034_image_compression_candidates",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1794363255254,
+      "tag": "0035_scheduled_punch_counting_actual_taps",
+      "breakpoints": true
     }
   ]
 }
