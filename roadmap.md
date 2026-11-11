@@ -1,5 +1,10 @@
 # Bunk trailer correction
 
+# Public link previews
+- [ ] Serve crawler-readable per-link metadata and branded job cards; generic punch/sign previews, visibility-safe job fields.
+- [ ] Centralize public copy/text/QR URLs and verify crawler tags plus human redirects.
+- [ ] Same-domain share routing prerequisite: current SPA hosting cannot proxy paths to functions; choose configurable domain proxy or approved server-rendering upgrade before changing live link generators.
+
 # Scheduled punch counting
 - [x] Nov 11 completion pass: TypeScript and 40 focused tests clean; live columns/backfill have zero gaps, self/kiosk/badge wrappers share core. Rolled-back core tests passed early/late clamps, notification, approval/denial rounding, manual overrides and overnight ledger. Real owner/admin 5049 browser verified attendance/weekly tap titles, saved/read back temporary 0700–2017 manual override, and live public/kiosk night-shift notes. Verification worker, stays, ledger, links, notifications and audits removed; owner data and job settings untouched. Physical badge/scanner not exercised.
 - [x] Preserve immutable actual taps and frozen schedules; universal core clamps with audited, lock-guarded early/extension approval recounts; historical counted values unchanged and manual overrides excluded.
