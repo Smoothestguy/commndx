@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { reportEmailRejection } from "../_shared/emailDelivery.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -80,8 +81,11 @@ const handler = async (req: Request): Promise<Response> => {
       }),
     });
 
-    const emailResponse = await res.json();
-    console.log("Email sent:", emailResponse);
+    const rejection = await reportEmailRejection(res, "send-change-order-approval");
+    if (!rejection) {
+      const emailResponse = await res.json();
+      console.log("Email sent:", emailResponse);
+    }
 
     return new Response(JSON.stringify({ success: true }), 
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });

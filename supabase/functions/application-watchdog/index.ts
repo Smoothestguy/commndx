@@ -10,6 +10,7 @@
 // driven, coalesced), by an hourly safety-net cron sweep for stalled attempts,
 // or manually from Settings -> Application Watchdog.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
+import { reportEmailRejection, recordEmailFailure } from "../_shared/emailDelivery.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -597,22 +598,26 @@ async function runWatchdog(
 
         const resendKey = Deno.env.get("RESEND_API_KEY");
         if (settings.alert_email && resendKey) {
+          const recordFailure = (detail: string) => service.from("watchdog_actions").insert({
+            incident_id: incident.id, action_type: "email_failed", after: { error: detail },
+          });
           try {
-            await fetch("https://api.resend.com/emails", {
+            const emailResponse = await fetch("https://api.resend.com/emails", {
               method: "POST",
               headers: {
                 Authorization: `Bearer ${resendKey}`,
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                from: "Fairfield Watchdog <onboarding@resend.dev>",
+                from: "Fairfield Response Group <admin@fairfieldrg.com>",
                 to: [settings.alert_email],
                 subject: `Watchdog: ${postingTitle} (${severity})`,
                 html: `<p>${diagnosis}</p><p><b>Action:</b> ${actionLabel}</p><p><a href="https://fairfieldrg.com/settings?tab=watchdog">Open watchdog</a></p>`,
               }),
             });
+            await reportEmailRejection(emailResponse, "watchdog", recordFailure);
           } catch (e) {
-            console.error("[watchdog] alert email failed", String(e));
+            await recordEmailFailure("watchdog", String(e), recordFailure);
           }
         }
       }

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { reportEmailRejection } from "../_shared/emailDelivery.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -125,16 +126,19 @@ Deno.serve(async (req) => {
 
     // Send email to field supervisor
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    const recordEmailFailure = (notes: string) => supabaseAdmin.from("change_order_approval_log").insert({
+      change_order_id, action: "email_failed", actor_name: "Fairfield Response Group", notes,
+    });
     if (RESEND_API_KEY) {
       // Email to Field Supervisor (with approval link)
-      await fetch("https://api.resend.com/emails", {
+      const supervisorEmail = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${RESEND_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "Command X <notifications@commndx.lovable.app>",
+          from: "Fairfield Response Group <admin@fairfieldrg.com>",
           to: [project.customer_field_supervisor_email],
           subject: `Change Order ${co.number} - Review & Approve - ${project.name}`,
           html: `
@@ -163,16 +167,18 @@ Deno.serve(async (req) => {
         }),
       });
 
+      await reportEmailRejection(supervisorEmail, "send-co-approval:field-supervisor", detail => recordEmailFailure(`Field supervisor: ${detail}`));
+
       // FYI email to Customer PM
       if (project.customer_pm_email) {
-        await fetch("https://api.resend.com/emails", {
+        const pmEmail = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${RESEND_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "Command X <notifications@commndx.lovable.app>",
+            from: "Fairfield Response Group <admin@fairfieldrg.com>",
             to: [project.customer_pm_email],
             subject: `FYI: Change Order ${co.number} Submitted - ${project.name}`,
             html: `
@@ -189,6 +195,7 @@ Deno.serve(async (req) => {
             `,
           }),
         });
+        await reportEmailRejection(pmEmail, "send-co-approval:customer-pm", detail => recordEmailFailure(`Customer PM FYI: ${detail}`));
       }
     }
 

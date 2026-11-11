@@ -5,6 +5,7 @@
 // funnel (invited -> opened -> applied). The apply link points at the public
 // posting with ?inv=<invite_token> so the form can prefill and skip the express gate.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
+import { reportEmailRejection } from "../_shared/emailDelivery.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -313,12 +314,13 @@ Deno.serve(async (req) => {
             }),
           });
           result.email_status = res.ok ? "sent" : "failed";
-          if (!res.ok) result.reason = `email HTTP ${res.status}`;
+          if (!res.ok) result.reason = await reportEmailRejection(res, "send-workforce-invites") ?? `email HTTP ${res.status}`;
         } catch (e) {
           result.email_status = "failed";
           result.reason = String(e);
+          console.error("[send-workforce-invites] Email delivery failed:", result.reason);
         }
-        await service.from("applicant_messages").insert({
+        const { error: emailLogError } = await service.from("applicant_messages").insert({
           applicant_id: a.id,
           job_posting_id: body.job_posting_id ?? null,
           channel: "email",
@@ -328,6 +330,7 @@ Deno.serve(async (req) => {
           error: result.email_status === "failed" ? result.reason : null,
           created_by: user.id,
         });
+        if (emailLogError) console.error("[send-workforce-invites] Email log failed:", emailLogError.message);
       }
 
       results.push(result);
