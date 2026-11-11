@@ -24,9 +24,9 @@ Deno.serve(async req=>{
   if(v.action==='review'){
    const auth=await authorize(req,db);if(!auth?.uid)return json({error:'Manager access required'},403);
    if(v.kind==='early'&&v.status==='denied')return json({error:'Early arrival evidence cannot be denied or erased; correct time through reconciliation'},400);
-   const table=v.kind==='early'?'visit_personnel':'shift_extensions';
-   let q=v.kind==='early'?db.from(table).update({offsite_approved_by:auth.uid,offsite_approved_at:new Date().toISOString()}).not('early_in_reason','is',null).is('offsite_approved_at',null):db.from(table).update({status:v.status,decided_by:auth.uid,decided_at:new Date().toISOString()}).eq('status','pending');
-   const {data,error}=await q.eq('id',v.id).select('id').maybeSingle();if(error)throw error;if(!data)return json({error:'Review already changed. Refresh the list.'},409);return json({ok:true});
+   const bearer=req.headers.get('Authorization');if(!bearer)return json({error:'Manager access required'},403);
+   const userDb=createClient(Deno.env.get('SUPABASE_URL')||'',Deno.env.get('SUPABASE_ANON_KEY')||'',{global:{headers:{Authorization:bearer}}});
+   const {data,error}=await userDb.rpc('review_punch_shift',{p_id:v.id,p_kind:v.kind,p_status:v.status});if(error)return json({error:error.message},409);return json(data);
   }
   // Field operations require real staff authentication; never expose a public arbitrary-person punch.
   const bearer=req.headers.get('Authorization');if(!bearer?.startsWith('Bearer '))return json({error:'Staff access required'},403);const {data:claims,error:ce}=await db.auth.getClaims(bearer.slice(7));const uid=claims?.claims?.sub;if(ce||!uid)return json({error:'Staff access required'},403);
