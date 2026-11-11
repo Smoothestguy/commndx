@@ -7,6 +7,7 @@
 - [ ] Same-domain share routing prerequisite: current SPA hosting cannot proxy paths to functions; choose configurable domain proxy or approved server-rendering upgrade before changing live link generators.
 
 # Email health check
+- [x] Sender follow-up: all unverified/sandbox senders replaced with full Fairfield Response Group admin/ops or careers/hiring senders. Ignored rejection responses now log HTTP/body to console and existing CO/watchdog/applicant logs where applicable; lodging SDK failures also recorded. Seven functions deployed, seven focused tests and TypeScript passed, preview build OK. No emails, workflow-state changes or schedule changes; link previews remain paused.
 - [x] RESEND_API_KEY set; existing app uses direct Resend API/SDK. Resend lists fairfieldrg.com verified with verified SPF/DKIM; Lovable Emails setup is separate and not configured.
 - [x] Exactly one owner-only test from careers@fairfieldrg.com to jgarcia@fairfieldgp.com, subject “Command X email test”: HTTP 200, id 01a1cc22-aebc-7ed2-9354-be28f20935be, subsequent provider last_event delivered. No app rows or code changed. Applicant messages: 176 SMS sent, 4 failed, zero email rows; invitation UI defaults SMS. Older change-order senders use unverified commndx.lovable.app; onboarding confirmation/watchdog use restricted resend.dev sandbox. DMARC external lookup unavailable; no DNS changes.
 

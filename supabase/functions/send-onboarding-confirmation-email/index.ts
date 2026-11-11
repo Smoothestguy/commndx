@@ -43,7 +43,7 @@ serve(async (req) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "HR Team <onboarding@resend.dev>",
+        from: "Fairfield Response Group <careers@fairfieldrg.com>",
         to: [personnelEmail],
         subject: "Onboarding Complete - Welcome to the Team!",
         html: `

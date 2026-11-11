@@ -2,6 +2,7 @@
 // personnel via SMS (Twilio) and email (Resend). Staff-only (admin/manager/user).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { recordEmailFailure } from "../_shared/emailDelivery.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -98,8 +99,20 @@ Deno.serve(async (req) => {
             text: message,
             html: `<div style="font-family:sans-serif;white-space:pre-wrap">${esc(message)}</div>`,
           });
-          if (r.error) errors.push(`email: ${r.error.message}`); else emailOk = true;
-        } catch (e) { errors.push(`email: ${String(e)}`); }
+          if (r.error) {
+            errors.push(`email: ${r.error.message}`);
+            await recordEmailFailure("lodging", r.error.message, p.applicant_id ? detail => service.from("applicant_messages").insert({
+              applicant_id: p.applicant_id, channel: "email", body: message, subject: `Your lodging: ${a.hotel_name}`,
+              status: "failed", error: detail, created_by: user.id,
+            }) : undefined);
+          } else emailOk = true;
+        } catch (e) {
+          errors.push(`email: ${String(e)}`);
+          await recordEmailFailure("lodging", String(e), p.applicant_id ? detail => service.from("applicant_messages").insert({
+            applicant_id: p.applicant_id, channel: "email", body: message, subject: `Your lodging: ${a.hotel_name}`,
+            status: "failed", error: detail, created_by: user.id,
+          }) : undefined);
+        }
       }
 
       if (smsOk || emailOk) {

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { reportEmailRejection } from "../_shared/emailDelivery.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -134,14 +135,14 @@ Deno.serve(async (req) => {
       if (RESEND_API_KEY && project.customer_pm_email) {
         const pmApprovalLink = `${siteUrl}/approve-co/${co.customer_pm_approval_token}`;
 
-        await fetch("https://api.resend.com/emails", {
+        const pmEmail = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${RESEND_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "Command X <notifications@commndx.lovable.app>",
+            from: "Fairfield Response Group <admin@fairfieldrg.com>",
             to: [project.customer_pm_email],
             subject: `Change Order ${co.number} - Your Approval Required - ${project.name}`,
             html: `
@@ -162,6 +163,10 @@ Deno.serve(async (req) => {
             `,
           }),
         });
+        await reportEmailRejection(pmEmail, "process-co-signature:customer-pm", notes =>
+          supabaseAdmin.from("change_order_approval_log").insert({
+            change_order_id: co.id, action: "email_failed", actor_name: "Fairfield Response Group", notes,
+          }));
       }
 
       // Notify internal team
