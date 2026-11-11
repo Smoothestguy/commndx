@@ -1,4 +1,9 @@
 # Bunk trailer correction
+
+# Scheduled punch counting
+- [ ] Preserve actual taps; universally clamp punch times with audited early/extension approval recounts, without rewriting history or manual edits.
+- [ ] Scheduled-time public/reminder copy and attendance actual-versus-counted display.
+- [ ] Rolled-back punch/approval SQL regression checks and signed-in browser verification; no hygiene job changes.
  
 # Performance completion
 - [x] Lazy pages with eager shell; signed-in before/after measurements (median reload 6.09→3.89s; cold 9.06→9.41s, navigation not improved).
