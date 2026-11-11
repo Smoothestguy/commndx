@@ -253,6 +253,13 @@
       "when": 1794363255254,
       "tag": "0035_scheduled_punch_counting_actual_taps",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1794363532650,
+      "tag": "0036_punch_shift_boundary_and_manual_guards",
+      "breakpoints": true
     }
   ]
 }

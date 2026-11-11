@@ -13509,6 +13509,10 @@ export type Database = {
         }
         Returns: string
       }
+      review_punch_shift: {
+        Args: { p_id: string; p_kind: string; p_status: string }
+        Returns: Json
+      }
       save_application_attempt: {
         Args: {
           _email: string
