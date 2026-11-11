@@ -1,9 +1,9 @@
 # Bunk trailer correction
 
 # Scheduled punch counting
-- [ ] Preserve actual taps; universally clamp punch times with audited early/extension approval recounts, without rewriting history or manual edits.
-- [ ] Scheduled-time public/reminder copy and attendance actual-versus-counted display.
-- [ ] Rolled-back punch/approval SQL regression checks and signed-in browser verification; no hygiene job changes.
+- [x] Preserve immutable actual taps and frozen schedules; universal core clamps with audited, lock-guarded early/extension approval recounts; historical counted values unchanged and manual overrides excluded.
+- [x] Public/kiosk schedule notes and reminder copy; attendance expandable tap records, trail/weekly tooltips; evidence saving uses actual taps.
+- [x] Rolled-back SQL checks: early 0712→0730, late 1942→1800, approved→1930/12h, denied→1800, beyond-window reason/approval, free-form manual edits and overnight checkout. Signed-in owner/admin attendance and authenticated approval readback, public schedule note verified; 24 tests and TypeScript clean. All browser fixtures/notifications/audits removed; no hygiene/schedule changes. Physical kiosk/badge interactions not separately exercised.
  
 # Performance completion
 - [x] Lazy pages with eager shell; signed-in before/after measurements (median reload 6.09→3.89s; cold 9.06→9.41s, navigation not improved).

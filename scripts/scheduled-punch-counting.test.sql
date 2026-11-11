@@ -31,5 +31,12 @@ IF (r->>'at')::timestamptz<>start_at THEN RAISE EXCEPTION 'unapproved early reas
 SELECT vp.id INTO st FROM visit_personnel vp JOIN location_visits lv ON lv.id=vp.visit_id WHERE lv.location_id=lo AND vp.personnel_id=pe;
 UPDATE visit_personnel SET offsite_approved_at=now() WHERE id=st;
 IF NOT EXISTS(SELECT 1 FROM visit_personnel WHERE id=st AND checked_in_at=start_at-interval '45 minutes' AND actual_in_at=start_at-interval '45 minutes') THEN RAISE EXCEPTION 'early approval did not recount';END IF;
+INSERT INTO personnel(id,personnel_number,first_name,last_name,email) VALUES(gen_random_uuid(),'TESTN-'||pe::text,'Night','Punch',gen_random_uuid()::text||'@example.invalid') RETURNING id INTO pe;
+start_at:=(d+time '19:30') AT TIME ZONE 'America/New_York';end_at:=((d+1)+time '07:30') AT TIME ZONE 'America/New_York';
+r:=public._punch_core(lo,pe,NULL,NULL,NULL,NULL,start_at-interval '5 minutes',NULL,NULL);
+IF (r->>'at')::timestamptz<>start_at THEN RAISE EXCEPTION 'night early clamp failed';END IF;
+r:=public._punch_core(lo,pe,NULL,NULL,NULL,NULL,end_at+interval '12 minutes',NULL,NULL);
+IF r->>'action'<>'out' OR (r->>'at')::timestamptz<>end_at THEN RAISE EXCEPTION 'night checkout failed';END IF;
+IF NOT EXISTS(SELECT 1 FROM time_entries WHERE project_id=pr AND personnel_id=pe AND hours=12) THEN RAISE EXCEPTION 'night counted ledger failed';END IF;
 END $test$;
 ROLLBACK;
