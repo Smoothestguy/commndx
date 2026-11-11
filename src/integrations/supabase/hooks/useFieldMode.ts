@@ -448,9 +448,11 @@ export interface TrailRow {
   hours: number | null;
   signature_url: string | null;
   checked_in_by: string | null;
+  actual_in_at?: string | null;
+  actual_out_at?: string | null;
 }
 
-const TRAIL_COLS = "visit_personnel_id, personnel_id, first_name, last_name, visit_id, location_id, location_name, project_id, crew_id, in_at, out_at, hours, signature_url, checked_in_by";
+const TRAIL_COLS = "visit_personnel_id, personnel_id, first_name, last_name, visit_id, location_id, location_name, project_id, crew_id, in_at, out_at, hours, signature_url, checked_in_by, actual_in_at, actual_out_at";
 
 /** Who is on site right now across the project (out_at IS NULL). */
 export function useOnSiteNow(projectId: string | undefined) {

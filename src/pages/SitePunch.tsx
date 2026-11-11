@@ -1,3 +1,4 @@
+import { ScheduledPunchNote } from '@/components/signin/ScheduledPunchNote';
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { localStamp } from "../../supabase/functions/_shared/locationTime";
@@ -16,7 +17,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js';
 import { agencyLogo } from '@/lib/agencyPortal';
 import { LangSwitcher, usePublicLang } from '@/lib/publicLang';
 
-type Info = { valid: boolean; reason?: string; first_name?: string; location_name?: string; address?: string | null; report_at?: string | null; on_site_since?: string | null; timezone?: string; agency_name?: string | null; agency_logo_url?: string | null };
+type Info = { valid: boolean; reason?: string; first_name?: string; location_name?: string; address?: string | null; report_at?: string | null; on_site_since?: string | null; timezone?: string; shift_start?: string; shift_end?: string; timezone_missing?: boolean; agency_name?: string | null; agency_logo_url?: string | null };
 type Done = { action: "in" | "out"; at: string; geo: boolean; offsite: boolean; early?: boolean; lateMinutes?: number } | null;
 type Rejection = { reason: string; distance_m?: number; radius_m?: number; in_at?: string; out_at?: string; timezone?: string; shift_start?: string; early_minutes?: number; minutes_late?: number; grace_minutes?: number };
 const OFFICE_PHONE = "(281) 748-3832";
@@ -78,7 +79,7 @@ export default function SitePunch() {
       if (!intent) { setPending(null); return; }
       setBusy(true);
       try {
-        const finish=async(current:PunchIntent)=>{if(current.action==='in'){const committed={...current,committed:true};savePunch(committed);setPending(committed);const {data,error}=await supabase.functions.invoke('punch-signature',{body:{action:'save',token:current.token,at:current.effectiveAt||current.at,signature_png_base64:current.signatureBase64}});if(error||!data?.ok){setError('Check-in recorded; signature still needs saving. Keep this page open to retry.');return;} }confirm(current,current.action);};
+        const finish=async(current:PunchIntent)=>{if(current.action==='in'){const committed={...current,committed:true};savePunch(committed);setPending(committed);const {data,error}=await supabase.functions.invoke('punch-signature',{body:{action:'save',token:current.token,at:current.at,signature_png_base64:current.signatureBase64}});if(error||!data?.ok){setError('Check-in recorded; signature still needs saving. Keep this page open to retry.');return;} }confirm(current,current.action);};
         if(intent.committed){await finish(intent);return;}
         // A response can be lost after the toggle committed. Check server state before retrying.
         if (intent.tries > 0) {
@@ -141,7 +142,7 @@ export default function SitePunch() {
       if (!navigator.onLine) return;
       const { data, error } = await supabase.rpc("get_site_checkin_info", { p_token: token });
       if (!active) return;
-      if (!error && data) { const value=data as unknown as Info; if(value.valid){const {data:shift}=await supabase.functions.invoke('shift-discipline',{body:{action:'info',token}});if(active)updateInfo({...value,timezone:shift?.timezone || value.timezone});}else updateInfo(value); }
+      if (!error && data) { const value=data as unknown as Info; if(value.valid){const {data:shift}=await supabase.functions.invoke('shift-discipline',{body:{action:'info',token}});if(active)updateInfo({...value,timezone:shift?.timezone || value.timezone,shift_start:shift?.shift_start,shift_end:shift?.shift_end,timezone_missing:shift?.timezone_missing});}else updateInfo(value); }
       else if (!isNetworkError(error)) updateInfo({ valid: false });
     };
     void load().then(flush);
@@ -197,6 +198,7 @@ export default function SitePunch() {
           <p className="text-lg text-muted-foreground">{tr("Please call the office:", "Llama a la oficina:")} <a className="underline" href={`tel:${OFFICE_PHONE.replace(/\D/g, "")}`}>{OFFICE_PHONE}</a></p>
         </div>}
         {info?.valid && !pending && !rejection && <>
+          <ScheduledPunchNote start={info.shift_start} end={info.shift_end} zone={info.timezone} missingTimezone={info.timezone_missing} />
           {done ? <div className="space-y-2">
             <CheckCircle2 className="h-16 w-16 mx-auto text-success" />
             <h1 className="text-3xl font-bold">{done.action === "in" ? tr("Checked in", "Entrada registrada") : tr("Checked out", "Salida registrada")} {t(done.at)} ✓</h1>

@@ -10,6 +10,7 @@ export function localStamp(at: string | number, zone: string) {
   const v=(k:string)=>parts.find(p=>p.type===k)?.value;
   return `${v('year')}-${v('month')}-${v('day')} ${v('hour')}${v('minute')} ${zoneLabel(zone,at)} (${zone})`;
 }
-export function preshiftMessage(time:string,zone:string,start:number,name:string,link:string) {
-  return `FRG: Clock in for your ${time.slice(0,5).replace(':','')} ${zoneLabel(zone,start)} shift at ${name}: ${link}`;
+export function preshiftMessage(time:string,zone:string,start:number,name:string,link:string,end?:string) {
+  const begins=time.slice(0,5).replace(':','');
+  return `FRG: Clock in for your ${begins}${end?'–'+end.slice(0,5).replace(':',''):''} ${zoneLabel(zone,start)} shift at ${name}. Early taps count from ${begins}; extra time requires approval: ${link}`;
 }

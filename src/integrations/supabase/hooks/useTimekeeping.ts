@@ -16,6 +16,8 @@ export interface TimesheetEntry {
   visit_id: string;
   in_at: string;
   out_at: string | null;
+  actual_in_at?: string | null;
+  actual_out_at?: string | null;
   date: string; // Chicago local date
   shift: Shift;
   hours: number; // 0 when open
@@ -40,7 +42,7 @@ export function useWeekTimesheet(projectId: string | undefined, weekStartDate: s
       // Include stays starting before the week whose checkout overlaps it.
       const from = chicagoMidnight(weekStartDate);
       const { data, error } = await db.from("personnel_location_trail")
-        .select("visit_personnel_id, personnel_id, first_name, last_name, visit_id, location_id, location_name, in_at, out_at, hours")
+        .select("visit_personnel_id, personnel_id, first_name, last_name, visit_id, location_id, location_name, in_at, out_at, actual_in_at, actual_out_at, hours")
         .eq("project_id", projectId)
         .or(`out_at.is.null,out_at.gte.${from}`)
         .lt("in_at", chicagoMidnight(addDays(weekStartDate, 7)))
@@ -75,6 +77,8 @@ export function useWeekTimesheet(projectId: string | undefined, weekStartDate: s
         visit_id: r.visit_id,
         in_at: r.in_at,
         out_at: r.out_at,
+        actual_in_at: r.actual_in_at,
+        actual_out_at: r.actual_out_at,
         date: segment.date,
         shift: segment.shift,
         hours: segment.hours,

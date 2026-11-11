@@ -1,3 +1,4 @@
+import { punchTimeDetail } from '@/lib/punchTimes';
 import { Time24Input } from '@/components/ui/time24-input';
 import { shiftRuleDefaults, projectShiftRulesSchema, checkoutRoundingOptions } from '@/lib/projectShiftRules';
 import { useLateStays } from '@/hooks/useLateStays';
@@ -1337,8 +1338,8 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
                 <tr key={r.visit_personnel_id} className={(dayLate(r).late_minutes ?? 0) > 0 ? "bg-destructive/10 text-destructive" : undefined}>
                   <td className="py-1.5 pr-2"><Link to={`/personnel/${r.personnel_id}`} className="font-medium hover:underline text-left">{trailName(r)}</Link><LateBadge row={dayLate(r)} />{!r.signature_url && <Badge variant="outline" className="text-warning text-[10px] ml-1">no signature</Badge>}</td>
                   <td className="pr-2">{r.location_name ?? "—"}{isManual(r) && <Pencil className="inline h-3 w-3 ml-1 text-muted-foreground" aria-label="Manual entry" />}{canLog && reviewFlags.some(f=>f.id===r.visit_personnel_id&&f.synced_late) && <Badge variant="outline" title="Recorded offline at device time, synced later" className="text-[10px] ml-1">synced late</Badge>}<EarlyInBadge row={reviewFlags.find(f=>f.id===r.visit_personnel_id)||{}} /></td>
-                  <td className="pr-2 whitespace-nowrap">{canLog ? <Button variant="ghost" size="sm" className="h-7 px-1" aria-label={`Edit time in for ${trailName(r)}`} onClick={() => setEditStay(r)}>{fmt(r.in_at)}</Button> : fmt(r.in_at)}</td>
-                  <td className="pr-2 whitespace-nowrap">{canLog ? <Button variant="ghost" size="sm" className="h-7 px-1" aria-label={`Edit time out for ${trailName(r)}`} onClick={() => setEditStay(r)}>{r.out_at ? fmt(r.out_at) : 'Still running'}</Button> : fmt(r.out_at)}</td>
+                  <td className="pr-2 whitespace-nowrap" title={punchTimeDetail(r.actual_in_at,r.in_at,locations.find(l=>l.id===r.location_id)?.timezone||'America/Chicago')}>{canLog ? <Button variant="ghost" size="sm" className="h-7 px-1" aria-label={`Edit time in for ${trailName(r)}`} onClick={() => setEditStay(r)}>{fmt(r.in_at)}</Button> : fmt(r.in_at)}</td>
+                  <td className="pr-2 whitespace-nowrap" title={punchTimeDetail(r.actual_out_at,r.out_at,locations.find(l=>l.id===r.location_id)?.timezone||'America/Chicago')}>{canLog ? <Button variant="ghost" size="sm" className="h-7 px-1" aria-label={`Edit time out for ${trailName(r)}`} onClick={() => setEditStay(r)}>{r.out_at ? fmt(r.out_at) : 'Still running'}</Button> : fmt(r.out_at)}</td>
                   <td className="text-right">{r.hours != null ? Number(r.hours).toFixed(2) : "—"}</td>
                 </tr>
               ))}
