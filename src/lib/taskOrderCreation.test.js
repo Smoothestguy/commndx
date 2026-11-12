@@ -7,3 +7,4 @@ it('caps operator deductions at seven',()=>expect(()=>creationLines('decrease',d
 it('prompts a decrease zeroing supervisor three',()=>expect(needsDemobePrompt('decrease',[{line_kind:'position',label:'Supervisor',qty_delta:-3}],levels)).toBe(true));
 it('does not prompt a partial decrease',()=>expect(needsDemobePrompt('decrease',[{line_kind:'position',label:'Supervisor',qty_delta:-1}],levels)).toBe(false));
 it('always prompts a saved demobilization',()=>expect(needsDemobePrompt('demobilization',[{line_kind:'asset',label:'Truck',qty_delta:-1}],levels)).toBe(true));
+it('Event Manager retains fractional quantities',()=>expect(creationLines('increase',[{id:'1',line_kind:'position',label:'Laundry',qty:'2.5'}],[],false)[0].qty_delta).toBe(2.5));

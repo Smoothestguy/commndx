@@ -8,11 +8,11 @@ export function deductionDrafts(levels:AuthorizationLevel[]):OrderLineDraft[] {
 export function currentLevel(levels:AuthorizationLevel[],line:Pick<OrderLineDraft,'line_kind'|'label'>) {
   return levels.filter(l=>l.line_kind===line.line_kind&&l.label.trim().toLowerCase()===line.label.trim().toLowerCase()).reduce((n,l)=>n+Number(l.authorized),0);
 }
-export function creationLines(kind:TaskOrderKind,drafts:OrderLineDraft[],levels:AuthorizationLevel[]) {
+export function creationLines(kind:TaskOrderKind,drafts:OrderLineDraft[],levels:AuthorizationLevel[],wholeNumbers=true) {
   const down=deductive(kind);
   const lines=drafts.flatMap(l=>{
     const qty=Number(l.qty);
-    if(!Number.isSafeInteger(qty)||qty<0||(!down&&qty===0))throw new Error('Enter a valid whole-number quantity');
+    if(!Number.isFinite(qty)||(wholeNumbers&&!Number.isSafeInteger(qty))||qty<0||(!down&&qty===0))throw new Error(wholeNumbers?'Enter a valid whole-number quantity':'Enter a valid quantity');
     if(down&&qty>currentLevel(levels,l))throw new Error(`${l.label}: deduction exceeds current authorization`);
     if(down&&qty===0)return [];
     if(!l.label.trim())throw new Error('Complete each label');
