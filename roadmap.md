@@ -1,8 +1,8 @@
 # Bunk trailer correction
 
 # Asset dates and grid completion pass
-- [ ] Preserve untouched start/end timestamps, including legacy ended placements, and browser-save start-only/end-only corrections on the Ram; restore originals and verify audits.
-- [ ] Check 1440px roster/personnel/assets/attendance/Event sizing, tooltips and resize reload; run focused tests and requested TypeScript check.
+- [x] Fixed legacy ended-date fallback preservation; four real admin UI saves on the 5049 Ram passed (open/ended start-only/end-only), untouched timestamps exact, reason/audit confirmed, original dates/status/custody restored.
+- [x] 1440px roster/personnel/assets/attendance/Event location and roster grids verified without trailing gutter; initial identity 220px, truncated names/value tooltips, Name resized to 180px and persisted after reload. 22 focused tests and requested TypeScript check passed; preview OK, no runtime errors, no fixtures created.
 
 # Asset date blocker and grid widths
 - [x] Reproduced admin 5049 failure: blanket project-placement overlap check rejected existing overlapping truck history, not RLS/version/date-order. Audited billing corrections now tolerate that history, retain role/version/date-order and event-conflict protections, and isolate custody bypass to the correction function.
