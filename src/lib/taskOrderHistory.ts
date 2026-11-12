@@ -4,7 +4,7 @@ export type HistoryOrder = {
   id: string; number: string; kind: string; effective_date: string; effective_time?: string | null; created_at: string;
   /** Non-accepted orders are listed but never change the running totals. */
   counts: boolean; status?: string | null; scope?: string | null; lines: HistoryLine[];
-  enteredBy?: string; notes?: string | null; travel_time?: boolean | null; details?: Record<string, string> | null;
+  customer_ref?: string | null; edited?: string | null; enteredBy?: string; notes?: string | null; travel_time?: boolean | null; details?: Record<string, string> | null;
 };
 export type Total = { label: string; qty: number };
 export type HistoryRow = HistoryOrder & { totals: Total[]; fullDemob: boolean };
