@@ -15,10 +15,9 @@ import {roleAt} from '@/lib/assignmentRoles';
 import {toast} from 'sonner';
 export type DemobeOrder={id:string;number:string;day:string;travelTime:boolean|null;roles:string[]};
 export function DemobeTimeDialog({order,projectId,locationId,timezone,onClose}:{order:DemobeOrder;projectId:string;locationId:string;timezone?:string|null;onClose:()=>void}){
- const projectZone=useQuery({queryKey:['demobe-project-zone',projectId],enabled:!timezone,queryFn:async()=>{const r=await supabase.from('projects').select('timezone').eq('id',projectId).single();if(r.error)throw r.error;return r.data.timezone;}});
- const tz=timezone||projectZone.data||'America/Chicago',log=useLogManualTime(projectId);
+ const tz=timezone||'America/Chicago',log=useLogManualTime(projectId);
  const [day,setDay]=useState(order.day),[mode,setMode]=useState('hours'),[hours,setHours]=useState(''),[timeIn,setTimeIn]=useState(''),[timeOut,setTimeOut]=useState(''),[selected,setSelected]=useState<string[]>([]),[busy,setBusy]=useState(false),[done,setDone]=useState<string[]>([]);
- const people=useQuery({queryKey:['demobe-roster',locationId,day,order.id,tz],enabled:!!timezone||!projectZone.isLoading,queryFn:async()=>{
+ const people=useQuery({queryKey:['demobe-roster',locationId,day,order.id,tz],queryFn:async()=>{
    const start=new Date(midnight(day,tz)).toISOString(),end=new Date(midnight(nextDay(day),tz)).toISOString();
    const rows=[];for(let offset=0;;offset+=500){const r=await supabase.from('location_assignments').select('id,personnel_id,role_label').eq('location_id',locationId).lt('assigned_at',end).or(`unassigned_at.is.null,unassigned_at.gt.${start}`).order('id').range(offset,offset+499);if(r.error)throw r.error;rows.push(...r.data??[]);if((r.data??[]).length<500)break;}
    const names=[];const periods=[];
