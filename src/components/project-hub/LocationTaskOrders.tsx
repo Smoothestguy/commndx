@@ -1,5 +1,5 @@
 import { Time24Input } from '@/components/ui/time24-input';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { TaskOrderExtrasEditor } from './TaskOrderExtras';
 import { buildDetails, isDemob, taskOrderWhen, type DetailRow } from '@/lib/taskOrderExtras';
@@ -40,8 +40,9 @@ export function LocationTaskOrders({projectId,locationId,locationName,timezone,i
   const query=useQuery({queryKey:['location-task-orders',locationId],enabled:open||inline,refetchInterval:60000,queryFn:async()=>{const {data,error}=await supabase.from('location_task_orders').select('*,location_task_order_lines(*)').eq('location_id',locationId).order('created_at',{ascending:false});if(error)throw error;const ids=[...new Set((data??[]).flatMap(t=>t.created_by?[t.created_by]:[]))];const profiles=ids.length?await supabase.from('profiles').select('id,first_name,last_name').in('id',ids):{data:[],error:null};return (data??[]).map(t=>({...t,creator:profiles.data?.find(p=>p.id===t.created_by)}));}});
   const auth=useQuery({queryKey:['location-task-orders-asof',locationId,asof],enabled:(open||inline)&&!!asof,queryFn:async()=>{const {data,error}=await supabase.rpc('location_authorized_asof',{p_location:locationId,p_date:asof});if(error)throw error;return data??[];}});
   const [demobe,setDemobe]=useState<DemobeOrder|null>(null);
+  const pendingDemobe=useRef<DemobeOrder|null>(null);
   const levels=useQuery({queryKey:['location-task-orders-asof',locationId,day],enabled:editing,queryFn:async()=>{const r=await supabase.rpc('location_authorized_asof',{p_location:locationId,p_date:day});if(r.error)throw r.error;return r.data??[];}});
-  useEffect(()=>{if(editing&&deductive(kind)&&levels.data)setLines(deductionDrafts(levels.data));},[editing,kind,day,levels.data]);
+  useEffect(()=>{if(editing&&!committed&&deductive(kind)&&levels.data)setLines(deductionDrafts(levels.data));},[editing,kind,day,levels.data,committed]);
   const invalidate=()=>{for(const key of ['location-task-orders','location-task-orders-asof','location-authorization','location-requirements','location-staffing-summary','deployment-alerts','customer-project-counts'])qc.invalidateQueries({queryKey:[key]});};
   function startNew(){setEffectiveTime('');setTravelTime(null);setDetails([]);setNumber('');setKind('initial');setDay(localDay(new Date().toISOString(),timezone||'America/Chicago'));setLines([newLine()]);setNotes('');setDoc('none');setFile(null);setCommitted(null);setEditing(true);}
   const save=async()=>{setBusy(true);try{
@@ -52,10 +53,10 @@ export function LocationTaskOrders({projectId,locationId,locationName,timezone,i
       const orderId=crypto.randomUUID();const {error}=await supabase.from('location_task_orders').insert({id:orderId,location_id:locationId,to_number:number.trim(),kind,effective_date:day,effective_time:effectiveTime||null,travel_time:isDemob(kind)?travelTime:null,details:isDemob(kind)?buildDetails(details):null,created_via:'internal',notes:notes.trim()||null,document_id:documentId,created_by:user.id,status:'accepted'});if(error)throw error;
       const inserted=await supabase.from('location_task_order_lines').insert(signed.map(l=>({...l,task_order_id:orderId})));
       if(inserted.error){const rollback=await supabase.from('location_task_orders').update({status:'rejected',notes:`${notes}\nIncomplete save: no authorization lines committed.`}).eq('id',orderId);invalidate();if(rollback.error)throw new Error('Order header saved without lines; contact a manager before retrying');throw inserted.error;}
-      id=orderId;setCommitted(id);
+      id=orderId;setCommitted(id);pendingDemobe.current=needsDemobePrompt(kind,signed,fresh.data??[])?{id:orderId,number,day,travelTime,roles:signed.filter(l=>l.line_kind==='position').map(l=>l.label)}:null;
     }
     const sync=await supabase.rpc('sync_requirements_from_task_orders',{p_location:locationId});invalidate();if(sync.error)throw new Error('Task order saved. Requirement sync failed; retry sync without creating another order.');
-    toast.success('Task order saved and requirements updated');setEditing(false);setCommitted(null);if(id){const signed=creationLines(kind,lines,levels.data??[]);if(needsDemobePrompt(kind,signed,levels.data??[]))setDemobe({id,number,day,travelTime,roles:signed.filter(l=>l.line_kind==='position').map(l=>l.label)});}
+    toast.success('Task order saved and requirements updated');setEditing(false);setCommitted(null);setDemobe(pendingDemobe.current);pendingDemobe.current=null;
   }catch(e){toast.error(e instanceof Error?e.message:'Task order could not be saved');}finally{setBusy(false);}};
   const canWrite=isAdmin||isManager;
   const meta=useQuery({queryKey:['location-to-header',locationId],enabled:open||inline,queryFn:async()=>{const {data:loc,error}=await supabase.from('project_locations').select('name,project_number,address,city,state,zip,scope,poc_name,poc_phone,poc_email,mobe_date,demobe_date').eq('id',locationId).maybeSingle();if(error)throw error;const {data:project}=await supabase.from('projects').select('name,customer_po,customer_id').eq('id',projectId).maybeSingle();const {data:customer}=project?.customer_id?await supabase.from('customers').select('name,company').eq('id',project.customer_id).maybeSingle():{data:null};return {...loc,project:project&&{...project,customer}} as any;}});
