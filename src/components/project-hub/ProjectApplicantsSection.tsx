@@ -69,6 +69,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { formatApplicantLocation } from "@/lib/applicantLocation";
 import { useApplicantLocations } from "@/hooks/useZipLookup";
 import { PhotoRequestApproveDialog, requestApplicantPhoto } from "@/components/staffing/PhotoRequestApproveDialog";
+import { useProjectVendors } from '@/integrations/supabase/hooks/useProjectVendors';
+import { AddProjectVendor } from './ProjectVendorPicker';
 
 type SortKey = "name" | "position" | "city" | "state" | "status" | "submitted";
 type SortDirection = "asc" | "desc";
@@ -148,6 +150,7 @@ export function ProjectApplicantsSection({
   const resolveLocation = useApplicantLocations(applications.map((app) => app.applicants));
 
   const approveWithType = useApproveApplicationWithType();
+  const projectVendors = useProjectVendors(projectId);
   const rejectApplication = useRejectApplication();
 
   // Fetch active project assignments for approved applicants
@@ -313,6 +316,12 @@ export function ProjectApplicantsSection({
 
   const handleApprovalConfirm = async (recordType: RecordType) => {
     if (!pendingApprovalApp) return;
+    const employerVendorId = pendingApprovalApp.applicants?.vendor_id;
+    if (employerVendorId && !projectVendors.data.some(v => v.id === employerVendorId)) {
+      toast.error('Add this applicant’s vendor to the project before converting');
+      setIsApprovalDialogOpen(false);
+      return;
+    }
 
     try {
       const result = await approveWithType.mutateAsync({
@@ -751,6 +760,7 @@ export function ProjectApplicantsSection({
       />
 
       {/* Approval Type Selection Dialog */}
+      {pendingApprovalApp?.applicants?.vendor_id && !projectVendors.data.some(v => v.id === pendingApprovalApp.applicants?.vendor_id) && <AddProjectVendor projectId={projectId}/>}
       <ApprovalTypeSelectionDialog
         open={isApprovalDialogOpen}
         onOpenChange={setIsApprovalDialogOpen}

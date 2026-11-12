@@ -410,6 +410,7 @@ export function PersonnelAssignmentDialog({
                   </div>
                 ) : (
                   <>
+                    <AddProjectVendor projectId={selectedProject}/>
                     <SearchInput
                       value={personnelSearch}
                       onChange={setPersonnelSearch}
