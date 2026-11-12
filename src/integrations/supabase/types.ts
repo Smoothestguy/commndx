@@ -7060,6 +7060,9 @@ export type Database = {
       }
       personnel_project_assignments: {
         Row: {
+          active: boolean
+          added_at: string
+          added_by: string | null
           assigned_at: string
           assigned_by: string | null
           bill_rate: number | null
@@ -7079,6 +7082,9 @@ export type Database = {
           work_classification: string | null
         }
         Insert: {
+          active?: boolean
+          added_at?: string
+          added_by?: string | null
           assigned_at?: string
           assigned_by?: string | null
           bill_rate?: number | null
@@ -7098,6 +7104,9 @@ export type Database = {
           work_classification?: string | null
         }
         Update: {
+          active?: boolean
+          added_at?: string
+          added_by?: string | null
           assigned_at?: string
           assigned_by?: string | null
           bill_rate?: number | null
@@ -13566,6 +13575,22 @@ export type Database = {
         }
         Returns: Json
       }
+      project_personnel_roster: {
+        Args: { p_project: string }
+        Returns: {
+          added_at: string
+          assignment_id: string
+          bench_rank: number
+          employer_customer_id: string
+          first_name: string
+          id: string
+          last_name: string
+          non_billable: boolean
+          on_bench: boolean
+          status: string
+          vendor_id: string
+        }[]
+      }
       project_vendor_names: {
         Args: { p_project: string }
         Returns: {
@@ -13640,6 +13665,10 @@ export type Database = {
       set_photo_by_token: {
         Args: { _photo_url: string; _token: string }
         Returns: boolean
+      }
+      set_project_personnel_roster: {
+        Args: { p_active: boolean; p_person: string; p_project: string }
+        Returns: string
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
