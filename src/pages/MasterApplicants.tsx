@@ -175,7 +175,7 @@ export default function MasterApplicants() {
   ];
 
   return (
-    <div className="p-4 sm:p-6 space-y-4">
+    <div data-viewport-list className="desktop-list-page p-4 sm:p-6 space-y-4 min-[1180px]:space-y-2">
       <div className="flex items-center gap-3">
         <Users className="h-6 w-6 text-primary" />
         <div>
@@ -184,7 +184,7 @@ export default function MasterApplicants() {
         </div>
       </div>
 
-      <Card>
+      <Card className="min-[1180px]:border-0 min-[1180px]:shadow-none min-[1180px]:bg-transparent">
         <CardHeader className="pb-3">
           <div className="flex flex-col md:flex-row md:items-center gap-2">
             <div className="relative flex-1">
@@ -217,8 +217,8 @@ export default function MasterApplicants() {
             </Select>
           </div>
         </CardHeader>
-        <CardContent>
-          <EnhancedDataTable tableId="master-applicants" data={filtered} columns={columns} selectedIds={selected} onSelectionChange={setSelected}
+        <CardContent className="min-[1180px]:p-0">
+          <EnhancedDataTable fillViewport tableId="master-applicants" data={filtered} columns={columns} selectedIds={selected} onSelectionChange={setSelected}
             defaultSortKey="last_applied_at" defaultSortDirection="desc" exportName="applicant-pool" attention={r => !r.phone ? 'Missing phone' : null}
             pinFirst={r => !!r.starred_at} emptyText={isLoading ? 'Loading…' : 'No applicants match your filters.'}
             bulkActions={() => <Button size="sm" variant="outline" onClick={() => setInviteOpen(true)}><Send className="h-3.5 w-3.5 mr-1" />Invite to Job</Button>} />

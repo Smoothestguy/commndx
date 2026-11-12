@@ -9,6 +9,8 @@ interface PageLayoutProps {
   title: ReactNode;
   description?: string;
   actions?: ReactNode;
+  desktopHeader?: ReactNode;
+  desktopCompact?: boolean;
   /** Optional section-level density override */
   sectionDensity?: "compact" | "default" | "relaxed";
 }
@@ -24,6 +26,8 @@ function PageLayoutContent({
   title,
   description,
   actions,
+  desktopHeader,
+  desktopCompact,
   sectionDensity,
 }: PageLayoutProps) {
   const { swipeRef, isMobile } = useSwipeNavigation();
@@ -40,14 +44,15 @@ function PageLayoutContent({
         // Use density tokens for padding
         "p-[var(--density-spacing-lg)] lg:p-[var(--density-spacing-xl)]",
         isMobile && "pb-24",
-        sectionClass
+        sectionClass, desktopCompact && "desktop-list-page"
       )}
     >
       <div ref={swipeRef} className="max-w-[1600px] 3xl:max-w-[1920px] 4xl:max-w-[2400px] 5xl:max-w-[3000px] mx-auto w-full">
+        {desktopHeader && <div className="hidden min-[1180px]:block mb-2">{desktopHeader}</div>}
         <header className={cn(
           "relative z-[2] flex flex-col items-stretch sm:flex-row sm:items-center justify-between",
           // Use density tokens for margins
-          "gap-[var(--density-spacing-xs)] mb-[var(--density-spacing-lg)]"
+          "gap-[var(--density-spacing-xs)] mb-[var(--density-spacing-lg)]", desktopHeader && "min-[1180px]:hidden"
         )}>
           <div className="min-w-0 flex-1">
             <h1 className={cn(

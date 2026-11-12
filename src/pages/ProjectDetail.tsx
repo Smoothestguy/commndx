@@ -7,11 +7,14 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { ProjectCloseout } from "@/components/project-hub/ProjectCloseout";
 import { useCustomer } from "@/integrations/supabase/hooks/useCustomers";
 import { PageLayout } from "@/components/layout/PageLayout";
+import { formatLocalDate } from "@/lib/dateUtils";
+import { useSessionState } from "@/hooks/useSessionState";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
+  ChevronDown,
   ArrowLeft,
   Loader2,
   Download,
@@ -86,6 +89,10 @@ const ProjectDetail = () => {
   const activeTab: TabValue = (TABS as readonly string[]).includes(tabParam || "") && (tabParam !== "deployment" || deploymentMode) && (tabParam !== "recruiting" || showRecruiting) && (tabParam !== "time" || !deploymentMode)
     ? (tabParam as TabValue)
     : tabParam === "time" && deploymentMode ? "deployment" : "locations";
+
+  const [detailsOpen, setDetailsOpen] = useSessionState(`project:${id}:details`, false);
+  const locationView = searchParams.get('view') ?? (() => { try { return localStorage.getItem(`locations-view2:${id}`) || 'list'; } catch { return 'list'; } })();
+  const listLayout = activeTab === 'locations' && locationView === 'list';
 
   const setActiveTab = (val: string) => {
     const next = new URLSearchParams(searchParams);
@@ -164,11 +171,7 @@ const ProjectDetail = () => {
 
   const stage = stageConfig[project.stage] || stageConfig.quote;
 
-  return (
-    <PageLayout
-      title={project.name}
-      description="Project details and timeline"
-      actions={
+  const projectActions = (
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           {canArchive && <ProjectStatusMenu project={project} />}
           {canArchive && <ProjectJoinLinks projectId={project.id} menu />}
@@ -193,8 +196,33 @@ const ProjectDetail = () => {
             Back
           </Button>
         </div>
-      }
+  );
+
+  return (
+    <PageLayout
+      title={project.name}
+      description="Project details and timeline"
+      desktopCompact={listLayout}
+      desktopHeader={listLayout ? <div className="space-y-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link to="/projects" aria-label="Back to projects" className="text-muted-foreground"><ArrowLeft className="h-4 w-4" /></Link>
+          <h1 className="font-heading font-bold text-lg truncate">{project.name}</h1>
+          <StatusBadge status={project.status} />
+          {customer && <Link to={`/customers/${customer.id}`} className="text-sm text-muted-foreground truncate">{getCustomerDisplayName(customer)}</Link>}
+          <span className="text-xs text-muted-foreground whitespace-nowrap">{formatLocalDate(project.start_date, 'MMM dd, yyyy')} – {project.end_date ? formatLocalDate(project.end_date, 'MMM dd, yyyy') : 'Ongoing'}</span>
+          <Button variant="ghost" size="sm" className="ml-auto shrink-0 h-8" aria-expanded={detailsOpen} aria-controls="project-header-details" onClick={() => setDetailsOpen(v => !v)}>Details<ChevronDown className={`ml-1 h-4 w-4 ${detailsOpen ? 'rotate-180' : ''}`} /></Button>
+        </div>
+        {detailsOpen && <div id="project-header-details" className="border-y border-border py-2 space-y-2">
+          <div className="flex flex-wrap items-center gap-2"><Badge variant={stage.variant}>{stage.label}</Badge>{project.customer_po && <Badge variant="outline">PO {project.customer_po}</Badge>}{project.archived_at && <Badge variant="outline">Archived</Badge>}<span className="text-sm text-muted-foreground">{addressLine}</span>
+            {canArchive && <label className="ml-auto flex items-center gap-2 text-xs"><Switch checked={deploymentMode} disabled={updateProject.isPending} onCheckedChange={v => updateProject.mutate({ id: project.id, deployment_mode: v })} />Deployment tracking</label>}
+          </div>
+          {projectActions}
+        </div>}
+      </div> : undefined}
+      actions={projectActions}
     >
+      <div data-viewport-list={listLayout || undefined} className={listLayout ? "desktop-list-page" : undefined}>
+      <div className={listLayout ? "min-[1180px]:hidden" : undefined}>
       <nav aria-label="Breadcrumb" className="flex flex-wrap gap-2 text-sm text-muted-foreground mb-4"><Link to="/projects" className="hover:underline">Projects</Link><span>/</span><Link to={`/projects/${project.id}`} className="text-foreground hover:underline">{project.name}</Link></nav>
       {/* Compact header */}
       <div className="mb-4 space-y-2">
@@ -248,10 +276,11 @@ const ProjectDetail = () => {
         </div>
       </div>
 
+      </div>
       {activeTab !== "locations" && <ProjectHeaderKpis projectId={id} deploymentMode={deploymentMode} />}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="overflow-x-auto -mx-1 px-1 mb-4">
+        <div className="overflow-x-auto -mx-1 px-1 mb-4 min-[1180px]:mb-2">
           <TabsList className="w-max">
             <TabsTrigger value="locations">Locations{locations.length > 0 ? ` (${locations.length})` : ""}</TabsTrigger>
             {deploymentMode && <TabsTrigger value="deployment">Deployment</TabsTrigger>}
@@ -293,6 +322,7 @@ const ProjectDetail = () => {
           </div>
         </TabsContent>
       </Tabs>
+      </div>
     </PageLayout>
   );
 };

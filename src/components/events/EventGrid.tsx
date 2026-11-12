@@ -33,6 +33,7 @@ export function EventGrid({ headers, rows, mobile = false, empty = 'No records y
   return <>
     <div className={mobile ? 'hidden md:block' : ''}>
       <EnhancedDataTable
+        fillViewport
         tableId={tableId}
         data={rows}
         columns={columns}

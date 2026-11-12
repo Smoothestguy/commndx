@@ -1,5 +1,10 @@
 # Bunk trailer correction
 
+# Desktop viewport lists
+- [x] Compact, remembered project Details on Locations List; slim needs/filters/tabs, measured viewport-owned grid scrolling and pinned footer.
+- [x] Shared desktop viewport grids applied to Projects (existing grouped sections retained), Personnel, Applicant Pool and Event Manager; composed Event grids share remaining height. Cards/roster/mobile retain existing layout.
+- [x] Owner signed-in 1440×900 checks passed on Locations collapsed/expanded/reloaded, Projects, populated Personnel/Applicant Pool, Event Locations/Roster/Fuel/SOV/Meals/Laundry. Page scroll stayed zero, all footers visible, populated grids scrolled internally with sticky headers; phone/cards checked. No production records created or edited, no runtime errors; preview checks passed.
+
 # Task-order editing and numbering
 - [x] Added manager Edit menus, server edit attribution/time/change note, separate customer_ref, location-serialized internal numbering with explicit override and shared history/prints/XLSX. Project header/lines/sync edits use an expected-version transactional function; Event edits retain single-row validated JSON saves. Legacy numeric orders count toward the next number without rewriting them.
 - [x] Corrected only owner's 5049 order 4 to TO-4, blank customer ref because 4 is sequential. Signed-in owner verified new TO-5, TO-4 Operator deduction 4→3 produced 4 authorized in header/chips/requirements/history, customer 0042-A shown separately in table and downloaded PDF; original deduction 4/customer blank restored, audit retained. Event isolated create 300→edit 600/customer/audit readback passed and location/orders removed (zero remaining). Eighteen rule tests and preview checks passed; no messages/schedule changes.
