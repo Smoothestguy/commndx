@@ -9,8 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { toast } from 'sonner';
 import type { AssetBillingRow } from '@/integrations/supabase/hooks/useAssetAssignments';
 import { localDay } from '@/lib/signinSheets';
-import { locationTimeIso } from '@/lib/manualTime';
-import { placementDatesValid } from '@/lib/placementDates';
+import { placementDatesValid, placementDateTimestamp } from '@/lib/placementDates';
 
 export function EditAssetPlacementDates({ row, timezone = 'America/Chicago', onClose }: { row: AssetBillingRow; timezone?: string; onClose: () => void }) {
   const [start, setStart] = useState(localDay(row.start_at, timezone));
@@ -27,11 +26,10 @@ export function EditAssetPlacementDates({ row, timezone = 'America/Chicago', onC
     </div><DialogFooter><Button variant="outline" disabled={busy} onClick={onClose}>Cancel</Button><Button disabled={busy || !reason.trim() || !placementDatesValid(start, end, row.status !== 'active')} onClick={async () => {
       setBusy(true);
       try {
-        const originalStart = localDay(row.start_at, timezone);
-        const originalEnd = row.end_at ? localDay(row.end_at, timezone) : '';
-        const startAt = start === originalStart ? row.start_at : locationTimeIso(start, '08:00', timezone);
-        const endAt = end === originalEnd ? row.end_at : end ? locationTimeIso(end, '17:00', timezone) : null;
+        const startAt = placementDateTimestamp(start, row.start_at, '08:00', timezone);
+        const endAt = placementDateTimestamp(end, row.end_at ?? row.unassigned_at, '17:00', timezone);
         if (!startAt) throw new Error('Enter a valid start date');
+        if (end && !endAt) throw new Error('Enter a valid end date');
         const { error } = await supabase.rpc('correct_asset_placement_dates', { p_assignment_id: row.id, p_start_at: startAt, p_end_at: endAt, p_reason: reason.trim(), p_expected_updated_at: row.updated_at });
         if (error) throw error;
         await qc.invalidateQueries(); toast.success('Placement dates corrected'); onClose();
