@@ -40,7 +40,7 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
         <MessageBannerProvider>
           <IncomingMessageListenerMount />
           <MessageBanner />
-          <div className="min-h-screen flex flex-col w-full bg-background overflow-x-clip max-w-full">
+          <div className="app-workspace min-h-screen flex flex-col w-full bg-background overflow-x-clip max-w-full">
             <BackgroundMediaLayer />
 
             <TopNavBar onMobileMenuToggle={() => setMobileMenuOpen(true)} />

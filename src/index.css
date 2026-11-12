@@ -394,6 +394,9 @@
 
 @layer utilities {
   @media (min-width: 1180px) {
+    .app-workspace:has([data-viewport-list]) { height: 100dvh; min-height: 0; }
+    .app-workspace:has([data-viewport-list]) > .flex { min-height: 0; }
+    .app-workspace:has([data-viewport-list]) > .flex > main { min-height: 0; overflow-y: hidden; }
     .viewport-grid:not([data-fullscreen="true"]) { height: var(--viewport-grid-height, 50vh); }
     .viewport-grid > [data-grid-scroll] { flex: 1 1 0%; max-height: none !important; overscroll-behavior: contain; }
     .viewport-grid > :not([data-grid-scroll]) { flex-shrink: 0; }
