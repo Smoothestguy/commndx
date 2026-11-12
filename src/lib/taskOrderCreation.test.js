@@ -1,5 +1,5 @@
 import {it,expect} from 'bun:test';
-import {deductionDrafts,creationLines,needsDemobePrompt} from './taskOrderCreation';
+import {deductionDrafts,creationLines,needsDemobePrompt,nextTaskOrderNumber,editableLevels} from './taskOrderCreation';
 const levels=[{line_kind:'position',label:'Operator',authorized:7},{line_kind:'position',label:'Supervisor',authorized:3},{line_kind:'asset',label:'Truck',authorized:3}];
 it('prefills each current label with zero deduction',()=>expect(deductionDrafts(levels).map(l=>[l.label,l.qty])).toEqual([['Operator','0'],['Supervisor','0'],['Truck','0']]));
 it('skips zero deductions',()=>expect(creationLines('decrease',deductionDrafts(levels).map(l=>({...l,qty:l.label==='Operator'?'2':'0'})),levels)).toEqual([{line_kind:'position',label:'Operator',qty_delta:-2}]));
@@ -8,3 +8,8 @@ it('prompts a decrease zeroing supervisor three',()=>expect(needsDemobePrompt('d
 it('does not prompt a partial decrease',()=>expect(needsDemobePrompt('decrease',[{line_kind:'position',label:'Supervisor',qty_delta:-1}],levels)).toBe(false));
 it('always prompts a saved demobilization',()=>expect(needsDemobePrompt('demobilization',[{line_kind:'asset',label:'Truck',qty_delta:-1}],levels)).toBe(true));
 it('Event Manager retains fractional quantities',()=>expect(creationLines('increase',[{id:'1',line_kind:'position',label:'Laundry',qty:'2.5'}],[],false)[0].qty_delta).toBe(2.5));
+it('suggests TO-5 after TO-4, ignoring customer references',()=>expect(nextTaskOrderNumber(['TO-1','TO-3','TO-4','0042-A'])).toBe('TO-5'));
+it('uses highest existing number rather than row count',()=>expect(nextTaskOrderNumber(['TO-1','TO-7'])).toBe('TO-8'));
+it('adds the saved deduction back when editing TO-4',()=>expect(editableLevels([{line_kind:'position',label:'Operator',authorized:3}],[{line_kind:'position',label:'Operator',qty_delta:-4}])[0].authorized).toBe(7));
+it('editing quantities recalculates subsequent history without changing earlier rows',()=>{const before=[{id:'1',number:'TO-1',kind:'initial',effective_date:'2026-11-03',created_at:'1',counts:true,lines:[{label:'Operator',qty_delta:7}]},{id:'4',number:'TO-4',kind:'decrease',effective_date:'2026-11-12',created_at:'4',counts:true,lines:[{label:'Operator',qty_delta:-4}]}];expect(runningTotals(before).map(r=>r.totals[0].qty)).toEqual([7,3]);expect(runningTotals(before.map(o=>o.id==='4'?{...o,lines:[{label:'Operator',qty_delta:-3}]}:o)).map(r=>r.totals[0].qty)).toEqual([7,4]);});
+import {runningTotals} from './taskOrderHistory';
