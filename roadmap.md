@@ -1,3 +1,8 @@
+# Project vendor roster
+- [ ] Project membership, staff read/manager write, backfill and historical preservation.
+- [ ] Scoped project/location vendor pickers, add affordances and Crew Vendors management.
+- [ ] Browser Florida Floods add/readback, empty project, permissions, tests and fixture cleanup.
+
 # Bunk trailer correction
 
 # Asset dates and grid completion pass
