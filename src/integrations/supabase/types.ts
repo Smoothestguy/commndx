@@ -4171,13 +4171,21 @@ export type Database = {
           company_id: string | null
           created_at: string
           created_by: string
+          customer_ref: string | null
+          details: Json | null
+          document_url: string | null
+          edit_note: string | null
+          edited_at: string | null
+          edited_by: string | null
           effective_date: string
+          effective_time: string | null
           event_location_id: string
           id: string
           kind: string
           lines: Json
           notes: string
           number: string
+          travel_time: boolean | null
           updated_at: string
           updated_by: string | null
         }
@@ -4185,13 +4193,21 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           created_by?: string
+          customer_ref?: string | null
+          details?: Json | null
+          document_url?: string | null
+          edit_note?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
           effective_date: string
+          effective_time?: string | null
           event_location_id: string
           id?: string
           kind: string
           lines?: Json
           notes?: string
           number: string
+          travel_time?: boolean | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -4199,13 +4215,21 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           created_by?: string
+          customer_ref?: string | null
+          details?: Json | null
+          document_url?: string | null
+          edit_note?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
           effective_date?: string
+          effective_time?: string | null
           event_location_id?: string
           id?: string
           kind?: string
           lines?: Json
           notes?: string
           number?: string
+          travel_time?: boolean | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -5424,8 +5448,12 @@ export type Database = {
           created_at: string
           created_by: string | null
           created_via: string
+          customer_ref: string | null
           details: Json | null
           document_id: string | null
+          edit_note: string | null
+          edited_at: string | null
+          edited_by: string | null
           effective_date: string
           effective_time: string | null
           id: string
@@ -5441,8 +5469,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           created_via?: string
+          customer_ref?: string | null
           details?: Json | null
           document_id?: string | null
+          edit_note?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
           effective_date?: string
           effective_time?: string | null
           id?: string
@@ -5458,8 +5490,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           created_via?: string
+          customer_ref?: string | null
           details?: Json | null
           document_id?: string | null
+          edit_note?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
           effective_date?: string
           effective_time?: string | null
           id?: string
@@ -13192,6 +13228,15 @@ export type Database = {
       data_hygiene_preview: { Args: never; Returns: Json }
       data_hygiene_run: { Args: never; Returns: Json }
       deny_join_request: { Args: { p_request: string }; Returns: Json }
+      edit_location_task_order: {
+        Args: {
+          p_expected: string
+          p_id: string
+          p_lines: Json
+          p_values: Json
+        }
+        Returns: undefined
+      }
       event_move_asset: {
         Args: {
           p_assignment_id: string

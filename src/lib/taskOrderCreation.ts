@@ -24,3 +24,11 @@ export function creationLines(kind:TaskOrderKind,drafts:OrderLineDraft[],levels:
 export function needsDemobePrompt(kind:TaskOrderKind,lines:ReturnType<typeof creationLines>,levels:AuthorizationLevel[]) {
   return kind==='demobilization'||kind==='decrease'&&lines.some(l=>-l.qty_delta>=currentLevel(levels,l));
 }
+export function nextTaskOrderNumber(numbers:string[]) {
+  return `TO-${Math.max(0,...numbers.map(n=>/^(?:TO-)?(\d+)$/i.exec(n.trim())).map(m=>m?Number(m[1]):0))+1}`;
+}
+export function editableLevels(levels:AuthorizationLevel[],oldLines:{line_kind:string;label:string;qty_delta:number}[]) {
+ const result=levels.map(l=>({...l}));
+ for(const l of oldLines){const found=result.find(r=>r.line_kind===l.line_kind&&r.label===l.label);if(found)found.authorized-=l.qty_delta;else result.push({line_kind:l.line_kind,label:l.label,authorized:-l.qty_delta});}
+ return result.map(l=>({...l,authorized:Math.max(0,l.authorized)}));
+}

@@ -13,7 +13,7 @@ const tones: Record<string, string> = { initial: 'text-success border-success/40
 const isDown = (k: string) => k === 'decrease' || k === 'demobilization';
 
 /** Compact TO ledger: one row per order with resulting totals, expandable details, selection and print/XLSX. */
-export function TaskOrderHistoryTable({ orders, header, fileBase, today, renderExpanded, onDemobe }: { orders: HistoryOrder[]; header: HistoryHeader; fileBase: string; today?: string; renderExpanded?: (id: string) => ReactNode; onDemobe?:(id:string)=>void }) {
+export function TaskOrderHistoryTable({ orders, header, fileBase, today, renderExpanded, onDemobe, onEdit }: { orders: HistoryOrder[]; header: HistoryHeader; fileBase: string; today?: string; renderExpanded?: (id: string) => ReactNode; onDemobe?:(id:string)=>void; onEdit?:(id:string)=>void }) {
   const rows = useMemo(() => runningTotals(orders), [orders]);
   const [selected, setSelected] = useState<Set<string>>(new Set()), [open, setOpen] = useState<Set<string>>(new Set());
   const toggle = (set: Set<string>, id: string) => { const n = new Set(set); if (n.has(id)) n.delete(id); else n.add(id); return n; };
@@ -39,16 +39,16 @@ export function TaskOrderHistoryTable({ orders, header, fileBase, today, renderE
           return <Fragment key={r.id}>
             <tr data-testid="to-row" className={`border-t cursor-pointer hover:bg-muted/30 ${r.counts ? '' : 'opacity-70'}`} onClick={() => setOpen(s => toggle(s, r.id))}>
               <td className="p-2" onClick={e => e.stopPropagation()}><Checkbox aria-label={`Select ${r.number}`} checked={selected.has(r.id)} onCheckedChange={() => setSelected(s => toggle(s, r.id))} /></td>
-              <td className="p-2 font-medium whitespace-nowrap"><ChevronRight className={`inline h-3 w-3 mr-1 transition-transform ${expanded ? 'rotate-90' : ''}`} />{r.number}</td>
+              <td className="p-2 font-medium whitespace-nowrap"><ChevronRight className={`inline h-3 w-3 mr-1 transition-transform ${expanded ? 'rotate-90' : ''}`} />{r.number}{r.customer_ref&&<div className="text-xs font-normal text-muted-foreground">Cust: {r.customer_ref}</div>}</td>
               <td className="p-2"><Badge variant="outline" className={tones[r.kind]}>{kindLabel(r.kind)}</Badge>{!r.counts && <Badge variant="outline" className="ml-1 text-warning">{r.status}</Badge>}</td>
               <td className="p-2 whitespace-nowrap tabular-nums">{formatLocalDate(r.effective_date)}{r.effective_time ? ` ${r.effective_time.slice(0, 5).replace(':', '')}` : ''}</td>
               <td className="p-2 tabular-nums">{formatChanges(r.lines)}</td>
               <td data-testid="to-totals" className="p-2 font-semibold tabular-nums">{r.fullDemob ? <span className="text-destructive">Full demobilization — location closes</span> : <>{isDown(r.kind) && '→ '}{formatTotals(r.totals)}{isDown(r.kind) && <span className="font-normal text-muted-foreground"> remain</span>}</>}</td>
               <td className="p-2 text-xs text-muted-foreground">{r.enteredBy}</td>
-              <td className="p-2" onClick={e => e.stopPropagation()}><div className="flex"><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`Print ${r.number}`} onClick={() => print([r], r.number)}><Printer className="h-4 w-4" /></Button>{onDemobe&&r.counts&&isDown(r.kind)&&<DropdownMenu><DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`Actions ${r.number}`}><MoreHorizontal className="h-4 w-4"/></Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem onSelect={()=>onDemobe(r.id)}>Demobe time</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}</div></td>
+              <td className="p-2" onClick={e => e.stopPropagation()}><div className="flex"><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`Print ${r.number}`} onClick={() => print([r], r.number)}><Printer className="h-4 w-4" /></Button>{(onEdit||onDemobe&&r.counts&&isDown(r.kind))&&<DropdownMenu><DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`Actions ${r.number}`}><MoreHorizontal className="h-4 w-4"/></Button></DropdownMenuTrigger><DropdownMenuContent>{onEdit&&<DropdownMenuItem onSelect={()=>onEdit(r.id)}>Edit</DropdownMenuItem>}{onDemobe&&r.counts&&isDown(r.kind)&&<DropdownMenuItem onSelect={()=>onDemobe(r.id)}>Demobe time</DropdownMenuItem>}</DropdownMenuContent></DropdownMenu>}</div></td>
             </tr>
             {expanded && <tr className="bg-muted/20"><td /><td colSpan={7} className="p-3 space-y-1 text-sm">
-              {r.scope && <p><span className="text-muted-foreground">Scope:</span> {r.scope}</p>}
+              {r.edited&&<p className="text-muted-foreground">{r.edited}</p>}{r.scope && <p><span className="text-muted-foreground">Scope:</span> {r.scope}</p>}
               {r.travel_time != null && <p><span className="text-muted-foreground">Travel time:</span> {r.travel_time ? 'Yes' : 'No'}</p>}
               {details.map(([k, v]) => <p key={k}><span className="text-muted-foreground">{k}:</span> {v}</p>)}
               {r.notes ? <p className="whitespace-pre-wrap">{r.notes}</p> : !details.length && r.travel_time == null && <p className="text-muted-foreground">No notes or details.</p>}

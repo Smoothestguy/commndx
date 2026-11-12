@@ -1,5 +1,9 @@
 # Bunk trailer correction
 
+# Task-order editing and numbering
+- [x] Added manager Edit menus, server edit attribution/time/change note, separate customer_ref, location-serialized internal numbering with explicit override and shared history/prints/XLSX. Project header/lines/sync edits use an expected-version transactional function; Event edits retain single-row validated JSON saves. Legacy numeric orders count toward the next number without rewriting them.
+- [x] Corrected only owner's 5049 order 4 to TO-4, blank customer ref because 4 is sequential. Signed-in owner verified new TO-5, TO-4 Operator deduction 4→3 produced 4 authorized in header/chips/requirements/history, customer 0042-A shown separately in table and downloaded PDF; original deduction 4/customer blank restored, audit retained. Event isolated create 300→edit 600/customer/audit readback passed and location/orders removed (zero remaining). Eighteen rule tests and preview checks passed; no messages/schedule changes.
+
 # Task-order creation
 - [x] Added effective-date current levels and capped zero-default deductions to project/Event forms; grouped order info, lines, options and sticky actions. Event fractional quantities preserved.
 - [x] Added optional audited demobe time creation and later row action, preserving person billing flags, TO travel choice, manual-stay locks and unique order/person protection; source flags appear in attendance, project weekly timesheet and time-entry lists.

@@ -7,7 +7,7 @@ export type HistoryHeader = { title: string; fields: [string, string | null | un
 
 const when = (r: HistoryRow) => `${formatLocalDate(r.effective_date)}${r.effective_time ? ` ${r.effective_time.slice(0, 5).replace(':', '')}` : ''}`;
 const resultText = (r: HistoryRow) => r.fullDemob ? 'Full demobilization — location closes' : `${(r.kind === 'demobilization' || r.kind === 'decrease') ? '→ ' : ''}${formatTotals(r.totals)}${(r.kind === 'demobilization' || r.kind === 'decrease') ? ' remain' : ''}`;
-export const historyCells = (r: HistoryRow) => [r.number, kindLabel(r.kind) + (r.counts ? '' : ` (${r.status ?? 'not accepted'})`), when(r), formatChanges(r.lines), resultText(r), r.enteredBy ?? ''];
+export const historyCells = (r: HistoryRow) => [r.customer_ref ? `${r.number}\nCust: ${r.customer_ref}` : r.number, kindLabel(r.kind) + (r.counts ? '' : ` (${r.status ?? 'not accepted'})`), when(r), formatChanges(r.lines), resultText(r), r.enteredBy ?? ''];
 const HEADERS = ['TO #', 'Kind', 'Effective', 'Changes', 'Resulting totals', 'Entered by'];
 
 const ascii = (t: string) => t.replace(/−/g, '-').replace(/→/g, '->').replace(/—/g, '-');
@@ -39,7 +39,7 @@ export function printTaskOrderHistory(header: HistoryHeader, rows: HistoryRow[],
   for (const r of rows) row(historyCells(r));
   y += 14;
   for (const r of rows) {
-    const extra = [r.notes ? `Notes: ${r.notes}` : '', r.travel_time != null ? `Travel time: ${r.travel_time ? 'Yes' : 'No'}` : '', ...Object.entries(r.details ?? {}).map(([k, v]) => `${k}: ${v}`)].filter(Boolean);
+    const extra = [r.edited ? `Edit: ${r.edited}` : '', r.customer_ref ? `Customer TO / Sidemark: ${r.customer_ref}` : '', r.notes ? `Notes: ${r.notes}` : '', r.travel_time != null ? `Travel time: ${r.travel_time ? 'Yes' : 'No'}` : '', ...Object.entries(r.details ?? {}).map(([k, v]) => `${k}: ${v}`)].filter(Boolean);
     const body = pdf.setFont('helvetica', 'normal').setFontSize(9).splitTextToSize(ascii(extra.join('\n')) || 'No notes or details.', W - 2 * M) as string[];
     ensure(body.length * 11 + 44);
     pdf.setFont('helvetica', 'bold').text(ascii(`${r.number} - ${kindLabel(r.kind)} - effective ${when(r)}`), M, y + 10); y += 16;
