@@ -49,7 +49,7 @@ interface PurchaseOrderEditFormProps {
 
 export const PurchaseOrderEditForm = ({ purchaseOrder }: PurchaseOrderEditFormProps) => {
   const navigate = useNavigate();
-  const { data: vendors, isLoading: vendorsLoading } = useVendors();
+  const { data: vendors, isLoading: vendorsLoading } = useVendors(purchaseOrder.project_id);
   const updatePurchaseOrder = useUpdatePurchaseOrder();
 
   const [selectedVendorId, setSelectedVendorId] = useState<string>(purchaseOrder.vendor_id);

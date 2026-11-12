@@ -102,7 +102,6 @@ export function ChangeOrderForm({
   const { data: projects } = useProjects();
   const { data: customers } = useCustomers();
   const { data: products } = useProducts();
-  const { data: vendors } = useVendors();
   const { data: jobOrders } = useJobOrders();
   const { data: purchaseOrders } = usePurchaseOrders();
   const { data: companySettings } = useCompanySettings();
@@ -118,6 +117,7 @@ export function ChangeOrderForm({
   const canEditPricing = permissions?.canEditPricing ?? true;
 
   const [projectId, setProjectId] = useState(initialData?.project_id || defaultProjectId || "");
+  const { data: vendors } = useVendors(projectId);
   const [customerId, setCustomerId] = useState(initialData?.customer_id || "");
   const [customerName, setCustomerName] = useState(initialData?.customer_name || "");
   const [vendorId, setVendorId] = useState(initialData?.vendor_id || "");

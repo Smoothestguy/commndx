@@ -76,7 +76,7 @@ export function AddTMTicketDialog({
   const addTMTicket = useAddTMTicket();
   const updateTMTicket = useUpdateTMTicket();
   const { data: products } = useProducts();
-  const { data: vendors } = useVendors();
+  const { data: vendors } = useVendors(projectId || editTicket?.project_id);
   const { data: allPurchaseOrders } = usePurchaseOrders();
   const purchaseOrders = allPurchaseOrders?.filter(po => po.project_id === projectId);
   const { data: companySettings } = useCompanySettings();

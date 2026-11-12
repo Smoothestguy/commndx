@@ -52,6 +52,7 @@ export function QuickAddPersonnelDialog({
         </DialogHeader>
         
         <PersonnelForm 
+          projectId={projectId}
           onSuccess={handleSuccess}
           onCancel={() => onOpenChange(false)}
         />

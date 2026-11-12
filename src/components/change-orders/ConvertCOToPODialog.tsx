@@ -61,7 +61,7 @@ export function ConvertCOToPODialog({
     return date.toISOString().split("T")[0];
   });
 
-  const { data: vendors, isLoading: loadingVendors } = useVendors();
+  const { data: vendors, isLoading: loadingVendors } = useVendors(changeOrder.project_id);
   const { data: jobOrders } = useJobOrders();
   const addPurchaseOrder = useAddPurchaseOrder();
 

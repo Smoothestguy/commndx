@@ -74,14 +74,18 @@ async function isQuickBooksConnected(): Promise<boolean> {
   return data?.is_connected === true;
 }
 
-export const useVendors = () => {
+export const useVendors = (projectId?: string) => {
   return useQuery({
-    queryKey: ["vendors"],
+    queryKey: projectId ? ["project-vendors", projectId, "details"] : ["vendors"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vendors")
-        .select("*")
-        .order("created_at", { ascending: false });
+      let request = supabase.from("vendors").select("*").order("created_at", { ascending: false });
+      if (projectId) {
+        const memberships = await supabase.from('project_vendors').select('vendor_id').eq('project_id', projectId).eq('active', true);
+        if (memberships.error) throw memberships.error;
+        if (!memberships.data.length) return [] as Vendor[];
+        request = request.in('id', memberships.data.map(row => row.vendor_id));
+      }
+      const { data, error } = await request;
 
       if (error) throw error;
       return data as Vendor[];

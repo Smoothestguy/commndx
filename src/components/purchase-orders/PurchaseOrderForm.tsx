@@ -49,7 +49,6 @@ export const PurchaseOrderForm = () => {
   
   const { user } = useAuth();
   const { data: jobOrders, isLoading: jobOrdersLoading } = useJobOrders();
-  const { data: vendors, isLoading: vendorsLoading } = useVendors();
   const { data: products } = useProducts();
   const { data: prefillJobOrder, isLoading: prefillLoading } = useJobOrder(jobOrderIdFromUrl || "");
   const { data: duplicatePO, isLoading: duplicateLoading } = usePurchaseOrder(duplicateId || "");
@@ -75,6 +74,7 @@ export const PurchaseOrderForm = () => {
 
   // Get selected job order details
   const selectedJobOrder = jobOrders?.find(jo => jo.id === selectedJobOrderId);
+  const { data: vendors, isLoading: vendorsLoading } = useVendors(selectedJobOrder?.project_id);
   const selectedVendor = vendors?.find(v => v.id === selectedVendorId);
 
   // Group products by type
