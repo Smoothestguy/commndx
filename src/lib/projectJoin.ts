@@ -1,6 +1,7 @@
 import { z } from 'zod';
+import { agencyLogo } from './agencyPortal';
 export const joinToken = z.string().uuid();
-export const joinInfoSchema = z.object({ valid: z.boolean(), project_name: z.string().optional(), location_name: z.string().nullable().optional(), role_label: z.string().nullable().optional() });
+export const joinInfoSchema = z.object({ valid: z.boolean(), project_name: z.string().optional(), location_name: z.string().nullable().optional(), role_label: z.string().nullable().optional(), agency_name: z.string().nullable().optional(), agency_logo_url: agencyLogo });
 // Strip unexpected identity/link fields: public registration never exposes approval evidence.
 export const joinResultSchema = z.object({ ok: z.boolean(), reason: z.string().optional(), status: z.literal('pending').optional() });
 export const joinApprovalSchema = z.object({ ok: z.boolean(), reason: z.string().optional(), personnel_id: z.string().uuid().optional(), punch_token: z.string().uuid().nullable().optional(), phone: z.string().optional(), first_name: z.string().optional() });
