@@ -14,17 +14,20 @@ import {midnight,nextDay} from '@/lib/signinSheets';
 import {roleAt} from '@/lib/assignmentRoles';
 import {toast} from 'sonner';
 import {AddToProject} from './ProjectPersonnelRoster';
+import {useProjectPersonnelRoster} from '@/integrations/supabase/hooks/useProjectPersonnelRoster';
 export type DemobeOrder={id:string;number:string;day:string;travelTime:boolean|null;roles:string[]};
 export function DemobeTimeDialog({order,projectId,locationId,timezone,onClose}:{order:DemobeOrder;projectId:string;locationId:string;timezone?:string|null;onClose:()=>void}){
  const tz=timezone||'America/Chicago',log=useLogManualTime(projectId);
+ const roster=useProjectPersonnelRoster(projectId);
  const [day,setDay]=useState(order.day),[mode,setMode]=useState('hours'),[hours,setHours]=useState(''),[timeIn,setTimeIn]=useState(''),[timeOut,setTimeOut]=useState(''),[selected,setSelected]=useState<string[]>([]),[busy,setBusy]=useState(false),[done,setDone]=useState<string[]>([]);
- const people=useQuery({queryKey:['demobe-roster',locationId,day,order.id,tz],queryFn:async()=>{
+ const people=useQuery({queryKey:['demobe-roster',locationId,day,order.id,tz,roster.data?.map(p=>p.id).join(',')],enabled:!!roster.data,queryFn:async()=>{
    const start=new Date(midnight(day,tz)).toISOString(),end=new Date(midnight(nextDay(day),tz)).toISOString();
    const rows=[];for(let offset=0;;offset+=500){const r=await supabase.from('location_assignments').select('id,personnel_id,role_label').eq('location_id',locationId).lt('assigned_at',end).or(`unassigned_at.is.null,unassigned_at.gt.${start}`).order('id').range(offset,offset+499);if(r.error)throw r.error;rows.push(...r.data??[]);if((r.data??[]).length<500)break;}
    const names=[];const periods=[];
    for(let offset=0;offset<rows.length;offset+=200){const batch=rows.slice(offset,offset+200);const [n,p]=await Promise.all([supabase.from('personnel_directory').select('id,first_name,last_name').in('id',batch.map(r=>r.personnel_id)),supabase.from('location_assignment_roles').select('assignment_id,role_label,effective_from').in('assignment_id',batch.map(r=>r.id)).lte('effective_from',end)]);if(n.error)throw n.error;if(p.error)throw p.error;names.push(...n.data??[]);periods.push(...p.data??[]);}
    const saved=await supabase.from('visit_personnel').select('personnel_id').eq('demobe_task_order_id',order.id);if(saved.error)throw saved.error;
-   return rows.map(r=>({...r,role_label:roleAt(periods,r.id,start,r.role_label),name:[names.find(n=>n.id===r.personnel_id)?.first_name,names.find(n=>n.id===r.personnel_id)?.last_name].filter(Boolean).join(' '),saved:saved.data.some(s=>s.personnel_id===r.personnel_id)}));
+   const worked=await supabase.from('personnel_location_trail').select('personnel_id').eq('project_id',projectId).eq('location_id',locationId).lt('in_at',end).or(`out_at.is.null,out_at.gt.${start}`);if(worked.error)throw worked.error;
+   return rows.filter(r=>roster.data?.some(p=>p.id===r.personnel_id)||worked.data?.some(p=>p.personnel_id===r.personnel_id)).map(r=>({...r,role_label:roleAt(periods,r.id,start,r.role_label),name:[names.find(n=>n.id===r.personnel_id)?.first_name,names.find(n=>n.id===r.personnel_id)?.last_name].filter(Boolean).join(' '),saved:saved.data.some(s=>s.personnel_id===r.personnel_id)}));
  }});
  useEffect(()=>{if(people.data)setSelected(people.data.filter(p=>!p.saved&&order.roles.some(r=>r.toLowerCase()===p.role_label?.toLowerCase())).map(p=>p.personnel_id));},[people.data,order.roles]);
  const save=async()=>{

@@ -12,5 +12,5 @@ export function useSetProjectPersonnelRoster(projectId: string) {
   return useMutation({mutationFn:async ({personnelId,active}:{personnelId:string;active:boolean})=>{
     const {data,error}=await supabase.rpc('set_project_personnel_roster',{p_project:projectId,p_person:personnelId,p_active:active});
     if(error)throw error;return data;
-  },onSuccess:async()=>{await Promise.all(['project-personnel-roster','personnel-project-assignments','personnel-assignment-counts','personnel-with-assets','project-day-people'].map(key=>qc.invalidateQueries({queryKey:[key]})));}});
+  },onSuccess:async()=>{await Promise.all(['project-personnel-roster','personnel-project-assignments','personnel-assignment-counts','personnel-with-assets','project-day-people','attendance-roster','demobe-roster'].map(key=>qc.invalidateQueries({queryKey:[key]})));}});
 }

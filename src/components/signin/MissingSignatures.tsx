@@ -9,6 +9,8 @@ import { localTime } from '@/lib/signinSheets';
 import { Loader2, RotateCw, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogFooter} from '@/components/ui/dialog';
+import {useLocationProjectId} from '@/integrations/supabase/hooks/useProjectVendors';
+import {AddToProject} from '@/components/project-hub/ProjectPersonnelRoster';
 
 type Row = { personnelId: string; name: string; signature: string | null };
 
@@ -16,6 +18,7 @@ type Row = { personnelId: string; name: string; signature: string | null };
 export function MissingSignatures({ locationId, day, zone, rows, compact = false }: { locationId: string; day: string; zone: string; rows: Row[]; compact?: boolean }) {
   const { isAdmin, isManager } = useUserRole();
   const qc = useQueryClient();
+  const {data:projectId}=useLocationProjectId(locationId);
   const [busy, setBusy] = useState(false);
   const [open,setOpen]=useState(false);
   const summary = useMemo(() => summarizeSignatures(rows), [rows]);
@@ -63,6 +66,7 @@ export function MissingSignatures({ locationId, day, zone, rows, compact = false
     </div>
     <Dialog open={open} onOpenChange={v=>{if(!busy)setOpen(v);}}><DialogContent className="max-w-lg max-h-[85dvh] overflow-y-auto"><DialogHeader><DialogTitle>Missing signatures · {day}</DialogTitle></DialogHeader>
       <p className="text-sm text-muted-foreground">{summary.signed} of {summary.total} signed · {summary.missing.length} missing</p>
+      {projectId&&<AddToProject projectId={projectId}/>}
       {isLoading&&<Loader2 className="h-4 w-4 animate-spin"/>}{loadError&&<p role="alert" className="text-sm text-destructive">Phone and request details could not be loaded.</p>}
       <ul className="divide-y">{summary.missing.map(m=>{const p=pending(m.personnelId),dates=info(m.personnelId)?.dates??[],w=waitS(m.personnelId);return <li key={m.personnelId} className="flex flex-wrap items-center justify-between gap-2 py-3"><div className="min-w-0"><p className="font-medium break-words">{m.name}{dates.length>1&&<span className="text-muted-foreground font-normal"> — {dates.length} dates</span>}</p>{dates.length>1&&<p className="text-xs text-muted-foreground tabular-nums">{dates.map(md).join(', ')}</p>}<p className="text-xs text-muted-foreground">{p?`Requested ${md(new Intl.DateTimeFormat('en-CA',{timeZone:zone}).format(new Date(p.last_sent_at)))} ${localTime(p.last_sent_at,zone)} · sent ${p.send_count}× · ${p.sms_status}`:!data?'Checking phone…':textable(m.personnelId)?'Phone available':'No valid phone — cannot text'}</p></div>{(isAdmin||isManager)&&(p?<Button size="sm" variant="outline" aria-label={`Resend signature request to ${m.name}`} disabled={busy||!textable(m.personnelId)||w>0} onClick={()=>void call({action:'resend',personnel_id:m.personnelId})}><RotateCw className="h-3.5 w-3.5 mr-1"/>{w>0?`Resend in ${w}s`:'Resend'}</Button>:<Button size="sm" variant="outline" aria-label={`Request signature for ${m.name}`} disabled={busy||!data||!textable(m.personnelId)} onClick={()=>void request([m.personnelId])}><Send className="h-3.5 w-3.5 mr-1"/>{dates.length>1?`Request ${dates.length} dates`:'Request signature'}</Button>)}</li>;})}</ul>
       <DialogFooter><Button variant="outline" disabled={busy} onClick={()=>setOpen(false)}>Close</Button>{(isAdmin||isManager)&&<Button disabled={busy||!toSend.length||!!loadError} onClick={()=>void request(toSend.map(m=>m.personnelId))}>{busy?<Loader2 className="h-4 w-4 animate-spin mr-1"/>:<Send className="h-4 w-4 mr-1"/>}Request all ({toSend.length})</Button>}</DialogFooter>
