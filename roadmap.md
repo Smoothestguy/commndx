@@ -1,3 +1,8 @@
+# Project personnel roster
+- [ ] Extend existing assignment history into the project roster; backfill active location crews and worked people, verify approved joins and secure staff reads.
+- [ ] Shared searchable add/manage roster controls and project-only person choices, preserving dated history and global directory.
+- [ ] Browser Florida 5049/5048 coverage, add/readback and fresh-project empty state; rule tests and test-row cleanup.
+
 # Project vendor roster
 - [x] Unique soft-active project vendor membership, actor/time/audit stamps, manager/admin writes and staff reads; explicit no-anonymous/no-delete privileges. Backfilled existing location/project personnel, join tokens, project assets and work orders without changing employers/links.
 - [x] Shared project vendor pickers and Crew Vendors count/manage section; join, location/project personnel assignment/quick-add/conversion, rental assets, and project financial choices scoped with add affordances. Global vendor administration unchanged; cross-project bills use shared eligible memberships.
