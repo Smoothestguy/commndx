@@ -16,7 +16,7 @@ export function useViewportGrid(enabled: boolean) {
           return;
         }
         const root = grid.closest('[data-viewport-list]');
-        const grids = root ? Array.from(root.querySelectorAll<HTMLElement>('[data-viewport-grid="true"]')).filter(el => el.offsetParent !== null) : [grid];
+        const grids = root ? Array.from(root.querySelectorAll<HTMLElement>('[data-viewport-grid="true"]')).filter(el => el.offsetParent !== null && el.getBoundingClientRect().height > 0) : [grid];
         const index = grids.indexOf(grid);
         // Multiple Event grids share the available region rather than pushing the page down.
         const top = grids[0]?.getBoundingClientRect().top ?? grid.getBoundingClientRect().top;
@@ -34,7 +34,8 @@ export function useViewportGrid(enabled: boolean) {
             node = node.parentElement;
           }
         }
-        const available = window.innerHeight - top - trailing - 16 - Math.max(0, grids.length - 1) * 40;
+        const gap = last ? Math.max(0, last.getBoundingClientRect().bottom - top - grids.reduce((sum, el) => sum + el.getBoundingClientRect().height, 0)) : 0;
+        const available = window.innerHeight - top - trailing - 16 - gap;
         if (index >= 0) grid.style.setProperty('--viewport-grid-height', `${Math.max(120, Math.floor(available / Math.max(1, grids.length)))}px`);
       });
     };
