@@ -400,6 +400,7 @@ export function PersonnelAssignmentDialog({
                   <UserPlus className="h-4 w-4" />
                   Add Personnel
                 </Label>
+                <AddProjectVendor projectId={selectedProject}/>
                 {rateBrackets.length === 0 ? (
                   <div className="py-2 text-sm text-muted-foreground">
                     Define rate brackets before assigning personnel
@@ -410,7 +411,6 @@ export function PersonnelAssignmentDialog({
                   </div>
                 ) : (
                   <>
-                    <AddProjectVendor projectId={selectedProject}/>
                     <SearchInput
                       value={personnelSearch}
                       onChange={setPersonnelSearch}

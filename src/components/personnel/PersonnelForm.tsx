@@ -14,6 +14,7 @@ import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { ProjectVendorPicker } from '@/components/project-hub/ProjectVendorPicker';
 import { useProjectVendors } from '@/integrations/supabase/hooks/useProjectVendors';
 import { projectVendorAllowed } from '@/lib/projectVendors';
+import { toast } from 'sonner';
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { employerIds } from '@/lib/personnelEmployer';
 import { PhotoUpload } from "./PhotoUpload";
@@ -117,7 +118,7 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
   });
 
   const onSubmit = async (data: PersonnelFormData) => {
-    if (projectId && data.vendor_id !== personnel?.vendor_id && !projectVendorAllowed(projectVendors.data, data.vendor_id || '')) return;
+    if (projectId && data.vendor_id !== personnel?.vendor_id && !projectVendorAllowed(projectVendors.data, data.vendor_id || '')) { toast.error('Add this vendor to the project first'); return; }
     // Sync hourly_rate with pay_rate so time tracking uses the correct rate
     const payRate = data.pay_rate || 0;
     

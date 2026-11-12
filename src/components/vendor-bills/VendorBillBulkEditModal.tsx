@@ -24,6 +24,7 @@ import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { VendorBill } from "@/integrations/supabase/hooks/useVendorBills";
+import { AddProjectVendor } from '@/components/project-hub/ProjectVendorPicker';
 
 interface BulkEditUpdates {
   vendor_id?: string;
@@ -70,7 +71,8 @@ export function VendorBillBulkEditModal({
   const [progress, setProgress] = useState<BulkEditProgress | null>(null);
   const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
 
-  const { data: vendors } = useVendors();
+  const projectIds = [...new Set(selectedBills.flatMap(bill => bill.line_items?.map(item => item.project_id).filter((id): id is string => !!id) ?? []))];
+  const { data: vendors } = useVendors(projectIds);
   const { data: categories } = useQuery({
     queryKey: ["expense-categories"],
     queryFn: async () => {
@@ -241,6 +243,7 @@ export function VendorBillBulkEditModal({
                 ))}
               </SelectContent>
             </Select>
+            {projectIds.map(project => <AddProjectVendor key={project} projectId={project}/>)}
           </div>
 
           {/* Category (for line items) */}
