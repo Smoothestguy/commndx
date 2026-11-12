@@ -1,6 +1,6 @@
 # Join page agency branding
-- [ ] Token-only agency name/logo on EN/ES registration and confirmation; FRG-only links unchanged.
-- [ ] Anonymous exact-token and non-vendor browser checks, confirmation without production submissions, focused tests and clean preview.
+- [x] Existing token-validated get_join_info now returns only agency name/logo alongside its existing fields; shared HTTPS logo validation, prominent EN/ES agency heading and small powered-by footer on registration/confirmation. FRG-only links unchanged.
+- [x] Anonymous exact DOM token showed name-only branding and no FRG header in EN/ES; live non-vendor token retained FRG. EN/ES confirmations checked with intercepted submission (no production requests). Thirteen tests passed, preview clean, no browser errors or fixtures.
 
 # Project personnel roster
 - [x] Extended assignment history with synchronized activity and server-added metadata, minimal staff roster/directory RPCs, manager-only audited membership writes and explicit manager WITH CHECK. Backfill left zero missing active location/worked people; all approved joins have membership, with a server approval trigger covering existing-location cases.
