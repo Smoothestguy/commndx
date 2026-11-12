@@ -1,9 +1,9 @@
 # Bunk trailer correction
 
 # Asset date blocker and grid widths
-- [ ] Reproduce admin truck start/end corrections on 5049; fix audited editing, verify recalculation and restore owner dates.
-- [ ] Shared compact column defaults, flexible last data column, truncation/tooltips and retained resizing across roster/personnel/attendance/assets/Event grids.
-- [ ] Verify 1440px grids and reload persistence; report the actual blocker and preserve production history.
+- [x] Reproduced admin 5049 failure: blanket project-placement overlap check rejected existing overlapping truck history, not RLS/version/date-order. Audited billing corrections now tolerate that history, retain role/version/date-order and event-conflict protections, and isolate custody bypass to the correction function.
+- [x] Shared gridSizing defaults cap initial identity widths at 220, compact chips and 100px action columns (asset date action is an icon); last unsized data column absorbs spare width, resize preferences win, truncated cells have value tooltips. Handwritten project roster shares sizing and persisted resize.
+- [x] Owner/admin UI saved both dates on open truck (Nov4–11, 8d) and ended truck (Nov2–6, 5d), read back, restored exact original timestamps/status; custody unchanged and audits retained. 1440px location/project rosters, attendance, assets, Personnel and Event grids have no trailing gutter; Name 180/190px reload persistence verified. 18 rule tests pass, preview OK, no runtime errors or verification records created.
 
 # Desktop viewport lists
 - [x] Compact, remembered project Details on Locations List; slim needs/filters/tabs, measured viewport-owned grid scrolling and pinned footer.
