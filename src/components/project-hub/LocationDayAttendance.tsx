@@ -26,7 +26,7 @@ import { LATE_ACK_PRESETS, lateAckText } from '@/lib/lateAck';
 import { punchTimeDetail } from '@/lib/punchTimes';
 import { cn } from '@/lib/utils';
 
-type Stay = { id: string; personnel_id: string; name: string; in_at: string; out_at: string | null; actual_in_at?: string | null; actual_out_at?: string | null; hours: number | null; late_minutes: number | null; late_reason: string | null; late_ack_reason: string | null; in_geofence: boolean | null; offsite_reason: string | null; synced_late: boolean | null };
+type Stay = { id: string; personnel_id: string; name: string; in_at: string; out_at: string | null; actual_in_at?: string | null; actual_out_at?: string | null; hours: number | null; late_minutes: number | null; late_reason: string | null; late_ack_reason: string | null; in_geofence: boolean | null; offsite_reason: string | null; synced_late: boolean | null;demobe?:boolean };
 const hm = (iso: string | null, tz: string) => iso ? localTime(iso, tz) : '—';
 const dayLabel = (iso: string, tz: string) => new Date(iso).toLocaleDateString('en-US', { timeZone: tz, month: '2-digit', day: '2-digit' });
 
@@ -57,9 +57,9 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
       if (win.error) throw win.error; if (open.error) throw open.error;
       const rows = [...(win.data ?? []).filter(r => r.in_at && localDay(r.in_at, tz) === day), ...(open.data ?? [])];
       const ids = [...new Set(rows.flatMap(r => r.visit_personnel_id ? [r.visit_personnel_id] : []))];
-      const meta = ids.length ? await supabase.from('visit_personnel').select('id,actual_in_at,actual_out_at,late_minutes,late_reason,late_ack_reason,in_geofence,offsite_reason,synced_late').in('id', ids) : { data: [], error: null };
+      const meta = ids.length ? await supabase.from('visit_personnel').select('id,actual_in_at,actual_out_at,late_minutes,late_reason,late_ack_reason,in_geofence,offsite_reason,synced_late,demobe_task_order_id').in('id', ids) : { data: [], error: null };
       if (meta.error) throw meta.error;
-      const toStay = (r: typeof rows[number]): Stay => { const m = meta.data?.find(x => x.id === r.visit_personnel_id); return { id: r.visit_personnel_id ?? '', personnel_id: r.personnel_id ?? '', name: [r.first_name, r.last_name].filter(Boolean).join(' '), in_at: r.in_at ?? '', out_at: r.out_at, actual_in_at: m?.actual_in_at, actual_out_at: m?.actual_out_at, hours: r.hours, late_minutes: m?.late_minutes ?? null, late_reason: m?.late_reason ?? null, late_ack_reason: m?.late_ack_reason ?? null, in_geofence: m?.in_geofence ?? null, offsite_reason: m?.offsite_reason ?? null, synced_late: m?.synced_late ?? null }; };
+      const toStay = (r: typeof rows[number]): Stay => { const m = meta.data?.find(x => x.id === r.visit_personnel_id); return { id: r.visit_personnel_id ?? '', personnel_id: r.personnel_id ?? '', name: [r.first_name, r.last_name].filter(Boolean).join(' '), in_at: r.in_at ?? '', out_at: r.out_at, actual_in_at: m?.actual_in_at, actual_out_at: m?.actual_out_at, demobe:!!m?.demobe_task_order_id, hours: r.hours, late_minutes: m?.late_minutes ?? null, late_reason: m?.late_reason ?? null, late_ack_reason: m?.late_ack_reason ?? null, in_geofence: m?.in_geofence ?? null, offsite_reason: m?.offsite_reason ?? null, synced_late: m?.synced_late ?? null }; };
       const dayStays = (win.data ?? []).filter(r => r.visit_personnel_id && r.in_at && localDay(r.in_at, tz) === day).map(toStay);
       const openStays = (open.data ?? []).filter(r => r.visit_personnel_id && r.in_at).map(toStay);
       const sigRows = (win.data ?? []).filter(r => r.personnel_id && r.in_at && localDay(r.in_at, tz) === day).map(r => ({ personnelId: r.personnel_id ?? '', name: [r.first_name, r.last_name].filter(Boolean).join(' '), signature: r.signature_url }));
@@ -129,6 +129,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
       getValue: r => [r.demobilized ? 'Demobilized' : '', r.offRoster ? 'Not on roster this day' : '', !r.stays.length ? 'Not signed in' : r.stays.some(st => (st.late_minutes ?? 0) > 0) ? 'Late' : 'On time', r.stays.some(st => st.in_geofence === false || st.offsite_reason) ? 'Off-site' : ''].filter(Boolean).join(' · '),
       render: r => { const late = r.stays.find(st => (st.late_minutes ?? 0) > 0); return <span className="flex flex-wrap items-center gap-1">
         {!r.stays.length && <Badge variant="outline">Not signed in</Badge>}
+        {r.stays.some(st=>st.demobe)&&<Badge variant="outline">Demobe</Badge>}
         {r.offRoster && <Badge variant="outline">Not on roster this day</Badge>}
         {late ? <Badge variant="outline" className={late.late_ack_reason ? 'text-warning' : 'text-destructive'} title={[late.late_reason, late.late_ack_reason].filter(Boolean).join(' · ')}>LATE {late.late_minutes}m{late.late_ack_reason ? ' · approved' : ''}</Badge> : r.stays.length > 0 && <Badge variant="outline" className="text-success">On time</Badge>}
         {late && canWrite && <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setAck({ stay: late, preset: '', text: '' })}><CheckCircle2 className="h-3 w-3 mr-1" />{late.late_ack_reason ? 'Change approval' : 'Approve late'}</Button>}

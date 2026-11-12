@@ -779,6 +779,7 @@ export function ProjectTimeEntriesTable({
                                         </Badge>
                                       )}
                                       <StatusBadge status={getStatus(entry)} />
+                                      {entry.entry_source==='demobe'&&<Badge variant="outline">Demobe</Badge>}
                                     </div>
                                     {entry.description && (
                                       <p className="text-sm text-muted-foreground line-clamp-2 mb-1">
@@ -1195,6 +1196,7 @@ export function ProjectTimeEntriesTable({
                                   </TableCell>
                                   <TableCell className="text-center">
                                     <StatusBadge status={getStatus(entry)} />
+                                    {entry.entry_source==='demobe'&&<Badge variant="outline">Demobe</Badge>}
                                   </TableCell>
                                   <TableCell>
                                     <div className="flex items-center gap-1">
