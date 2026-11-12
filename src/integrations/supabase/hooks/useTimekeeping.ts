@@ -23,6 +23,7 @@ export interface TimesheetEntry {
   hours: number; // 0 when open
   open: boolean;
   source: EntrySource;
+  demobe?:boolean;
 }
 
 export type DayCell = { day: number; night: number; open: number };
@@ -56,7 +57,10 @@ export function useWeekTimesheet(projectId: string | undefined, weekStartDate: s
         if (e) throw e;
         for (const r of v ?? []) notes[r.id] = r.notes;
       }
-      return { rows, notes };
+      const demobe=new Set<string>();
+      const stayIds=[...new Set(rows.map(r=>r.visit_personnel_id).filter(Boolean))];
+      for(let i=0;i<stayIds.length;i+=200){const r=await supabase.from('time_entries').select('visit_personnel_id').eq('project_id',projectId??'').eq('entry_source','demobe').in('visit_personnel_id',stayIds.slice(i,i+200));if(r.error)throw r.error;for(const e of r.data??[])if(e.visit_personnel_id)demobe.add(e.visit_personnel_id);}
+      return { rows, notes, demobe };
     },
   });
 
@@ -84,6 +88,7 @@ export function useWeekTimesheet(projectId: string | undefined, weekStartDate: s
         hours: segment.hours,
         open: segment.open,
         source: sourceFromNotes(q.data.notes[r.visit_id]),
+        demobe:q.data.demobe.has(r.visit_personnel_id),
       });
       }
     }

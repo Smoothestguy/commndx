@@ -12198,6 +12198,7 @@ export type Database = {
           checked_in_at: string | null
           checked_in_by: string | null
           checked_out_at: string | null
+          demobe_task_order_id: string | null
           distance_m: number | null
           early_in_reason: string | null
           early_out_reason: string | null
@@ -12228,6 +12229,7 @@ export type Database = {
           checked_in_at?: string | null
           checked_in_by?: string | null
           checked_out_at?: string | null
+          demobe_task_order_id?: string | null
           distance_m?: number | null
           early_in_reason?: string | null
           early_out_reason?: string | null
@@ -12258,6 +12260,7 @@ export type Database = {
           checked_in_at?: string | null
           checked_in_by?: string | null
           checked_out_at?: string | null
+          demobe_task_order_id?: string | null
           distance_m?: number | null
           early_in_reason?: string | null
           early_out_reason?: string | null
@@ -12282,6 +12285,13 @@ export type Database = {
           visit_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "visit_personnel_demobe_task_order_id_fkey"
+            columns: ["demobe_task_order_id"]
+            isOneToOne: false
+            referencedRelation: "location_task_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "visit_personnel_personnel_id_fkey"
             columns: ["personnel_id"]

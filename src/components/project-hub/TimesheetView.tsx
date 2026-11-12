@@ -19,6 +19,7 @@ import { EditStayTimesDialog } from '@/components/personnel/lifecycle/EditStayTi
 import { staysForCell } from '@/lib/stayEdits';
 import { useEditedStayIds } from '@/hooks/useEditStayTimes';
 import { Button } from "@/components/ui/button";
+import {Badge} from '@/components/ui/badge';
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -128,6 +129,7 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
                               <TooltipContent>D {fmtH(c.day)} / N {fmtH(c.night)}</TooltipContent></Tooltip>
                           ) : fmtH(h))}
                           <LateBadge row={late} />
+                          {cellStays.some(e=>e.demobe)&&<Badge variant="outline">Demobe</Badge>}
                           {c?.open ? <Timer className="inline h-3 w-3 ml-0.5 text-warning" aria-label="Open punch" /> : null}
                           {manual && <Pencil className="inline h-3 w-3 ml-0.5 text-muted-foreground" aria-label="Manual entry" ><title>Manual entry</title></Pencil>}
                           {canLog && <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 ml-0.5" aria-label={`Log time for ${r.name} ${d}`} onClick={() => setLog({ personnelId: r.personnel_id, personName: r.name, date: d })}><Clock className="h-3 w-3" /></Button></TooltipTrigger><TooltipContent>Log time</TooltipContent></Tooltip>}

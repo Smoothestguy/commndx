@@ -1,9 +1,9 @@
 # Bunk trailer correction
 
 # Task-order creation
-- [ ] Add effective-date current levels and capped zero-default deductions to project/Event forms; group order info, lines, options and sticky actions.
-- [ ] Add optional audited demobe time creation and later row action, preserving billing flags, TO travel choice and timesheet locks.
-- [ ] Verify 5049 current levels and temporary two-person demobe timesheets; clean all test records and run focused tests.
+- [x] Added effective-date current levels and capped zero-default deductions to project/Event forms; grouped order info, lines, options and sticky actions. Event fractional quantities preserved.
+- [x] Added optional audited demobe time creation and later row action, preserving person billing flags, TO travel choice, manual-stay locks and unique order/person protection; source flags appear in attendance, project weekly timesheet and time-entry lists.
+- [x] Owner browser verified 5049 Operator 7 / Supervisor 3 / Truck 3, automatic saved-demob prompt, two selected temporary people with 2h each and demobe flags in daily/Chicago-segmented weekly sheets, billable true/false, and later-menu duplicate protection. All test people/stays/entries/order/audits removed; pre-test requirement counts restored and zero fixtures confirmed. Phone has no horizontal overflow; existing Event Pax 500 form checked without writes. 42 focused tests passed.
 
 # Public link previews
 - [ ] Paused at owner's request; plan awaits hosting decision. Do not implement while pending.

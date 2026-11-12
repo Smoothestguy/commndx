@@ -510,7 +510,7 @@ export function useLogManualTime(projectId: string | undefined) {
   const inv = useInv(projectId);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (i: { personnel_id: string; location_id: string; day: string; in_at: string; out_at: string; note?: string; assignRole?: string; confirmOtherOpen?: boolean }) => {
+    mutationFn: async (i: { personnel_id: string; location_id: string; day: string; in_at: string; out_at: string; note?: string; assignRole?: string; confirmOtherOpen?: boolean; demobeTaskOrderId?:string }) => {
       if (!projectId || Date.parse(i.out_at) <= Date.parse(i.in_at)) throw new Error('Valid project and time out after time in required');
       const {data: location,error:locationError}=await supabase.from('project_locations').select('project_id,timezone').eq('id',i.location_id).single();
       if(locationError)throw locationError;
@@ -529,6 +529,11 @@ export function useLogManualTime(projectId: string | undefined) {
       const {data:member,error:memberError}=await supabase.from('personnel_project_assignments').select('id').eq('project_id',projectId).eq('personnel_id',i.personnel_id).limit(1);
       if(memberError)throw memberError;
       if(!member?.length)throw new Error('Person must belong to this project');
+      if(i.demobeTaskOrderId){
+        const existing=await db.from('visit_personnel').select('id').eq('demobe_task_order_id',i.demobeTaskOrderId).eq('personnel_id',i.personnel_id).maybeSingle();
+        if(existing.error)throw existing.error;
+        if(existing.data)throw new Error('Demobe time already exists for this person and order; edit the existing stay instead.');
+      }
       if(i.assignRole){
         const {data:previous,error:pe}=await supabase.from('location_assignments').select('id,assigned_at,unassigned_at,status,role_label').eq('location_id',i.location_id).eq('personnel_id',i.personnel_id).maybeSingle();if(pe)throw pe;
         if(previous?.unassigned_at)throw new Error('This person has an ended assignment. Record this day without reassignment to preserve their historical removal.');
@@ -549,13 +554,14 @@ export function useLogManualTime(projectId: string | undefined) {
       if (error) throw error;
       const { data: savedStay, error: pErr } = await db.from("visit_personnel").insert({
         visit_id: v.id, personnel_id: i.personnel_id, checked_in_at: i.in_at, checked_out_at: i.out_at, checked_in_by: user?.id ?? null,
+        ...(i.demobeTaskOrderId?{demobe_task_order_id:i.demobeTaskOrderId}:{}),
       }).select('id').single();
       if (pErr) {
         // A failed personnel insert leaves no stay/evidence: remove only its empty shell.
         await db.from('location_visits').delete().eq('id',v.id);
         throw new Error(pErr.message || 'Unable to save manual stay');
       }
-      const audit=await supabase.from('audit_logs').insert({user_id:user.id,user_email:user.email||'unknown',action_type:'stay_manual_add',resource_type:'visit_personnel',resource_id:savedStay.id,changes_after:{in_at:i.in_at,out_at:i.out_at,note:i.note??null},metadata:{project_id:projectId,location_id:i.location_id,assignment_role:i.assignRole??null,confirmed_other_open_stays:i.confirmOtherOpen?(overlap??[]).filter(r=>!r.out_at).map(r=>r.visit_personnel_id):[]},success:true});
+      const audit=await supabase.from('audit_logs').insert({user_id:user.id,user_email:user.email||'unknown',action_type:i.demobeTaskOrderId?'demobe_time_add':'stay_manual_add',resource_type:'visit_personnel',resource_id:savedStay.id,changes_after:{in_at:i.in_at,out_at:i.out_at,note:i.note??null},metadata:{project_id:projectId,location_id:i.location_id,demobe_task_order_id:i.demobeTaskOrderId??null,assignment_role:i.assignRole??null,confirmed_other_open_stays:i.confirmOtherOpen?(overlap??[]).filter(r=>!r.out_at).map(r=>r.visit_personnel_id):[]},success:true});
       if(audit.error)throw new Error('Time saved, but audit recording failed. Do not add it again; refresh and contact your administrator.');
       await recomputeAttendanceFromVisits(i.location_id, await visitAttendanceDates(v.id));
     },
