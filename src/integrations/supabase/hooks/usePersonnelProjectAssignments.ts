@@ -625,7 +625,7 @@ export function useUpdateAssignmentBillRate() {
   });
 }
 
-// Hard delete assignment
+// Retire assignment without deleting historical rates or work linkage.
 export function useDeletePersonnelAssignment() {
   const queryClient = useQueryClient();
 
@@ -633,7 +633,7 @@ export function useDeletePersonnelAssignment() {
     mutationFn: async (assignmentId: string) => {
       const { error } = await supabase
         .from("personnel_project_assignments")
-        .delete()
+        .update({ status: 'removed', active: false, unassigned_at: new Date().toISOString(), unassigned_reason: 'Removed from project roster' })
         .eq("id", assignmentId);
 
       if (error) throw error;
