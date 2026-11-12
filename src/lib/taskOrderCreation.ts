@@ -25,7 +25,7 @@ export function needsDemobePrompt(kind:TaskOrderKind,lines:ReturnType<typeof cre
   return kind==='demobilization'||kind==='decrease'&&lines.some(l=>-l.qty_delta>=currentLevel(levels,l));
 }
 export function nextTaskOrderNumber(numbers:string[]) {
-  return `TO-${Math.max(0,...numbers.map(n=>/^TO-(\d+)$/i.exec(n.trim())).map(m=>m?Number(m[1]):0))+1}`;
+  return `TO-${Math.max(0,...numbers.map(n=>/^(?:TO-)?(\d+)$/i.exec(n.trim())).map(m=>m?Number(m[1]):0))+1}`;
 }
 export function editableLevels(levels:AuthorizationLevel[],oldLines:{line_kind:string;label:string;qty_delta:number}[]) {
  const result=levels.map(l=>({...l}));
