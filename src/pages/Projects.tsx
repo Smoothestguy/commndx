@@ -417,12 +417,12 @@ const Projects = () => {
     <>
       <SEO
         title="Projects"
-        desktopCompact
         description="Manage and track all your business projects with Command X"
         keywords="project management, customer projects, project tracking, project status"
       />
       <PageLayout
         title="Projects"
+        desktopCompact
         description={isMobile ? undefined : "Manage customer projects and track their status"}
         actions={
           !isMobile ? (
