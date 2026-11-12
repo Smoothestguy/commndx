@@ -24,6 +24,7 @@ import { Copy, Link2, Loader2, MessageSquare, MoreHorizontal, Plus, X } from 'lu
 import { toast } from 'sonner';
 import { CustomerPortalLinks } from './CustomerPortalLinks';
 import { useProject } from '@/integrations/supabase/hooks/useProjects';
+import { usePublicLang } from '@/lib/publicLang';
 
 export function ProjectJoinLinks({ projectId, locationId, iconOnly = false, menu = false }: { projectId: string; locationId?: string; iconOnly?: boolean; menu?: boolean }) {
   const { isAdmin, isManager } = useUserRole();
@@ -40,6 +41,8 @@ export function ProjectJoinLinks({ projectId, locationId, iconOnly = false, menu
 }
 function JoinLinksDialog({ projectId, locationId }: { projectId: string; locationId?: string }) {
   const { user } = useAuth();
+  const { tr } = usePublicLang();
+  const { data: project } = useProject(projectId);
   const { data: locations = [] } = useProjectLocations(projectId);
   const { data: vendors } = useProjectVendors(projectId);
   const { data: customers = [] } = useCustomers();
@@ -54,7 +57,8 @@ function JoinLinksDialog({ projectId, locationId }: { projectId: string; locatio
   const url = selected ? publicJoinUrl(selected) : '';
   const selectedLink = links.data?.find(link => link.id === selected);
   const agencyName = selectedLink?.agency?.name?.trim();
-  const shareText = agencyName ? `${agencyName} sign-up: ${url}` : url;
+  const shareSite = selectedLink?.location_id ? locations.find(location => location.id === selectedLink.location_id)?.name : project?.name;
+  const shareText = `${agencyName ? `${agencyName} ` : ''}${tr('sign-up', 'registro')}${shareSite ? ` — ${shareSite}` : ''}: ${url}`;
   useEffect(() => { let live = true; setQr(''); if (url) import('qrcode').then(({ default: QRCode }) => QRCode.toDataURL(url, { width: 320, margin: 2 })).then(value => { if (live) setQr(value); }).catch(() => { if (live) toast.error('Unable to create QR code'); }); return () => { live = false; }; }, [url]);
   const copy = async (value: string) => { try { await navigator.clipboard.writeText(value); toast.success('Join link copied'); } catch { toast.error('Select and copy the link'); } };
   return <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Join links</DialogTitle></DialogHeader>
