@@ -12,3 +12,9 @@ test('departure before arrival is rejected', () => {
 test('current placement may retain an open end date', () => {
   expect(placementDatesValid('2026-11-01', '', false)).toBe(true);
 });
+test('manager can change both start and end on the open truck placement', () => {
+  expect(placementDatesValid('2026-11-04', '2026-11-11', false)).toBe(true);
+});
+test('manager can change both start and end on the ended truck placement', () => {
+  expect(placementDatesValid('2026-11-02', '2026-11-06', true)).toBe(true);
+});
