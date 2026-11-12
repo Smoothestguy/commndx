@@ -54,7 +54,7 @@ export function ProjectStats({ projects, individualCount = 0, teamCount = 0 }: P
   const displayStats = isMobile ? stats.filter(s => s.showOnMobile) : stats;
 
   return (
-    <div className="grid gap-1.5 sm:gap-4 mb-4 sm:mb-6 grid-cols-2 md:grid-cols-4 w-full">
+    <div className="list-stat-strip grid gap-1.5 sm:gap-4 mb-4 sm:mb-6 grid-cols-2 md:grid-cols-4 w-full">
       {displayStats.map((stat) => {
         const Icon = stat.icon;
         return (

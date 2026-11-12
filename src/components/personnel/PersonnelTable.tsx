@@ -605,6 +605,7 @@ export function PersonnelTable({
       {/* Desktop Table - hidden below 1180px */}
       <div className="hidden min-[1180px]:block">
         <EnhancedDataTable
+          fillViewport
           tableId="personnel"
           data={personnel}
           columns={columns.filter(c => c.key !== "rate" || isAdmin || isManager)}

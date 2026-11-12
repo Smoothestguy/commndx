@@ -182,9 +182,10 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
   const openRequests = (reqs.data ?? []).filter(r => r.status === 'open' && locations.find(l => l.id === r.location_id)?.status !== 'closed');
   return (
     <TooltipProvider delayDuration={150}>
-      <div className="space-y-3">
-        <div className="rounded-lg border bg-card p-2.5 space-y-2" aria-label="Needs across locations">
-          <div className="flex flex-wrap items-center gap-1.5">
+      <div className="space-y-3 min-[1180px]:space-y-2">
+        <div className="min-[1180px]:flex min-[1180px]:items-center min-[1180px]:gap-3">
+        <div className="border-y bg-card p-2 space-y-2 min-[1180px]:min-w-0 min-[1180px]:flex-1" aria-label="Needs across locations">
+          <div className="flex flex-wrap items-center gap-1.5 min-[1180px]:flex-nowrap min-[1180px]:overflow-x-auto min-[1180px]:whitespace-nowrap">
             <span className="inline-flex items-center gap-1 text-xs font-semibold mr-1"><Users className="h-3.5 w-3.5 text-primary" />{totals.crew} crew · {pl(live.length, 'location')}</span>
             {chips.filter(c => c.n > 0).map(c => (
               <button key={c.key} type="button" onClick={() => toggle(c.key)} aria-pressed={filter === c.key}
@@ -196,7 +197,7 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
             {chips.every(c => c.n === 0) && blocks === 0 && insuranceDue.length === 0 && <span className="text-xs text-success">All locations on track</span>}
           </div>
           {canWrite && openRequests.length > 0 && (
-            <ul className="divide-y border-t pt-1">
+            <details className="text-xs"><summary className="cursor-pointer">Open requests ({openRequests.length})</summary><ul className="divide-y border-t pt-1 max-h-40 overflow-auto">
               {openRequests.slice(0, 5).map(q => {
                 const loc = locations.find(l => l.id === q.location_id);
                 return <li key={q.id} className="flex flex-wrap items-center justify-between gap-2 py-1 text-xs">
@@ -204,11 +205,11 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
                   <RequestActions r={q} compact />
                 </li>;
               })}
-            </ul>
+            </ul></details>
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 min-[1180px]:shrink-0">
           <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="Status filter">
             {(['active', 'inactive', 'all'] as const).map(s => <Button key={s} size="sm" variant={status === s ? 'secondary' : 'ghost'} className="h-7 px-2 text-xs capitalize" onClick={() => setStatus(s)}>{s}</Button>)}
           </div>
@@ -217,13 +218,14 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
           <span className="text-xs text-muted-foreground ml-auto">{visible.length} shown</span>
         </div>
 
-        <EnhancedDataTable tableId={`locations-command:${projectId}`} data={visible.map(r => ({ ...r, id: r.l.id }))} columns={columns}
+        </div>
+        <EnhancedDataTable fillViewport tableId={`locations-command:${projectId}`} data={visible.map(r => ({ ...r, id: r.l.id }))} columns={columns}
           rowHref={r => locationHref(projectId, r.l.id)} exportName="locations" attention={r => r.severity !== 'ok' ? 'Needs attention' : null} emptyText="No locations match." />
 
         {closedRows.length > 0 && <div className="border rounded-md" aria-label="Closed locations">
           <button type="button" className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium" aria-expanded={showClosed} onClick={() => setShowClosed(v => !v)}>
             <span>Closed <span className="text-muted-foreground font-normal">({closedRows.length})</span></span><span className="text-xs text-muted-foreground">{showClosed ? 'Hide' : 'Show'}</span></button>
-          {showClosed && <ul className="divide-y border-t">{closedRows.map(r => <li key={r.l.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 text-sm text-muted-foreground">
+          {showClosed && <ul className="divide-y border-t max-h-40 overflow-auto">{closedRows.map(r => <li key={r.l.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 text-sm text-muted-foreground">
             <Link to={locationHref(projectId, r.l.id)} className="hover:underline hover:text-primary">{r.l.name}</Link>
             <span className="text-xs">Closed{r.l.closeout_date ? ` ${r.l.closeout_date}` : ''} · <Dates l={r.l} /></span></li>)}</ul>}
         </div>}

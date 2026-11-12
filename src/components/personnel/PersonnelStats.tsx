@@ -47,7 +47,7 @@ export const PersonnelStats = () => {
   const displayStats = isMobile ? stats.filter(s => s.showOnMobile) : stats;
 
   return (
-    <div className="grid grid-cols-2 gap-1.5 md:grid-cols-5 sm:gap-4 w-full max-w-full overflow-hidden">
+    <div className="list-stat-strip grid grid-cols-2 gap-1.5 md:grid-cols-5 sm:gap-4 w-full max-w-full overflow-hidden">
       {displayStats.map((stat) => (
         <StatCard
           key={stat.title}

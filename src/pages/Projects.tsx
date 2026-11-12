@@ -387,6 +387,7 @@ const Projects = () => {
 
   const renderProjectTable = (projectList: Project[], tableId: string) => (
     <EnhancedDataTable
+      fillViewport
       tableId={tableId}
       data={projectList}
       columns={columns}
@@ -416,6 +417,7 @@ const Projects = () => {
     <>
       <SEO
         title="Projects"
+        desktopCompact
         description="Manage and track all your business projects with Command X"
         keywords="project management, customer projects, project tracking, project status"
       />
@@ -431,6 +433,7 @@ const Projects = () => {
           ) : undefined
         }
       >
+        <div data-viewport-list className="desktop-list-page">
         <PullToRefreshWrapper onRefresh={refetch} isRefreshing={isFetching}>
           {!isLoading && !error && allProjects && (
             <ProjectStats
@@ -534,23 +537,7 @@ const Projects = () => {
                 </ProjectSection>
               </div>
               <div className="hidden min-[1180px]:block">
-                <ProjectSection
-                  title="Team Projects"
-                  icon={<UsersIcon className="h-4 w-4" />}
-                  count={categorization.counts.team}
-                  storageKey="projects-section-team"
-                  defaultOpen
-                >
-                  {renderProjectTable(categorization.teamProjects, "projects-team")}
-                </ProjectSection>
-                <ProjectSection
-                  title="Individual Contracts"
-                  icon={<User className="h-4 w-4" />}
-                  count={categorization.counts.individual}
-                  storageKey="projects-section-individual"
-                >
-                  {renderProjectTable(categorization.individualProjects, "projects-individual")}
-                </ProjectSection>
+                {renderProjectTable(filteredProjects, 'projects-active')}
               </div>
             </>
           )}
@@ -566,6 +553,7 @@ const Projects = () => {
             </>
           )}
         </PullToRefreshWrapper>
+        </div>
 
         {/* Floating bulk action bar */}
         {canArchive && selectedIds.size > 0 && (

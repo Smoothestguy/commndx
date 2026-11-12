@@ -221,7 +221,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
   const roleOptions = [...ROLE_TAGS] as string[];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 min-[1180px]:space-y-2">
       {!editTargetId && <><div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-muted-foreground whitespace-nowrap">Sites / Locations</h3>
         <div className="flex items-center gap-2">

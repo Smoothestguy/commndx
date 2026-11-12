@@ -170,13 +170,13 @@ const Personnel = () => {
   const bulk = canManage ? <PersonnelBulkActions people={selectedPeople} worksFor={worksFor} tagsByPerson={tagData?.byPerson} /> : null;
 
   return (
-    <PageLayout title="Personnel Management">
+    <PageLayout title="Personnel Management" desktopCompact={seg !== 'bench'}>
       <SEO
         title="Personnel Management"
         description="Manage your workforce with complete personnel profiles, I-9 compliance, E-Verify tracking, and certifications"
       />
 
-      <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden">
+      <div data-viewport-list={seg !== 'bench' || undefined} className="space-y-4 sm:space-y-6 min-[1180px]:space-y-2 w-full max-w-full overflow-hidden">
         <PersonnelStats />
 
         {/* Pending Registrations */}
