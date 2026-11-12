@@ -344,6 +344,13 @@
       "when": 1794523665478,
       "tag": "0048_project_roster_directory_and_join",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1794523769967,
+      "tag": "0049_project_roster_audit_fields",
+      "breakpoints": true
     }
   ]
 }
