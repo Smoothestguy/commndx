@@ -13575,6 +13575,20 @@ export type Database = {
         }
         Returns: Json
       }
+      project_personnel_directory: {
+        Args: { p_search?: string }
+        Returns: {
+          bench_rank: number
+          employer_customer_id: string
+          first_name: string
+          id: string
+          last_name: string
+          non_billable: boolean
+          on_bench: boolean
+          status: string
+          vendor_id: string
+        }[]
+      }
       project_personnel_roster: {
         Args: { p_project: string }
         Returns: {

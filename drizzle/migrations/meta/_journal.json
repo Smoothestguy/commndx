@@ -337,6 +337,13 @@
       "when": 1794523576086,
       "tag": "0047_project_personnel_roster",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1794523665478,
+      "tag": "0048_project_roster_directory_and_join",
+      "breakpoints": true
     }
   ]
 }
