@@ -537,7 +537,12 @@ const Projects = () => {
                 </ProjectSection>
               </div>
               <div className="hidden min-[1180px]:block">
-                {renderProjectTable(filteredProjects, 'projects-active')}
+                <ProjectSection title="Team Projects" icon={<UsersIcon className="h-4 w-4" />} count={categorization.counts.team} storageKey="projects-section-team" defaultOpen>
+                  {renderProjectTable(categorization.teamProjects, 'projects-team')}
+                </ProjectSection>
+                <ProjectSection title="Individual Contracts" icon={<User className="h-4 w-4" />} count={categorization.counts.individual} storageKey="projects-section-individual">
+                  {renderProjectTable(categorization.individualProjects, 'projects-individual')}
+                </ProjectSection>
               </div>
             </>
           )}
