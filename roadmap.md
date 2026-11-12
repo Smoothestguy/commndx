@@ -1,3 +1,7 @@
+# Join page agency branding
+- [ ] Token-only agency name/logo on EN/ES registration and confirmation; FRG-only links unchanged.
+- [ ] Anonymous exact-token and non-vendor browser checks, confirmation without production submissions, focused tests and clean preview.
+
 # Project personnel roster
 - [x] Extended assignment history with synchronized activity and server-added metadata, minimal staff roster/directory RPCs, manager-only audited membership writes and explicit manager WITH CHECK. Backfill left zero missing active location/worked people; all approved joins have membership, with a server approval trigger covering existing-location cases.
 - [x] Shared searchable FRG/Agency/Customer directory and bench stars, Crew roster count/removal, scoped location/crew/day/lodging/asset/contact/demobe choices and add affordances. Existing dated attendance/signature history and global Personnel directory retained; roster add sends no messages. Legacy assignment delete now retires history.

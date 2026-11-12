@@ -1,5 +1,15 @@
 import { it, expect } from 'bun:test';
-import { canReviewJoinRequests, pendingJoinRequests, joinExpiry, joinFormSchema, joinResultSchema, joinToken, publicJoinUrl } from './projectJoin';
+import { canReviewJoinRequests, pendingJoinRequests, joinExpiry, joinFormSchema, joinInfoSchema, joinResultSchema, joinToken, publicJoinUrl } from './projectJoin';
+it('token info retains DOM agency branding but strips vendor financial fields', () => {
+  expect(joinInfoSchema.parse({ valid: true, agency_name: 'DOM SOLUTIONS', agency_logo_url: null, pay_rate: 100, vendor_id: 'private' })).toEqual({ valid: true, agency_name: 'DOM SOLUTIONS', agency_logo_url: null });
+});
+it('token info accepts FRG tokens without an agency', () => {
+  expect(joinInfoSchema.parse({ valid: true, project_name: 'Florida Floods', agency_name: null }).agency_name).toBeNull();
+});
+it('token info rejects unsafe agency logo protocols without losing the agency name', () => {
+  const info = joinInfoSchema.parse({ valid: true, agency_name: 'DOM SOLUTIONS', agency_logo_url: 'javascript:alert(1)' });
+  expect(info.agency_name).toBe('DOM SOLUTIONS'); expect(info.agency_logo_url).toBeNull();
+});
 it('join links default to a 30-day lifetime', () => { expect(joinExpiry(30, new Date('2026-11-06T00:00:00Z'))).toBe('2026-12-06T00:00:00.000Z'); });
 it('join expiry must be a positive whole day count', () => { expect(() => joinExpiry(0)).toThrow(); expect(() => joinExpiry(1.5)).toThrow(); });
 const form = { first: 'Patrick', last: 'Ricci', phone: '2815550100', email: '' };
