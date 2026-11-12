@@ -1,0 +1,9 @@
+import {it,expect} from 'bun:test';
+import {deductionDrafts,creationLines,needsDemobePrompt} from './taskOrderCreation';
+const levels=[{line_kind:'position',label:'Operator',authorized:7},{line_kind:'position',label:'Supervisor',authorized:3},{line_kind:'asset',label:'Truck',authorized:3}];
+it('prefills each current label with zero deduction',()=>expect(deductionDrafts(levels).map(l=>[l.label,l.qty])).toEqual([['Operator','0'],['Supervisor','0'],['Truck','0']]));
+it('skips zero deductions',()=>expect(creationLines('decrease',deductionDrafts(levels).map(l=>({...l,qty:l.label==='Operator'?'2':'0'})),levels)).toEqual([{line_kind:'position',label:'Operator',qty_delta:-2}]));
+it('caps operator deductions at seven',()=>expect(()=>creationLines('decrease',deductionDrafts(levels).map(l=>({...l,qty:l.label==='Operator'?'8':'0'})),levels)).toThrow('exceeds'));
+it('prompts a decrease zeroing supervisor three',()=>expect(needsDemobePrompt('decrease',[{line_kind:'position',label:'Supervisor',qty_delta:-3}],levels)).toBe(true));
+it('does not prompt a partial decrease',()=>expect(needsDemobePrompt('decrease',[{line_kind:'position',label:'Supervisor',qty_delta:-1}],levels)).toBe(false));
+it('always prompts a saved demobilization',()=>expect(needsDemobePrompt('demobilization',[{line_kind:'asset',label:'Truck',qty_delta:-1}],levels)).toBe(true));
