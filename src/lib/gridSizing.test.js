@@ -1,0 +1,6 @@
+import { expect, test } from 'bun:test';
+import { defaultColumnWidth, gridColumnWidths } from './gridSizing';
+test('Name defaults to 220 even when a legacy definition requests 320', () => { expect(defaultColumnWidth({key:'name',header:'Name',width:320})).toBe(220); });
+test('Status is compact and Actions is narrow', () => { expect(defaultColumnWidth({key:'status',header:'Status',width:300})).toBe(120); expect(defaultColumnWidth({key:'actions',header:'Actions'})).toBe(100); });
+test('last data column consumes spare space, not Actions or Name', () => { expect(gridColumnWidths([{key:'name',header:'Name'},{key:'notes',header:'Notes'},{key:'actions',header:'Actions'}],{},1000,32)).toEqual([220,648,100]); });
+test('a user-resized column retains its width after restoring saved preferences', () => { expect(gridColumnWidths([{key:'name',header:'Name'},{key:'status',header:'Status'},{key:'notes',header:'Notes'},{key:'actions',header:'Actions'}],JSON.parse('{"name":180}'),1000,32)).toEqual([180,100,588,100]); });

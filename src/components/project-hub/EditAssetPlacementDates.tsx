@@ -24,10 +24,15 @@ export function EditAssetPlacementDates({ row, timezone = 'America/Chicago', onC
       <div><Label htmlFor="placement-reason">Correction reason</Label><Textarea id="placement-reason" value={reason} onChange={e => setReason(e.target.value)} /></div>
       {end && end < start && <p role="alert" className="text-destructive text-sm">End date must not precede start date.</p>}
       <p className="text-xs text-muted-foreground">{timezone} · Placement status and responsibility history remain unchanged.</p>
-    </div><DialogFooter><Button variant="outline" disabled={busy} onClick={onClose}>Cancel</Button><Button disabled={busy || !reason.trim() || !placementDatesValid(start, end, row.status !== 'active' || !!row.end_at)} onClick={async () => {
+    </div><DialogFooter><Button variant="outline" disabled={busy} onClick={onClose}>Cancel</Button><Button disabled={busy || !reason.trim() || !placementDatesValid(start, end, row.status !== 'active')} onClick={async () => {
       setBusy(true);
       try {
-        const { error } = await supabase.rpc('correct_asset_placement_dates', { p_assignment_id: row.id, p_start_at: locationTimeIso(start, '08:00', timezone), p_end_at: end ? locationTimeIso(end, '17:00', timezone) : null, p_reason: reason.trim(), p_expected_updated_at: row.updated_at });
+        const originalStart = localDay(row.start_at, timezone);
+        const originalEnd = row.end_at ? localDay(row.end_at, timezone) : '';
+        const startAt = start === originalStart ? row.start_at : locationTimeIso(start, '08:00', timezone);
+        const endAt = end === originalEnd ? row.end_at : end ? locationTimeIso(end, '17:00', timezone) : null;
+        if (!startAt) throw new Error('Enter a valid start date');
+        const { error } = await supabase.rpc('correct_asset_placement_dates', { p_assignment_id: row.id, p_start_at: startAt, p_end_at: endAt, p_reason: reason.trim(), p_expected_updated_at: row.updated_at });
         if (error) throw error;
         await qc.invalidateQueries(); toast.success('Placement dates corrected'); onClose();
       } catch (e) { toast.error(e && typeof e === 'object' && 'message' in e ? String(e.message) : 'Date correction failed'); } finally { setBusy(false); }
