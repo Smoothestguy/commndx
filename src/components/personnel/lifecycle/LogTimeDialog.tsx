@@ -17,6 +17,8 @@ import { useProject } from '@/integrations/supabase/hooks/useProjects';
 import { localDay } from "@/lib/signinSheets";
 import { useProjectDayPeople } from '@/hooks/useProjectDayPeople';
 import { Checkbox } from '@/components/ui/checkbox';
+import { AddToProject } from '@/components/project-hub/ProjectPersonnelRoster';
+import { useProjectPersonnelRoster } from '@/integrations/supabase/hooks/useProjectPersonnelRoster';
 
 const nm = (r: { first_name: string | null; last_name: string | null }) => [r.first_name, r.last_name].filter(Boolean).join(" ") || "Unknown";
 
@@ -43,6 +45,7 @@ export function LogTimeDialog({ open, onOpenChange, projectId, personnelId, pers
   const [assign, setAssign] = useState(false);
   const [role, setRole] = useState('Operator');
   const projectPeople = useProjectDayPeople(projectId, open && addToDay);
+  const projectRoster=useProjectPersonnelRoster(projectId,open);
   const [lastOpen, setLastOpen] = useState(false);
   if (open !== lastOpen) {
     setLastOpen(open);
@@ -53,7 +56,8 @@ export function LogTimeDialog({ open, onOpenChange, projectId, personnelId, pers
   const { data: roster = [], isLoading: rosterLoading } = useAttendanceRoster(projectId,locationId,day,zone,open);
   const range = manualTimeRange(day, tin, tout, zone, outDay);
   const rosterPeople = roster.map(p => ({ personnel_id: p.personnel_id, first_name: p.personnel?.first_name ?? null, last_name: p.personnel?.last_name ?? null }));
-  const scopedPeople = addToDay ? [...new Map([...projectPeople.data ?? [], ...rosterPeople].map(p => [p.personnel_id, p])).values()] : locationRosterPeople(locationId ? rosterPeople : people, locationId, roster);
+  const currentPeople=(projectRoster.data??[]).map(p=>({personnel_id:p.id,first_name:p.first_name,last_name:p.last_name}));
+  const scopedPeople = addToDay ? [...new Map([...currentPeople, ...rosterPeople].map(p => [p.personnel_id, p])).values()] : locationRosterPeople(locationId ? rosterPeople : currentPeople, locationId, roster);
   const valid = !!pid && !!loc && !!day && !!range && (addToDay ? scopedPeople.some(p => p.personnel_id === pid) && (!assign || !!role.trim()) : !locationId || roster.some(p => p.personnel_id === pid));
   const sortedPeople = [...scopedPeople].filter(p => nm(p).toLowerCase().includes(search.toLowerCase())).sort((a, b) => nm(a).localeCompare(nm(b)));
   useEffect(() => { if (open && !defaultDate && !tin && !tout && locations.length) { const date=localDay(new Date().toISOString(),zone);setDay(date);setOutDay(date); } },[open,zone,locations.length,defaultDate,tin,tout]);
@@ -64,11 +68,12 @@ export function LogTimeDialog({ open, onOpenChange, projectId, personnelId, pers
         <DialogHeader><DialogTitle>{addToDay ? 'Add person to this day' : 'Log time'}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div><Label>Person</Label>
+            {!personnelId&&<AddToProject projectId={projectId}/>}
             {addToDay && <Input aria-label="Search project personnel" placeholder="Search name" value={search} onChange={e => setSearch(e.target.value)} className="mb-2" />}
             {personnelId ? <p className="text-sm font-medium py-2">{personName ?? "Selected person"}</p> : (
               <Select value={pid} onValueChange={setPid} disabled={!!locationId && rosterLoading}>
                 <SelectTrigger className="h-11"><SelectValue placeholder="Select person" /></SelectTrigger>
-                <SelectContent>{sortedPeople.map((p) => <SelectItem key={p.personnel_id} value={p.personnel_id}>{nm(p)}</SelectItem>)}</SelectContent>
+                <SelectContent>{!sortedPeople.length&&<SelectItem value="__empty" disabled>No personnel on this project yet</SelectItem>}{sortedPeople.map((p) => <SelectItem key={p.personnel_id} value={p.personnel_id}>{nm(p)}</SelectItem>)}</SelectContent>
               </Select>
             )}
           </div>

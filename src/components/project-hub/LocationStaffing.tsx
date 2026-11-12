@@ -5,6 +5,8 @@ import { JoinRequests } from './JoinRequests';
 import { QuickAddPerson } from './QuickAddPerson';
 import { useLocationProjectId, useProjectVendors } from '@/integrations/supabase/hooks/useProjectVendors';
 import { AddProjectVendor } from './ProjectVendorPicker';
+import { AddToProject } from './ProjectPersonnelRoster';
+import { useProjectPersonnelRoster } from '@/integrations/supabase/hooks/useProjectPersonnelRoster';
 import { useProjectAgencies } from '@/hooks/useProjectAgencies';
 import { useUserRole } from '@/hooks/useUserRole';
 import { LogTimeDialog } from '@/components/personnel/lifecycle/LogTimeDialog';
@@ -115,8 +117,8 @@ function RequirementsDialog({ locationId, open, onOpenChange }: { locationId: st
 export function AssignDialog({ locationId, open, onOpenChange, assignedIds, roleOptions, onAssigned, defaultRole }: {
   defaultRole?: string; locationId: string; open: boolean; onOpenChange: (o: boolean) => void; assignedIds: Set<string>; roleOptions: string[]; onAssigned?: (ids: string[]) => void;
 }) {
-  const { data: people = [], isLoading } = useActivePersonnelLite(open);
   const { data: pickerProjectId } = useLocationProjectId(locationId);
+  const { data: people = [], isLoading } = useProjectPersonnelRoster(pickerProjectId,open);
   const pickerVendors = useProjectVendors(pickerProjectId);
   const assign = useAssignPersonnel();
   const { isAdmin, isManager } = useUserRole();
@@ -134,11 +136,10 @@ export function AssignDialog({ locationId, open, onOpenChange, assignedIds, role
     const s = q.trim().toLowerCase();
     const digits = s.replace(/\D/g, "");
     return people.filter((p) => {
-      if (p.vendor_id && !pickerVendors.data.some(v => v.id === p.vendor_id)) return false;
       if (!matchesAllTags(tagData?.byPerson[p.id], tags)) return false;
       if (!s) return true;
       const name = `${p.first_name ?? ""} ${p.last_name ?? ""}`.toLowerCase();
-      return name.includes(s) || (!!digits && (p.phone ?? "").replace(/\D/g, "").includes(digits));
+      return name.includes(s);
     }).sort(pickerCompare).slice(0, 200);
   }, [people, q, tags, tagData, pickerVendors.data]);
 
@@ -150,13 +151,13 @@ export function AssignDialog({ locationId, open, onOpenChange, assignedIds, role
       <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
         <DialogHeader><DialogTitle>Assign personnel</DialogTitle></DialogHeader>
         {(isAdmin || isManager) && <Button size="sm" variant="outline" onClick={() => setQuick(v => !v)}><Plus className="h-4 w-4 mr-1" />Quick add</Button>}
-        {!quick && pickerProjectId && <AddProjectVendor projectId={pickerProjectId}/>}
+        {!quick && pickerProjectId && <AddToProject projectId={pickerProjectId}/>}
         {quick && <QuickAddPerson locationId={locationId} role={role} onDone={(id, hasPhone) => { setQuick(false); if (hasPhone) setQuickText(id); else { onOpenChange(false); } }} />}
         {!quick && <><Input placeholder="Search name or phone" value={q} onChange={(e) => setQ(e.target.value)} />
         <TagFilter value={tags} onChange={setTags} />
         <div className="max-h-[50vh] overflow-y-auto border rounded-md divide-y">
           {isLoading ? <div className="p-4"><Loader2 className="h-4 w-4 animate-spin" /></div> :
-            filtered.length === 0 ? <p className="p-4 text-sm text-muted-foreground">No matches.</p> :
+            filtered.length === 0 ? <p className="p-4 text-sm text-muted-foreground">{people.length?'No matches.':'No personnel on this project yet'}</p> :
             filtered.map((p, i) => {
               const already = assignedIds.has(p.id);
               const segment = personnelSegment(p);
@@ -166,7 +167,7 @@ export function AssignDialog({ locationId, open, onOpenChange, assignedIds, role
                 <label className={cn("flex items-center gap-3 px-3 py-2 min-h-11 cursor-pointer", already && "opacity-60 cursor-not-allowed")}>
                   <Checkbox checked={already || sel.has(p.id)} disabled={already} onCheckedChange={() => toggle(p.id)} />
                   <span className="flex-1 min-w-0 text-sm truncate"><BenchStar on={p.on_bench} /> {[p.first_name, p.last_name].filter(Boolean).join(" ")} <NonBillableChip value={p.non_billable} /> <TagChips tags={tagData?.byPerson[p.id]} max={3} /></span>
-                  <span className="text-xs text-muted-foreground shrink-0">{already ? "Assigned" : p.phone}</span>
+                  <span className="text-xs text-muted-foreground shrink-0">{already ? "Assigned" : ''}</span>
                 </label></div>
               );
             })}

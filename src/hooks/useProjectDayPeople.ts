@@ -5,7 +5,7 @@ export function useProjectDayPeople(projectId: string, enabled: boolean) {
   return useQuery({ queryKey: ['project-day-people', projectId], enabled, queryFn: async () => {
     const ids = new Set<string>();
     for (let offset = 0; ; offset += 500) {
-      const { data, error } = await supabase.from('personnel_project_assignments').select('personnel_id').eq('project_id', projectId).order('id').range(offset, offset + 499);
+      const { data, error } = await supabase.from('personnel_project_assignments').select('personnel_id').eq('project_id', projectId).eq('active',true).order('id').range(offset, offset + 499);
       if (error) throw error;
       for (const row of data ?? []) ids.add(row.personnel_id);
       if ((data ?? []).length < 500) break;

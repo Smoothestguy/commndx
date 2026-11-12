@@ -13,6 +13,7 @@ import {locationTimeIso} from '@/lib/manualTime';
 import {midnight,nextDay} from '@/lib/signinSheets';
 import {roleAt} from '@/lib/assignmentRoles';
 import {toast} from 'sonner';
+import {AddToProject} from './ProjectPersonnelRoster';
 export type DemobeOrder={id:string;number:string;day:string;travelTime:boolean|null;roles:string[]};
 export function DemobeTimeDialog({order,projectId,locationId,timezone,onClose}:{order:DemobeOrder;projectId:string;locationId:string;timezone?:string|null;onClose:()=>void}){
  const tz=timezone||'America/Chicago',log=useLogManualTime(projectId);
@@ -39,6 +40,7 @@ export function DemobeTimeDialog({order,projectId,locationId,timezone,onClose}:{
  <p className="text-sm">{order.number} · Travel time: {order.travelTime===null?'unspecified':order.travelTime?'included':'not included'}</p>
  <div><Label htmlFor="demobe-day">Demobe date</Label><Input id="demobe-day" type="date" value={day} disabled={busy||done.length>0} onChange={e=>setDay(e.target.value)}/></div>
  <p className="text-xs text-muted-foreground">{tz}{!timezone?' — location timezone missing':''}</p>
+ <AddToProject projectId={projectId}/>
  <ToggleGroup disabled={busy} type="single" value={mode} onValueChange={v=>{if(v)setMode(v);}}><ToggleGroupItem value="hours">Demobe / travel hours</ToggleGroupItem><ToggleGroupItem value="times">In / out times</ToggleGroupItem></ToggleGroup>
  {mode==='hours'?<div><Label htmlFor="demobe-hours">Demobe{order.travelTime?' / travel':''} hours</Label><Input id="demobe-hours" type="number" min="0.01" max="24" step="0.25" value={hours} onChange={e=>setHours(e.target.value)}/></div>:<div className="grid grid-cols-2 gap-3"><div><Label htmlFor="demobe-in">Time in (24h)</Label><Time24Input id="demobe-in" value={timeIn} onChange={e=>setTimeIn(e.target.value)}/></div><div><Label htmlFor="demobe-out">Time out (24h)</Label><Time24Input id="demobe-out" value={timeOut} onChange={e=>setTimeOut(e.target.value)}/></div></div>}
  <div className="max-h-64 overflow-y-auto divide-y">{people.isLoading?<p>Loading assigned people…</p>:people.error?<p role="alert" className="text-destructive">Assigned people unavailable.</p>:people.data?.map(p=><label key={p.id} className="flex items-center gap-2 py-2 text-sm"><Checkbox disabled={busy||p.saved||done.includes(p.personnel_id)} checked={selected.includes(p.personnel_id)} onCheckedChange={v=>setSelected(s=>v?[...s,p.personnel_id]:s.filter(id=>id!==p.personnel_id))}/><span>{p.name} · {p.role_label||'No role'}{p.saved?' · Demobe time already saved':''}</span></label>)}</div>

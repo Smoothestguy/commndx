@@ -1,4 +1,6 @@
 import { punchTimeDetail } from '@/lib/punchTimes';
+import { AddToProject } from './ProjectPersonnelRoster';
+import { useProjectPersonnelRoster } from '@/integrations/supabase/hooks/useProjectPersonnelRoster';
 import { Time24Input } from '@/components/ui/time24-input';
 import { shiftRuleDefaults, projectShiftRulesSchema, checkoutRoundingOptions } from '@/lib/projectShiftRules';
 import { useLateStays } from '@/hooks/useLateStays';
@@ -478,11 +480,11 @@ function AttendanceGrid({ projectId, locations, crews, defaultHours, canManage }
 
 // ---------- Crews section ----------
 
-function PersonPicker({ value, onChange, excludeIds, placeholder }: {
-  value: string; onChange: (id: string) => void; excludeIds?: Set<string>; placeholder: string;
+function PersonPicker({ projectId,value, onChange, excludeIds, placeholder }: {
+  projectId:string;value: string; onChange: (id: string) => void; excludeIds?: Set<string>; placeholder: string;
 }) {
   const [q, setQ] = useState("");
-  const { data: dir = [], isLoading } = usePersonnelDirectory(true);
+  const { data: dir = [], isLoading } = useProjectPersonnelRoster(projectId);
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return dir
@@ -493,9 +495,10 @@ function PersonPicker({ value, onChange, excludeIds, placeholder }: {
   return (
     <div className="space-y-1">
       <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder} className="h-9" />
+      <AddToProject projectId={projectId}/>
       <div className="max-h-40 overflow-y-auto border rounded-md divide-y">
         {isLoading ? <div className="p-2"><Loader2 className="h-4 w-4 animate-spin" /></div> :
-          list.length === 0 ? <p className="p-2 text-xs text-muted-foreground">No matches.</p> :
+          list.length === 0 ? <p className="p-2 text-xs text-muted-foreground">{dir.length?'No matches.':'No personnel on this project yet'}</p> :
           list.map((p) => (
             <button
               key={p.id} type="button"
@@ -559,7 +562,7 @@ function CrewDialog({ open, onOpenChange, projectId, crew }: {
         <div className="space-y-3">
           <div><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Crew A" /></div>
           <div><Label>Supervisor</Label>
-            <PersonPicker value={supervisorId} onChange={setSupervisorId} placeholder="Search personnel…" />
+            <PersonPicker projectId={projectId} value={supervisorId} onChange={setSupervisorId} placeholder="Search personnel…" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Trucks</Label><Input type="number" inputMode="numeric" min={0} value={trucks} onChange={(e) => setTrucks(e.target.value)} /></div>
@@ -588,6 +591,7 @@ function CrewDialog({ open, onOpenChange, projectId, crew }: {
               <div className="grid grid-cols-[1fr_8rem] gap-2 items-end">
                 <div><Label className="text-xs">Add member</Label>
                   <PersonPicker
+                    projectId={projectId}
                     value=""
                     onChange={(pid) => addMember.mutate({ crew_id: crew.id, personnel_id: pid, role_label: memberRole || null })}
                     excludeIds={memberIds}

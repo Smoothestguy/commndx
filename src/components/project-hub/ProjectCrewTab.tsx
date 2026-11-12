@@ -4,6 +4,7 @@ import { ProjectRoomsSection } from "./rooms/ProjectRoomsSection";
 import { ProjectAssetAssignmentsSection } from "./ProjectAssetAssignmentsSection";
 import { ProjectTimekeepingCard } from "./ProjectTimekeepingCard";
 import { ProjectVendorsSection } from './ProjectVendorPicker';
+import { ProjectPersonnelRosterSection } from './ProjectPersonnelRoster';
 
 interface Props {
   projectId: string;
@@ -14,6 +15,7 @@ export function ProjectCrewTab({ projectId, projectName }: Props) {
   return (
     <div className="space-y-8">
       <ProjectVendorsSection projectId={projectId} />
+      <ProjectPersonnelRosterSection projectId={projectId} />
       <ProjectPersonnelSection projectId={projectId} projectName={projectName} />
       <ProjectHotelAssignmentsSection projectId={projectId} projectName={projectName} />
       <ProjectRoomsSection projectId={projectId} />
