@@ -288,6 +288,13 @@
       "when": 1794510879285,
       "tag": "0040_task_order_editing_references_numbering",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1794511195727,
+      "tag": "0041_task_order_legacy_number_sequence",
+      "breakpoints": true
     }
   ]
 }
