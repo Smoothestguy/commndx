@@ -150,7 +150,7 @@ export function AssignDialog({ locationId, open, onOpenChange, assignedIds, role
       <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
         <DialogHeader><DialogTitle>Assign personnel</DialogTitle></DialogHeader>
         {(isAdmin || isManager) && <Button size="sm" variant="outline" onClick={() => setQuick(v => !v)}><Plus className="h-4 w-4 mr-1" />Quick add</Button>}
-        {pickerProjectId && <AddProjectVendor projectId={pickerProjectId}/>}
+        {!quick && pickerProjectId && <AddProjectVendor projectId={pickerProjectId}/>}
         {quick && <QuickAddPerson locationId={locationId} role={role} onDone={(id, hasPhone) => { setQuick(false); if (hasPhone) setQuickText(id); else { onOpenChange(false); } }} />}
         {!quick && <><Input placeholder="Search name or phone" value={q} onChange={(e) => setQ(e.target.value)} />
         <TagFilter value={tags} onChange={setTags} />

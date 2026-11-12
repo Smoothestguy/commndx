@@ -16,7 +16,7 @@ export function useSetProjectVendor(projectId: string) {
   return useMutation({ mutationFn: async ({ vendorId, active }: { vendorId: string; active: boolean }) => {
     const { error } = await supabase.from('project_vendors').upsert({ project_id: projectId, vendor_id: vendorId, active }, { onConflict: 'project_id,vendor_id' });
     if (error) throw error;
-  }, onSuccess: () => qc.invalidateQueries({ queryKey: ['project-vendors', projectId] }) });
+  }, onSuccess: () => qc.invalidateQueries({ queryKey: ['project-vendors'] }) });
 }
 export function useLocationProjectId(locationId: string) {
   return useQuery({ queryKey: ['location-project-id', locationId], enabled: !!locationId, queryFn: async () => {

@@ -1,7 +1,7 @@
 # Project vendor roster
-- [ ] Project membership, staff read/manager write, backfill and historical preservation.
-- [ ] Scoped project/location vendor pickers, add affordances and Crew Vendors management.
-- [ ] Browser Florida Floods add/readback, empty project, permissions, tests and fixture cleanup.
+- [x] Unique soft-active project vendor membership, actor/time/audit stamps, manager/admin writes and staff reads; explicit no-anonymous/no-delete privileges. Backfilled existing location/project personnel, join tokens, project assets and work orders without changing employers/links.
+- [x] Shared project vendor pickers and Crew Vendors count/manage section; join, location/project personnel assignment/quick-add/conversion, rental assets, and project financial choices scoped with add affordances. Global vendor administration unchanged; cross-project bills use shared eligible memberships.
+- [x] Signed owner browser: Florida eight historical vendors (DOM SOLUTIONS plus seven already-used individual vendors), searched/added Abel Alejandro Duran, immediate picker/readback, removed via UI then cleaned temporary membership/audits. Empty Ocala picker showed only the empty state; location quick-add matched all eight original vendors; runtime errors none. Thirteen focused rule/employer tests passed and preview checks clean.
 
 # Bunk trailer correction
 
