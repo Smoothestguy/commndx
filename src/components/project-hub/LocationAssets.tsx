@@ -9,7 +9,7 @@ import { AssetOwnershipFields, emptyOwnership } from './AssetOwnershipFields';
 import { assetCareLabel, ownershipText } from '@/lib/assetDetails';
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Pencil, Key, MapPin, Package, Plus, Settings, Square, Truck, X } from "lucide-react";
+import { Calendar, Pencil, Key, MapPin, Package, Plus, Settings, Square, Truck, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -232,7 +232,7 @@ export function LocationAssets({ projectId, locationId, locationName, canWrite, 
       { key: 'margin', header: 'Margin %', getValue: (r: AssetBillingRow) => marginPct(r.billable ? r.rate : null, r.assets ? assetCostBreakdown(r.assets).perDay : null) },
       { key: 'insurance', header: 'Insurance expires', getValue: (r: AssetBillingRow) => r.assets?.insurance_expires_on ?? '', render: (r: AssetBillingRow) => <span>{r.assets?.insurance_expires_on}<InsuranceBadge asset={r.assets} /></span> },
     ] : []),
-    { key: 'actions', header: 'Actions', sortable: false, filterable: false, noExport: true, render: r => <span className="flex items-center gap-1">{canBill && <><Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit asset" onClick={() => setEditAsset(r.assets ?? null)}><Pencil className="h-3.5 w-3.5" /></Button><Button size="sm" variant="ghost" onClick={() => setDates(r)}>Edit dates</Button></>}{canWrite && !r.end_at && <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="End assignment" onClick={() => setBulkEnd([r])}><Square className="h-3.5 w-3.5" /></Button>}</span> },
+    { key: 'actions', header: 'Actions', sortable: false, filterable: false, noExport: true, render: r => <span className="flex items-center gap-1">{canBill && <><Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit asset" onClick={() => setEditAsset(r.assets ?? null)}><Pencil className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" aria-label={`Edit dates for ${r.assets?.label ?? 'asset'}`} title="Edit billable dates" onClick={() => setDates(r)}><Calendar className="h-3.5 w-3.5" /></Button></>}{canWrite && !r.end_at && <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="End assignment" onClick={() => setBulkEnd([r])}><Square className="h-3.5 w-3.5" /></Button>}</span> },
   ];
 
   return (
