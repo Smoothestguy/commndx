@@ -41,6 +41,7 @@ import { ColumnHeaderMenu, ColumnConfig } from "./ColumnHeaderMenu";
 import { useTablePreferences } from "@/hooks/useTablePreferences";
 import { useSessionState } from "@/hooks/useSessionState";
 import { useViewportGrid } from "@/hooks/useViewportGrid";
+import { gridColumnWidths } from "@/lib/gridSizing";
 
 export interface EnhancedColumn<T> {
   key: keyof T | string;
@@ -128,7 +129,7 @@ function SortableHeader({ id, children, className, width, onResize, left }: { le
         </div>
         {children}
       </div>
-      <span onPointerDown={startResize} className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40" aria-hidden />
+      <span onPointerDown={startResize} className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40" role="separator" aria-label={`Resize ${id}`} />
     </th>
   );
 }
@@ -177,6 +178,14 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   const selectedIds = controlledIds ?? new Set(selection);
   const onSelectionChange = controlledSelection ?? ((ids: Set<string>) => setSelection([...ids]));
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [availableWidth, setAvailableWidth] = useState(0);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => setAvailableWidth(el.clientWidth));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -294,6 +303,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   const cellPad = dense ? "py-1 px-2 h-7" : "py-2 px-3 h-10";
   const hasLead = selectable || !!attention;
   const leadWidth = (selectable ? 32 : 0) + (attention ? 16 : 0);
+  const columnWidths = gridColumnWidths(visibleColumns.map(c => ({ ...c, key: String(c.key) })), widths, availableWidth, leadWidth);
   const activeFilters = Object.values(preferences.columnFilters).filter(Boolean).length;
   const from = total === 0 ? 0 : safePage * effectiveSize + 1;
   const to = Math.min(total, (safePage + 1) * effectiveSize);
@@ -335,7 +345,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
 
       <div data-grid-scroll ref={scrollRef} onScroll={e => { try { sessionStorage.setItem(`${scope}:scroll`, JSON.stringify([e.currentTarget.scrollTop, e.currentTarget.scrollLeft])); } catch { /* unavailable storage */ } }} className={cn("overflow-auto min-h-0", fullscreen && "flex-1")} style={fullscreen ? undefined : { maxHeight }}>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <table style={{ width: leadWidth + visibleColumns.reduce((n, c) => n + (widths[String(c.key)] ?? c.width ?? 150), 0) }} className={cn("table-fixed caption-bottom border-separate border-spacing-0", dense ? "text-xs" : "text-sm")}>
+          <table style={{ width: Math.max(availableWidth, leadWidth + columnWidths.reduce((n, w) => n + w, 0)) }} className={cn("table-fixed caption-bottom border-separate border-spacing-0", dense ? "text-xs" : "text-sm")}>
             <thead className="sticky top-0 z-20">
               <tr className="bg-table-header">
                 {hasLead && (
@@ -355,7 +365,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                       <SortableHeader
                         key={key}
                         id={key}
-                        width={widths[key] ?? column.width ?? 150}
+                        width={columnWidths[ci]}
                         left={ci === 0 ? leadWidth : undefined}
                         onResize={(w) => setWidths(prev => ({ ...prev, [key]: w }))}
                         className={cn(
@@ -412,7 +422,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                       </td>
                     )}
                     {visibleColumns.map((column, ci) => {
-                      const w = widths[String(column.key)] ?? column.width ?? 150;
+                      const w = columnWidths[ci];
                       return (
                         <td
                           key={String(column.key)}
@@ -423,7 +433,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                             ci === 0 && cn("sticky z-10 font-medium border-r", rowBg)
                           )}
                         >
-                          <div className="truncate">
+                          <div className="truncate" title={cellText(item, column) || undefined}>
                             {rowHref && ci === 0
                               ? <Link to={rowHref(item)} className="hover:text-primary hover:underline">{column.render ? column.render(item) : cellText(item, column)}</Link>
                               : column.render ? column.render(item) : cellText(item, column)}

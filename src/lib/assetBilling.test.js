@@ -29,4 +29,8 @@ describe("asset per-diem billing", () => {
     const r = assetAccrual({ billable: false, start_at: new Date(2026, 10, 1).toISOString(), end_at: null, day_rate: 100, default_day_rate: null }, today);
     expect(r.accrued).toBe(0);
   });
+  it('both corrected truck billing periods recalculate inclusive days and accrual', () => {
+    expect(assetAccrual({ billable:true, start_at:'2026-11-04T13:00:00Z', end_at:'2026-11-11T22:00:00Z', day_rate:90, default_day_rate:null },today)).toEqual({days:8,rate:90,accrued:720});
+    expect(assetAccrual({ billable:true, start_at:'2026-11-02T13:00:00Z', end_at:'2026-11-06T22:00:00Z', day_rate:90, default_day_rate:null },today)).toEqual({days:5,rate:90,accrued:450});
+  });
 });

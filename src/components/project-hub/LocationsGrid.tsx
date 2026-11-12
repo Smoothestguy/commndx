@@ -1,3 +1,5 @@
+import { useSessionState } from "@/hooks/useSessionState";
+import { gridColumnWidths } from "@/lib/gridSizing";
 import { assetCareLabel, ownershipText } from '@/lib/assetDetails';
 import { NonBillableChip } from '@/components/personnel/NonBillableChip';
 import { LocationTaskOrders } from './LocationTaskOrders';
@@ -10,7 +12,7 @@ import { AgencyChip } from "@/components/personnel/AgencyChip";
 import { LocationKioskActions } from '@/components/signin/LocationKioskActions';
 import { RoleSelect } from "./RoleSelect";
 import { useUpdateAssignmentRole } from "@/integrations/supabase/hooks/useLocationStaffing";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { endOfWeek, format, startOfWeek } from "date-fns";
 import { Link, useNavigate } from "react-router-dom";
 import { EntityContextMenu } from "@/components/shared/EntityContextMenu";
@@ -113,6 +115,19 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
   });
   const showPhone = canWrite && Object.keys(phones).length > 0;
   const cols = showPhone ? 7 : 6;
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [gridWidth, setGridWidth] = useState(0);
+  const [columnWidths, setColumnWidths] = useSessionState<Record<string, number>>(`grid:location-roster:${projectId}:widths`, {});
+  useEffect(() => { const el = gridRef.current; if (!el) return; const obs = new ResizeObserver(() => setGridWidth(el.clientWidth)); obs.observe(el); return () => obs.disconnect(); }, []);
+  const sizing = [{key:'name',header:'Name'},{key:'role',header:'Role'},{key:'status',header:'Status'},{key:'texted',header:'Texted'},{key:'hrs',header:'Hrs'},...(showPhone ? [{key:'phone',header:'Phone',width:40}] : []),{key:'actions',header:'Actions',width:72}];
+  const sized = gridColumnWidths(sizing, columnWidths, gridWidth);
+  const resizeColumn = (key: string, e: React.PointerEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    const x = e.clientX, width = e.currentTarget.parentElement?.getBoundingClientRect().width ?? 100;
+    const move = (event: PointerEvent) => setColumnWidths(prev => ({...prev, [key]: Math.max(48, width + event.clientX - x)}));
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+  };
   const { rows: assetRows } = useProjectAssetBilling(projectId);
   const endAsset = useEndAssetAssignment();
   const unassignAsset = useUnassignAsset();
@@ -189,10 +204,11 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
     const active = sort.key === k;
     const Icon = !active ? ArrowUpDown : sort.dir === "asc" ? ArrowUp : ArrowDown;
     return (
-      <th className={cn("px-2 py-1.5 font-medium", className)} aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}>
+      <th className={cn("relative px-2 py-1.5 font-medium", className)} aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}>
         <button type="button" onClick={() => clickSort(k)} className={cn("inline-flex items-center gap-1 hover:text-foreground", className?.includes("text-right") && "w-full justify-end", active && "text-foreground")}>
           {label}<Icon className={cn("h-3 w-3", !active && "opacity-40")} />
         </button>
+        <span role="separator" aria-label={`Resize ${k}`} onPointerDown={e => resizeColumn(k,e)} className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40" />
       </th>
     );
   };
@@ -339,17 +355,9 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
         })}
       </div>
 
-      <div data-location-grid-scroll className="hidden sm:block border rounded-md overflow-auto max-h-[75vh]">
-        <table className="w-full table-fixed text-xs tabular-nums min-w-[600px]">
-          <colgroup>
-            <col />
-            <col className="w-28" />
-            <col className="w-36" />
-            <col className="w-14" />
-            <col className="w-14" />
-            {showPhone && <col className="w-8" />}
-            <col className={canWrite ? "w-[4.5rem]" : "w-9"} />
-          </colgroup>
+      <div ref={gridRef} data-location-grid-scroll className="hidden sm:block border rounded-md overflow-auto max-h-[75vh]">
+        <table style={{width: Math.max(gridWidth, sized.reduce((sum,w) => sum+w,0))}} className="table-fixed text-xs tabular-nums min-w-[600px]">
+          <colgroup>{sizing.map((col,i) => <col key={col.key} style={{width:sized[i]}} />)}</colgroup>
           <thead className="sticky top-0 z-10 bg-muted text-muted-foreground">
             <tr className="text-left">
               <SortTh k="name" label="Name" className="pl-7" />
