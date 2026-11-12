@@ -1,5 +1,10 @@
 # Bunk trailer correction
 
+# Task-order creation
+- [ ] Add effective-date current levels and capped zero-default deductions to project/Event forms; group order info, lines, options and sticky actions.
+- [ ] Add optional audited demobe time creation and later row action, preserving billing flags, TO travel choice and timesheet locks.
+- [ ] Verify 5049 current levels and temporary two-person demobe timesheets; clean all test records and run focused tests.
+
 # Public link previews
 - [ ] Paused at owner's request; plan awaits hosting decision. Do not implement while pending.
 - [ ] Serve crawler-readable per-link metadata and branded job cards; generic punch/sign previews, visibility-safe job fields.
