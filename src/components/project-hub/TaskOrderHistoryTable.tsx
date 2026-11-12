@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useState, type ReactNode } from 'react';
-import { ChevronRight, FileSpreadsheet, Printer } from 'lucide-react';
+import { ChevronRight, FileSpreadsheet, Printer, MoreHorizontal } from 'lucide-react';
+import {DropdownMenu,DropdownMenuTrigger,DropdownMenuContent,DropdownMenuItem} from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -12,7 +13,7 @@ const tones: Record<string, string> = { initial: 'text-success border-success/40
 const isDown = (k: string) => k === 'decrease' || k === 'demobilization';
 
 /** Compact TO ledger: one row per order with resulting totals, expandable details, selection and print/XLSX. */
-export function TaskOrderHistoryTable({ orders, header, fileBase, today, renderExpanded }: { orders: HistoryOrder[]; header: HistoryHeader; fileBase: string; today?: string; renderExpanded?: (id: string) => ReactNode }) {
+export function TaskOrderHistoryTable({ orders, header, fileBase, today, renderExpanded, onDemobe }: { orders: HistoryOrder[]; header: HistoryHeader; fileBase: string; today?: string; renderExpanded?: (id: string) => ReactNode; onDemobe?:(id:string)=>void }) {
   const rows = useMemo(() => runningTotals(orders), [orders]);
   const [selected, setSelected] = useState<Set<string>>(new Set()), [open, setOpen] = useState<Set<string>>(new Set());
   const toggle = (set: Set<string>, id: string) => { const n = new Set(set); if (n.has(id)) n.delete(id); else n.add(id); return n; };
@@ -44,7 +45,7 @@ export function TaskOrderHistoryTable({ orders, header, fileBase, today, renderE
               <td className="p-2 tabular-nums">{formatChanges(r.lines)}</td>
               <td data-testid="to-totals" className="p-2 font-semibold tabular-nums">{r.fullDemob ? <span className="text-destructive">Full demobilization — location closes</span> : <>{isDown(r.kind) && '→ '}{formatTotals(r.totals)}{isDown(r.kind) && <span className="font-normal text-muted-foreground"> remain</span>}</>}</td>
               <td className="p-2 text-xs text-muted-foreground">{r.enteredBy}</td>
-              <td className="p-2" onClick={e => e.stopPropagation()}><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`Print ${r.number}`} onClick={() => print([r], r.number)}><Printer className="h-4 w-4" /></Button></td>
+              <td className="p-2" onClick={e => e.stopPropagation()}><div className="flex"><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`Print ${r.number}`} onClick={() => print([r], r.number)}><Printer className="h-4 w-4" /></Button>{onDemobe&&r.counts&&isDown(r.kind)&&<DropdownMenu><DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`Actions ${r.number}`}><MoreHorizontal className="h-4 w-4"/></Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem onSelect={()=>onDemobe(r.id)}>Demobe time</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}</div></td>
             </tr>
             {expanded && <tr className="bg-muted/20"><td /><td colSpan={7} className="p-3 space-y-1 text-sm">
               {r.scope && <p><span className="text-muted-foreground">Scope:</span> {r.scope}</p>}
