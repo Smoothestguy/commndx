@@ -40,6 +40,7 @@ import {
 import { ColumnHeaderMenu, ColumnConfig } from "./ColumnHeaderMenu";
 import { useTablePreferences } from "@/hooks/useTablePreferences";
 import { useSessionState } from "@/hooks/useSessionState";
+import { useViewportGrid } from "@/hooks/useViewportGrid";
 
 export interface EnhancedColumn<T> {
   key: keyof T | string;
@@ -88,6 +89,7 @@ interface EnhancedDataTableProps<T> {
   defaultPageSize?: number;
   /** Max height of the scroll area (sticky header). */
   maxHeight?: string;
+  fillViewport?: boolean;
   emptyText?: string;
 }
 
@@ -156,6 +158,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   exportName,
   defaultPageSize = 50,
   maxHeight = "70vh",
+  fillViewport = false,
   emptyText = "No results found",
 }: EnhancedDataTableProps<T>) {
   const defaultColumnKeys = columns.map(col => String(col.key));
@@ -180,6 +183,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
     try { const pos = JSON.parse(sessionStorage.getItem(`${scope}:scroll`) ?? "[0,0]"); el.scrollTop = pos[0]; el.scrollLeft = pos[1]; } catch { /* unavailable storage */ }
   }, [scope, data.length]);
   const [fullscreen, setFullscreen] = useState(false);
+  const viewportRef = useViewportGrid(fillViewport);
   const [showFilters, setShowFilters] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -295,8 +299,9 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   const to = Math.min(total, (safePage + 1) * effectiveSize);
 
   return (
-    <div className={cn(
+    <div ref={viewportRef} data-viewport-grid={fillViewport} data-fullscreen={fullscreen} className={cn(
       "flex flex-col bg-card border border-border rounded-md shadow-sm overflow-hidden",
+      fillViewport && "viewport-grid",
       fullscreen && "fixed inset-0 z-50 rounded-none"
     )}>
       {/* Top bar: instant search + toolbar */}
@@ -328,7 +333,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
         </div>
       )}
 
-      <div ref={scrollRef} onScroll={e => { try { sessionStorage.setItem(`${scope}:scroll`, JSON.stringify([e.currentTarget.scrollTop, e.currentTarget.scrollLeft])); } catch { /* unavailable storage */ } }} className={cn("overflow-auto", fullscreen && "flex-1")} style={fullscreen ? undefined : { maxHeight }}>
+      <div data-grid-scroll ref={scrollRef} onScroll={e => { try { sessionStorage.setItem(`${scope}:scroll`, JSON.stringify([e.currentTarget.scrollTop, e.currentTarget.scrollLeft])); } catch { /* unavailable storage */ } }} className={cn("overflow-auto min-h-0", fullscreen && "flex-1")} style={fullscreen ? undefined : { maxHeight }}>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <table style={{ width: leadWidth + visibleColumns.reduce((n, c) => n + (widths[String(c.key)] ?? c.width ?? 150), 0) }} className={cn("table-fixed caption-bottom border-separate border-spacing-0", dense ? "text-xs" : "text-sm")}>
             <thead className="sticky top-0 z-20">
@@ -438,7 +443,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
       </div>
 
       {/* Footer bar */}
-      <div className="flex flex-wrap items-center gap-1 px-2 py-1 border-t border-border bg-muted/30 text-xs text-muted-foreground">
+      <div data-grid-footer className="shrink-0 flex flex-wrap items-center gap-1 px-2 py-1 border-t border-border bg-muted/30 text-xs text-muted-foreground">
         <span className="font-medium text-foreground mr-2">{total.toLocaleString()} row{total === 1 ? "" : "s"}</span>
         {searchable && <Button variant="ghost" size="icon" className="h-7 w-7" title="Quick search" aria-label="Quick search" onClick={() => searchRef.current?.focus()}><Search className="h-3.5 w-3.5" /></Button>}
         <Button variant={showFilters ? "secondary" : "ghost"} size="icon" className="h-7 w-7" title="Column filters" aria-label="Column filters" onClick={() => setShowFilters(v => !v)}><Filter className="h-3.5 w-3.5" /></Button>

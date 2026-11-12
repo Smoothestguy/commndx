@@ -393,6 +393,19 @@
 }
 
 @layer utilities {
+  @media (min-width: 1180px) {
+    .viewport-grid:not([data-fullscreen="true"]) { height: var(--viewport-grid-height, 50vh); }
+    .viewport-grid > [data-grid-scroll] { flex: 1 1 0%; max-height: none !important; overscroll-behavior: contain; }
+    .viewport-grid > :not([data-grid-scroll]) { flex-shrink: 0; }
+    .desktop-list-page { margin-bottom: 0; }
+    .desktop-list-page .list-stat-strip { margin-bottom: 8px; }
+    .list-stat-strip > div { padding: 6px 12px; box-shadow: none; }
+    .list-stat-strip p { margin: 0; }
+    .list-stat-strip p.font-heading { font-size: 18px; }
+    .list-stat-strip svg { height: 16px; width: 16px; }
+    .list-stat-strip > div > div > div:last-child:not(:first-child) { height: 28px; width: 28px; }
+    .desktop-list-page > header { margin-bottom: 8px; }
+  }
   .glass {
     @apply bg-card border border-border shadow-sm;
   }
