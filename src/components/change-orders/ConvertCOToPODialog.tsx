@@ -1,3 +1,4 @@
+import { AddProjectVendor } from '@/components/project-hub/ProjectVendorPicker';
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -143,6 +144,7 @@ export function ConvertCOToPODialog({
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Select Vendor *</Label>
+              {(changeOrder.project_id) && <AddProjectVendor projectId={(changeOrder.project_id) || ''} onAdded={setSelectedVendor}/>}
               {loadingVendors ? (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -183,7 +185,7 @@ export function ConvertCOToPODialog({
                         onValueChange={setVendorSearch}
                       />
                       <CommandList>
-                        <CommandEmpty>No vendors found.</CommandEmpty>
+                        <CommandEmpty>{(changeOrder.project_id) ? 'No vendors on this project yet' : 'No vendors found.'}</CommandEmpty>
                         <CommandGroup>
                           {filteredVendors.map((vendor) => (
                             <CommandItem

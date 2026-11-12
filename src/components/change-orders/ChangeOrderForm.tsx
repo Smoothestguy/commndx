@@ -1,3 +1,4 @@
+import { AddProjectVendor } from '@/components/project-hub/ProjectVendorPicker';
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -596,6 +597,7 @@ export function ChangeOrderForm({
 
             <div className="space-y-2">
               <Label htmlFor="vendor">Vendor (Optional)</Label>
+              {(projectId) && <AddProjectVendor projectId={(projectId) || ''} onAdded={setVendorId}/>}
               <Popover open={vendorOpen} onOpenChange={setVendorOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -620,7 +622,7 @@ export function ChangeOrderForm({
                   <Command>
                     <CommandInput placeholder="Search vendors..." value={vendorSearch} onValueChange={setVendorSearch} />
                     <CommandList>
-                      <CommandEmpty>No vendors found.</CommandEmpty>
+                      <CommandEmpty>{(projectId) ? 'No vendors on this project yet' : 'No vendors found.'}</CommandEmpty>
                       <CommandGroup>
                         <CommandItem
                           value="none"

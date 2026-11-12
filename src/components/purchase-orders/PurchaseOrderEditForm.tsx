@@ -1,3 +1,4 @@
+import { AddProjectVendor } from '@/components/project-hub/ProjectVendorPicker';
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -256,6 +257,7 @@ export const PurchaseOrderEditForm = ({ purchaseOrder }: PurchaseOrderEditFormPr
             {/* Searchable Vendor Combobox */}
             <div className="space-y-2">
               <Label htmlFor="vendor">Vendor *</Label>
+              {(purchaseOrder.project_id) && <AddProjectVendor projectId={(purchaseOrder.project_id) || ''} onAdded={setSelectedVendorId}/>}
               <Popover open={vendorComboboxOpen} onOpenChange={setVendorComboboxOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -288,7 +290,7 @@ export const PurchaseOrderEditForm = ({ purchaseOrder }: PurchaseOrderEditFormPr
                       onValueChange={setVendorSearch}
                     />
                     <CommandList>
-                      <CommandEmpty>No vendors found.</CommandEmpty>
+                      <CommandEmpty>{(purchaseOrder.project_id) ? 'No vendors on this project yet' : 'No vendors found.'}</CommandEmpty>
                       <CommandGroup>
                         {activeVendors.map((vendor) => (
                           <CommandItem
