@@ -1,0 +1,11 @@
+CREATE OR REPLACE FUNCTION public.project_personnel_directory(p_search text DEFAULT '') RETURNS TABLE(id uuid,first_name text,last_name text,status text,vendor_id uuid,employer_customer_id uuid,non_billable boolean,on_bench boolean,bench_rank integer) LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public AS $$ BEGIN
+ IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'manager')) THEN RAISE EXCEPTION 'Manager access required'; END IF;
+ RETURN QUERY SELECT p.id,p.first_name,p.last_name,p.status::text,p.vendor_id,p.employer_customer_id,p.non_billable,p.on_bench,p.bench_rank FROM public.personnel p WHERE p.deleted_at IS NULL AND p.merged_into_id IS NULL AND p.status='active' AND (coalesce(p_search,'')='' OR position(lower(p_search) in lower(p.first_name||' '||p.last_name))>0) ORDER BY p.on_bench DESC,p.bench_rank NULLS LAST,p.first_name,p.last_name LIMIT 200; END $$;
+REVOKE ALL ON FUNCTION public.project_personnel_directory(text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.project_personnel_directory(text) TO authenticated,service_role;
+CREATE OR REPLACE FUNCTION public.ensure_approved_join_roster() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ BEGIN
+ IF NEW.status='approved' AND OLD.status IS DISTINCT FROM NEW.status AND NEW.matched_personnel_id IS NOT NULL THEN
+ INSERT INTO public.personnel_project_assignments(project_id,personnel_id,assigned_by) SELECT NEW.project_id,NEW.matched_personnel_id,NEW.decided_by WHERE NOT EXISTS(SELECT 1 FROM public.personnel_project_assignments a WHERE a.project_id=NEW.project_id AND a.personnel_id=NEW.matched_personnel_id AND a.status='active') ON CONFLICT(personnel_id,project_id) WHERE status='active' DO NOTHING;
+ END IF; RETURN NEW; END $$;
+CREATE TRIGGER ensure_approved_join_roster AFTER UPDATE OF status ON public.project_join_requests FOR EACH ROW EXECUTE FUNCTION public.ensure_approved_join_roster();
+REVOKE ALL ON FUNCTION public.ensure_approved_join_roster() FROM PUBLIC,anon,authenticated;

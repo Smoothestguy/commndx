@@ -4,3 +4,4 @@
 - Equipment per-diem billing is derived on read from `asset_assignments` (location_id, billable, day_rate ?? assets.default_day_rate) via `src/lib/assetBilling.ts`; never store accrued totals, so project, location and financial views stay consistent.
 - TO creation shares dated current-level drafts; demobe stays use the guarded manual path, same-location accepted order FK and unique order/person key, so ledger source/billing/audit persist without duplicate retries or changing authorization history.
 - Project vendor membership uses soft-active unique pairs and minimal staff name reads; project pickers never default globally, existing employers/links retain history.
+- Project personnel choices use the minimal active roster RPC and shared AddToProject; dated worked-history eligibility remains separate so deactivation never erases evidence. Roster additions never send messages.

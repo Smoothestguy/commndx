@@ -15,6 +15,8 @@ import { AlertTriangle, Loader2, MessageSquare } from "lucide-react";
 
 import { locationTimeIso } from "@/lib/manualTime";
 import { localStamp, locationZone } from "../../../supabase/functions/_shared/locationTime";
+import { useProjectPersonnelRoster } from '@/integrations/supabase/hooks/useProjectPersonnelRoster';
+import { AddToProject } from './ProjectPersonnelRoster';
 
 type Loc = { timezone: string | null; project_id: string; id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; poc_name: string | null; poc_phone: string | null };
 
@@ -88,6 +90,8 @@ export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationI
   useEffect(() => { if (open) { setLocId(locationId); setReportAt(defaultReport()); setNote(""); } }, [open, locationId]);
   useEffect(() => { if (!locId && locOptions.length === 1) setLocId(locOptions[0].id); }, [locOptions, locId]);
   const loc = locOptions.find((l) => l.id === locId) ?? null;
+  const rosterProjectId=projectId||loc?.project_id;
+  const roster=useProjectPersonnelRoster(rosterProjectId,open);
   const zone = locationZone(loc || {});
   const reportIso = reportAt ? locationTimeIso(reportAt.split('T')[0],reportAt.split('T')[1]||'',zone) : null;
   const hasPoc = !!(loc?.poc_name || loc?.poc_phone);
@@ -110,6 +114,7 @@ export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationI
 
   const send = useMutation({
     mutationFn: async () => {
+      if(!roster.data||personnelIds.some(id=>!roster.data.some(p=>p.id===id)))throw new Error('Add recipients to the project roster first');
       const { data, error } = await supabase.functions.invoke("send-site-assignment-sms", {
         body: { location_id: locId, personnel_ids: personnelIds, report_at: reportIso, include: inc, custom_note: note.trim() || undefined },
       });
@@ -158,6 +163,7 @@ export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationI
           {preview && <pre className="whitespace-pre-wrap text-xs rounded-md border bg-muted/40 p-3 font-sans">{preview}</pre>}
           <div className="space-y-1">
             <Label>Recipients ({personnelIds.length})</Label>
+            {rosterProjectId&&<AddToProject projectId={rosterProjectId}/>}
             <div className="flex flex-wrap gap-1">
               {personnelIds.map((id) => {
                 const p: any = people.find((x: any) => x.id === id);
@@ -173,7 +179,7 @@ export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationI
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Skip</Button>
-          <Button disabled={!locId || (inc.report_time && !!reportAt && !reportIso) || send.isPending} onClick={() => send.mutate()}>
+          <Button disabled={!locId || !roster.data || personnelIds.some(id=>!roster.data.some(p=>p.id===id)) || (inc.report_time && !!reportAt && !reportIso) || send.isPending} onClick={() => send.mutate()}>
             {send.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Send
           </Button>
         </DialogFooter>

@@ -38,7 +38,7 @@ export function QuickAddPerson({ locationId, role, onDone }: { locationId: strin
       let id = created;
       if (!id) { const person = await add.mutateAsync({ first_name: first.trim(), last_name: last.trim(), email: quickAddEmail(first, last, Date.now()), phone: phone.trim() || null, non_billable: nb, ...quickEmployer(worksFor, customer, vendor), status: 'active', portal_required: false, personnel_number: '' }); id = person.id; setCreated(id); }
       await assign.mutateAsync({ location_id: locationId, personnel_ids: [id], role_label: role || null });
-      await Promise.all([qc.invalidateQueries({ queryKey: ['personnel-lite-active'] }), qc.invalidateQueries({ queryKey: ['project-agencies'] })]);
+      await Promise.all([qc.invalidateQueries({ queryKey: ['personnel-lite-active'] }), qc.invalidateQueries({ queryKey: ['project-agencies'] }),qc.invalidateQueries({queryKey:['project-personnel-roster']})]);
       onDone(id, !!phone.trim());
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Unable to add person'); } finally { setBusy(false); } }}>{busy ? 'Saving…' : created ? 'Retry assignment' : 'Create and assign'}</Button>
   </div>;

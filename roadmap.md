@@ -1,7 +1,7 @@
 # Project personnel roster
-- [ ] Extend existing assignment history into the project roster; backfill active location crews and worked people, verify approved joins and secure staff reads.
-- [ ] Shared searchable add/manage roster controls and project-only person choices, preserving dated history and global directory.
-- [ ] Browser Florida 5049/5048 coverage, add/readback and fresh-project empty state; rule tests and test-row cleanup.
+- [x] Extended assignment history with synchronized activity and server-added metadata, minimal staff roster/directory RPCs, manager-only audited membership writes and explicit manager WITH CHECK. Backfill left zero missing active location/worked people; all approved joins have membership, with a server approval trigger covering existing-location cases.
+- [x] Shared searchable FRG/Agency/Customer directory and bench stars, Crew roster count/removal, scoped location/crew/day/lodging/asset/contact/demobe choices and add affordances. Existing dated attendance/signature history and global Personnel directory retained; roster add sends no messages. Legacy assignment delete now retires history.
+- [x] Signed browser Florida outsider excluded then added/read back immediately without location assignment, removed with ended history retained. Fresh verification project showed exact empty state; all temporary projects/membership/audits cleaned. Existing 5049 crew 5/5 and 5048 crew 2/2 covered; 16 rule/employer/history tests passed, preview clean and no runtime errors.
 
 # Project vendor roster
 - [x] Unique soft-active project vendor membership, actor/time/audit stamps, manager/admin writes and staff reads; explicit no-anonymous/no-delete privileges. Backfilled existing location/project personnel, join tokens, project assets and work orders without changing employers/links.

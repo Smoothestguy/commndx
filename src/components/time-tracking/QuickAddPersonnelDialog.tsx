@@ -4,6 +4,7 @@ import { useBulkAssignPersonnelToProject } from "@/integrations/supabase/hooks/u
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
+import { supabase } from '@/integrations/supabase/client';
 
 interface QuickAddPersonnelDialogProps {
   open: boolean;
@@ -28,7 +29,10 @@ export function QuickAddPersonnelDialog({
     // because rate bracket selection is now required.
     // User will need to assign them via the Personnel Assignment dialog.
     if (projectId && newPersonnelId) {
-      toast.info(`Personnel added. Please assign them to the project with a rate bracket.`);
+      const {error}=await supabase.rpc('set_project_personnel_roster',{p_project:projectId,p_person:newPersonnelId,p_active:true});
+      if(error){toast.error('Person saved; project roster addition failed. Add them to project before logging time.');return;}
+      await queryClient.invalidateQueries({queryKey:['project-personnel-roster']});
+      await queryClient.invalidateQueries({queryKey:['personnel-project-assignments']});
     }
     
     queryClient.invalidateQueries({ queryKey: ["personnel-by-project"] });

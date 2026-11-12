@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { AddToProject } from './ProjectPersonnelRoster';
+import { useProjectPersonnelRoster } from '@/integrations/supabase/hooks/useProjectPersonnelRoster';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -81,11 +83,12 @@ interface AssignHotelDialogProps {
 
 export function AssignHotelDialog({ open, onOpenChange, projectId, locationId, onCreated }: AssignHotelDialogProps) {
   const { data: personnel = [] } = usePersonnelByProject(projectId);
+  const roster=useProjectPersonnelRoster(projectId);
   const createMutation = useCreateHotelAssignment();
   const [mode, setMode] = useState<"location" | "project" | "all">(locationId ? "location" : "project");
   const { data: locationPersonnel = [] } = useLocationAssignments(open && locationId ? locationId : undefined);
   const [search, setSearch] = useState("");
-  const { data: allPersonnel = [] } = useActivePersonnelLite(mode === "all");
+  const allPersonnel = personnel.flatMap(p=>p.personnel?[{...p.personnel,on_bench:false,bench_rank:null,employer_customer_id:null}]:[]);
   const { data: assignmentMap = {} } = useActiveProjectAssignmentMap(mode === "all");
 
   const form = useForm<HotelFormValues>({
@@ -145,7 +148,7 @@ export function AssignHotelDialog({ open, onOpenChange, projectId, locationId, o
   };
 
   const activePersonnel = (mode === "location" ? locationPersonnel : personnel).filter(
-    (p) => p.personnel
+    (p) => p.personnel&&roster.data?.some(r=>r.id===p.personnel_id)
   );
 
   const q = search.trim().toLowerCase();
@@ -178,9 +181,10 @@ export function AssignHotelDialog({ open, onOpenChange, projectId, locationId, o
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Personnel * <span className="text-xs text-muted-foreground font-normal">(select everyone sharing this lodging)</span></FormLabel>
+                    <AddToProject projectId={projectId}/>
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="flex rounded-md border overflow-hidden text-xs shrink-0">
-                        {(locationId ? ["location", "project", "all"] as const : ["project", "all"] as const).map((m) => (
+                        {(locationId ? ["location", "project"] as const : ["project"] as const).map((m) => (
                           <Button
                             key={m}
                             type="button"
