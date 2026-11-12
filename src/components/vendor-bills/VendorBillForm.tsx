@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { AddProjectVendor } from '@/components/project-hub/ProjectVendorPicker';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,7 +70,7 @@ const getNextFriday = () => {
 export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: vendors } = useVendors();
+  const [searchParams] = useSearchParams();
   const { data: projects } = useProjects();
   const { data: categories } = useExpenseCategories("vendor");
   const { data: qbProductMappings } = useQBProductMappings();
@@ -91,6 +92,8 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { id: crypto.randomUUID(), project_id: null, category_id: null, qb_product_mapping_id: null, description: "", quantity: 1, unit_cost: 0, total: 0 }
   ]);
+  const vendorProjectIds = [...new Set([...lineItems.map(li => li.project_id), searchParams.get('projectId')].filter((id): id is string => !!id))];
+  const { data: vendors } = useVendors(vendorProjectIds);
 
   // Pending attachments state (for new bills)
   const [pendingAttachments, setPendingAttachments] = useState<PendingFile[]>([]);
@@ -430,7 +433,7 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
                   <Command>
                     <CommandInput placeholder="Search vendors..." />
                     <CommandList>
-                      <CommandEmpty>No vendor found.</CommandEmpty>
+                      <CommandEmpty>{vendorProjectIds.length ? 'No vendors on this project yet' : 'No vendor found.'}</CommandEmpty>
                       <CommandGroup>
                         {vendors?.map((vendor) => (
                           <CommandItem
@@ -455,6 +458,7 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
                   </Command>
                 </PopoverContent>
               </Popover>
+              {vendorProjectIds.map(project => <div key={project}><span className="text-xs text-muted-foreground">{vendorProjectIds.length > 1 && projects?.find(p => p.id === project)?.name}</span><AddProjectVendor projectId={project}/></div>)}
             </div>
 
             <div className="space-y-2">
