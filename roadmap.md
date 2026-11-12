@@ -1,5 +1,9 @@
 # Bunk trailer correction
 
+# Task-order editing and numbering
+- [ ] Add manager editing with audit, separate customer references, sequential internal numbers, and shared history/exports in project locations and Event Manager.
+- [ ] Correct the owner's 5049 order 4 to TO-4; verify new TO-5, audited quantity edit/recalculation/restoration and separate customer reference in browser/print.
+
 # Task-order creation
 - [x] Added effective-date current levels and capped zero-default deductions to project/Event forms; grouped order info, lines, options and sticky actions. Event fractional quantities preserved.
 - [x] Added optional audited demobe time creation and later row action, preserving person billing flags, TO travel choice, manual-stay locks and unique order/person protection; source flags appear in attendance, project weekly timesheet and time-entry lists.
