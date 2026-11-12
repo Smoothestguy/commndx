@@ -1,9 +1,9 @@
 # Bunk trailer correction
 
 # Desktop viewport lists
-- [ ] Compact, remembered project details on Locations List; slim needs/filters/tabs and viewport-owned grid scrolling.
-- [ ] Apply shared full-height desktop grids to Projects, Personnel, Applicant Pool and Event Manager; preserve cards/roster/mobile.
-- [ ] Verify signed-in 1440px layouts, pinned footers, details persistence and mobile preservation without production writes.
+- [x] Compact, remembered project Details on Locations List; slim needs/filters/tabs, measured viewport-owned grid scrolling and pinned footer.
+- [x] Shared desktop viewport grids applied to Projects (existing grouped sections retained), Personnel, Applicant Pool and Event Manager; composed Event grids share remaining height. Cards/roster/mobile retain existing layout.
+- [x] Owner signed-in 1440×900 checks passed on Locations collapsed/expanded/reloaded, Projects, populated Personnel/Applicant Pool, Event Locations/Roster/Fuel/SOV/Meals/Laundry. Page scroll stayed zero, all footers visible, populated grids scrolled internally with sticky headers; phone/cards checked. No production records created or edited, no runtime errors; preview checks passed.
 
 # Task-order editing and numbering
 - [x] Added manager Edit menus, server edit attribution/time/change note, separate customer_ref, location-serialized internal numbering with explicit override and shared history/prints/XLSX. Project header/lines/sync edits use an expected-version transactional function; Event edits retain single-row validated JSON saves. Legacy numeric orders count toward the next number without rewriting them.

@@ -393,6 +393,9 @@
 }
 
 @layer utilities {
+  @media (max-width: 1179px) {
+    .location-request-summary:not([open]) > ul { display: block; }
+  }
   @media (min-width: 1180px) {
     .app-workspace:has([data-viewport-list] [data-viewport-grid="true"]) { height: 100dvh; min-height: 0; }
     .app-workspace:has([data-viewport-list] [data-viewport-grid="true"]) > .flex { min-height: 0; }

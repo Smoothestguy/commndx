@@ -184,7 +184,7 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
     <TooltipProvider delayDuration={150}>
       <div className="space-y-3 min-[1180px]:space-y-2">
         <div className="min-[1180px]:flex min-[1180px]:items-center min-[1180px]:gap-3">
-        <div className="border-y bg-card p-2 space-y-2 min-[1180px]:min-w-0 min-[1180px]:flex-1" aria-label="Needs across locations">
+        <div className="rounded-lg border bg-card p-2.5 space-y-2 min-[1180px]:rounded-none min-[1180px]:border-x-0 min-[1180px]:p-2 min-[1180px]:min-w-0 min-[1180px]:flex-1" aria-label="Needs across locations">
           <div className="flex flex-wrap items-center gap-1.5 min-[1180px]:flex-nowrap min-[1180px]:overflow-x-auto min-[1180px]:whitespace-nowrap">
             <span className="inline-flex items-center gap-1 text-xs font-semibold mr-1"><Users className="h-3.5 w-3.5 text-primary" />{totals.crew} crew · {pl(live.length, 'location')}</span>
             {chips.filter(c => c.n > 0).map(c => (
@@ -197,7 +197,7 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
             {chips.every(c => c.n === 0) && blocks === 0 && insuranceDue.length === 0 && <span className="text-xs text-success">All locations on track</span>}
           </div>
           {canWrite && openRequests.length > 0 && (
-            <details className="text-xs"><summary className="cursor-pointer">Open requests ({openRequests.length})</summary><ul className="divide-y border-t pt-1 max-h-40 overflow-auto">
+            <details className="location-request-summary text-xs"><summary className="hidden min-[1180px]:block cursor-pointer">Open requests ({openRequests.length})</summary><ul className="divide-y border-t pt-1 min-[1180px]:max-h-40 min-[1180px]:overflow-auto">
               {openRequests.slice(0, 5).map(q => {
                 const loc = locations.find(l => l.id === q.location_id);
                 return <li key={q.id} className="flex flex-wrap items-center justify-between gap-2 py-1 text-xs">
