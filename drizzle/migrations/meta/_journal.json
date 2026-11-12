@@ -309,6 +309,13 @@
       "when": 1794513710076,
       "tag": "0043_isolate_billing_date_custody_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1794522769369,
+      "tag": "0044_project_vendor_roster",
+      "breakpoints": true
     }
   ]
 }
