@@ -164,7 +164,7 @@ export function AssignLocationAssetDialog({ open, onOpenChange, projectId, locat
                 </div>
                 <div className="space-y-1.5"><Label htmlFor="na-serial">Plate / serial</Label><Input id="na-serial" className="h-11" value={nw.serial} onChange={(e) => setNw({ ...nw, serial: e.target.value })} /></div>
               </div>
-              <AssetOwnershipFields value={ownership} onChange={setOwnership} />
+              <AssetOwnershipFields value={ownership} onChange={setOwnership} projectId={projectId}/>
               <AssetNumberFields type={nw.type} number={number} rooms={rooms} onChange={(n,r)=>{setNumber(n);setRooms(r);}} suggest />
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setCreating(false)}>Cancel</Button>
@@ -238,7 +238,7 @@ export function LocationAssets({ projectId, locationId, locationName, canWrite, 
   return (
     <div className="space-y-1.5">
       {dates && canBill && <EditAssetPlacementDates row={dates} timezone={zone.data} onClose={() => setDates(null)} />}
-      {canBill && <EditAssetDialog asset={editAsset} open={!!editAsset} onOpenChange={(o) => !o && setEditAsset(null)} />}
+      {canBill && <EditAssetDialog projectId={projectId} asset={editAsset} open={!!editAsset} onOpenChange={(o) => !o && setEditAsset(null)} />}
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">Assets{here.length ? ` (${here.length})` : ""}</span>
         <Button size="sm" variant={showHistory ? 'secondary' : 'ghost'} onClick={() => setShowHistory(!showHistory)}>{showHistory ? 'Current placements' : 'Show history'}</Button>

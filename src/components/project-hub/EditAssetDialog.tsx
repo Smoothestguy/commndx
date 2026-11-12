@@ -21,7 +21,7 @@ export interface EditableAsset extends Omit<AssetCostInputs, 'ownership' | 'unit
 }
 
 /** Edits the registry asset (source of truth for default day rate). Callers gate to manager+. */
-export function EditAssetDialog({ asset, open, onOpenChange }: { asset: EditableAsset | null; open: boolean; onOpenChange: (o: boolean) => void }) {
+export function EditAssetDialog({ asset, open, onOpenChange, projectId }: { asset: EditableAsset | null; open: boolean; onOpenChange: (o: boolean) => void; projectId?: string }) {
   const update = useUpdateAsset();
   const [number,setNumber]=useState(''),[rooms,setRooms]=useState(10);
   const [ownership, setOwnership] = useState(emptyOwnership);
@@ -74,7 +74,7 @@ export function EditAssetDialog({ asset, open, onOpenChange }: { asset: Editable
             </div>
           </div>
           <div className="space-y-1.5"><Label>Serial number</Label><Input className="h-11" value={f.serial} onChange={(e) => setF({ ...f, serial: e.target.value })} /></div>
-          <AssetOwnershipFields value={ownership} onChange={setOwnership} full />
+          <AssetOwnershipFields value={ownership} onChange={setOwnership} full projectId={projectId}/>
           <AssetCostFields value={cost} onChange={setCost} base={{ ownership: ownership.ownership, unit_cost: ownership.unitCost.trim() ? Number(ownership.unitCost) : null, rental_rate: ownership.rentalRate.trim() ? Number(ownership.rentalRate) : null, rental_period: ownership.rentalPeriod }} />
           <AssetNumberFields type={f.type} number={number} rooms={rooms} onChange={(n,r)=>{setNumber(n);setRooms(r);}} suggest />
           <div className="space-y-1.5"><Label>Default bill rate ($/day) — what we charge</Label>

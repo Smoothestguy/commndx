@@ -5,17 +5,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { type Ownership, type RentalPeriod, validAssetCost } from '@/lib/assetDetails';
+import { ProjectVendorPicker } from './ProjectVendorPicker';
 
 export interface AssetOwnershipDraft {
   ownership: Ownership; vendor: string; unitCost: string; rentalRate: string; rentalPeriod: RentalPeriod; notes: string;
 }
 export const emptyOwnership: AssetOwnershipDraft = { ownership: 'owned', vendor: '', unitCost: '', rentalRate: '', rentalPeriod: 'day', notes: '' };
 
-export function AssetOwnershipFields({ value, onChange, full = false }: {
-  value: AssetOwnershipDraft; onChange: (v: AssetOwnershipDraft) => void; full?: boolean;
+export function AssetOwnershipFields({ value, onChange, full = false, projectId }: {
+  value: AssetOwnershipDraft; onChange: (v: AssetOwnershipDraft) => void; full?: boolean; projectId?: string;
 }) {
   const vendors = useQuery({
     queryKey: ['asset-rental-vendors'],
+    enabled: !projectId,
     queryFn: async () => {
       const { data, error } = await supabase.from('vendors').select('id,name').is('deleted_at', null).order('name');
       if (error) throw error;
@@ -31,9 +33,9 @@ export function AssetOwnershipFields({ value, onChange, full = false }: {
     <div><Label>Ownership</Label><Select value={value.ownership} onValueChange={v => onChange({ ...value, ownership: v as Ownership, vendor: v === 'owned' ? '' : value.vendor })}>
       <SelectTrigger aria-label="Ownership"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="owned">Owned</SelectItem><SelectItem value="rented">Rented</SelectItem></SelectContent>
     </Select></div>
-    {value.ownership === 'rented' && <div><Label>Rental vendor</Label><Select value={value.vendor || 'none'} onValueChange={v => onChange({ ...value, vendor: v === 'none' ? '' : v })}>
+    {value.ownership === 'rented' && <div><Label>Rental vendor</Label>{projectId ? <ProjectVendorPicker projectId={projectId} value={value.vendor} onChange={vendor => onChange({...value,vendor})} label="Rental vendor"/> : <Select value={value.vendor || 'none'} onValueChange={v => onChange({ ...value, vendor: v === 'none' ? '' : v })}>
       <SelectTrigger aria-label="Rental vendor"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">Select vendor</SelectItem>{vendors.data?.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
-    </Select>{vendors.isError && <p className="text-xs text-destructive">Could not load vendors.</p>}</div>}
+    </Select>}{vendors.isError && <p className="text-xs text-destructive">Could not load vendors.</p>}</div>}
     {full && (value.ownership === 'owned' ? costInput('unitCost', 'Our cost — purchase ($)') : <div className="grid grid-cols-2 gap-3">
       {costInput('rentalRate', 'Our cost — rental ($)')}
       <div><Label>Rental period</Label><Select value={value.rentalPeriod} onValueChange={v => onChange({ ...value, rentalPeriod: v as RentalPeriod })}><SelectTrigger aria-label="Rental period"><SelectValue /></SelectTrigger><SelectContent>{(['day', 'week', 'month'] as const).map(p => <SelectItem key={p} value={p}>Per {p}</SelectItem>)}</SelectContent></Select></div>
