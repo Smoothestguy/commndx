@@ -397,6 +397,7 @@
     .app-workspace:has([data-viewport-list]) { height: 100dvh; min-height: 0; }
     .app-workspace:has([data-viewport-list]) > .flex { min-height: 0; }
     .app-workspace:has([data-viewport-list]) > .flex > main { min-height: 0; overflow-y: hidden; }
+    .app-workspace:has([data-viewport-list]) .h-svh { height: 100%; }
     .viewport-grid:not([data-fullscreen="true"]) { height: var(--viewport-grid-height, 50vh); }
     .viewport-grid > [data-grid-scroll] { flex: 1 1 0%; max-height: none !important; overscroll-behavior: contain; }
     .viewport-grid > :not([data-grid-scroll]) { flex-shrink: 0; }

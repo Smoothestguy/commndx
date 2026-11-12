@@ -40,6 +40,12 @@ export function useViewportGrid(enabled: boolean) {
     };
     const observer = new ResizeObserver(measure);
     const root = grid.closest('[data-viewport-list]') ?? grid.parentElement;
+    const page = grid.closest('main') ?? root;
+    const mutations = new MutationObserver(measure);
+    if (page) {
+      observer.observe(page);
+      mutations.observe(page, { childList: true, subtree: true });
+    }
     if (root) {
       observer.observe(root);
       root.querySelectorAll('*').forEach(el => { if (!grid.contains(el) && !el.closest('[data-viewport-grid]')) observer.observe(el); });
@@ -47,7 +53,7 @@ export function useViewportGrid(enabled: boolean) {
     window.addEventListener('resize', measure);
     media.addEventListener('change', measure);
     measure();
-    return () => { cancelAnimationFrame(frame); observer.disconnect(); window.removeEventListener('resize', measure); media.removeEventListener('change', measure); };
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); mutations.disconnect(); window.removeEventListener('resize', measure); media.removeEventListener('change', measure); };
   }, [enabled]);
   return ref;
 }
