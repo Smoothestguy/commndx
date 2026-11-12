@@ -500,13 +500,13 @@ function PersonPicker({ projectId,value, onChange, excludeIds, placeholder }: {
         {isLoading ? <div className="p-2"><Loader2 className="h-4 w-4 animate-spin" /></div> :
           list.length === 0 ? <p className="p-2 text-xs text-muted-foreground">{dir.length?'No matches.':'No personnel on this project yet'}</p> :
           list.map((p) => (
-            <button
+            <Button variant="ghost"
               key={p.id} type="button"
               onClick={() => onChange(p.id)}
               className={cn("w-full text-left px-2 py-1.5 text-sm hover:bg-muted", value === p.id && "bg-primary/10")}
             >
               {fullName(p)}
-            </button>
+            </Button>
           ))}
       </div>
     </div>

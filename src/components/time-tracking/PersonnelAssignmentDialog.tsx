@@ -9,6 +9,8 @@ import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
 import { useProjectVendors } from '@/integrations/supabase/hooks/useProjectVendors';
 import { AddProjectVendor } from '@/components/project-hub/ProjectVendorPicker';
+import { AddToProject } from '@/components/project-hub/ProjectPersonnelRoster';
+import { useProjectPersonnelRoster } from '@/integrations/supabase/hooks/useProjectPersonnelRoster';
 import { 
   usePersonnelByProject, 
   useBulkAssignPersonnelToProject,
@@ -52,7 +54,7 @@ export function PersonnelAssignmentDialog({
   const [sendNotification, setSendNotification] = useState(false);
 
   const { data: projects = [] } = useProjects();
-  const { data: allPersonnel = [] } = usePersonnel();
+  const { data: allPersonnel = [] } = useProjectPersonnelRoster(selectedProject);
   const projectVendors = useProjectVendors(selectedProject);
   const { data: assignedPersonnel = [], isLoading } = usePersonnelByProject(selectedProject);
   const { data: rateBrackets = [] } = useActiveProjectRateBrackets(selectedProject);
@@ -400,14 +402,14 @@ export function PersonnelAssignmentDialog({
                   <UserPlus className="h-4 w-4" />
                   Add Personnel
                 </Label>
-                <AddProjectVendor projectId={selectedProject}/>
+                <AddToProject projectId={selectedProject}/>
                 {rateBrackets.length === 0 ? (
                   <div className="py-2 text-sm text-muted-foreground">
                     Define rate brackets before assigning personnel
                   </div>
                 ) : unassignedPersonnel.length === 0 ? (
                   <div className="py-2 text-sm text-muted-foreground">
-                    All active personnel are already assigned
+                    {assignedPersonnel.length?'All project personnel are already assigned':'No personnel on this project yet'}
                   </div>
                 ) : (
                   <>

@@ -44,6 +44,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAssets, useCreateAsset } from "@/integrations/supabase/hooks/useAssets";
 import { useAssignAsset } from "@/integrations/supabase/hooks/useAssetAssignments";
 import { usePersonnelByProject } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
+import { AddToProject } from './ProjectPersonnelRoster';
 
 const assignmentSchema = z.object({
   assetId: z.string().min(1, "Please select an asset"),
@@ -224,6 +225,7 @@ export function AssignAssetDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Assign to Personnel (Optional)</FormLabel>
+                      <AddToProject projectId={projectId}/>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
