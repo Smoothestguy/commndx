@@ -11,6 +11,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAddPersonnel, useUpdatePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
+import { ProjectVendorPicker } from '@/components/project-hub/ProjectVendorPicker';
+import { useProjectVendors } from '@/integrations/supabase/hooks/useProjectVendors';
+import { projectVendorAllowed } from '@/lib/projectVendors';
+import { toast } from 'sonner';
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { employerIds } from '@/lib/personnelEmployer';
 import { PhotoUpload } from "./PhotoUpload";
@@ -54,15 +58,17 @@ interface PersonnelFormProps {
   onCancel?: () => void;
   defaultVendorId?: string;
   defaultTab?: string;
+  projectId?: string;
 }
 
-export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId, defaultTab }: PersonnelFormProps) => {
+export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId, defaultTab, projectId }: PersonnelFormProps) => {
   const [photoUrl, setPhotoUrl] = useState(personnel?.photo_url || "");
   const [activeTab, setActiveTab] = useState(defaultTab || "personal");
 
   const addMutation = useAddPersonnel();
   const updateMutation = useUpdatePersonnel();
-  const { data: vendors } = useVendors();
+  const { data: vendors } = useVendors(projectId);
+  const projectVendors = useProjectVendors(projectId);
   const { data: customers = [] } = useCustomers();
 
   // Auto-save photo for existing personnel
@@ -112,6 +118,7 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
   });
 
   const onSubmit = async (data: PersonnelFormData) => {
+    if (projectId && data.vendor_id !== personnel?.vendor_id && !projectVendorAllowed(projectVendors.data, data.vendor_id || '')) { toast.error('Add this vendor to the project first'); return; }
     // Sync hourly_rate with pay_rate so time tracking uses the correct rate
     const payRate = data.pay_rate || 0;
     
@@ -407,7 +414,7 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
 
               <div className="space-y-2">
                 <Label htmlFor="vendor_id">Agency / Vendor</Label>
-                <Select
+                {projectId ? <ProjectVendorPicker projectId={projectId} value={watch('vendor_id') || ''} id="vendor_id" onChange={value => { setValue('vendor_id', value); if(value) setValue('employer_customer_id', ''); }}/> : <Select
                   value={watch("vendor_id") || "__none__"}
                   onValueChange={(value) => {
                     setValue("vendor_id", value === "__none__" ? "" : value);
@@ -425,7 +432,7 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
                       </SelectItem>
                     ))}
                   </SelectContent>
-                </Select>
+                </Select>}
               </div>
 
               <div className="space-y-2">

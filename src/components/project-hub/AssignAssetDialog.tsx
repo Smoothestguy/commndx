@@ -422,7 +422,7 @@ export function AssignAssetDialog({
                   )}
                 />
 
-                <AssetOwnershipFields value={ownership} onChange={setOwnership} />
+                <AssetOwnershipFields value={ownership} onChange={setOwnership} projectId={projectId} />
                 <AssetNumberFields type={newAssetForm.watch('type')} number={number} rooms={rooms} onChange={(n,r)=>{setNumber(n);setRooms(r);}} suggest />
                 {canSeeRates && <FormField
                   control={newAssetForm.control}

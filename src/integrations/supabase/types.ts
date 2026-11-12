@@ -8845,6 +8845,54 @@ export type Database = {
           },
         ]
       }
+      project_vendors: {
+        Row: {
+          active: boolean
+          added_at: string
+          added_by: string | null
+          id: string
+          project_id: string
+          updated_at: string
+          updated_by: string | null
+          vendor_id: string
+        }
+        Insert: {
+          active?: boolean
+          added_at?: string
+          added_by?: string | null
+          id?: string
+          project_id: string
+          updated_at?: string
+          updated_by?: string | null
+          vendor_id: string
+        }
+        Update: {
+          active?: boolean
+          added_at?: string
+          added_by?: string | null
+          id?: string
+          project_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_vendors_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_vendors_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           address: string | null
@@ -13517,6 +13565,15 @@ export type Database = {
           p_target_project_id: string
         }
         Returns: Json
+      }
+      project_vendor_names: {
+        Args: { p_project: string }
+        Returns: {
+          active: boolean
+          added_at: string
+          id: string
+          name: string
+        }[]
       }
       purge_archived_applicants: {
         Args: { p_confirmation: string; p_export_id: string }

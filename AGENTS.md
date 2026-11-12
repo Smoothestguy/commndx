@@ -39,3 +39,4 @@
 - Audited manager/version-checked billing date corrections tolerate legacy project overlap, preserve custody/status and guard event conflicts.
 - gridSizing preserves resized widths and flexes the last unsized data column; useViewportGrid fills desktop lists (1180px+), retaining mobile/cards scrolling and project Details state. Lists use shared `EnhancedDataTable` with frozen identity columns and explicit export projections; keyed `useSessionState` restores filters, selection and scroll across workspace tabs without changing authorization.
 - Sidebar/drawer share navConfig; role gating is UI-only.
+

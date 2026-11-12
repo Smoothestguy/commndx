@@ -1,3 +1,4 @@
+import { AddProjectVendor } from '@/components/project-hub/ProjectVendorPicker';
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -102,7 +103,6 @@ export function ChangeOrderForm({
   const { data: projects } = useProjects();
   const { data: customers } = useCustomers();
   const { data: products } = useProducts();
-  const { data: vendors } = useVendors();
   const { data: jobOrders } = useJobOrders();
   const { data: purchaseOrders } = usePurchaseOrders();
   const { data: companySettings } = useCompanySettings();
@@ -118,6 +118,7 @@ export function ChangeOrderForm({
   const canEditPricing = permissions?.canEditPricing ?? true;
 
   const [projectId, setProjectId] = useState(initialData?.project_id || defaultProjectId || "");
+  const { data: vendors } = useVendors(projectId);
   const [customerId, setCustomerId] = useState(initialData?.customer_id || "");
   const [customerName, setCustomerName] = useState(initialData?.customer_name || "");
   const [vendorId, setVendorId] = useState(initialData?.vendor_id || "");
@@ -596,6 +597,7 @@ export function ChangeOrderForm({
 
             <div className="space-y-2">
               <Label htmlFor="vendor">Vendor (Optional)</Label>
+              {(projectId) && <AddProjectVendor projectId={(projectId) || ''} onAdded={setVendorId}/>}
               <Popover open={vendorOpen} onOpenChange={setVendorOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -620,7 +622,7 @@ export function ChangeOrderForm({
                   <Command>
                     <CommandInput placeholder="Search vendors..." value={vendorSearch} onValueChange={setVendorSearch} />
                     <CommandList>
-                      <CommandEmpty>No vendors found.</CommandEmpty>
+                      <CommandEmpty>{(projectId) ? 'No vendors on this project yet' : 'No vendors found.'}</CommandEmpty>
                       <CommandGroup>
                         <CommandItem
                           value="none"

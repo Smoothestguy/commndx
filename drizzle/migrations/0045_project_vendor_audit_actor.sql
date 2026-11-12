@@ -1,0 +1,4 @@
+CREATE OR REPLACE FUNCTION public.audit_project_vendor() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+BEGIN
+ INSERT INTO public.audit_logs(user_id,user_email,action_type,resource_type,resource_id,changes_before,changes_after,metadata,success) VALUES(auth.uid(),coalesce((select email from public.profiles where id=auth.uid()),'system'),CASE WHEN TG_OP='INSERT' THEN 'create' ELSE 'update' END,'project_vendor',NEW.id,CASE WHEN TG_OP='UPDATE' THEN to_jsonb(OLD) ELSE NULL END,to_jsonb(NEW),jsonb_build_object('project_id',NEW.project_id,'vendor_id',NEW.vendor_id),true); RETURN NEW;
+END $$;

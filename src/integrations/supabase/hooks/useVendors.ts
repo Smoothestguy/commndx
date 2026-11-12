@@ -74,14 +74,21 @@ async function isQuickBooksConnected(): Promise<boolean> {
   return data?.is_connected === true;
 }
 
-export const useVendors = () => {
+export const useVendors = (projectId?: string | string[]) => {
+  const projectIds = (Array.isArray(projectId) ? projectId : projectId ? [projectId] : []).filter(Boolean).sort();
   return useQuery({
-    queryKey: ["vendors"],
+    queryKey: projectIds.length ? ["project-vendors", ...projectIds, "details"] : ["vendors"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vendors")
-        .select("*")
-        .order("created_at", { ascending: false });
+      let request = supabase.from("vendors").select("*").order("created_at", { ascending: false });
+      if (projectIds.length) {
+        const memberships = await supabase.from('project_vendors').select('vendor_id,project_id').in('project_id', projectIds).eq('active', true);
+        if (memberships.error) throw memberships.error;
+        if (!memberships.data.length) return [] as Vendor[];
+        const ids = [...new Set(memberships.data.map(row => row.vendor_id))].filter(id => projectIds.every(project => memberships.data.some(row => row.vendor_id === id && row.project_id === project)));
+        if (!ids.length) return [] as Vendor[];
+        request = request.in('id', ids);
+      }
+      const { data, error } = await request;
 
       if (error) throw error;
       return data as Vendor[];

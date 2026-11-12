@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchInput } from "@/components/ui/search-input";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
+import { useProjectVendors } from '@/integrations/supabase/hooks/useProjectVendors';
+import { AddProjectVendor } from '@/components/project-hub/ProjectVendorPicker';
 import { 
   usePersonnelByProject, 
   useBulkAssignPersonnelToProject,
@@ -51,6 +53,7 @@ export function PersonnelAssignmentDialog({
 
   const { data: projects = [] } = useProjects();
   const { data: allPersonnel = [] } = usePersonnel();
+  const projectVendors = useProjectVendors(selectedProject);
   const { data: assignedPersonnel = [], isLoading } = usePersonnelByProject(selectedProject);
   const { data: rateBrackets = [] } = useActiveProjectRateBrackets(selectedProject);
   const assignMutation = useBulkAssignPersonnelToProject();
@@ -77,8 +80,8 @@ export function PersonnelAssignmentDialog({
   );
 
   const activePersonnel = useMemo(() => 
-    allPersonnel.filter(p => p.status === "active"),
-    [allPersonnel]
+    allPersonnel.filter(p => p.status === "active" && (!p.vendor_id || projectVendors.data.some(v => v.id === p.vendor_id))),
+    [allPersonnel, projectVendors.data]
   );
 
   const assignedIds = useMemo(() => 
@@ -397,6 +400,7 @@ export function PersonnelAssignmentDialog({
                   <UserPlus className="h-4 w-4" />
                   Add Personnel
                 </Label>
+                <AddProjectVendor projectId={selectedProject}/>
                 {rateBrackets.length === 0 ? (
                   <div className="py-2 text-sm text-muted-foreground">
                     Define rate brackets before assigning personnel

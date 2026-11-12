@@ -3,6 +3,8 @@ import { useLocationAuthorization } from '@/hooks/useLocationAuthorization';
 import { toast } from 'sonner';
 import { JoinRequests } from './JoinRequests';
 import { QuickAddPerson } from './QuickAddPerson';
+import { useLocationProjectId, useProjectVendors } from '@/integrations/supabase/hooks/useProjectVendors';
+import { AddProjectVendor } from './ProjectVendorPicker';
 import { useProjectAgencies } from '@/hooks/useProjectAgencies';
 import { useUserRole } from '@/hooks/useUserRole';
 import { LogTimeDialog } from '@/components/personnel/lifecycle/LogTimeDialog';
@@ -114,6 +116,8 @@ export function AssignDialog({ locationId, open, onOpenChange, assignedIds, role
   defaultRole?: string; locationId: string; open: boolean; onOpenChange: (o: boolean) => void; assignedIds: Set<string>; roleOptions: string[]; onAssigned?: (ids: string[]) => void;
 }) {
   const { data: people = [], isLoading } = useActivePersonnelLite(open);
+  const { data: pickerProjectId } = useLocationProjectId(locationId);
+  const pickerVendors = useProjectVendors(pickerProjectId);
   const assign = useAssignPersonnel();
   const { isAdmin, isManager } = useUserRole();
   const [quick, setQuick] = useState(false);
@@ -130,12 +134,13 @@ export function AssignDialog({ locationId, open, onOpenChange, assignedIds, role
     const s = q.trim().toLowerCase();
     const digits = s.replace(/\D/g, "");
     return people.filter((p) => {
+      if (p.vendor_id && !pickerVendors.data.some(v => v.id === p.vendor_id)) return false;
       if (!matchesAllTags(tagData?.byPerson[p.id], tags)) return false;
       if (!s) return true;
       const name = `${p.first_name ?? ""} ${p.last_name ?? ""}`.toLowerCase();
       return name.includes(s) || (!!digits && (p.phone ?? "").replace(/\D/g, "").includes(digits));
     }).sort(pickerCompare).slice(0, 200);
-  }, [people, q, tags, tagData]);
+  }, [people, q, tags, tagData, pickerVendors.data]);
 
   const toggle = (id: string) => setSel((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const opts = roleOptions.length ? roleOptions : ([...ROLE_TAGS] as string[]);
@@ -145,6 +150,7 @@ export function AssignDialog({ locationId, open, onOpenChange, assignedIds, role
       <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
         <DialogHeader><DialogTitle>Assign personnel</DialogTitle></DialogHeader>
         {(isAdmin || isManager) && <Button size="sm" variant="outline" onClick={() => setQuick(v => !v)}><Plus className="h-4 w-4 mr-1" />Quick add</Button>}
+        {!quick && pickerProjectId && <AddProjectVendor projectId={pickerProjectId}/>}
         {quick && <QuickAddPerson locationId={locationId} role={role} onDone={(id, hasPhone) => { setQuick(false); if (hasPhone) setQuickText(id); else { onOpenChange(false); } }} />}
         {!quick && <><Input placeholder="Search name or phone" value={q} onChange={(e) => setQ(e.target.value)} />
         <TagFilter value={tags} onChange={setTags} />

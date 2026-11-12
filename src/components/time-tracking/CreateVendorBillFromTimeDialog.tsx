@@ -1,3 +1,4 @@
+import { AddProjectVendor } from '@/components/project-hub/ProjectVendorPicker';
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -77,7 +78,8 @@ export function CreateVendorBillFromTimeDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customNote, setCustomNote] = useState("");
 
-  const { data: vendors = [] } = useVendors();
+  const vendorProjectIds = [...new Set(selectedEntries.map(e => e.project_id).filter((id): id is string => !!id))];
+  const { data: vendors = [] } = useVendors(vendorProjectIds);
   const { data: categories = [] } = useExpenseCategories();
   const { data: companySettings } = useCompanySettings();
   const addBill = useAddVendorBill();
@@ -597,6 +599,7 @@ export function CreateVendorBillFromTimeDialog({
                                 ))}
                               </SelectContent>
                             </Select>
+                            {vendorProjectIds.map(project => <AddProjectVendor key={project} projectId={project}/>)}
                           </TableCell>
                           <TableCell className="text-right">
                             {summary.regularHours.toFixed(1)}h

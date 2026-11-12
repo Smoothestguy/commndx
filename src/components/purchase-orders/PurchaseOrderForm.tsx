@@ -1,3 +1,4 @@
+import { AddProjectVendor } from '@/components/project-hub/ProjectVendorPicker';
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -49,7 +50,6 @@ export const PurchaseOrderForm = () => {
   
   const { user } = useAuth();
   const { data: jobOrders, isLoading: jobOrdersLoading } = useJobOrders();
-  const { data: vendors, isLoading: vendorsLoading } = useVendors();
   const { data: products } = useProducts();
   const { data: prefillJobOrder, isLoading: prefillLoading } = useJobOrder(jobOrderIdFromUrl || "");
   const { data: duplicatePO, isLoading: duplicateLoading } = usePurchaseOrder(duplicateId || "");
@@ -75,6 +75,7 @@ export const PurchaseOrderForm = () => {
 
   // Get selected job order details
   const selectedJobOrder = jobOrders?.find(jo => jo.id === selectedJobOrderId);
+  const { data: vendors, isLoading: vendorsLoading } = useVendors(selectedJobOrder?.project_id);
   const selectedVendor = vendors?.find(v => v.id === selectedVendorId);
 
   // Group products by type
@@ -394,6 +395,7 @@ export const PurchaseOrderForm = () => {
             {/* Searchable Vendor Combobox */}
             <div className="space-y-2">
               <Label htmlFor="vendor">Vendor *</Label>
+              {(selectedJobOrder?.project_id) && <AddProjectVendor projectId={(selectedJobOrder?.project_id) || ''} onAdded={setSelectedVendorId}/>}
               <Popover open={vendorComboboxOpen} onOpenChange={setVendorComboboxOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -425,7 +427,7 @@ export const PurchaseOrderForm = () => {
                       onValueChange={setVendorSearch}
                     />
                     <CommandList>
-                      <CommandEmpty>No vendors found.</CommandEmpty>
+                      <CommandEmpty>{(selectedJobOrder?.project_id) ? 'No vendors on this project yet' : 'No vendors found.'}</CommandEmpty>
                       <CommandGroup>
                         {activeVendors.map((vendor) => (
                           <CommandItem

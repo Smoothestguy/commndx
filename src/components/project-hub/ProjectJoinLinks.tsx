@@ -3,7 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { useVendors } from '@/integrations/supabase/hooks/useVendors';
+import { useProjectVendors } from '@/integrations/supabase/hooks/useProjectVendors';
+import { ProjectVendorPicker } from './ProjectVendorPicker';
+import { projectVendorAllowed } from '@/lib/projectVendors';
 import { useCustomers } from '@/integrations/supabase/hooks/useCustomers';
 import { useProjectLocations } from '@/integrations/supabase/hooks/useProjectLocations';
 import { RolePicker } from './LocationStaffing';
@@ -39,7 +41,7 @@ export function ProjectJoinLinks({ projectId, locationId, iconOnly = false, menu
 function JoinLinksDialog({ projectId, locationId }: { projectId: string; locationId?: string }) {
   const { user } = useAuth();
   const { data: locations = [] } = useProjectLocations(projectId);
-  const { data: vendors = [] } = useVendors();
+  const { data: vendors } = useProjectVendors(projectId);
   const { data: customers = [] } = useCustomers();
   const [scope, setScope] = useState(locationId || 'project'), [role, setRole] = useState('');
   const [worksFor, setWorksFor] = useState<WorksFor>('frg'), [vendor, setVendor] = useState(''), [customer, setCustomer] = useState('');
@@ -57,6 +59,7 @@ function JoinLinksDialog({ projectId, locationId }: { projectId: string; locatio
       e.preventDefault(); if (busy || !user) return; setBusy(true);
       try {
         if (scope !== 'project' && !locations.some(l => l.id === scope)) throw new Error('Select a project location');
+        if (worksFor === 'agency' && !projectVendorAllowed(vendors, vendor)) throw new Error('Add this vendor to the project first');
         const { data, error } = await supabase.from('project_join_tokens').insert({ project_id: projectId, location_id: scope === 'project' ? null : scope, role_label: role.trim() || null, non_billable: nb, ...quickEmployer(worksFor, customer, vendor), expires_at: joinExpiry(Number(days)), created_by: user.id }).select('id').single();
         if (error) throw error; setSelected(data.id); await links.refetch(); toast.success('Join link created');
       } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to create join link'); } finally { setBusy(false); }
@@ -64,7 +67,7 @@ function JoinLinksDialog({ projectId, locationId }: { projectId: string; locatio
       <div className="space-y-1"><Label htmlFor="join-scope">Scope</Label><Select value={scope} onValueChange={setScope} disabled={busy}><SelectTrigger id="join-scope"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="project">Whole project</SelectItem>{locations.map(l => <SelectItem key={l.id} value={l.id}>{l.id === locationId ? `This location — ${l.name}` : l.name}</SelectItem>)}</SelectContent></Select></div>
       <div className="space-y-1"><Label>Default role</Label><RolePicker value={role} onChange={setRole} options={[...ROLE_TAGS]} allowNone /></div>
       <div className="space-y-1"><Label htmlFor="join-works-for">Works for</Label><Select value={worksFor} disabled={busy} onValueChange={(v: WorksFor) => { setWorksFor(v); setCustomer(''); setVendor(''); setNb(current => customerNonBillableDefault(v, current)); }}><SelectTrigger id="join-works-for"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="frg">FRG</SelectItem><SelectItem value="agency">Agency…</SelectItem><SelectItem value="customer">Customer…</SelectItem></SelectContent></Select></div>
-      {worksFor === 'agency' && <div className="space-y-1"><Label htmlFor="join-vendor">Agency / Vendor</Label><Select value={vendor} onValueChange={setVendor} disabled={busy}><SelectTrigger id="join-vendor"><SelectValue placeholder="Select agency / vendor" /></SelectTrigger><SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent></Select></div>}
+      {worksFor === 'agency' && <div className="space-y-1"><Label htmlFor="join-vendor">Agency / Vendor</Label><ProjectVendorPicker projectId={projectId} value={vendor} onChange={setVendor} id="join-vendor" disabled={busy}/></div>}
       {worksFor === 'customer' && <div className="space-y-1"><Label htmlFor="join-customer">Employer (customer)</Label><Select value={customer} onValueChange={setCustomer} disabled={busy}><SelectTrigger id="join-customer"><SelectValue placeholder="Select customer" /></SelectTrigger><SelectContent>{customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>}
       <div className="flex items-center justify-between"><Label htmlFor="join-nb">Non-billable</Label><Switch id="join-nb" checked={nb} onCheckedChange={setNb} disabled={busy} /></div>
       <div className="space-y-1"><Label htmlFor="join-expiry">Expires in (days)</Label><Input id="join-expiry" type="number" min={1} step={1} value={days} onChange={e => setDays(e.target.value)} disabled={busy} required /></div>

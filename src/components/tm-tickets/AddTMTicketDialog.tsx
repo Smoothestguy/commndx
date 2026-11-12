@@ -1,3 +1,4 @@
+import { AddProjectVendor } from '@/components/project-hub/ProjectVendorPicker';
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -76,7 +77,7 @@ export function AddTMTicketDialog({
   const addTMTicket = useAddTMTicket();
   const updateTMTicket = useUpdateTMTicket();
   const { data: products } = useProducts();
-  const { data: vendors } = useVendors();
+  const { data: vendors } = useVendors(projectId || editTicket?.project_id);
   const { data: allPurchaseOrders } = usePurchaseOrders();
   const purchaseOrders = allPurchaseOrders?.filter(po => po.project_id === projectId);
   const { data: companySettings } = useCompanySettings();
@@ -331,6 +332,7 @@ export function AddTMTicketDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Vendor (Optional)</Label>
+              {(projectId || editTicket?.project_id) && <AddProjectVendor projectId={(projectId || editTicket?.project_id) || ''} onAdded={setVendorId}/>}
                 <Select value={vendorId} onValueChange={setVendorId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select vendor..." />
