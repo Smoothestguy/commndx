@@ -1,3 +1,7 @@
+# Join-link employer labels
+- [x] Shared active-link rows show agency/customer names and non-billable labels; agency copy/SMS text includes sign-up name, while raw URL/QR remain unchanged. Recruiting opens the same shared dialog.
+- [x] Owner browser verified 5049 DOM SOLUTIONS row, real clipboard readback, SMS content and Recruiting list; no records changed or messages sent.
+
 # Join page agency branding
 - [x] Existing token-validated get_join_info now returns only agency name/logo alongside its existing fields; shared HTTPS logo validation, prominent EN/ES agency heading and small powered-by footer on registration/confirmation. FRG-only links unchanged.
 - [x] Anonymous exact DOM token showed name-only branding and no FRG header in EN/ES; live non-vendor token retained FRG. EN/ES confirmations checked with intercepted submission (no production requests). Thirteen tests passed, preview clean, no browser errors or fixtures.
