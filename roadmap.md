@@ -1,5 +1,10 @@
 # Bunk trailer correction
 
+# Asset date blocker and grid widths
+- [ ] Reproduce admin truck start/end corrections on 5049; fix audited editing, verify recalculation and restore owner dates.
+- [ ] Shared compact column defaults, flexible last data column, truncation/tooltips and retained resizing across roster/personnel/attendance/assets/Event grids.
+- [ ] Verify 1440px grids and reload persistence; report the actual blocker and preserve production history.
+
 # Desktop viewport lists
 - [x] Compact, remembered project Details on Locations List; slim needs/filters/tabs, measured viewport-owned grid scrolling and pinned footer.
 - [x] Shared desktop viewport grids applied to Projects (existing grouped sections retained), Personnel, Applicant Pool and Event Manager; composed Event grids share remaining height. Cards/roster/mobile retain existing layout.
