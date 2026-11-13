@@ -19,6 +19,10 @@ import { CustomerSheetApproval } from '@/components/signin/CustomerSheetApproval
 import { useSheetDays } from '@/components/signin/SigninStatusBoard';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useEffect } from 'react';
+import { useCustomers } from '@/integrations/supabase/hooks/useCustomers';
+import { useProject } from '@/integrations/supabase/hooks/useProjects';
+import { locationCustomer } from '@/lib/projectEvent';
+import { getCustomerDisplayName } from '@/utils/customerDisplayName';
 
 const save = (blob: Blob, name: string) => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 10000); };
 export function SigninSheetsPanel({ doc, projectName, initialSheet }: { doc: ProjectDocument; projectName: string; initialSheet?: { location: string; day: string } }) {
@@ -29,6 +33,7 @@ export function SigninSheetsPanel({ doc, projectName, initialSheet }: { doc: Pro
   const { data: locations = [] } = useProjectLocations(doc.project_id);
   const [selected, setSelected] = useState<string[]>(doc.location_ids?.length ? doc.location_ids : doc.location_id ? [doc.location_id] : []);
   const qc = useQueryClient();
+  const customers=useCustomers(),project=useProject(doc.project_id);
   useEffect(() => { if (initialSheet) { setSelected([initialSheet.location]); setFrom(initialSheet.day); setTo(initialSheet.day); setOpen(true); } }, [initialSheet?.location, initialSheet?.day]);
   const validRange = !!from && !!to && from <= to && Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`) <= 366 * 86400000;
   const { data: stays = [], isLoading, error } = useQuery({ queryKey: ['signin-sheet-stays', doc.project_id, from, to], enabled: open && validRange, queryFn: () => loadSheetStays(doc.project_id, locations, from, to) });
@@ -45,7 +50,7 @@ export function SigninSheetsPanel({ doc, projectName, initialSheet }: { doc: Pro
   const generate = async (sheet: typeof sheets[number]) => {
     const [{ data, error }, fields] = await Promise.all([supabase.storage.from('project-documents').download(doc.file_path), loadDocumentFields(doc.id)]);
     if (error || !data) throw error || new Error('Template unavailable');
-    return generateSigninSheet(await data.arrayBuffer(), fields, sheet.rows, { rowsPerPage: doc.rows_per_page ?? 12, rowHeight: doc.row_height_pct ?? 0.045, zone: sheet.zone, day: sheet.day, project: projectName, mission: sheet.location.project_number || '', location: sheet.location.name, address: [sheet.location.address, sheet.location.city, sheet.location.state, sheet.location.zip].filter(Boolean).join(', ') }, loadSheetSignature);
+    return generateSigninSheet(await data.arrayBuffer(), fields, sheet.rows, { rowsPerPage: doc.rows_per_page ?? 12, rowHeight: doc.row_height_pct ?? 0.045, zone: sheet.zone, day: sheet.day, project: projectName, customer: getCustomerDisplayName(customers.data?.find(c=>c.id===locationCustomer(sheet.location,project.data?.customer_id))), mission: sheet.location.project_number || '', location: sheet.location.name, address: [sheet.location.address, sheet.location.city, sheet.location.state, sheet.location.zip].filter(Boolean).join(', ') }, loadSheetSignature);
   };
   const download = async (items: typeof sheets, zipName?: string) => {
     if (busy || !items.length || savedError) return; setBusy(true);
