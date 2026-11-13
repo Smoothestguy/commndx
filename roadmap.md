@@ -1,4 +1,5 @@
 # Punch improvements
+- [ ] Finish rollback auto-close/approval/lock/privacy tests, mocked SMS dedupe/opt-out checks, fresh GPS browser checks and deployed callback verification; zero worker texts.
 - [x] Guarded frozen-schedule auto-close via existing active ten-minute roster callback; blank actual checkout and separate reported corrections, owner approval/denial recount, opt-out-aware reserved SMS. Existing jobs unchanged. Disposable close verified exact end/12h, approval 13.25h and denial 12h; live roster dry-run HTTP 200 with zero texts. Unmanaged stale callback now requires existing service/job credentials; its older unauthenticated requests cannot mutate records.
 - [x] Immediate token-scoped GPS/unavailable link-open events; manager attendance details retain events without same-day punches. Real anonymous 390px GPS/denial and correction dialog, manager detail checked. Disposable project/location/worker/stay/events/requests/ledger/alerts/audits removed; Juan link and owner punches untouched. Focused regressions and preview pass; no worker texts sent. The existing ten-minute callback closes at stored schedule time, with up to ten minutes notification delay.
 
