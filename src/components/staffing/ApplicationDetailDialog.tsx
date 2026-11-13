@@ -1,3 +1,6 @@
+import { SecureAvatar } from "@/components/ui/secure-avatar";
+import { SecureImage } from "@/components/ui/secure-image";
+import { getSignedUrl, getBucketFromUrl } from "@/utils/signedUrlUtils";
 import { IntakeProfileCard } from "@/components/intake/IntakeProfileCard";
 import { ApplicantStarButton } from "./ApplicantStarButton";
 import { ApplicantMetaEditor } from "./ApplicantMetaEditor";
@@ -530,7 +533,7 @@ export function ApplicationDetailDialog({
                   <button
                     type="button"
                     onClick={() =>
-                      profilePicture && setEnlargedImage(profilePicture)
+                      profilePicture && getSignedUrl(getBucketFromUrl(profilePicture) || "application-files", profilePicture).then(url => url && setEnlargedImage(url))
                     }
                     className={`rounded-full transition-all ${
                       profilePicture
@@ -539,15 +542,7 @@ export function ApplicationDetailDialog({
                     }`}
                     disabled={!profilePicture}
                   >
-                    <Avatar className="h-20 w-20">
-                      <AvatarImage
-                        src={profilePicture || undefined}
-                        alt="Profile"
-                      />
-                      <AvatarFallback className="text-lg">
-                        <User className="h-8 w-8" />
-                      </AvatarFallback>
-                    </Avatar>
+                    <SecureAvatar bucket="application-files" photoUrl={profilePicture} fallback={<User className="h-8 w-8" />} className="h-20 w-20" enableLightbox />
                   </button>
 
                   <div className="flex-1 space-y-3">
@@ -711,12 +706,12 @@ export function ApplicationDetailDialog({
                                   <button
                                     type="button"
                                     onClick={() =>
-                                      setEnlargedImage(response.value)
+                                      getSignedUrl(getBucketFromUrl(response.value) || "application-files", response.value).then(url => url && setEnlargedImage(url))
                                     }
                                     className="cursor-pointer hover:opacity-80 transition-opacity"
                                   >
-                                    <img
-                                      src={response.value}
+                                    <SecureImage bucket={getBucketFromUrl(response.value) || "application-files"}
+                                      path={response.value}
                                       alt={response.label}
                                       className="max-h-24 rounded border"
                                     />
