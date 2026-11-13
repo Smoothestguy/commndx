@@ -1,12 +1,12 @@
 # MX-style mobile Home
-- [ ] Light profile/featured/menu cards and floating role dock, real read/online status and scope switcher; existing actions/destinations retained.
-- [ ] Verify manager and approved jperez linked to Juan at 390px read-only; retain personnel link and all punches/messages.
+- [x] Light profile/featured/menu cards and floating role dock, real read/online status and scope switcher; existing actions/destinations retained.
+- [x] Manager and approved jperez/ Juan verified at 390px: menu, switcher, Add, Profile, online/offline, 47.86 worker hours and no manager/dollar content; approvals access redirects to worker portal. Desktop operations retained; 19 tests pass. Juan link confirmed unchanged, no punches/texts/business data writes.
 
 # Phone-first operations
 - [x] Five-item manager phone navigation, shared live approvals badge/inbox, focused Home without Sales; field phone navigation omits manager tools.
 - [x] Location attendance-first layout, military edits, grouped roster and authorization; secondary details collapsed. Phone grid cards preserve desktop tables.
 - [x] Owner 390px Home/inbox (17 pending actions)/5049 location/audited-edit dialog/public live punch page verified; phone Personnel/Time/Event screens show no visible spreadsheets or overflow, desktop retains its table. Thirty-six focused tests pass; no owner decisions, punches, messages, records or schedules changed. Worker check remains blocked below.
-- [ ] Field-user verification awaits an identified account and permission; existing five field accounts have no worker linkage, so populated My Day cannot be verified safely yet.
+- [x] Approved jperez linked to Juan verified read-only at 390px with populated self-only My Day and 47.86 weekly hours; link retained.
 
 # Information architecture
 - [x] Global Locations shared grid defaults to active sites; project/status/customer filters and project/type/count columns verified. Locations follows Projects in desktop/mobile navigation; Staffing Map follows Bench. Field Mode has a header/Home action and event chooser.
