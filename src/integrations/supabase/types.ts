@@ -14053,6 +14053,17 @@ export type Database = {
         }
         Returns: Json
       }
+      record_to_sheet_signature: {
+        Args: {
+          p_in: string
+          p_out: string
+          p_path: string
+          p_person: string
+          p_role: string
+          p_sheet: string
+        }
+        Returns: string
+      }
       request_closed_shift_extension: {
         Args: { p_reason: string; p_token: string; p_until: string }
         Returns: Json
