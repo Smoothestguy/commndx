@@ -1,3 +1,8 @@
+# Information architecture
+- [ ] Global Locations grid and shared desktop/mobile navigation; app-wide Field Mode.
+- [ ] Event-only tabs, rollups/settings, location alerts and Financials warnings; legacy-link redirects.
+- [ ] Customer/supplier naming and location-scope audit; browser and focused tests without production writes.
+
 # Projects as events
 - [x] Managed EM/DC/DCBASECAMP types with manager settings, optional project default, location customer backfill, new-location defaults, and location-scoped portal reads/submissions; historical orders/PDFs untouched.
 - [x] Event overview with editable parameters, four status-colored location pins, customer/vendor/location/on-site summaries, and type/customer grid filters; Locations command center retained.
