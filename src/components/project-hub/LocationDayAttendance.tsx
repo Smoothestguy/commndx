@@ -25,15 +25,19 @@ import { isHHmm } from '@/lib/assignmentRoles';
 import { LATE_ACK_PRESETS, lateAckText } from '@/lib/lateAck';
 import { punchTimeDetail } from '@/lib/punchTimes';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useEffect } from 'react';
 
 type Stay = { id: string; personnel_id: string; name: string; in_at: string; out_at: string | null; actual_in_at?: string | null; actual_out_at?: string | null; hours: number | null; late_minutes: number | null; late_reason: string | null; late_ack_reason: string | null; in_geofence: boolean | null; offsite_reason: string | null; synced_late: boolean | null;demobe?:boolean };
 const hm = (iso: string | null, tz: string) => iso ? localTime(iso, tz) : '—';
 const dayLabel = (iso: string, tz: string) => new Date(iso).toLocaleDateString('en-US', { timeZone: tz, month: '2-digit', day: '2-digit' });
 
 /** Day-first attendance for one location: every roster person with in/out, late, geo, totals and manager inline/bulk edits. */
-export function LocationDayAttendance({ projectId, locationId, timezone, canWrite }: { projectId: string; locationId: string; timezone?: string | null; canWrite: boolean }) {
+export function LocationDayAttendance({ projectId, locationId, timezone, canWrite, todayFirst=false }: { projectId: string; locationId: string; timezone?: string | null; canWrite: boolean; todayFirst?:boolean }) {
+  const mobile=useIsMobile();
   const tz = timezone || 'America/Chicago';
   const [day, setDay] = useSessionState(`attendance:${locationId}:day`, localDay(new Date().toISOString(), tz));
+  useEffect(()=>{if(todayFirst)setDay(localDay(new Date().toISOString(),tz));},[locationId,todayFirst]);
   const [edit, setEdit] = useState<{ ids: string[]; name: string; day?: string } | null>(null);
   const [log, setLog] = useState<{ id: string; name: string } | null>(null);
   const [selected, setSelected] = useSessionState<string[]>(`attendance:${locationId}:selection`, []);
@@ -139,6 +143,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
       </span>; } },
     { key: 'hours', header: 'Hours', getValue: r => r.stays.reduce((n, st) => n + (st.out_at ? Number(st.hours) || 0 : 0), 0) },
     { key: 'stays', header: 'Stays', width: 270, getValue: r => r.stays.length,
+      noExport:mobile,
       render: r => <div className="space-y-1">{r.stays.map((st, i) => <div key={st.id}><div className="flex items-center gap-1"><span>Stay {i + 1}</span>{canWrite && <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={r.stays.length === 1 ? `Edit times for ${r.name}` : `Edit stay ${i + 1} for ${r.name}`} onClick={() => setEdit({ ids: [st.id], name: r.name, day })}><Pencil className="h-3 w-3" /></Button>}</div>{(punchTimeDetail(st.actual_in_at,st.in_at,tz)||punchTimeDetail(st.actual_out_at,st.out_at,tz))&&<details className="text-xs text-muted-foreground"><summary>Tap record</summary><p className="whitespace-normal">{punchTimeDetail(st.actual_in_at,st.in_at,tz)}</p><p className="whitespace-normal">{punchTimeDetail(st.actual_out_at,st.out_at,tz)}</p></details>}</div>)}</div> },
     ...(canWrite ? [{ key: 'actions', header: 'Actions', noExport: true, sortable: false, filterable: false, render: (r: AttendanceRow) => <Button size="sm" variant="ghost" aria-label={r.stays.length ? `Add entry for ${r.name}` : `Set arrival for ${r.name}`} onClick={() => setLog({ id: r.id, name: r.name })}><Plus className="h-3.5 w-3.5 mr-1" />{r.stays.length ? 'Add entry' : 'Arrival'}</Button> }] : []),
   ];

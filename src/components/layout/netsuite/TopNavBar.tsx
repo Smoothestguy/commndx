@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useLocation } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
   const { user, signOut } = useAuth();
   const { isAdmin, isManager, isUser } = useUserRole();
   const location = useLocation();
+  const mobile = useIsMobile();
   const fieldHome = isUser && location.pathname === '/';
   const { toggleOpen, messages } = useAIAssistant();
   const { resolvedTheme } = useTheme();
@@ -73,7 +75,7 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
 
         {/* Right Section: Session + Actions + User */}
         <div className="flex items-center gap-1">
-          {(isAdmin || isManager || isUser) && <Button asChild size="icon" variant="ghost" className="h-8 w-8 text-header-foreground" title="Field Mode"><Link to="/field" aria-label="Field Mode"><Smartphone className="h-4 w-4"/></Link></Button>}
+          {(!mobile || !isUser) && (isAdmin || isManager || isUser) && <Button asChild size="icon" variant="ghost" className="h-8 w-8 text-header-foreground" title="Field Mode"><Link to="/field" aria-label="Field Mode"><Smartphone className="h-4 w-4"/></Link></Button>}
           {/* Messages Icon - iPhone style */}
           <Link to="/messages">
             <Button
@@ -115,10 +117,10 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
           <div className="h-5 w-px bg-black/20 dark:bg-white/20 mx-1 hidden md:block" />
 
           {/* Global Search */}
-          {!fieldHome && <GlobalSearch />}
+          {!fieldHome && !mobile && <GlobalSearch />}
 
           {/* Quick Create Button */}
-          {!fieldHome && <QuickCreateMenu />}
+          {!fieldHome && !mobile && <QuickCreateMenu />}
 
           {/* Divider */}
           <div className="h-5 w-px bg-black/20 dark:bg-white/20 mx-1" />

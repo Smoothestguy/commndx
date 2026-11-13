@@ -186,7 +186,7 @@ export function RowBasedDashboard() {
 
   // Register the EditModeToggle in the page header
   useEffect(() => {
-    if (!pageHeaderActions || !canCustomize) return;
+    if (!pageHeaderActions || !canCustomize || mobile) return;
 
     pageHeaderActions.setRightActions(
       <EditModeToggle
@@ -208,6 +208,7 @@ export function RowBasedDashboard() {
   }, [
     pageHeaderActions?.setRightActions,
     canCustomize,
+    mobile,
     isEditMode,
     hasCustomConfig,
     hasUnsavedChanges,

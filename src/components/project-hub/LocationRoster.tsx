@@ -1,4 +1,5 @@
 import { EnhancedDataTable, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useSessionState } from '@/hooks/useSessionState';
 import { assetCareLabel, ownershipText } from '@/lib/assetDetails';
 import type { AssetAssignmentWithDetails } from '@/integrations/supabase/hooks/useAssetAssignments';
@@ -49,6 +50,7 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
   agencies: Agencies; phones: Record<string, string | null>; texted: Record<string, string>;
   onText: (ids: string[]) => void; onLog: (id: string) => void; onExpense: (id: string) => void; onUnassign: (a: LocationAssignment) => void;
 }) {
+  const mobile=useIsMobile();
   const tz = timezone || 'America/Chicago';
   const today = localDay(new Date().toISOString(), tz);
   const { data: onSite = {} } = useOnSiteMap();
@@ -152,16 +154,17 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
 
   return <div className="space-y-4">
     <div className="flex flex-wrap gap-2">{groups.map(([role, list]) => <Badge key={role} variant="outline">{role}: {list.length}{byRole[role]?.needed ? `/${byRole[role].needed}` : ''}</Badge>)}</div>
-    <EnhancedDataTable tableId={`location-roster:${locationId}`} data={assignments.map(a => ({ ...a, id: a.personnel_id, assignment: a }))} columns={columns}
+    {mobile ? <div className="space-y-4"><Input aria-label="Search staffing roster" placeholder="Search roster…" value={q} onChange={e=>setQ(e.target.value)}/>{groups.map(([role,list])=><section key={role}><h3 className="font-semibold text-sm mb-2">{role} · {list.length}</h3><EnhancedDataTable tableId={`location-roster:${locationId}:${role}`} data={list.map(a=>({...a,id:a.personnel_id,assignment:a}))} columns={columns} searchable={false} selectable={canWrite} selectedIds={sel} onSelectionChange={setSel}/></section>)}{demob.length>0&&<details><summary className="min-h-11 flex items-center text-sm">Demobilized · {demob.length}</summary><EnhancedDataTable tableId={`location-roster:${locationId}:demobilized`} data={demob.map(a=>({...a,id:a.personnel_id,assignment:a}))} columns={columns} selectable={canWrite}/></details>}</div> : <>    <EnhancedDataTable tableId={`location-roster:${locationId}`} data={assignments.map(a => ({ ...a, id: a.personnel_id, assignment: a }))} columns={columns}
       selectable={canWrite} selectedIds={sel} onSelectionChange={setSel} exportName="location-roster" searchPlaceholder="Search roster…"
       attention={a => !phones[a.personnel_id] ? 'Missing phone' : null}
       bulkActions={(_, clear) => <><Button size="sm" variant="outline" onClick={() => onText([...sel])}><MessageSquare className="h-3.5 w-3.5 mr-1" />Text this site</Button><PersonnelBulkActions people={selectedPeople} worksFor={worksFor} onDone={clear} /></>}
     />
-    <section className="border rounded-md bg-card" aria-label="Assets group">
+</>}
+    {!mobile && <section className="border rounded-md bg-card" aria-label="Assets group">
       <h3 className="flex items-center justify-between px-3 py-2 text-sm font-semibold border-b bg-muted/40">Assets / Trucks<Badge variant="secondary">{assets.data?.length ?? 0}</Badge></h3>
       {assets.isLoading ? <Loader2 className="m-3 h-4 w-4 animate-spin" /> : !assets.data?.length ? <p className="px-3 py-2 text-sm text-muted-foreground">No equipment assigned. Manage in the Assets tab.</p> :
         <ul className="divide-y">{assets.data.map(r => <li key={r.id} className="flex items-center gap-2 px-3 py-2 text-sm"><Truck className="h-4 w-4 text-muted-foreground" />{assetCareLabel(r.assets?.label ?? 'Asset', r.personnel)}<Badge variant="outline">{ownershipText(r.assets)}</Badge>{r.assets?.type && <span className="text-xs text-muted-foreground">· {r.assets.type}</span>}</li>)}</ul>}
-    </section>
+    </section>}
 
     <Dialog open={!!roleDlg} onOpenChange={o => !o && !changeRole.isPending && setRoleDlg(null)}><DialogContent className="max-w-sm">
       <DialogHeader><DialogTitle>Change position</DialogTitle></DialogHeader>

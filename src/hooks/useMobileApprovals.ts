@@ -15,15 +15,18 @@ export function useMobileApprovals(enabled = true) {
       homeRows(o=>supabase.from('shift_extensions').select('id,location_id,personnel_id,reason,until_at,status').eq('status','pending').order('id').range(o,o+499)),
       homeRows(o=>supabase.from('location_requests').select('id,location_id,label,kind,qty,note,status').eq('status','open').order('id').range(o,o+499)),
       homeRows(o=>supabase.from('location_task_orders').select('id,location_id,to_number,effective_date,kind,notes,status,location_task_order_lines(label,qty_delta,line_kind)').eq('status','submitted').order('id').range(o,o+499)),
-      homeRows(o=>supabase.from('personnel_location_trail').select('visit_personnel_id,personnel_id,location_id,in_at,out_at,signature_url').gte('in_at',new Date(Date.now()-2*86400000).toISOString()).order('visit_personnel_id').range(o,o+499)),
+      homeRows(o=>supabase.from('personnel_location_trail').select('visit_personnel_id,personnel_id,first_name,last_name,location_id,in_at,out_at,signature_url').gte('in_at',new Date(Date.now()-2*86400000).toISOString()).order('visit_personnel_id').range(o,o+499)),
     ]);
+    const early = await homeRows(o=>supabase.from('visit_personnel').select('id,visit_id,location_visits(location_id)').not('early_in_reason','is',null).is('offsite_approved_at',null).order('id').range(o,o+499));
+    const shiftProjectIds=[...new Set([...shifts.map(s=>s.location_id),...early.flatMap(s=>s.location_visits?.location_id?[s.location_visits.location_id]:[])].flatMap(id=>{const l=locations.find(l=>l.id===id);return l?[l.project_id]:[];}))];
     const signatures = locations.flatMap(l=>{
       const zone=l.timezone||'America/Chicago',day=localDay(new Date().toISOString(),zone);
       const people=new Map<string,boolean>();
       for(const r of trail)if(r.location_id===l.id&&r.personnel_id&&r.in_at&&Date.parse(r.in_at)>=midnight(day,zone)&&Date.parse(r.in_at)<midnight(nextDay(day),zone))people.set(r.personnel_id,!!r.signature_url||!!people.get(r.personnel_id));
       const count=[...people.values()].filter(v=>!v).length;
-      return count?[{locationId:l.id,day,count}]:[];
+      const rows=trail.filter(r=>r.location_id===l.id&&r.personnel_id&&r.in_at&&localDay(r.in_at,zone)===day).map(r=>({personnelId:r.personnel_id||'',name:[r.first_name,r.last_name].filter(Boolean).join(' '),signature:r.signature_url}));
+      return count?[{locationId:l.id,day,count,rows}]:[];
     });
-    return {projects,locations,joins,shifts,requests,orders,signatures,count:pendingInboxCount({joins,shifts,requests,orders,signatures})};
+    return {projects,locations,joins,shifts,shiftProjectIds,requests,orders,signatures,count:pendingInboxCount({joins,shifts:[...shifts,...early],requests,orders,signatures})};
   }});
 }

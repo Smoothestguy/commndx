@@ -65,6 +65,12 @@ export default function LocationDetail() {
   const qc = useQueryClient();
   const [sheet,setSheet] = useState<{location:string;day:string}>();
   useEffect(() => { window.scrollTo(0,0); }, [locationId]);
+  useEffect(()=>{
+    if(!mobile)return;
+    if(['taskorders','service','sheets','lodging','assets','documents'].includes(tab))setExpanded(prev=>prev.includes(tab)?prev:[...prev,tab]);
+    if(params.get('day')||params.get('action')==='daily')setExpanded(prev=>prev.includes('sheets')?prev:[...prev,'sheets']);
+    if(params.get('action')==='kiosk')setExpanded(prev=>prev.includes('settings')?prev:[...prev,'settings']);
+  },[mobile,tab,params]);
   useEffect(() => {
     if (!location) return;
     const editAction = params.get('action') === 'edit' && canWrite;
@@ -78,7 +84,7 @@ export default function LocationDetail() {
   const address = [location.address,location.city,location.state,location.zip].filter(Boolean).join(', ');
   const summary = staffing?.[location.id];
   const shifts=resolveShifts(location,project);
-  return <PageLayout title={location.name} actions={canWrite&&<><Button variant="outline" size="sm" onClick={()=>setEdit(true)}><Pencil className="h-4 w-4 mr-1"/>Edit</Button><Button variant="outline" size="sm" onClick={()=>setLogOpen(true)}><Clock className="h-4 w-4 mr-1"/>Log time</Button><Button variant="outline" size="sm" onClick={()=>setReqOpen(true)}><Inbox className="h-4 w-4 mr-1"/>Field requests</Button>{location.status!=='closed' ? <Button variant="outline" size="sm" onClick={()=>setCloseOpen(true)}><Lock className="h-4 w-4 mr-1"/>Close out location</Button> : isAdmin && <Button variant="outline" size="sm" onClick={async()=>{if(!window.confirm('Reopen this location? The close-out task order stays in history; assignments are not restored.'))return;const {error}=await supabase.from('project_locations').update({status:'active'}).eq('id',location.id);if(error){toast.error(error.message);return;}toast.success('Location reopened');qc.invalidateQueries({queryKey:['project-locations']});}}><LockOpen className="h-4 w-4 mr-1"/>Reopen</Button>}</>}>
+  return <PageLayout title={location.name} actions={canWrite&&<><Button variant="outline" size="sm" onClick={()=>setEdit(true)}><Pencil className="h-4 w-4 mr-1"/>Edit</Button><Button variant="outline" size="sm" onClick={()=>setLogOpen(true)}><Clock className="h-4 w-4 mr-1"/>Log time</Button><Button variant="outline" size="sm" onClick={()=>setReqOpen(true)}><Inbox className="h-4 w-4 mr-1"/>Field requests</Button>{!mobile&&(location.status!=='closed' ? <Button variant="outline" size="sm" onClick={()=>setCloseOpen(true)}><Lock className="h-4 w-4 mr-1"/>Close out location</Button> : isAdmin && <Button variant="outline" size="sm" onClick={async()=>{if(!window.confirm('Reopen this location? The close-out task order stays in history; assignments are not restored.'))return;const {error}=await supabase.from('project_locations').update({status:'active'}).eq('id',location.id);if(error){toast.error(error.message);return;}toast.success('Location reopened');qc.invalidateQueries({queryKey:['project-locations']});}}><LockOpen className="h-4 w-4 mr-1"/>Reopen</Button>)}</>}>
     <SEO title={`${location.name} | Command X`} description={`Location operations for ${project.name}`}/>
     {canWrite && !mobile && <div className="flex justify-end mb-3"><Button variant="outline" size="sm" onClick={() => setMoveOpen(true)}>Move to another project</Button></div>}
     {moveOpen && canWrite && <MoveLocationProjectDialog location={location} onClose={() => setMoveOpen(false)} />}
@@ -98,7 +104,7 @@ export default function LocationDetail() {
     {canWrite && <LogTimeDialog open={logOpen} onOpenChange={setLogOpen} projectId={projectId} locationId={location.id} />}
     {edit && <ProjectLocationsTab projectId={projectId} deploymentMode={!!project.deployment_mode} editTargetId={location.id} onEditClosed={()=>setEdit(false)}/>}
     {mobile ? <div className="space-y-6 py-4">
-      <section aria-label="Today's attendance"><h2 className="font-semibold mb-3">Today's attendance</h2><LocationDayAttendance projectId={projectId} locationId={location.id} timezone={location.timezone} canWrite={canWrite}/></section>
+      <section aria-label="Today's attendance"><h2 className="font-semibold mb-3">Today's attendance</h2><LocationDayAttendance todayFirst projectId={projectId} locationId={location.id} timezone={location.timezone} canWrite={canWrite}/></section>
       <section aria-label="Staffing roster"><h2 className="font-semibold mb-3">Staffing roster</h2><LocationStaffing locationId={location.id} locationName={location.name} projectId={projectId} timezone={location.timezone} summary={summary} canWrite={canWrite}/></section>
       <section aria-label="Authorization and demobilization"><h2 className="font-semibold mb-3">Authorization & demobe</h2><LocationAuthorizationPanel projectId={projectId} locationId={location.id} locationName={location.name} timezone={location.timezone}/>{location.demobe_date&&<p className="text-sm mt-2">Demobe {formatLocalDate(location.demobe_date)}</p>}</section>
       <Accordion type="multiple" value={expanded} onValueChange={setExpanded}>
@@ -110,7 +116,7 @@ export default function LocationDetail() {
           {t==='lodging'&&<LocationLodging projectId={projectId} locationId={location.id} housingBy={location.housing_provided_by} canWrite={canWrite}/>}
           {t==='documents'&&<ProjectDocuments projectId={projectId} projectName={project.name} locationScopeId={location.id} unframed/>}
         </>}</AccordionContent></AccordionItem>)}
-        <AccordionItem value="settings"><AccordionTrigger>Location details & links</AccordionTrigger><AccordionContent>{expanded.includes('settings')&&<div className="space-y-3"><p className="text-sm break-words">{address}</p><p>{location.poc_name} <a href={`tel:${location.poc_phone}`}>{location.poc_phone}</a></p><p className="text-sm">Shifts {shifts.day}–{shifts.dayEnd} / {shifts.night}–{shifts.nightEnd}</p><p className="text-sm">Timezone: {location.timezone||'America/Chicago (fallback)'}</p>{canWrite&&<><LocationKioskActions location={location}/><ProjectJoinLinks projectId={projectId} locationId={location.id}/><Button variant="outline" onClick={()=>setMoveOpen(true)}>Move to another project</Button></>}</div>}</AccordionContent></AccordionItem>
+        <AccordionItem value="settings"><AccordionTrigger>Location details & links</AccordionTrigger><AccordionContent>{expanded.includes('settings')&&<div className="space-y-3"><p className="text-sm break-words">{address}</p><p>{location.poc_name} <a href={`tel:${location.poc_phone}`}>{location.poc_phone}</a></p><p className="text-sm">Shifts {shifts.day}–{shifts.dayEnd} / {shifts.night}–{shifts.nightEnd}</p><p className="text-sm">Timezone: {location.timezone||'America/Chicago (fallback)'}</p>{canWrite&&<><LocationKioskActions location={location}/><ProjectJoinLinks projectId={projectId} locationId={location.id}/><Button variant="outline" onClick={()=>setMoveOpen(true)}>Move to another project</Button>{location.status!=='closed'&&<Button variant="outline" onClick={()=>setCloseOpen(true)}>Close out location</Button>}</>}</div>}</AccordionContent></AccordionItem>
       </Accordion>
     </div> : <><Tabs value={tab} onValueChange={v=>{setParams(prev=>{const next=new URLSearchParams(prev);next.set('tab',v);next.delete('sub');next.delete('view');next.delete('action');return next;});}} className="mt-4"><TabsList className="h-auto flex flex-wrap justify-start gap-1">{tabs.map(t=><TabsTrigger value={t} key={t}>{labels[t]}</TabsTrigger>)}</TabsList></Tabs>
     <section className="py-4" aria-label={labels[tab]}>

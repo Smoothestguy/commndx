@@ -1,3 +1,4 @@
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -48,6 +49,7 @@ const getDayIndexFromDate = (dateStr: string): number => {
 };
 
 export default function TeamTimesheet() {
+  const mobile=useIsMobile();
   const navigate = useNavigate();
   const [selectedProject, setSelectedProject] = useState("");
   const [selectedWeek, setSelectedWeek] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -530,7 +532,7 @@ export default function TeamTimesheet() {
                   Apply to All
                 </Button>
               </div>
-              <div className="grid grid-cols-7 gap-2 max-w-2xl">
+              <div className="grid grid-cols-2 sm:grid-cols-7 gap-2 max-w-2xl">
                 {DAYS.map((day, index) => (
                   <div key={day} className="text-center">
                     <TimeDecimalInput
@@ -551,7 +553,7 @@ export default function TeamTimesheet() {
         {selectedPersonnelData.length > 0 && (
           <Card>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              {mobile ? <div aria-label="Weekly personnel cards" className="divide-y">{selectedPersonnelData.map(person=><article key={person.id} className="p-3 space-y-3"><h3 className="font-semibold">{person.firstName} {person.lastName}</h3><p className="text-sm">{person.total.toFixed(1)} h · Reg {person.regularHours.toFixed(1)} · OT {person.overtimeHours.toFixed(1)}</p><div className="grid grid-cols-2 gap-3">{DAYS.map((day,i)=><label key={day} className="text-xs text-muted-foreground">{DAY_LABELS[i]} {format(weekDates[i],"M/d")}<TimeDecimalInput value={parseFloat(person.days[day])||0} onValueChange={v=>updateDayHours(person.id,day,v>0?v.toString():"")} className="h-11 mt-1"/></label>)}</div></article>)}</div> : <>              <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="bg-muted/50 border-b">
@@ -629,6 +631,7 @@ export default function TeamTimesheet() {
                   </tfoot>
                 </table>
               </div>
+</>}
             </CardContent>
           </Card>
         )}
