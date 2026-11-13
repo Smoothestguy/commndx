@@ -59,6 +59,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { assetBillingText } from "./LocationAssets";
 import { AssetCostBadge, InsuranceBadge } from "./AssetCostFields";
 import { assetCostBreakdown, marginPct } from "@/lib/assetCost";
+import {useUpdateAsset} from '@/integrations/supabase/hooks/useAssets';
+import {DropdownMenuItem} from '@/components/ui/dropdown-menu';
 
 type CostSort = "ins" | "cost" | "margin" | null;
 const costOf = (r: AssetBillingRow) => (r.assets ? assetCostBreakdown(r.assets).perDay : null);
@@ -149,6 +151,7 @@ export function ProjectAssetAssignmentsSection({
   const { data: locations = [] } = useProjectLocations(projectId);
   const { isAdmin, isManager } = useUserRole();
   const canEdit = isAdmin || isManager;
+  const updateAsset=useUpdateAsset();
   const unassignMutation = useUnassignAsset();
 
   const [sort, setSort] = useState<{ key: CostSort; dir: 1 | -1 }>({ key: null, dir: 1 });
@@ -266,7 +269,7 @@ export function ProjectAssetAssignmentsSection({
                     Assign Asset
                   </Button>
                 </div>
-              ) : isMobile ? (
+              ) : false ? (
                 // Mobile Card View
                 <div className="space-y-3">
                   {activeAssignments.map((assignment) => {
@@ -332,7 +335,10 @@ export function ProjectAssetAssignmentsSection({
                   tableId={canEdit ? "project-assets-mgr" : "project-assets"}
                   data={activeAssignments.filter(a => !!a.assets)}
                   columns={assetColumns}
-                  selectable
+                  selectable={canEdit}
+                  entityName="asset" onEdit={r=>setEditAsset(r.assets??null)} onAdd={()=>setIsAssignDialogOpen(true)}
+                  onSetActive={async(rows,active)=>{for(const r of rows)await updateAsset.mutateAsync({id:r.asset_id,status:active?(r.status==='active'&&!r.end_at?'assigned':'available'):'retired'});}}
+                  rowMenu={r=>canEdit?<><DropdownMenuItem onSelect={()=>setDates(r)}>Edit dates</DropdownMenuItem><DropdownMenuItem onSelect={()=>handleUnassign(r.id,r.assets?.label??'Asset')}>Unassign</DropdownMenuItem></>:null}
                   selectedIds={selectedAssets}
                   onSelectionChange={setSelectedAssets}
                   exportName="assets"
