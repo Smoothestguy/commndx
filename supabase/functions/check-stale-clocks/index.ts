@@ -13,8 +13,10 @@ serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const db=service();
-  const auth=await authorize(req,db,true);
-  if(!auth)return json({error:'Unauthorized'},403);
-  return json(await scheduledClose(db,false));
+  try {
+    const db=service();
+    const auth=await authorize(req,db,true);
+    if(!auth)return json({error:'Unauthorized'},403);
+    return json(await scheduledClose(db,false));
+  } catch { return json({error:'Scheduled close failed'},500); }
 });
