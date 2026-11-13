@@ -1,3 +1,3 @@
-export function scopeLocationReviews<T extends {eq:(key:string,value:string)=>T;in:(key:string,values:string[])=>T}>(query:T,projectId:string,locationIds:string[]):T {
-  return query.eq('project_id',projectId).in('location_id',locationIds);
+export function scopeLocationReviews(projectId:string,locationIds:string[]) {
+  return {projectId,locationIds:[...new Set(locationIds)]};
 }

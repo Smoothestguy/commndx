@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { useUserRole } from '@/hooks/useUserRole';
 import {scopeLocationReviews} from '@/lib/locationReviewScope';
 export function useShiftReviews(projectId: string, locationIds: string[]) {
- const {isAdmin,isManager}=useUserRole();const ids=[...locationIds].sort();
+ const {isAdmin,isManager}=useUserRole();const scope=scopeLocationReviews(projectId,locationIds);const ids=scope.locationIds.sort();
  return useQuery({queryKey:['shift-reviews',projectId,ids],enabled:(isAdmin||isManager)&&ids.length>0,refetchInterval:60_000,queryFn:async()=>{
    const early:any[]=[],extensions:any[]=[];
    for(let offset=0;;offset+=500){const {data,error}=await scopeLocationReviews(supabase.from('personnel_location_trail').select('visit_personnel_id,personnel_id,first_name,last_name,location_id,in_at,actual_in_at'),projectId,ids).order('visit_personnel_id').range(offset,offset+499);if(error)throw error;const rows=data||[];for(let i=0;i<rows.length;i+=200){const part=rows.slice(i,i+200);const {data:flags,error:fe}=await supabase.from('visit_personnel').select('id,early_in_reason,offsite_approved_by,offsite_approved_at').in('id',part.map(r=>r.visit_personnel_id||'')).not('early_in_reason','is',null).is('offsite_approved_at',null);if(fe)throw fe;for(const f of flags||[]){const r=part.find(r=>r.visit_personnel_id===f.id);if(r)early.push({...r,...f});}}if(rows.length<500)break;}
