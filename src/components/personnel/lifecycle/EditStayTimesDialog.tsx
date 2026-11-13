@@ -33,7 +33,7 @@ export function EditStayTimesDialog({ projectId, ids, personName, day, onClose }
   // Blank (untouched/cleared) fields keep the stored value, so editing one side never blocks on the other.
   const eff = (d: StayDraft): StayDraft => { const s = query.data?.find(s => s.id === d.id); if (!s) return d; const o = draftStay(s.id, s.inAt, s.outAt, s.zone, day); return { ...d, inTime: d.inTime.trim() || o.inTime, inDate: d.inDate || o.inDate, outTime: d.outTime.trim() || (s.outAt ? o.outTime : ''), outDate: d.outDate || o.outDate }; };
   const valid = drafts.length > 0 && drafts.every(d => { const s = query.data?.find(s => s.id === d.id); return d.removed || !!stayRange(eff(d), s?.zone || 'America/Chicago'); });
-  return <Dialog open onOpenChange={open => { if (!open && !save.isPending) onClose(); }}><DialogContent className="max-w-xl max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Edit times · {personName}</DialogTitle></DialogHeader>
+  return <Dialog open onOpenChange={open => { if (!open && !save.isPending) onClose(); }}><DialogContent className="max-w-xl max-h-[90dvh] overflow-y-auto max-md:[&_button]:min-h-11 max-md:[&_input]:min-h-11"><DialogHeader><DialogTitle>Edit times · {personName}</DialogTitle></DialogHeader>
     {query.isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
     {query.error && <p role="alert" className="text-sm text-destructive">Unable to load stays.</p>}
     <div className="divide-y">{drafts.map(d => { const s = query.data?.find(s => s.id === d.id); if (!s) return null; return <div key={d.id} className="py-3 space-y-2">

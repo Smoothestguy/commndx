@@ -313,6 +313,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   return (
     <div ref={viewportRef} data-viewport-grid={fillViewport} data-fullscreen={fullscreen} className={cn(
       "flex flex-col bg-card border border-border rounded-md shadow-sm overflow-hidden",
+      mobile && "[&_button]:min-h-11 [&_input]:min-h-11",
       fillViewport && "viewport-grid",
       fullscreen && "fixed inset-0 z-50 rounded-none"
     )}>

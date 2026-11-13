@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { JoinRequests } from '@/components/project-hub/JoinRequests';
 import { TaskOrderDecision } from '@/components/project-hub/TaskOrderDecision';
 import { ShiftReviews } from '@/components/signin/ShiftReviews';
+import { MissingSignatures } from '@/components/signin/MissingSignatures';
 import { useProjectLocations } from '@/integrations/supabase/hooks/useProjectLocations';
 import { RefreshCw, CheckCheck, ArrowRight } from 'lucide-react';
 
@@ -36,10 +37,10 @@ function Inbox() {
       <div className="flex flex-wrap gap-2">{['All','Joins','Shifts','Field requests','Customer TOs','Signatures'].map(s=><Button key={s} className="min-h-11" variant={filter===s?'secondary':'outline'} onClick={()=>setFilter(s)}>{s}</Button>)}</div>
       {q.error&&<div role="alert" className="text-destructive">Inbox could not load. <Button variant="outline" onClick={()=>void refresh()}>Retry</Button></div>}
       {show('Joins')&&d?.projects.filter(p=>d.joins.some(j=>j.project_id===p.id)).map(p=><section key={p.id} className="border-b pb-4"><h2 className="font-semibold mb-2">Join requests · {p.name}</h2><JoinRequests projectId={p.id} inline onChanged={refresh}/></section>)}
-      {show('Shifts')&&d?.projects.map(p=><ProjectShiftInbox key={p.id} projectId={p.id}/>)}
+      {show('Shifts')&&d?.projects.filter(p=>d.shiftProjectIds.includes(p.id)).map(p=><ProjectShiftInbox key={p.id} projectId={p.id}/>)}
       {show('Field requests')&&d?.requests.map(r=><article key={r.id} className="border rounded-md p-3 space-y-2"><Badge variant="outline">Field request</Badge><h2 className="font-semibold break-words">{r.qty} × {r.label||r.kind}</h2><Link className="text-sm text-primary" to={href(r.location_id)}>{name(r.location_id)}</Link>{r.note&&<p className="text-sm whitespace-pre-wrap">{r.note}</p>}<div className="flex gap-2"><Button className="min-h-11 flex-1" disabled={act.isPending} onClick={()=>act.mutate({id:r.id,status:'accepted'},{onSuccess:refresh})}>Accept</Button><Button className="min-h-11 flex-1" variant="outline" disabled={act.isPending} onClick={()=>act.mutate({id:r.id,status:'denied'},{onSuccess:refresh})}>Deny</Button></div></article>)}
       {show('Customer TOs')&&d?.orders.map(o=><article key={o.id} className="border rounded-md p-3 space-y-2"><Badge variant="outline">Customer TO</Badge><h2 className="font-semibold">{o.to_number} · {o.effective_date}</h2><Link className="text-sm text-primary" to={href(o.location_id,'taskorders')}>{name(o.location_id)}</Link><p className="text-sm capitalize">{o.kind}</p><ul className="text-sm">{o.location_task_order_lines.map((l,i)=><li key={i}>{l.label} · {l.qty_delta>0?'+':''}{l.qty_delta}</li>)}</ul>{o.notes&&<p className="text-sm">{o.notes}</p>}<TaskOrderDecision order={o}/></article>)}
-      {show('Signatures')&&d?.signatures.map(s=><article key={s.locationId} className="border rounded-md p-3 space-y-2"><Badge variant="outline">Missing signatures · {s.count}</Badge><h2 className="font-semibold break-words">{name(s.locationId)}</h2><p className="text-sm text-muted-foreground">{s.day}</p><Button asChild className="w-full min-h-11"><Link to={href(s.locationId)}>Request signatures<ArrowRight className="h-4 w-4 ml-2"/></Link></Button></article>)}
+      {show('Signatures')&&d?.signatures.map(s=><article key={s.locationId} className="border rounded-md p-3 space-y-2"><Badge variant="outline">Missing signatures · {s.count}</Badge><h2 className="font-semibold break-words">{name(s.locationId)}</h2><p className="text-sm text-muted-foreground">{s.day}</p><MissingSignatures locationId={s.locationId} day={s.day} zone={d.locations.find(l=>l.id===s.locationId)?.timezone||'America/Chicago'} rows={s.rows}/><Button asChild variant="outline" className="w-full min-h-11"><Link to={href(s.locationId)}>Attendance<ArrowRight className="h-4 w-4 ml-2"/></Link></Button></article>)}
       {!q.isLoading&&!q.error&&d?.count===0&&<p className="py-6 text-muted-foreground">All caught up.</p>}
     </div>
   </PageLayout>;
