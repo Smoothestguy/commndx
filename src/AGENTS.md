@@ -1,5 +1,5 @@
 # Architecture rules
-- Phone operations reuse guarded decision handlers and shared pending counts; collapsed location detail mounts on demand, while desktop rendering remains unchanged.
+- Phone Home uses scoped light tokens and shared self-only My Day/guarded manager actions; explicit linked field users may access only mobile Home while other portal restrictions and desktop rendering remain unchanged.
 - Event tabs reuse aggregate deployment totals; location detail owns operational views, and legacy tab redirects preserve bookmarked destinations without widening permissions.
 - Lazy routes retain the eager shell so sidebar and workspace tabs persist during loading.
 - Archived applicant purging requires an exported snapshot and explicit manager confirmation to protect history.

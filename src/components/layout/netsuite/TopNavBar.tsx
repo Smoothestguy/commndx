@@ -1,3 +1,5 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { RefreshCw, Bell } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useLocation } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -35,6 +37,7 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
   const { isAdmin, isManager, isUser } = useUserRole();
   const location = useLocation();
   const mobile = useIsMobile();
+  const qc=useQueryClient();
   const fieldHome = isUser && location.pathname === '/';
   const { toggleOpen, messages } = useAIAssistant();
   const { resolvedTheme } = useTheme();
@@ -44,6 +47,7 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
   // Check for unread messages (last message is from assistant)
   const hasUnread = messages.length > 0 && messages[messages.length - 1].role === "assistant";
 
+  if(mobile&&location.pathname==='/')return <header className="h-20 flex items-center justify-between px-5"><Link to="/"><img src={logoDark} alt="Fairfield" className="w-24 h-9 object-contain"/></Link><div className="flex gap-2"><Button size="icon" variant="ghost" className="h-11 w-11" aria-label="Refresh Home" onClick={()=>void qc.invalidateQueries()}><RefreshCw className="h-5 w-5"/></Button><Button asChild size="icon" variant="ghost" className="h-11 w-11"><Link to={isAdmin||isManager?'/approvals':'/?mobile=signatures'} aria-label="Notifications"><Bell className="h-5 w-5"/></Link></Button></div></header>;
   return (
     <header className="sticky top-0 z-50 h-12 bg-header border-b border-border">
       <div className="flex items-center justify-between h-full px-3">

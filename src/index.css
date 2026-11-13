@@ -605,3 +605,23 @@
     @apply bg-gray-400 text-white px-1.5 py-0.5 text-[10px] font-medium;
   }
 }
+
+/* MX-inspired phone surfaces are intentionally light without changing the staff theme. */
+.phone-surface {
+  color-scheme: light;
+  --background: 210 15% 95%; --foreground: 220 18% 17%;
+  --card: 0 0% 100%; --card-foreground: 220 18% 17%;
+  --popover: 0 0% 100%; --popover-foreground: 220 18% 17%;
+  --secondary: 210 16% 94%; --secondary-foreground: 220 18% 17%;
+  --muted: 210 16% 94%; --muted-foreground: 220 8% 46%;
+  --accent: 210 16% 94%; --accent-foreground: 220 18% 17%;
+  --primary: 205 88% 42%; --primary-foreground: 0 0% 100%;
+  --info: 205 88% 42%; --info-foreground: 0 0% 100%;
+  --border: 210 13% 91%; --input: 210 13% 88%; --ring: 205 88% 42%;
+  --phone-icon: 205 85% 94%; --phone-shadow: 0 6px 24px hsl(220 15% 20% / 0.10);
+  background: hsl(var(--background)); color: hsl(var(--foreground));
+}
+.phone-card { background: hsl(var(--card)); border-radius: 20px; color: hsl(var(--card-foreground)); }
+.phone-icon { background: hsl(var(--phone-icon)); color: hsl(var(--info)); border-radius: 14px; display:flex; align-items:center; justify-content:center; }
+.phone-feature::before { content:''; position:absolute; left:0; top:20px; bottom:20px; width:5px; border-radius:5px; background:hsl(var(--primary)); }
+.phone-dock { background:hsl(var(--card)); box-shadow:var(--phone-shadow); }
