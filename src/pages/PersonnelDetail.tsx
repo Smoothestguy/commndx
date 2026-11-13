@@ -26,7 +26,7 @@ import { DirectDepositView } from "@/components/personnel/DirectDepositView";
 import { AgreementSignatureView } from "@/components/personnel/AgreementSignatureView";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { BadgeGenerator } from "@/components/badges/BadgeGenerator";
 import { PersonnelForm } from "@/components/personnel/PersonnelForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
