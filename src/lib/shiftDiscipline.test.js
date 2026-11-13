@@ -1,5 +1,5 @@
 import {it,expect} from 'bun:test';
-import {extensionChoices,earlyApproval,earlyMinutes} from './shiftDiscipline';
+import {extensionChoices,earlyApproval,earlyMinutes,reportedCheckoutChoices} from './shiftDiscipline';
 import {preshiftAt,checkoutKind,rosterThresholds} from '../../supabase/functions/_shared/rosterRules';
 const now=Date.parse('2026-11-05T12:00:00Z');
 it('checkout nag starts thirty minutes after the explicit day end, not night start',()=>{const at=time=>rosterThresholds(Date.parse(time),'America/Chicago','07:30','19:30','2026-11-06T13:30Z','17:00','07:30').checkout;expect(at('2026-11-06T23:29Z')).toBe(false);expect(at('2026-11-06T23:30Z')).toBe(true);});
@@ -19,3 +19,5 @@ it('0730 shift reminder starts at 0725 not 0715',()=>{expect(preshiftAt(Date.par
 it('project-specific twelve minute lead starts at 0718 for 0730',()=>{expect(preshiftAt(Date.parse('2026-11-06T13:17:59Z'),'America/Chicago','07:30','19:30',12)).toBeNull();expect(preshiftAt(Date.parse('2026-11-06T13:18Z'),'America/Chicago','07:30','19:30',12)?.time).toBe('07:30');expect(preshiftAt(Date.parse('2026-11-06T13:30Z'),'America/Chicago','07:30','19:30',12)).toBeNull();});
 it('project-specific night reminder lead retains the target day',()=>expect(preshiftAt(Date.parse('2026-11-06T05:48Z'),'America/Chicago','07:30','00:00',12)?.day).toBe('2026-11-06'));
 it('zero reminder lead does not send before shift',()=>expect(preshiftAt(Date.parse('2026-11-06T13:29Z'),'America/Chicago','07:30','19:30',0)).toBeNull());
+it('reported checkout is after schedule but never in the future',()=>{const c=reportedCheckoutChoices(Date.parse('2026-11-13T01:17Z'),'2026-11-13T00:30Z');expect(c).toEqual(['2026-11-13T00:45:00.000Z','2026-11-13T01:00:00.000Z','2026-11-13T01:15:00.000Z']);});
+it('reported checkout retains the six-hour maximum',()=>expect(reportedCheckoutChoices(Date.parse('2026-11-13T10:00Z'),'2026-11-13T00:30Z').at(-1)).toBe('2026-11-13T06:30:00.000Z'));
