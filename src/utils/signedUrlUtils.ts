@@ -13,11 +13,8 @@ export function getPathFromUrl(urlOrPath: string, bucket: string): string {
   if (!urlOrPath.startsWith('http')) return urlOrPath;
   
   // Extract path from full Supabase URL
-  const bucketPattern = `/storage/v1/object/public/${bucket}/`;
-  const index = urlOrPath.indexOf(bucketPattern);
-  if (index !== -1) {
-    return urlOrPath.substring(index + bucketPattern.length);
-  }
+  const match = urlOrPath.match(new RegExp(`/storage/v1/object/(?:public|sign|authenticated)/${bucket}/([^?]+)`));
+  if (match) return decodeURIComponent(match[1]);
   
   return urlOrPath;
 }
