@@ -3,7 +3,6 @@ import { Navigate, Link } from 'react-router-dom';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useMobileApprovals } from '@/hooks/useMobileApprovals';
 import { useActOnLocationRequest } from '@/hooks/useLocationRequests';
-import { useReviewShift } from '@/hooks/useShiftReviews';
 import { useQueryClient } from '@tanstack/react-query';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
@@ -32,7 +31,7 @@ function Inbox() {
   const href=(id:string,tab='attendance')=>{const l=d?.locations.find(l=>l.id===id);return l?`/projects/${l.project_id}/locations/${id}?tab=${tab}`:'/locations';};
   const show=(s:string)=>filter==='All'||filter===s;
   return <PageLayout title="Approvals" actions={<Button variant="ghost" size="icon" aria-label="Refresh approvals" onClick={()=>void refresh()}><RefreshCw className="h-5 w-5"/></Button>}>
-    <div aria-label="Approvals inbox" className="space-y-5">
+    <div aria-label="Approvals inbox" className="space-y-5 [&_button]:min-h-11">
       <div className="flex items-center gap-2 border-b pb-3"><CheckCheck className="h-5 w-5 text-primary"/><strong>{q.isLoading?'Loading…':`${d?.count??0} pending actions`}</strong></div>
       <div className="flex flex-wrap gap-2">{['All','Joins','Shifts','Field requests','Customer TOs','Signatures'].map(s=><Button key={s} className="min-h-11" variant={filter===s?'secondary':'outline'} onClick={()=>setFilter(s)}>{s}</Button>)}</div>
       {q.error&&<div role="alert" className="text-destructive">Inbox could not load. <Button variant="outline" onClick={()=>void refresh()}>Retry</Button></div>}

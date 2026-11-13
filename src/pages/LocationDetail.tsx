@@ -98,7 +98,7 @@ export default function LocationDetail() {
     {canWrite && <LogTimeDialog open={logOpen} onOpenChange={setLogOpen} projectId={projectId} locationId={location.id} />}
     {edit && <ProjectLocationsTab projectId={projectId} deploymentMode={!!project.deployment_mode} editTargetId={location.id} onEditClosed={()=>setEdit(false)}/>}
     {mobile ? <div className="space-y-6 py-4">
-      <section aria-label="Today's attendance"><h2 className="font-semibold mb-3">Today's attendance</h2><LocationDayAttendance projectId={projectId} locationId={location.id} timezone={location.timezone} canWrite={canWrite}/></section>
+      <section aria-label="Today's attendance"><h2 className="font-semibold mb-3">Today's attendance</h2><LocationDayAttendance todayFirst projectId={projectId} locationId={location.id} timezone={location.timezone} canWrite={canWrite}/></section>
       <section aria-label="Staffing roster"><h2 className="font-semibold mb-3">Staffing roster</h2><LocationStaffing locationId={location.id} locationName={location.name} projectId={projectId} timezone={location.timezone} summary={summary} canWrite={canWrite}/></section>
       <section aria-label="Authorization and demobilization"><h2 className="font-semibold mb-3">Authorization & demobe</h2><LocationAuthorizationPanel projectId={projectId} locationId={location.id} locationName={location.name} timezone={location.timezone}/>{location.demobe_date&&<p className="text-sm mt-2">Demobe {formatLocalDate(location.demobe_date)}</p>}</section>
       <Accordion type="multiple" value={expanded} onValueChange={setExpanded}>

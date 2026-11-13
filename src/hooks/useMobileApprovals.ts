@@ -17,6 +17,7 @@ export function useMobileApprovals(enabled = true) {
       homeRows(o=>supabase.from('location_task_orders').select('id,location_id,to_number,effective_date,kind,notes,status,location_task_order_lines(label,qty_delta,line_kind)').eq('status','submitted').order('id').range(o,o+499)),
       homeRows(o=>supabase.from('personnel_location_trail').select('visit_personnel_id,personnel_id,location_id,in_at,out_at,signature_url').gte('in_at',new Date(Date.now()-2*86400000).toISOString()).order('visit_personnel_id').range(o,o+499)),
     ]);
+    const early = await homeRows(o=>supabase.from('visit_personnel').select('id,visit_id').not('early_in_reason','is',null).is('offsite_approved_at',null).order('id').range(o,o+499));
     const signatures = locations.flatMap(l=>{
       const zone=l.timezone||'America/Chicago',day=localDay(new Date().toISOString(),zone);
       const people=new Map<string,boolean>();
@@ -24,6 +25,6 @@ export function useMobileApprovals(enabled = true) {
       const count=[...people.values()].filter(v=>!v).length;
       return count?[{locationId:l.id,day,count}]:[];
     });
-    return {projects,locations,joins,shifts,requests,orders,signatures,count:pendingInboxCount({joins,shifts,requests,orders,signatures})};
+    return {projects,locations,joins,shifts,requests,orders,signatures,count:pendingInboxCount({joins,shifts:[...shifts,...early],requests,orders,signatures})};
   }});
 }

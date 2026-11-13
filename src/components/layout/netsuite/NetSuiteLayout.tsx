@@ -57,7 +57,7 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
                   shouldShowBackground && "bg-transparent",
                 )}
               >
-                <div className="bg-background"><TabsBar /></div>
+                {!isMobile && <div className="bg-background"><TabsBar /></div>}
                 <Suspense fallback={<RouteSkeleton />}>{children ?? <Outlet />}</Suspense>
               </main>
 

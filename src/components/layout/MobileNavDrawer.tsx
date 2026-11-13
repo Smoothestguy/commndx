@@ -33,7 +33,7 @@ export function MobileNavDrawer({ open, onOpenChange }: MobileNavDrawerProps) {
   const { pathname, search } = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { isAdmin, isManager, isAccounting } = useUserRole();
+  const { isAdmin, isManager, isAccounting, isUser } = useUserRole();
   const { data: unreadCount = 0 } = useTotalUnreadCount();
   const [openSections, setOpenSections] = useState<Record<number, boolean>>({});
 
@@ -64,7 +64,7 @@ export function MobileNavDrawer({ open, onOpenChange }: MobileNavDrawerProps) {
             {sections.map((section, idx) => {
               if (!isSectionVisible(section, isAdmin, isManager, isAccounting)) return null;
               const visibleItems = section.items.filter((i) =>
-                isItemVisible(i, isAdmin, isManager, isAccounting) && modules.visible(i.href),
+                isItemVisible(i, isAdmin, isManager, isAccounting) && modules.visible(i.href) && (!isUser || ['/', '/messages'].includes(i.href)),
               );
               if (visibleItems.length === 0) return null;
 
