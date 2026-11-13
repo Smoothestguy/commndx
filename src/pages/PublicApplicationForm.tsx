@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useJobPostingByToken, useSubmitApplication } from "@/integrations/supabase/hooks/useStaffingApplications";
+import { uploadPrivateFile } from '@/utils/privateUpload';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { FormField as FormFieldType, FormTheme, FormRow, CoreFieldsConfig, DEFAULT_CORE_FIELDS, FormSettings } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
@@ -274,7 +275,8 @@ export default function PublicApplicationForm() {
             setCustomAnswers(defaults);
           }
           if (template.theme) {
-            setTheme(template.theme as unknown as FormTheme);
+            const nextTheme = template.theme as unknown as FormTheme;
+            if(nextTheme.backgroundImage){const media=await supabase.functions.invoke('intake-media',{body:{purpose:'apply',token}});setTheme({...nextTheme,backgroundImage:media.data?.url||undefined});}else setTheme(nextTheme);
           }
           if (template.success_message) {
             setSuccessMessage(template.success_message);
@@ -700,12 +702,8 @@ export default function PublicApplicationForm() {
             const blob = await res.blob();
             const ext = (blob.type.split("/")[1] || "jpg").replace("jpeg", "jpg");
             const path = `profile-photos/${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${ext}`;
-            const { error: upErr } = await supabase.storage
-              .from("application-files")
-              .upload(path, blob, { cacheControl: "3600", upsert: false, contentType: blob.type });
-            if (upErr) throw upErr;
-            const { data: pub } = supabase.storage.from("application-files").getPublicUrl(path);
-            if (pub?.publicUrl) form.setValue("photo_url", pub.publicUrl);
+            const uploaded = await uploadPrivateFile('application-files','profile-photos',blob);
+            form.setValue("photo_url", uploaded.reference);
           } catch (photoErr: any) {
             console.warn("[SocialPrefill] photo import failed", photoErr);
             logEvent("upload_error", {

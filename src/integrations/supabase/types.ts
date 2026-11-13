@@ -13288,6 +13288,10 @@ export type Database = {
       data_hygiene_preview: { Args: never; Returns: Json }
       data_hygiene_run: { Args: never; Returns: Json }
       deny_join_request: { Args: { p_request: string }; Returns: Json }
+      edit_application_by_token: {
+        Args: { p_answers: Json; p_applicant: Json; p_token: string }
+        Returns: Json
+      }
       edit_location_task_order: {
         Args: {
           p_expected: string

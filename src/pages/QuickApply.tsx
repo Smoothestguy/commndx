@@ -69,6 +69,7 @@ export default function QuickApply() {
       const { data, error } = await supabase.rpc("get_quick_apply_invite", { _token: token });
       if (error) toast.error(error.message);
       const parsed = (data as any) ?? { valid: false };
+      if(parsed?.applicant?.photo_url){const media=await supabase.functions.invoke('intake-media',{body:{purpose:'quick',token}});parsed.applicant.photo_url=media.data?.url||null;}
       setInvite(parsed);
       if (parsed?.applicant) {
         setPhone(parsed.applicant.phone ?? "");
@@ -102,10 +103,11 @@ export default function QuickApply() {
       const res = data as any;
       if (!res?.success) throw new Error(res?.error || "Failed to submit");
       if (res.application_id) {
-        const { error: ie } = await supabase.rpc("record_applicant_intake" as any, {
-          _application_id: res.application_id, _gender: gender, _photo_url: newPhoto,
-          _sms_consent: consents.sms, _sms_version: SMS_CONSENT_VERSION,
-          _photo_consent: consents.photo, _photo_version: PHOTO_CONSENT_VERSION, _language: lang,
+        const { error: ie } = await supabase.rpc("record_applicant_intake_secure", {
+          p_application: res.application_id, p_receipt: res.intake_token,
+          p_intake: { gender, photo_url: newPhoto,
+          sms_consent: consents.sms, sms_version: SMS_CONSENT_VERSION,
+          photo_consent: consents.photo, photo_version: PHOTO_CONSENT_VERSION, language: lang },
         });
         if (ie) console.warn("[QuickApply] intake record failed", ie.message);
       }

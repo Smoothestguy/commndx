@@ -14,7 +14,7 @@ Deno.serve(async req => {
   try {
     const db = service();
     const auth = await authorize(req, db);
-    if (!auth && authenticateCronRequest(req)) return json({ error: 'Unauthorized' }, 403);
+    if (!auth && !authenticateCronRequest(req)) return json({ error: 'Unauthorized' }, 403);
     const input = schema.safeParse(await req.json());
     if (!input.success) return json({ error: input.error.flatten() }, 400);
     const candidates = await db.rpc('image_compression_candidates', { p_limit: input.data.limit });

@@ -1,8 +1,11 @@
 # Security lockdown
 - [x] Inventory and revoke anonymous privileged non-public RPCs; close backup conversation tables and future function defaults.
-- [ ] Guard intake and authenticated mutation callers; token-only safe vendor onboarding.
-- [ ] Private evidence buckets with authorized short-lived previews and PDF stamping.
-- [ ] Anonymous public-flow smoke, forbidden-call checks, focused security tests and advisor remediation; clean verification records.
+- [x] Guard intake and authenticated mutation callers; token-only safe vendor onboarding; one-time token application edits restored.
+- [x] Private evidence buckets, ten-minute staff previews, token-owned public media, and private PDF signature loaders.
+- [x] Anonymous photo/application submit and punch/signature persisted; photo request and disposable customer/agency portals passed; primary verification records and test objects removed. Old-style public object access returns HTTP 400.
+- [x] Real 5049 daily PDF: 19 people, 18 signed; customer and signed-document renderers verified with private ink and generated test sources. Thirty-five focused tests passed.
+- [ ] No historical field-captures object exists (bucket count zero); exact historical-object denial cannot be exercised. Real temporary field object tested HTTP 400 and removed.
+- [ ] Broad advisor hardening remains: security-definer view/privileged function review and unrelated edge-function findings. Changes to shared field-directory permissions require preserving minimal field reads; no blanket access expansion or claim of a clean scan.
 
 # Location-first join headings
 - [x] Location-scoped registration/confirmation leads with location and secondary project in EN/ES, including agency branding; whole-project links remain project-led. Copy/SMS text uses the same primary scope and translated sign-up label.

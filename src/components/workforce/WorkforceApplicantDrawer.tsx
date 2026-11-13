@@ -1,3 +1,4 @@
+import { SecureAvatar } from "@/components/ui/secure-avatar";
 import { ApplicantMetaEditor } from "@/components/staffing/ApplicantMetaEditor";
 import { ApplicationCertifications } from "@/components/staffing/ApplicationCertifications";
 import { ApplicantStarButton } from "@/components/staffing/ApplicantStarButton";
@@ -120,22 +121,7 @@ export function WorkforceApplicantDrawer({ applicant, categories, open, onOpenCh
       <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-3">
-            <Avatar
-              className="h-24 w-24 cursor-pointer"
-              onClick={() =>
-                applicant.photo_url &&
-                setLightbox({
-                  url: applicant.photo_url,
-                  caption: `${applicant.first_name} ${applicant.last_name}`,
-                })
-              }
-            >
-              <AvatarImage src={applicant.photo_url ?? undefined} className="object-cover" />
-              <AvatarFallback className="text-xl">
-                {applicant.first_name?.[0]}
-                {applicant.last_name?.[0]}
-              </AvatarFallback>
-            </Avatar>
+            <SecureAvatar bucket="application-files" photoUrl={applicant.photo_url} className="h-24 w-24" enableLightbox fallback={<>{applicant.first_name?.[0]}{applicant.last_name?.[0]}</>} />
             <div>
               <div className="flex items-center gap-1">
                 <ApplicantStarButton applicantId={applicant.id} starredAt={applicant.starred_at} size="md" />

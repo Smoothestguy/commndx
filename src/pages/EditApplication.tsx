@@ -107,37 +107,8 @@ export default function EditApplication() {
       }
 
       try {
-        // Fetch application by edit token
-        const { data: app, error: fetchError } = await supabase
-          .from("applications")
-          .select(`
-            id,
-            applicant_id,
-            answers,
-            status,
-            missing_fields,
-            admin_message,
-            edit_token,
-            edit_token_expires_at,
-            applicants (
-              id,
-              first_name,
-              last_name,
-              email,
-              phone,
-              home_zip,
-              photo_url
-            ),
-            job_postings (
-              form_template_id,
-              project_task_orders (
-                title,
-                projects:project_id (name)
-              )
-            )
-          `)
-          .eq("edit_token", editToken)
-          .single();
+        const { data: result, error: fetchError } = await supabase.functions.invoke('application-edit', { body: { token: editToken } });
+        const app = result?.application;
 
         if (fetchError || !app) {
           setError("This edit link is invalid or has expired");
@@ -240,75 +211,6 @@ export default function EditApplication() {
     setIsSubmitting(true);
 
     try {
-      // Get next revision number
-      const { data: revisions } = await supabase
-        .from("application_revisions")
-        .select("revision_number")
-        .eq("application_id", application.id)
-        .order("revision_number", { ascending: false })
-        .limit(1);
-
-      const nextRevisionNumber = revisions && revisions.length > 0 
-        ? revisions[0].revision_number + 1 
-        : 1;
-
-      // Create revision (snapshot of previous data)
-      const { error: revisionError } = await supabase
-        .from("application_revisions")
-        .insert([{
-          application_id: application.id,
-          revision_number: nextRevisionNumber,
-          previous_answers: application.answers as any,
-          previous_applicant_data: {
-            first_name: application.applicants.first_name,
-            last_name: application.applicants.last_name,
-            email: application.applicants.email,
-            phone: application.applicants.phone,
-            home_zip: application.applicants.home_zip,
-            photo_url: application.applicants.photo_url,
-          } as any,
-          changed_by: "applicant",
-        }]);
-
-      if (revisionError) {
-        console.error("Error creating revision:", revisionError);
-        // Continue anyway - revision is nice to have
-      }
-
-      // Check if email changed and if it conflicts with another applicant
-      if (data.email !== application.applicants.email) {
-        const { data: existingApplicant } = await supabase
-          .from("applicants")
-          .select("id")
-          .eq("email", data.email)
-          .neq("id", application.applicant_id)
-          .maybeSingle();
-
-        if (existingApplicant) {
-          toast.error("This email is already used by another applicant");
-          setIsSubmitting(false);
-          return;
-        }
-      }
-
-      // Update applicant
-      const { error: applicantError } = await supabase
-        .from("applicants")
-        .update({
-          first_name: data.first_name,
-          last_name: data.last_name,
-          email: data.email,
-          phone: data.phone,
-          home_zip: data.home_zip || null,
-          photo_url: data.photo_url || null,
-        })
-        .eq("id", application.applicant_id);
-
-      if (applicantError) {
-        console.error("Error updating applicant:", applicantError);
-        throw applicantError;
-      }
-
       // Process answers
       const processedAnswers: Record<string, unknown> = {};
       for (const [fieldId, value] of Object.entries(customAnswers)) {
@@ -318,23 +220,10 @@ export default function EditApplication() {
         processedAnswers[fieldId] = value;
       }
 
-      // Update application
-      const { error: appError } = await supabase
-        .from("applications")
-        .update({
-          answers: processedAnswers as any,
-          status: "updated" as const,
-          edit_token: null, // Clear token after use (one-time)
-          edit_token_expires_at: null,
-          missing_fields: [] as any,
-          admin_message: null,
-        })
-        .eq("id", application.id);
-
-      if (appError) {
-        console.error("Error updating application:", appError);
-        throw appError;
-      }
+      const { data: saved, error: appError } = await supabase.functions.invoke('application-edit', {
+        body: { token: editToken, applicant: data, answers: processedAnswers }
+      });
+      if (appError || !saved?.ok) throw new Error(saved?.error || 'Failed to update application');
 
       toast.success("Your application has been updated!");
       setSubmitted(true);

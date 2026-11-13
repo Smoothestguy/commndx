@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { Switch } from "@/components/ui/switch";
 import { formatLocalDate } from "@/lib/dateUtils";
 import { useUserRole } from "@/hooks/useUserRole";
+import { PrivateFileLink } from '@/components/shared/PrivateFileLink';
 import { EXPENSE_CATEGORIES, PersonnelExpense, useDeletePersonnelExpense, useProjectPersonnelExpenses, useRestorePersonnelExpense, useUpdatePersonnelExpense } from "@/integrations/supabase/hooks/usePersonnelStatus";
 
 const money = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -69,7 +70,7 @@ export function PersonnelExpensesCard({ projectId }: { projectId: string }) {
               </>
             ) : (
               <>
-                {e.receipt_url && <a href={e.receipt_url} target="_blank" rel="noopener noreferrer" className="text-primary" aria-label="Receipt"><Receipt className="h-4 w-4" /></a>}
+                {e.receipt_url && <PrivateFileLink path={e.receipt_url} className="text-primary" label="Receipt"><Receipt className="h-4 w-4" /></PrivateFileLink>}
                 <span className="font-semibold tabular-nums">{money(e.amount)}</span>
                 {canEdit && <>
                   <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEdit({ id: e.id, amount: String(e.amount), category: e.category })}><Pencil className="h-3.5 w-3.5" /></Button>
