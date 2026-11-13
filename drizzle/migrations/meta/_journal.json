@@ -463,6 +463,13 @@
       "when": 1794588882492,
       "tag": "0065_permit_service_scoped_closure",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1794595986537,
+      "tag": "0066_restrict_punch_open_event_grants",
+      "breakpoints": true
     }
   ]
 }
