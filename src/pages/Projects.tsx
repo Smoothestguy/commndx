@@ -14,7 +14,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2, Users as UsersIcon, User, Archive, ArchiveRestore, X, Download } from "lucide-react";
 import * as XLSX from "xlsx";
-import { ProjectContextMenu, ProjectRowActionsMenu } from "@/components/projects/ProjectContextMenu";
+import { ProjectContextMenu, ProjectRowActionsMenu, ProjectMenuItems } from "@/components/projects/ProjectContextMenu";
 import { SearchInput } from "@/components/ui/search-input";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import { ProjectCard } from "@/components/projects/ProjectCard";
@@ -406,12 +406,13 @@ const Projects = () => {
       data={projectList}
       columns={columns}
       rowHref={(item) => `/projects/${item.id}`}
-      selectable
+      selectable={canArchive}
       selectedIds={selectedIds}
       onSelectionChange={setSelectedIds}
       exportName="projects"
       onEdit={handleEdit} onAdd={openNewDialog} entityName="project"
-      canSetActive={p=>!p.archived_at && p.status!=='closed' && p.status!=='completed'}
+      rowMenu={p=><ProjectMenuItems project={p} onEdit={handleEdit}/>}
+      canSetActive={p=>!p.archived_at && p.status!=='completed'}
       onSetActive={async(rows,active)=>{for(const p of rows)await updateProject.mutateAsync({id:p.id,status:active?'active':'on-hold'});}}
       bulkActions={() => canArchive ? <Button size="sm" variant="outline" disabled={archiveProject.isPending || unarchiveProject.isPending} onClick={isArchivedTab ? handleBulkUnarchive : handleBulkArchive}>{isArchivedTab ? "Unarchive selected" : "Archive selected"}</Button> : null}
     />
