@@ -43,6 +43,7 @@ const Projects = lazy(() => import("./pages/Projects"));
 const EventManager = lazy(() => import("./pages/EventManager"));
 const ProjectDetail = lazy(() => import("./pages/ProjectDetail"));
 const LocationDetail = lazy(() => import("./pages/LocationDetail"));
+const Locations = lazy(() => import("./pages/Locations"));
 const ProjectJoin = lazy(() => import("./pages/ProjectJoin"));
 const CustomerPortal = lazy(() => import("./pages/CustomerPortal"));
 const AgencyPortal = lazy(() => import("./pages/AgencyPortal"));

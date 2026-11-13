@@ -831,8 +831,8 @@ function useRoleLabels(locationIds: string[], crews: Crew[]) {
   });
 }
 
-function SummaryStrip({ locations, crews, from, to, mileageRate, canEdit }: {
-  locations: ProjectLocation[]; crews: Crew[]; from: string; to: string; mileageRate: number | null; canEdit: boolean;
+export function SummaryStrip({ locations, crews, from, to, mileageRate, canEdit, warningsOnly = false }: {
+  locations: ProjectLocation[]; crews: Crew[]; from: string; to: string; mileageRate: number | null; canEdit: boolean; warningsOnly?: boolean;
 }) {
   const locIds = locations.map((l) => l.id);
   const billingPeople = useProjectAgencies(locations[0]?.project_id || '');
@@ -861,24 +861,24 @@ function SummaryStrip({ locations, crews, from, to, mileageRate, canEdit }: {
   }, [entries, miles, rl, mileageRate, billingPeople.data]);
 
   const Item = ({ label, value }: { label: string; value: string }) => (
-    <div className="flex-1 min-w-[7rem] border rounded-md px-3 py-2">
+    <div className="flex-1 min-w-[7rem] px-3 py-2">
       <div className="text-[10px] uppercase text-muted-foreground">{label}</div>
       <div className="text-lg font-semibold leading-tight">{value}</div>
     </div>
   );
 
   return (
-    <div className="space-y-1">
-      <div className="flex flex-wrap gap-2">
+    <div className="space-y-1" aria-label={warningsOnly ? 'Billing warnings' : 'Event rollups'}>
+      {!warningsOnly && <div className="flex flex-wrap gap-2 border-y divide-x">
         <Item label="Person-days" value={String(s.personDays)} />
         <Item label="Hours" value={s.hours.toLocaleString()} />
         <Item label="Miles" value={s.totalMiles.toLocaleString()} />
         {canEdit && <Item label="Receipts today" value={`$${receiptsToday.toLocaleString(undefined, { maximumFractionDigits: 2 })}`} />}
         {canEdit && <Item label="Est. billable" value={`$${s.billable.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />}
-        {canEdit && equipment.billable.length > 0 && <Item label="Equipment" value={`$${equipment.equipmentTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}${equipment.missingRate ? "*" : ""}`} />}
-      </div>
-      {canEdit && equipment.missingRate > 0 && <p className="text-[11px] text-warning">* {equipment.missingRate} billable asset{equipment.missingRate === 1 ? "" : "s"} with no day rate.</p>}
-      {canEdit && s.missingRate > 0 && (
+        <Item label="Equipment" value={canEdit ? `$${equipment.equipmentTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : String(equipment.rows.length)} />
+      </div>}
+      {warningsOnly && canEdit && equipment.missingRate > 0 && <p className="text-[11px] text-warning">{equipment.missingRate} billable asset{equipment.missingRate === 1 ? "" : "s"} with no day rate.</p>}
+      {warningsOnly && canEdit && s.missingRate > 0 && (
         <p className="text-[11px] text-warning">{s.missingRate} row{s.missingRate === 1 ? "" : "s"} missing a bill rate — hours counted but not billed.</p>
       )}
     </div>
@@ -887,7 +887,7 @@ function SummaryStrip({ locations, crews, from, to, mileageRate, canEdit }: {
 
 // ---------- Settings popover ----------
 
-function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit: boolean }) {
+export function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit: boolean }) {
   const { data: project } = useProject(projectId);
   const update = useUpdateProject();
   const [hours, setHours] = useState("");
