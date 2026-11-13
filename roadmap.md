@@ -1,7 +1,7 @@
 # Phone-first operations
 - [x] Five-item manager phone navigation, shared live approvals badge/inbox, focused Home without Sales; field phone navigation omits manager tools.
 - [x] Location attendance-first layout, military edits, grouped roster and authorization; secondary details collapsed. Phone grid cards preserve desktop tables.
-- [ ] Verify owner 390px Home/inbox/location/edit/public punch and desktop; no owner decisions, punches or messages changed.
+- [x] Owner 390px Home/inbox (17 pending actions)/5049 location/audited-edit dialog/public live punch page verified; phone Personnel/Time/Event screens show no visible spreadsheets or overflow, desktop retains its table. Thirty-six focused tests pass; no owner decisions, punches, messages, records or schedules changed. Worker check remains blocked below.
 - [ ] Field-user verification awaits an identified account and permission; existing five field accounts have no worker linkage, so populated My Day cannot be verified safely yet.
 
 # Information architecture
