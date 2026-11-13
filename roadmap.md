@@ -1,3 +1,9 @@
+# Phone-first operations
+- [x] Five-item manager phone navigation, shared live approvals badge/inbox, focused Home without Sales; field phone navigation omits manager tools.
+- [x] Location attendance-first layout, military edits, grouped roster and authorization; secondary details collapsed. Phone grid cards preserve desktop tables.
+- [ ] Verify owner 390px Home/inbox/location/edit/public punch and desktop; no owner decisions, punches or messages changed.
+- [ ] Field-user verification awaits an identified account and permission; existing five field accounts have no worker linkage, so populated My Day cannot be verified safely yet.
+
 # Information architecture
 - [x] Global Locations shared grid defaults to active sites; project/status/customer filters and project/type/count columns verified. Locations follows Projects in desktop/mobile navigation; Staffing Map follows Bench. Field Mode has a header/Home action and event chooser.
 - [x] Five event-only tabs; aggregate rollups/map and separate Customers / Vendors & Agencies panels, project-menu settings, location authorization/customer/demob strips, Financials missing-rate warnings and crew mileage. Old deployment/crew/time tabs redirect; task orders and service detail remain location-owned; roster/crew setup resides in Recruiting.
