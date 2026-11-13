@@ -65,6 +65,12 @@ export default function LocationDetail() {
   const qc = useQueryClient();
   const [sheet,setSheet] = useState<{location:string;day:string}>();
   useEffect(() => { window.scrollTo(0,0); }, [locationId]);
+  useEffect(()=>{
+    if(!mobile)return;
+    if(['taskorders','service','sheets','lodging','assets','documents'].includes(tab))setExpanded(prev=>prev.includes(tab)?prev:[...prev,tab]);
+    if(params.get('day')||params.get('action')==='daily')setExpanded(prev=>prev.includes('sheets')?prev:[...prev,'sheets']);
+    if(params.get('action')==='kiosk')setExpanded(prev=>prev.includes('settings')?prev:[...prev,'settings']);
+  },[mobile,tab,params]);
   useEffect(() => {
     if (!location) return;
     const editAction = params.get('action') === 'edit' && canWrite;
@@ -78,7 +84,7 @@ export default function LocationDetail() {
   const address = [location.address,location.city,location.state,location.zip].filter(Boolean).join(', ');
   const summary = staffing?.[location.id];
   const shifts=resolveShifts(location,project);
-  return <PageLayout title={location.name} actions={canWrite&&<><Button variant="outline" size="sm" onClick={()=>setEdit(true)}><Pencil className="h-4 w-4 mr-1"/>Edit</Button><Button variant="outline" size="sm" onClick={()=>setLogOpen(true)}><Clock className="h-4 w-4 mr-1"/>Log time</Button><Button variant="outline" size="sm" onClick={()=>setReqOpen(true)}><Inbox className="h-4 w-4 mr-1"/>Field requests</Button>{location.status!=='closed' ? <Button variant="outline" size="sm" onClick={()=>setCloseOpen(true)}><Lock className="h-4 w-4 mr-1"/>Close out location</Button> : isAdmin && <Button variant="outline" size="sm" onClick={async()=>{if(!window.confirm('Reopen this location? The close-out task order stays in history; assignments are not restored.'))return;const {error}=await supabase.from('project_locations').update({status:'active'}).eq('id',location.id);if(error){toast.error(error.message);return;}toast.success('Location reopened');qc.invalidateQueries({queryKey:['project-locations']});}}><LockOpen className="h-4 w-4 mr-1"/>Reopen</Button>}</>}>
+  return <PageLayout title={location.name} actions={canWrite&&<><Button variant="outline" size="sm" onClick={()=>setEdit(true)}><Pencil className="h-4 w-4 mr-1"/>Edit</Button><Button variant="outline" size="sm" onClick={()=>setLogOpen(true)}><Clock className="h-4 w-4 mr-1"/>Log time</Button><Button variant="outline" size="sm" onClick={()=>setReqOpen(true)}><Inbox className="h-4 w-4 mr-1"/>Field requests</Button>{!mobile&&(location.status!=='closed' ? <Button variant="outline" size="sm" onClick={()=>setCloseOpen(true)}><Lock className="h-4 w-4 mr-1"/>Close out location</Button> : isAdmin && <Button variant="outline" size="sm" onClick={async()=>{if(!window.confirm('Reopen this location? The close-out task order stays in history; assignments are not restored.'))return;const {error}=await supabase.from('project_locations').update({status:'active'}).eq('id',location.id);if(error){toast.error(error.message);return;}toast.success('Location reopened');qc.invalidateQueries({queryKey:['project-locations']});}}><LockOpen className="h-4 w-4 mr-1"/>Reopen</Button>)}</>}>
     <SEO title={`${location.name} | Command X`} description={`Location operations for ${project.name}`}/>
     {canWrite && !mobile && <div className="flex justify-end mb-3"><Button variant="outline" size="sm" onClick={() => setMoveOpen(true)}>Move to another project</Button></div>}
     {moveOpen && canWrite && <MoveLocationProjectDialog location={location} onClose={() => setMoveOpen(false)} />}

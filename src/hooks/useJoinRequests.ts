@@ -24,5 +24,5 @@ export function useJoinRequests(projectId: string) {
 }
 export function useInvalidateJoinApproval() {
   const qc = useQueryClient();
-  return () => Promise.all(['project-join-requests', 'location-assignments', 'location-staffing-summary', 'project-roster', 'personnel-project-assignments', 'project-agencies', 'personnel-current-status', 'personnel-lite-active', 'personnel', 'site-texts', 'personnel-with-assets'].map(key => qc.invalidateQueries({ queryKey: [key] })));
+  return () => Promise.all(['mobile-approvals', 'project-join-requests', 'location-assignments', 'location-staffing-summary', 'project-roster', 'personnel-project-assignments', 'project-agencies', 'personnel-current-status', 'personnel-lite-active', 'personnel', 'site-texts', 'personnel-with-assets'].map(key => qc.invalidateQueries({ queryKey: [key] })));
 }
