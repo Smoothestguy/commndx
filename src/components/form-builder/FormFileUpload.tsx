@@ -219,7 +219,7 @@ export function FormFileUpload({
     return <FileText className="h-4 w-4 text-orange-500" />;
   };
 
-  const displayName = fileName || (isUrlValue ? value.split("/").pop() : null);
+  const displayName = fileName || (isUrlValue ? value.split("?")[0].split("/").pop() : null);
   const hasFile = isUrlValue || fileName;
   // New anonymous uploads preview locally; durable private references are never fetched publicly.
   const displayPreview = preview || (isUrlValue && value?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? savedPreview : null);
