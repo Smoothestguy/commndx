@@ -21,23 +21,7 @@ function useChangeOrderByToken(token: string | undefined) {
     queryFn: async () => {
       if (!token) return null;
       // Try field supervisor token first
-      let { data, error } = await supabase
-        .from("change_orders")
-        .select("*, project:projects(id, name), line_items:change_order_line_items(*)")
-        .eq("field_supervisor_approval_token", token)
-        .maybeSingle();
-
-      if (!data) {
-        // Try customer PM token
-        const result = await supabase
-          .from("change_orders")
-          .select("*, project:projects(id, name), line_items:change_order_line_items(*)")
-          .eq("customer_pm_approval_token", token)
-          .maybeSingle();
-        data = result.data;
-        error = result.error;
-      }
-
+      const { data, error } = await supabase.functions.invoke('co-approval-read', { body: { token } });
       if (error) throw error;
       return data as any;
     },
@@ -307,7 +291,7 @@ export default function ApproveChangeOrderPublic() {
                   <h4 className="font-semibold mb-3">Photos ({co.photos.length})</h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                     {co.photos.map((photo: string, i: number) => {
-                      const { data: urlData } = supabase.storage.from("form-uploads").getPublicUrl(photo);
+                      const urlData = { publicUrl: photo };
                       return (
                         <img
                           key={i}
