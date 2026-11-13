@@ -43,6 +43,7 @@ const Projects = lazy(() => import("./pages/Projects"));
 const EventManager = lazy(() => import("./pages/EventManager"));
 const ProjectDetail = lazy(() => import("./pages/ProjectDetail"));
 const LocationDetail = lazy(() => import("./pages/LocationDetail"));
+const Approvals = lazy(() => import("./pages/Approvals"));
 const Locations = lazy(() => import("./pages/Locations"));
 const ProjectJoin = lazy(() => import("./pages/ProjectJoin"));
 const CustomerPortal = lazy(() => import("./pages/CustomerPortal"));
@@ -446,6 +447,7 @@ const App = () => {
                       />
                       <Route path="/projects" element={<Projects />} />
                       <Route path="/locations" element={<Locations />} />
+                      <Route path="/approvals" element={<Approvals />} />
                       <Route path="/events" element={<EventManager />} />
                       <Route path="/events/:campId" element={<EventManager />} />
                       <Route path="/projects/:id" element={<ProjectDetail />} />

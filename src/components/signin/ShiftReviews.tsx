@@ -5,8 +5,8 @@ import { ChevronDown } from 'lucide-react';
 import type { ProjectLocation } from '@/integrations/supabase/hooks/useProjectLocations';
 import { useProject } from '@/integrations/supabase/hooks/useProjects';
 import { earlyMinutes } from '@/lib/shiftDiscipline';
-export function ShiftReviews({ projectId, locations }: { projectId:string;locations:ProjectLocation[] }) {
- const [open,setOpen]=useState(false),query=useShiftReviews(projectId,locations.map(l=>l.id)),review=useReviewShift();const {data:project}=useProject(projectId);const early=query.data?.early||[],extensions=query.data?.extensions||[];
+export function ShiftReviews({ projectId, locations, initialOpen=false }: { projectId:string;locations:ProjectLocation[];initialOpen?:boolean }) {
+ const [open,setOpen]=useState(initialOpen),query=useShiftReviews(projectId,locations.map(l=>l.id)),review=useReviewShift();const {data:project}=useProject(projectId);const early=query.data?.early||[],extensions=query.data?.extensions||[];
  if(query.error)return <p role="alert" className="text-destructive text-sm">Shift reviews could not load.</p>;
  if(!early.length&&!extensions.length)return null;
  const location=(id:string)=>locations.find(l=>l.id===id),time=(at:string,id:string)=>new Intl.DateTimeFormat('en-GB',{timeZone:location(id)?.timezone||'America/Chicago',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(at));
