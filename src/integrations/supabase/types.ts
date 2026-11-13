@@ -8422,6 +8422,7 @@ export type Database = {
           closeout_date: string | null
           closeout_notes: string | null
           created_at: string
+          customer_id: string | null
           day_shift_end: string | null
           day_shift_start: string | null
           demobe_date: string | null
@@ -8457,6 +8458,7 @@ export type Database = {
           closeout_date?: string | null
           closeout_notes?: string | null
           created_at?: string
+          customer_id?: string | null
           day_shift_end?: string | null
           day_shift_start?: string | null
           demobe_date?: string | null
@@ -8492,6 +8494,7 @@ export type Database = {
           closeout_date?: string | null
           closeout_notes?: string | null
           created_at?: string
+          customer_id?: string | null
           day_shift_end?: string | null
           day_shift_start?: string | null
           demobe_date?: string | null
@@ -8520,6 +8523,13 @@ export type Database = {
           zip?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "project_locations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_locations_project_id_fkey"
             columns: ["project_id"]
@@ -8813,6 +8823,36 @@ export type Database = {
           },
         ]
       }
+      project_types: {
+        Row: {
+          active: boolean
+          code: string
+          color: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       project_units: {
         Row: {
           created_at: string
@@ -8947,6 +8987,7 @@ export type Database = {
           poc_email: string | null
           poc_name: string | null
           poc_phone: string | null
+          region: string | null
           reminder_lead_minutes: number
           require_clock_location: boolean | null
           site_geocoded_at: string | null
@@ -8959,6 +9000,7 @@ export type Database = {
           status: Database["public"]["Enums"]["project_status"]
           time_clock_enabled: boolean | null
           total_cost: number
+          type_id: string | null
           updated_at: string
           zip: string | null
         }
@@ -9003,6 +9045,7 @@ export type Database = {
           poc_email?: string | null
           poc_name?: string | null
           poc_phone?: string | null
+          region?: string | null
           reminder_lead_minutes?: number
           require_clock_location?: boolean | null
           site_geocoded_at?: string | null
@@ -9015,6 +9058,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["project_status"]
           time_clock_enabled?: boolean | null
           total_cost?: number
+          type_id?: string | null
           updated_at?: string
           zip?: string | null
         }
@@ -9059,6 +9103,7 @@ export type Database = {
           poc_email?: string | null
           poc_name?: string | null
           poc_phone?: string | null
+          region?: string | null
           reminder_lead_minutes?: number
           require_clock_location?: boolean | null
           site_geocoded_at?: string | null
@@ -9071,6 +9116,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["project_status"]
           time_clock_enabled?: boolean | null
           total_cost?: number
+          type_id?: string | null
           updated_at?: string
           zip?: string | null
         }
@@ -9094,6 +9140,13 @@ export type Database = {
             columns: ["our_field_superintendent_id"]
             isOneToOne: false
             referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_type_id_fkey"
+            columns: ["type_id"]
+            isOneToOne: false
+            referencedRelation: "project_types"
             referencedColumns: ["id"]
           },
         ]

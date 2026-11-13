@@ -414,6 +414,13 @@
       "when": 1794532696795,
       "tag": "0058_private_storage_verification_cleanup",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1794537141833,
+      "tag": "0059_project_event_types_location_customers",
+      "breakpoints": true
     }
   ]
 }

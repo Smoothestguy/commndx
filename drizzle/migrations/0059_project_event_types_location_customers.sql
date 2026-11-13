@@ -1,0 +1,15 @@
+CREATE TABLE public.project_types (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), code text NOT NULL UNIQUE, name text NOT NULL, color text NOT NULL DEFAULT 'primary', active boolean NOT NULL DEFAULT true, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), CONSTRAINT project_types_code_valid CHECK (code ~ '^[A-Z][A-Z0-9_-]{0,29}$'), CONSTRAINT project_types_color_valid CHECK(color IN ('primary','success','warning','destructive','muted')));
+GRANT SELECT,INSERT,UPDATE,DELETE ON public.project_types TO authenticated;
+GRANT ALL ON public.project_types TO service_role;
+ALTER TABLE public.project_types ENABLE ROW LEVEL SECURITY;
+CREATE POLICY project_types_staff_read ON public.project_types FOR SELECT TO authenticated USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'manager') OR public.has_role(auth.uid(),'user') OR public.has_role(auth.uid(),'accounting'));
+CREATE POLICY project_types_manager_write ON public.project_types FOR ALL TO authenticated USING(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'manager')) WITH CHECK(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'manager'));
+ALTER TABLE public.projects ADD COLUMN type_id uuid REFERENCES public.project_types(id), ADD COLUMN region text;
+ALTER TABLE public.project_locations ADD COLUMN customer_id uuid REFERENCES public.customers(id);
+UPDATE public.project_locations l SET customer_id=p.customer_id FROM public.projects p WHERE l.project_id=p.id AND l.customer_id IS NULL;
+CREATE INDEX project_locations_customer_idx ON public.project_locations(customer_id,project_id);
+CREATE INDEX projects_type_idx ON public.projects(type_id);
+CREATE FUNCTION public.default_location_customer() RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path=public AS $$ BEGIN IF NEW.customer_id IS NULL THEN SELECT customer_id INTO NEW.customer_id FROM public.projects WHERE id=NEW.project_id; END IF; RETURN NEW; END $$;
+REVOKE ALL ON FUNCTION public.default_location_customer() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER default_location_customer BEFORE INSERT ON public.project_locations FOR EACH ROW EXECUTE FUNCTION public.default_location_customer();
+COMMENT ON COLUMN public.projects.customer_id IS 'Optional legacy/default customer for new locations; event customer labels derive from project_locations.customer_id.';
