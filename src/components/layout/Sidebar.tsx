@@ -49,7 +49,7 @@ const navigation = [
 ];
 
 const vendorsNavigation = [
-  { name: "All Vendors", href: "/vendors", icon: Truck },
+  { name: "All Vendors & Agencies", href: "/vendors", icon: Truck },
   { name: "Vendor Bills", href: "/vendor-bills", icon: Receipt },
   { name: "Vendor Documents", href: "/vendor-documents", icon: FileText },
   { name: "Contractor Submissions", href: "/admin/contractor-submissions", icon: ClipboardCheck },

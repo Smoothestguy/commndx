@@ -646,12 +646,12 @@ const Vendors = () => {
   return (
     <>
       <SEO
-        title="Vendors"
+        title="Vendors & Agencies"
         description="Manage your vendor relationships and contacts with Command X"
         keywords="vendor management, vendor contacts, supplier management, vendor profiles"
       />
       <PageLayout
-        title={isPersonnelView ? "Personnel" : "Vendors"}
+        title={isPersonnelView ? "Personnel" : "Vendors & Agencies"}
         description={isPersonnelView ? "View your workforce and personnel records" : "Manage your vendor profiles and work orders"}
         actions={
           !isPersonnelView && (

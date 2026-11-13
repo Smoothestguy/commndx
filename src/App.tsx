@@ -43,10 +43,12 @@ const Projects = lazy(() => import("./pages/Projects"));
 const EventManager = lazy(() => import("./pages/EventManager"));
 const ProjectDetail = lazy(() => import("./pages/ProjectDetail"));
 const LocationDetail = lazy(() => import("./pages/LocationDetail"));
+const Locations = lazy(() => import("./pages/Locations"));
 const ProjectJoin = lazy(() => import("./pages/ProjectJoin"));
 const CustomerPortal = lazy(() => import("./pages/CustomerPortal"));
 const AgencyPortal = lazy(() => import("./pages/AgencyPortal"));
 const FieldMode = lazy(() => import("./pages/FieldMode"));
+const FieldHome = lazy(() => import("./pages/FieldHome"));
 const Vendors = lazy(() => import("./pages/Vendors"));
 const VendorDetail = lazy(() => import("./pages/VendorDetail"));
 const VendorBills = lazy(() => import("./pages/VendorBills"));
@@ -443,11 +445,13 @@ const App = () => {
                         element={<CustomerDetail />}
                       />
                       <Route path="/projects" element={<Projects />} />
+                      <Route path="/locations" element={<Locations />} />
                       <Route path="/events" element={<EventManager />} />
                       <Route path="/events/:campId" element={<EventManager />} />
                       <Route path="/projects/:id" element={<ProjectDetail />} />
                       <Route path="/projects/:projectId/locations/:locationId" element={<LocationDetail />} />
                       <Route path="/field/:projectId" element={<FieldMode />} />
+                      <Route path="/field" element={<FieldHome />} />
                       <Route path="/vendors" element={<Vendors />} />
                       <Route path="/vendors/:id" element={<VendorDetail />} />
                       <Route path="/vendor-bills" element={<VendorBills />} />

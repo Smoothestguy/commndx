@@ -84,7 +84,7 @@ const Customers = () => {
   const columns: EnhancedColumn<Customer>[] = [
     { 
       key: "company", 
-      header: "Company / Name", 
+      header: "Customer", 
       sortable: true, 
       filterable: true,
       render: (item: Customer) => (

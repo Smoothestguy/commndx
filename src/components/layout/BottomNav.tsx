@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAppModules } from '@/hooks/useAppModules';
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, ClipboardList, Wallet, Grid2X2, Plus, X, FileText, Receipt, ShoppingCart, UserPlus, MessageCircle } from "lucide-react";
+import { Home, ClipboardList, MapPin, FolderKanban, Wallet, Grid2X2, Plus, X, FileText, Receipt, ShoppingCart, UserPlus, MessageCircle } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from '@/hooks/useUserRole';
@@ -10,16 +10,16 @@ import { cn } from "@/lib/utils";
 
 const tabs = [
   { id: "home", icon: Home, label: "Home", path: "/" },
-  { id: "jobs", icon: ClipboardList, label: "Jobs", path: "/jobs" },
+  { id: "projects", icon: FolderKanban, label: "Projects", path: "/projects" },
   { id: "fab", icon: null, label: "", path: "" }, // Center FAB placeholder
-  { id: "sales", icon: Wallet, label: "Sales", path: "/sales" },
+  { id: "locations", icon: MapPin, label: "Locations", path: "/locations" },
   { id: "more", icon: Grid2X2, label: "More", path: "" },
 ];
 
 const quickActions = [
   { id: "estimate", icon: FileText, label: "New Estimate", path: "/estimates/new", color: "text-blue-400" },
   { id: "invoice", icon: Receipt, label: "New Invoice", path: "/invoices/new", color: "text-green-400" },
-  { id: "po", icon: ShoppingCart, label: "New PO", path: "/purchase-orders/new", color: "text-purple-400" },
+  { id: "po", icon: ShoppingCart, label: "New Work Order", path: "/purchase-orders/new", color: "text-purple-400" },
   { id: "customer", icon: UserPlus, label: "New Customer", path: "/customers?new=true", color: "text-orange-400" },
   { id: "message", icon: MessageCircle, label: "New Message", path: "/messages?new=true", color: "text-cyan-400" },
 ];

@@ -109,6 +109,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
   const [effectiveView, setUrlView] = useNavigationValue<View>("view", view, ["list", "cards", "grid"]);
   useLocationScroll(!isLoading && !editTargetId);
   const chooseView = (v: View) => { setView(v); setUrlView(v); try { localStorage.setItem(viewKey, v); } catch { /* ignore */ } };
+  useEffect(() => { if (effectiveView === "grid") chooseView("list"); }, [effectiveView]);
   const [scrollTo, setScrollTo] = useState<string | null>(null);
   const [locationParams]=useSearchParams();
   const targetLocation=locationParams.get('location');
@@ -235,7 +236,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
             <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="View">
               <Button size="sm" variant={effectiveView === "list" ? "secondary" : "ghost"} className="h-7 px-2 text-xs" onClick={() => chooseView("list")}><List className="h-3.5 w-3.5 mr-1" />List</Button>
               <Button size="sm" variant={effectiveView === "cards" ? "secondary" : "ghost"} className="h-7 px-2 text-xs" onClick={() => chooseView("cards")}><LayoutGrid className="h-3.5 w-3.5 mr-1" />Cards</Button>
-              <Button size="sm" variant={effectiveView === "grid" ? "secondary" : "ghost"} className="h-7 px-2 text-xs" onClick={() => chooseView("grid")}><Rows3 className="h-3.5 w-3.5 mr-1" />Roster</Button>
+              
             </div>
           )}
           {canWrite && <Button size="sm" onClick={openNew}><Plus className="h-4 w-4 mr-1" />Add location</Button>}

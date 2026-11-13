@@ -4,6 +4,7 @@ import {
   ClipboardList,
   Clock,
   Map,
+  MapPin,
   Send,
   UserSearch,
   Boxes,
@@ -66,7 +67,7 @@ export const sections: NavSection[] = [
     items: [
       { name: "Dashboard", href: "/", icon: LayoutDashboard },
       { name: "Projects", href: "/projects", icon: FolderKanban },
-      { name: "Staffing Map", href: "/staffing/map", icon: Map, requiresManager: true },
+      { name: "Locations", href: "/locations", icon: MapPin },
       { name: "Messages", href: "/messages", icon: MessageSquareText, badge: "unread" },
     ],
   },
@@ -76,6 +77,7 @@ export const sections: NavSection[] = [
     items: [
       { name: "Personnel", href: "/personnel", icon: Users },
       { name: "Bench", href: "/personnel?segment=bench", icon: Star },
+      { name: "Staffing Map", href: "/staffing/map", icon: Map, requiresManager: true },
       { name: "Crew Assignments", href: "/project-assignments", icon: ClipboardList },
       { name: "Applicant Pool", href: "/staffing/applicants", icon: UserSearch },
       { name: "Applicant Board", href: "/workforce", icon: Boxes },
@@ -105,7 +107,7 @@ export const sections: NavSection[] = [
       { name: "Estimates", href: "/estimates", icon: FileText },
       { name: "Invoices", href: "/invoices", icon: FileSpreadsheet },
       { name: "Products & Services", href: "/products", icon: Package },
-      { name: "Vendors", href: "/vendors", icon: Truck },
+      { name: "Vendors & Agencies", href: "/vendors", icon: Truck },
       { name: "Work Orders", href: "/purchase-orders", icon: ShoppingCart },
       { name: "Bills", href: "/vendor-bills", icon: FileCheck2 },
       { name: "Vendor Documents", href: "/vendor-documents", icon: FolderSearch },
