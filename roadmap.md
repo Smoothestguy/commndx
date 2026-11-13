@@ -1,5 +1,6 @@
 # MX-style mobile Home
-- [ ] Final pass: explicit white dock, personal assignment/recent selection default, both real roles at 390px, read-only link retention and desktop check.
+- [x] Final pass: white dock verified at 390px; profile uses self-only active sites or the user's last eligible selection, never a hardcoded event. Owner top bar, 17-count inbox, switcher/reload, dismiss, lazy Add/New TO, Profile and online/offline checked; desktop unchanged, 20 tests pass and build OK. Juan link confirmed intact; no business writes or sends.
+- [ ] Fresh jperez 390px verification blocked: the approved-account session mint now refuses because user approval is unavailable in this context. Prior real field verification remains recorded below; no new impersonation or data changes attempted.
 - [x] Light profile/featured/menu cards and floating role dock, real read/online status and scope switcher; existing actions/destinations retained.
 - [x] Manager and approved jperez/ Juan verified at 390px: menu, switcher, Add, Profile, online/offline, 47.86 worker hours and no manager/dollar content; approvals access redirects to worker portal. Desktop operations retained; 19 tests pass. Juan link confirmed unchanged, no punches/texts/business data writes.
 
