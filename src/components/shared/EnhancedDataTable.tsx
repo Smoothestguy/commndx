@@ -42,6 +42,7 @@ import { useTablePreferences } from "@/hooks/useTablePreferences";
 import { useSessionState } from "@/hooks/useSessionState";
 import { useViewportGrid } from "@/hooks/useViewportGrid";
 import { gridColumnWidths } from "@/lib/gridSizing";
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export interface EnhancedColumn<T> {
   key: keyof T | string;
@@ -162,6 +163,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   fillViewport = false,
   emptyText = "No results found",
 }: EnhancedDataTableProps<T>) {
+  const mobile = useIsMobile();
   const defaultColumnKeys = columns.map(col => String(col.key));
   const { preferences, setSort, toggleColumnVisibility, setColumnOrder, setColumnFilter } = useTablePreferences({
     tableId, defaultColumns: defaultColumnKeys, defaultSortKey, defaultSortDirection,
@@ -343,7 +345,15 @@ export function EnhancedDataTable<T extends { id: string | number }>({
         </div>
       )}
 
-      <div data-grid-scroll ref={scrollRef} onScroll={e => { try { sessionStorage.setItem(`${scope}:scroll`, JSON.stringify([e.currentTarget.scrollTop, e.currentTarget.scrollLeft])); } catch { /* unavailable storage */ } }} className={cn("overflow-auto min-h-0", fullscreen && "flex-1")} style={fullscreen ? undefined : { maxHeight }}>
+      {mobile ? <div aria-label="Phone card list" className="divide-y min-w-0">
+        {pageRows.map(item => <article key={String(item.id)} className="p-3 space-y-3 min-w-0">
+          <div className="flex gap-3 items-start">{selectable && <Checkbox className="mt-1 h-5 w-5" aria-label="Select row" checked={selectedIds.has(String(item.id))} onCheckedChange={v=>handleSelectOne(String(item.id),!!v)}/>}<div className="min-w-0 flex-1">{visibleColumns.slice(0,1).map(c=><div key={String(c.key)} className="font-semibold break-words">{rowHref?<Link to={rowHref(item)}>{c.render?c.render(item):cellText(item,c)}</Link>:onRowClick?<Button variant="ghost" className="p-0 min-h-11 h-auto text-left whitespace-normal justify-start" onClick={()=>onRowClick(item)}>{c.render?c.render(item):cellText(item,c)}</Button>:c.render?c.render(item):cellText(item,c)}</div>)}{attention?.(item)&&<p className="text-xs text-warning">{attention(item)}</p>}</div></div>
+          <dl className="grid grid-cols-2 gap-x-3 gap-y-2 min-w-0">{visibleColumns.slice(1,5).filter(c=>!c.noExport).map(c=><div key={String(c.key)} className="min-w-0"><dt className="text-xs text-muted-foreground">{c.header}</dt><dd className="text-sm break-words [&_*]:max-w-full">{c.render?c.render(item):cellText(item,c)||'—'}</dd></div>)}</dl>
+          {visibleColumns.length>5&&<details><summary className="min-h-11 flex items-center text-sm text-primary cursor-pointer">More details</summary><dl className="space-y-2">{visibleColumns.slice(5).filter(c=>!c.noExport).map(c=><div key={String(c.key)} className="min-w-0"><dt className="text-xs text-muted-foreground">{c.header}</dt><dd className="text-sm break-words [&_*]:max-w-full">{c.render?c.render(item):cellText(item,c)||'—'}</dd></div>)}</dl></details>}
+          <div className="flex flex-wrap gap-2 [&_button]:min-h-11 [&_button]:min-w-11">{visibleColumns.filter(c=>c.noExport).map(c=><div className="min-w-0 max-w-full" key={String(c.key)}>{c.render?.(item)}</div>)}</div>
+        </article>)}
+        {!pageRows.length&&<p className="p-6 text-sm text-muted-foreground">{emptyText}</p>}
+      </div> : <div data-grid-scroll ref={scrollRef} onScroll={e => { try { sessionStorage.setItem(`${scope}:scroll`, JSON.stringify([e.currentTarget.scrollTop, e.currentTarget.scrollLeft])); } catch { /* unavailable storage */ } }} className={cn("overflow-auto min-h-0", fullscreen && "flex-1")} style={fullscreen ? undefined : { maxHeight }}>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <table style={{ width: Math.max(availableWidth, leadWidth + columnWidths.reduce((n, w) => n + w, 0)) }} className={cn("table-fixed caption-bottom border-separate border-spacing-0", dense ? "text-xs" : "text-sm")}>
             <thead className="sticky top-0 z-20">
@@ -450,7 +460,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
             </tbody>
           </table>
         </DndContext>
-      </div>
+      </div>}
 
       {/* Footer bar */}
       <div data-grid-footer className="shrink-0 flex flex-wrap items-center gap-1 px-2 py-1 border-t border-border bg-muted/30 text-xs text-muted-foreground">

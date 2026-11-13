@@ -37,10 +37,14 @@ import { ProjectDocuments } from '@/components/projects/ProjectDocuments';
 import { currentWeekStart, addDays, resolveShifts } from '@/lib/shifts';
 import { formatLocalDate } from '@/lib/dateUtils';
 import { localDay } from '@/lib/signinSheets';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 const tabs = ['staffing','attendance','taskorders','service','sheets','lodging','assets','documents'] as const;
 const attViews = ['day','detail'] as const;
 const labels = { taskorders:'Task orders',service:'Services',staffing:'Staffing',attendance:'Attendance',sheets:'Sign-in sheets',lodging:'Lodging',assets:'Assets',documents:'Documents' };
 export default function LocationDetail() {
+  const mobile = useIsMobile();
+  const [expanded,setExpanded] = useState<string[]>([]);
   const { projectId, locationId } = useParams();
   const { data: project, isLoading: projectLoading, error: projectError } = useProject(projectId);
   const { data: locations = [], isLoading, error } = useProjectLocations(projectId);
@@ -76,11 +80,11 @@ export default function LocationDetail() {
   const shifts=resolveShifts(location,project);
   return <PageLayout title={location.name} actions={canWrite&&<><Button variant="outline" size="sm" onClick={()=>setEdit(true)}><Pencil className="h-4 w-4 mr-1"/>Edit</Button><Button variant="outline" size="sm" onClick={()=>setLogOpen(true)}><Clock className="h-4 w-4 mr-1"/>Log time</Button><Button variant="outline" size="sm" onClick={()=>setReqOpen(true)}><Inbox className="h-4 w-4 mr-1"/>Field requests</Button>{location.status!=='closed' ? <Button variant="outline" size="sm" onClick={()=>setCloseOpen(true)}><Lock className="h-4 w-4 mr-1"/>Close out location</Button> : isAdmin && <Button variant="outline" size="sm" onClick={async()=>{if(!window.confirm('Reopen this location? The close-out task order stays in history; assignments are not restored.'))return;const {error}=await supabase.from('project_locations').update({status:'active'}).eq('id',location.id);if(error){toast.error(error.message);return;}toast.success('Location reopened');qc.invalidateQueries({queryKey:['project-locations']});}}><LockOpen className="h-4 w-4 mr-1"/>Reopen</Button>}</>}>
     <SEO title={`${location.name} | Command X`} description={`Location operations for ${project.name}`}/>
-    {canWrite && <div className="flex justify-end mb-3"><Button variant="outline" size="sm" onClick={() => setMoveOpen(true)}>Move to another project</Button></div>}
+    {canWrite && !mobile && <div className="flex justify-end mb-3"><Button variant="outline" size="sm" onClick={() => setMoveOpen(true)}>Move to another project</Button></div>}
     {moveOpen && canWrite && <MoveLocationProjectDialog location={location} onClose={() => setMoveOpen(false)} />}
     <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-4"><Link className="hover:underline" to="/projects">Projects</Link><span>/</span><Link className="hover:underline" to={`/projects/${projectId}?tab=locations`}>{project.name}</Link><span>/</span><Link className="text-foreground hover:underline" to={`/projects/${projectId}/locations/${location.id}`}>{location.name}</Link></nav>
     {location.status==='closed' && <div role="status" className="mb-4 rounded-md border border-muted bg-muted/40 p-3 text-sm"><Lock className="inline h-4 w-4 mr-1"/><b>Closed</b>{location.closeout_date ? ` as of ${location.closeout_date}` : ''} — punching, pre-shift texts and roster alerts are off. History, timesheets and sheets remain available.{location.closeout_notes && <span className="block text-muted-foreground mt-1 whitespace-pre-wrap">{location.closeout_notes}</span>}</div>}
-    <section className="border-b pb-4 space-y-3">
+    <section className={mobile ? 'border-b pb-3 space-y-2 [&>div:nth-child(2)]:hidden [&>p]:hidden [&>div:last-child]:hidden' : 'border-b pb-4 space-y-3'}>
       <div className="flex flex-wrap gap-2 items-center">{location.project_number && <Badge variant="outline">#{location.project_number}</Badge>}{location.lat != null && location.lng != null ? <Badge variant="outline">Geofenced · {location.geofence_radius_m}m</Badge> : <Badge variant="outline" className="text-muted-foreground">No geofence set</Badge>}<Badge variant={location.status==='active'?'default':'secondary'}>{location.status}</Badge>{customer && <span className="text-sm">Customer: <b>{customer.company||customer.name}</b></span>}{project.customer_po && <span className="text-sm">Prime / contract: <b>{project.customer_po}</b></span>}<span className="text-sm font-medium">Staffed {summary?.assigned ?? 0}/{summary?.needed ?? 0}</span></div>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">{address && <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`} target="_blank" rel="noopener noreferrer" className="text-primary inline-flex gap-1 items-center hover:underline"><MapPin className="h-4 w-4 shrink-0"/>{address}</a>}{location.poc_name && <span>{location.poc_name}</span>}{location.poc_phone && <a href={`tel:${location.poc_phone}`} className="text-primary inline-flex gap-1 items-center hover:underline"><Phone className="h-4 w-4"/>{location.poc_phone}</a>}{location.poc_email && <a className="text-primary hover:underline" href={`mailto:${location.poc_email}`}>{location.poc_email}</a>}<span className="text-muted-foreground">Mobe {location.mobe_date?formatLocalDate(location.mobe_date):'—'} → Demobe {location.demobe_date?formatLocalDate(location.demobe_date):'—'}</span></div>
       {location.scope && <p className="text-sm whitespace-pre-wrap text-muted-foreground">{location.scope}</p>}
@@ -88,12 +92,27 @@ export default function LocationDetail() {
       <p className="text-sm text-muted-foreground">Shifts: {shifts.day}–{shifts.dayEnd} / {shifts.night}–{shifts.nightEnd}</p>
       <div className="flex flex-wrap items-center gap-2">{canWrite && location.status!=='closed' && <><LocationKioskActions location={location} initialOpen={params.get('action')==='kiosk'}/><ProjectJoinLinks projectId={projectId} locationId={location.id}/></>}<DailyTimesheetPanel projectId={projectId} projectName={project.name} locationId={location.id} initialSheet={sheet}/></div>
     </section>
-    <div className="mt-4"><LocationAuthorizationPanel projectId={projectId} locationId={location.id} locationName={location.name} timezone={location.timezone}/></div>
+    {!mobile && <div className="mt-4"><LocationAuthorizationPanel projectId={projectId} locationId={location.id} locationName={location.name} timezone={location.timezone}/></div>}
     <FieldRequestsDialog open={reqOpen} onOpenChange={setReqOpen} locationId={location.id} locationName={location.name} canAct={canWrite}/>
     {canWrite && projectId && <LocationCloseoutDialog projectId={projectId} location={location} open={closeOpen} onOpenChange={setCloseOpen}/>}
     {canWrite && <LogTimeDialog open={logOpen} onOpenChange={setLogOpen} projectId={projectId} locationId={location.id} />}
     {edit && <ProjectLocationsTab projectId={projectId} deploymentMode={!!project.deployment_mode} editTargetId={location.id} onEditClosed={()=>setEdit(false)}/>}
-    <Tabs value={tab} onValueChange={v=>{setParams(prev=>{const next=new URLSearchParams(prev);next.set('tab',v);next.delete('sub');next.delete('view');next.delete('action');return next;});}} className="mt-4"><TabsList className="h-auto flex flex-wrap justify-start gap-1">{tabs.map(t=><TabsTrigger value={t} key={t}>{labels[t]}</TabsTrigger>)}</TabsList></Tabs>
+    {mobile ? <div className="space-y-6 py-4">
+      <section aria-label="Today's attendance"><h2 className="font-semibold mb-3">Today's attendance</h2><LocationDayAttendance projectId={projectId} locationId={location.id} timezone={location.timezone} canWrite={canWrite}/></section>
+      <section aria-label="Staffing roster"><h2 className="font-semibold mb-3">Staffing roster</h2><LocationStaffing locationId={location.id} locationName={location.name} projectId={projectId} timezone={location.timezone} summary={summary} canWrite={canWrite}/></section>
+      <section aria-label="Authorization and demobilization"><h2 className="font-semibold mb-3">Authorization & demobe</h2><LocationAuthorizationPanel projectId={projectId} locationId={location.id} locationName={location.name} timezone={location.timezone}/>{location.demobe_date&&<p className="text-sm mt-2">Demobe {formatLocalDate(location.demobe_date)}</p>}</section>
+      <Accordion type="multiple" value={expanded} onValueChange={setExpanded}>
+        {(['taskorders','service','sheets','lodging','assets','documents'] as const).map(t=><AccordionItem key={t} value={t}><AccordionTrigger>{labels[t]}</AccordionTrigger><AccordionContent>{expanded.includes(t)&&<>
+          {t==='taskorders'&&<LocationTaskOrders inline projectId={projectId} locationId={location.id} locationName={location.name} timezone={location.timezone}/>}
+          {t==='service'&&<ServiceGrid locations={scoped}/>}
+          {t==='assets'&&<LocationAssets projectId={projectId} locationId={location.id} locationName={location.name} canWrite={canWrite} locationNames={Object.fromEntries(locations.map(l=>[l.id,l.name]))}/>}
+          {t==='sheets'&&<><DailyTimesheetPanel projectId={projectId} projectName={project.name} locationId={location.id} initialSheet={sheet}/><SigninStatusBoard projectId={projectId} locations={scoped} onSelect={(id,day)=>setSheet({location:id,day})}/></>}
+          {t==='lodging'&&<LocationLodging projectId={projectId} locationId={location.id} housingBy={location.housing_provided_by} canWrite={canWrite}/>}
+          {t==='documents'&&<ProjectDocuments projectId={projectId} projectName={project.name} locationScopeId={location.id} unframed/>}
+        </>}</AccordionContent></AccordionItem>)}
+        <AccordionItem value="settings"><AccordionTrigger>Location details & links</AccordionTrigger><AccordionContent>{expanded.includes('settings')&&<div className="space-y-3"><p className="text-sm break-words">{address}</p><p>{location.poc_name} <a href={`tel:${location.poc_phone}`}>{location.poc_phone}</a></p><p className="text-sm">Shifts {shifts.day}–{shifts.dayEnd} / {shifts.night}–{shifts.nightEnd}</p><p className="text-sm">Timezone: {location.timezone||'America/Chicago (fallback)'}</p>{canWrite&&<><LocationKioskActions location={location}/><ProjectJoinLinks projectId={projectId} locationId={location.id}/><Button variant="outline" onClick={()=>setMoveOpen(true)}>Move to another project</Button></>}</div>}</AccordionContent></AccordionItem>
+      </Accordion>
+    </div> : <><Tabs value={tab} onValueChange={v=>{setParams(prev=>{const next=new URLSearchParams(prev);next.set('tab',v);next.delete('sub');next.delete('view');next.delete('action');return next;});}} className="mt-4"><TabsList className="h-auto flex flex-wrap justify-start gap-1">{tabs.map(t=><TabsTrigger value={t} key={t}>{labels[t]}</TabsTrigger>)}</TabsList></Tabs>
     <section className="py-4" aria-label={labels[tab]}>
       {tab==='attendance' && <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2"><div role="tablist" aria-label="Attendance view" className="inline-flex rounded-md border p-0.5">{attViews.map(v=><Button key={v} role="tab" aria-selected={attView===v} size="sm" variant={attView===v?'secondary':'ghost'} onClick={()=>setAttView(v)}>{v==='day'?'Day':'Trail & weekly timesheet'}</Button>)}</div>{canWrite&&<BulkLogTimesDialog projectId={projectId} location={location}/>}</div>
@@ -106,6 +125,6 @@ export default function LocationDetail() {
       {tab==='lodging' && <LocationLodging projectId={projectId} locationId={location.id} housingBy={location.housing_provided_by} canWrite={canWrite}/>}
       {tab==='assets' && <LocationAssets projectId={projectId} locationId={location.id} locationName={location.name} canWrite={canWrite} locationNames={Object.fromEntries(locations.map(l=>[l.id,l.name]))}/>}
       {tab==='documents' && <ProjectDocuments projectId={projectId} projectName={project.name} locationScopeId={location.id} unframed/>}
-    </section>
+    </section></>}
   </PageLayout>;
 }
