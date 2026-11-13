@@ -374,7 +374,7 @@ const Projects = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  const renderProjectCards = (projectList: Project[]) => (
+  const renderProjectCards = (projectList: Project[]) => isMobile ? renderProjectTable(projectList, `projects-phone-${projectList[0]?.id ?? 'empty'}`) : (
     <div className="grid gap-2 grid-cols-1 sm:grid-cols-2">
       {projectList.map((project) => (
         <ProjectContextMenu key={project.id} project={project} onEdit={handleEdit}>
@@ -388,7 +388,7 @@ const Projects = () => {
               onClick={() => navigate(`/projects/${project.id}`)}
               compact
               stale={isStale(project)}
-              selectable
+              selectable={canArchive}
               selected={selectedIds.has(project.id)}
               onSelectChange={(c) => toggleSelect(project.id, c)}
               extraActions={<ProjectRowActionsMenu project={project} onEdit={handleEdit} />}
