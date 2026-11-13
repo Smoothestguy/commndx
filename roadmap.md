@@ -1,3 +1,7 @@
+# Mobile bulk actions and long-press
+- [ ] Shared phone selection bar, scroll-cancelled 500ms menus and desktop row menus; manager-only status actions across supported entities.
+- [ ] Verify 390px Locations/Personnel, disposable status round-trip and cleanup, focused tests and preview errors.
+
 # Task-order engine
 - [x] Finish owner-requested verification: 5049 TO-1..4 unchanged (current 4 Operator/2 Supervisor/2 Truck), legacy terms absent; disposable draft create/edit/accept and terms carry passed. Reduction blocked additions and browser Demobilize saved. Agency signup conflict, manager resolution/approval and permanent ownership guard passed without texts. All disposable rows, private signatures and related audit records removed.
 - [x] Extend structured lines/terms and previews; corrected exact-time deductions, duplicate/direction validation and preservation of server numbering on draft acceptance.
