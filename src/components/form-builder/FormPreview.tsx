@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Upload, PenLine, Mail, Phone, Camera } from "lucide-react";
+import { useSecureUrl } from "@/hooks/useSecureUrl";
 import { cn } from "@/lib/utils";
 import { AddressField } from "./AddressField";
 import { FormattedPhoneInput } from "./FormattedPhoneInput";
@@ -72,6 +73,7 @@ function renderFieldsWithLayout(
 }
 
 export function FormPreview({ name, description, fields, layout, theme, successMessage, coreFields, requirePhone, requireHomeZip }: FormPreviewProps) {
+  const {url:backgroundPreview}=useSecureUrl("form-uploads",theme.backgroundImage);
   // Merge provided coreFields with defaults
   const activeCoreFields: CoreFieldsConfig = {
     ...DEFAULT_CORE_FIELDS,
@@ -81,7 +83,7 @@ export function FormPreview({ name, description, fields, layout, theme, successM
   const getBackgroundStyle = () => {
     if (theme.backgroundImage) {
       return {
-        backgroundImage: `url(${theme.backgroundImage})`,
+        backgroundImage: backgroundPreview ? `url(${backgroundPreview})` : undefined,
         backgroundSize: "cover",
         backgroundPosition: "center",
       };

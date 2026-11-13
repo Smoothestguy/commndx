@@ -16,6 +16,7 @@ import { FormTheme } from "@/integrations/supabase/hooks/useApplicationFormTempl
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ThemeGallery } from "./ThemeGallery";
+import { useSecureUrl } from "@/hooks/useSecureUrl";
 import { Separator } from "@/components/ui/separator";
 
 interface ThemeEditorProps {
@@ -46,6 +47,7 @@ const PRESET_GRADIENTS = [
 
 export function ThemeEditor({ theme, onUpdate }: ThemeEditorProps) {
   const [isUploading, setIsUploading] = useState(false);
+  const {url:backgroundPreview}=useSecureUrl("form-uploads",theme.backgroundImage);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -221,7 +223,7 @@ export function ThemeEditor({ theme, onUpdate }: ThemeEditorProps) {
         {theme.backgroundImage ? (
           <div className="relative">
             <img
-              src={theme.backgroundImage}
+              src={backgroundPreview || undefined}
               alt="Background"
               className="w-full h-24 object-cover rounded-lg"
             />

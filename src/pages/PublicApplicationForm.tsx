@@ -275,7 +275,8 @@ export default function PublicApplicationForm() {
             setCustomAnswers(defaults);
           }
           if (template.theme) {
-            setTheme(template.theme as unknown as FormTheme);
+            const nextTheme = template.theme as unknown as FormTheme;
+            if(nextTheme.backgroundImage){const media=await supabase.functions.invoke('intake-media',{body:{purpose:'apply',token}});setTheme({...nextTheme,backgroundImage:media.data?.url||undefined});}else setTheme(nextTheme);
           }
           if (template.success_message) {
             setSuccessMessage(template.success_message);

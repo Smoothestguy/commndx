@@ -69,6 +69,7 @@ export default function QuickApply() {
       const { data, error } = await supabase.rpc("get_quick_apply_invite", { _token: token });
       if (error) toast.error(error.message);
       const parsed = (data as any) ?? { valid: false };
+      if(parsed?.applicant?.photo_url){const media=await supabase.functions.invoke('intake-media',{body:{purpose:'quick',token}});parsed.applicant.photo_url=media.data?.url||null;}
       setInvite(parsed);
       if (parsed?.applicant) {
         setPhone(parsed.applicant.phone ?? "");

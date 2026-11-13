@@ -213,7 +213,7 @@ export function FormFileUpload({
   };
 
   const getFileIcon = () => {
-    if (preview || (isUrlValue && value?.match(/\.(jpg|jpeg|png|gif|webp)$/i))) {
+    if (preview || (isUrlValue && value?.split("?")[0].match(/\.(jpg|jpeg|png|gif|webp)$/i))) {
       return <ImageIcon className="h-4 w-4 text-blue-500" />;
     }
     return <FileText className="h-4 w-4 text-orange-500" />;
@@ -222,7 +222,7 @@ export function FormFileUpload({
   const displayName = fileName || (isUrlValue ? value.split("?")[0].split("/").pop() : null);
   const hasFile = isUrlValue || fileName;
   // New anonymous uploads preview locally; durable private references are never fetched publicly.
-  const displayPreview = preview || (isUrlValue && value?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? savedPreview : null);
+  const displayPreview = preview || (isUrlValue && value?.split("?")[0].match(/\.(jpg|jpeg|png|gif|webp)$/i) ? savedPreview : null);
   const showRetry = !!error && !uploading;
 
   return (

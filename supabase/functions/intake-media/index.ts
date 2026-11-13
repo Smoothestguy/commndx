@@ -1,0 +1,7 @@
+import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { z } from 'npm:zod@3';
+import { service,json } from '../_shared/signinJobs.ts';
+Deno.serve(async req=>{if(req.method==='OPTIONS')return new Response('ok',{headers:corsHeaders});if(req.method!=='POST')return json({error:'Method not allowed'},405);try{const p=z.object({purpose:z.enum(['quick','apply']),token:z.string().min(16).max(200)}).strict().safeParse(await req.json());if(!p.success)return json({error:'Invalid link'},400);const v=p.data,db=service();let ref:string|null=null;
+ if(v.purpose==='quick'){const r=await db.rpc('get_quick_apply_invite',{_token:v.token});if(!r.data?.valid)return json({error:'Link unavailable'},403);ref=r.data?.applicant?.photo_url;}
+ else{const posting=await db.from('job_postings').select('form_template_id').eq('public_token',v.token).eq('is_open',true).maybeSingle();if(!posting.data)return json({error:'Link unavailable'},403);if(posting.data.form_template_id){const r=await db.from('application_form_templates').select('theme').eq('id',posting.data.form_template_id).single();ref=(r.data?.theme as any)?.backgroundImage;}}
+ if(!ref)return json({url:null});const m=ref.match(/\/storage\/v1\/object\/(?:public|sign)\/(application-files|form-uploads|personnel-photos)\/([^?]+)/);if(!m)return json({url:ref.startsWith('https:')?ref:null});const signed=await db.storage.from(m[1]).createSignedUrl(decodeURIComponent(m[2]),600);return json({url:signed.data?.signedUrl||null});}catch{return json({error:'Media unavailable'},400);}});
