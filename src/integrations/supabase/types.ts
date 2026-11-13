@@ -14088,6 +14088,10 @@ export type Database = {
         }
         Returns: string
       }
+      retire_to_allocation: {
+        Args: { p_id: string; p_until: string }
+        Returns: undefined
+      }
       review_punch_shift: {
         Args: { p_id: string; p_kind: string; p_status: string }
         Returns: Json
