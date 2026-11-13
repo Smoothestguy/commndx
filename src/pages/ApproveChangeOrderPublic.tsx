@@ -130,8 +130,8 @@ export default function ApproveChangeOrderPublic() {
     );
   }
 
-  const isFieldSupervisor = co.field_supervisor_approval_token === token;
-  const isCustomerPM = co.customer_pm_approval_token === token;
+  const isFieldSupervisor = co.is_field_supervisor === true;
+  const isCustomerPM = co.is_customer_pm === true;
   const signerRole = isFieldSupervisor ? "Field Supervisor" : "Customer PM";
 
   // Check if already signed
