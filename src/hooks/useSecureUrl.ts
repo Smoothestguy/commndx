@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getPathFromUrl } from "@/utils/signedUrlUtils";
+import { PRIVATE_MEDIA_TTL, PUBLIC_MEDIA_BUCKETS } from '@/lib/privateStoragePolicy';
 
-const EXPIRES_IN = 600;
+const EXPIRES_IN = PRIVATE_MEDIA_TTL;
 const STALE_MS = 5 * 60 * 1000;
 
 /**
@@ -10,7 +11,7 @@ const STALE_MS = 5 * 60 * 1000;
  * Anything matching /object/public/<publicBucket>/ must be used as-is —
  * routing it through createSignedUrls silently breaks rendering.
  */
-const PUBLIC_BUCKETS = new Set(["logos", "dashboard-backgrounds"]);
+const PUBLIC_BUCKETS = new Set<string>(PUBLIC_MEDIA_BUCKETS);
 
 /**
  * Batches signed-URL requests per bucket: every avatar that mounts in the same

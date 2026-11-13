@@ -1,11 +1,12 @@
 import { supabase } from '@/integrations/supabase/client';
+import { PRIVATE_MEDIA_TTL } from '@/lib/privateStoragePolicy';
 export async function uploadPrivateFile(bucket: string, folder: string, file: File | Blob) {
   const {data:{session}}=await supabase.auth.getSession();
   if(session){
     const ext=file.type==='application/pdf'?'pdf':file.type==='image/png'?'png':'jpg';
     const path=`${folder}/${crypto.randomUUID()}.${ext}`;
     const {error}=await supabase.storage.from(bucket).upload(path,file,{contentType:file.type,upsert:false});if(error)throw error;
-    const signed=await supabase.storage.from(bucket).createSignedUrl(path,600);if(signed.error)throw signed.error;
+    const signed=await supabase.storage.from(bucket).createSignedUrl(path,PRIVATE_MEDIA_TTL);if(signed.error)throw signed.error;
     return {path,reference:supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl,preview:signed.data.signedUrl};
   }
   const segments=window.location.pathname.split('/').filter(Boolean);
