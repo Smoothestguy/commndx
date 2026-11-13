@@ -1,5 +1,5 @@
 import type { AuthorizationLevel, TaskOrderKind } from './locationAuthorization';
-export type OrderLineDraft = {id:string;line_kind:'position'|'asset';label:string;qty:string};
+export type OrderLineDraft = {id:string;line_kind:'position'|'asset';label:string;qty:string;rate?:string};
 export const deductive = (kind:string) => kind==='decrease'||kind==='demobilization';
 export const blankOrderLine = ():OrderLineDraft => ({id:crypto.randomUUID(),line_kind:'position',label:'',qty:'1'});
 export function deductionDrafts(levels:AuthorizationLevel[]):OrderLineDraft[] {
