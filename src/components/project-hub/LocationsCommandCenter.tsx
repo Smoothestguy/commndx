@@ -191,8 +191,8 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
               <button key={c.key} type="button" onClick={() => toggle(c.key)} aria-pressed={filter === c.key}
                 className={cn('rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors', c.sev === 'ok' ? 'text-foreground' : tone[c.sev], filter === c.key && 'ring-2 ring-primary')}>{c.text}</button>
             ))}
-            {blocks > 0 && <Link to={`/projects/${projectId}?tab=deployment`} className={cn('rounded-full border px-2.5 py-0.5 text-xs font-medium', tone.amber)}>{pl(blocks, 'reconciliation block')}</Link>}
-            {insuranceDue.length > 0 && <Tooltip><TooltipTrigger asChild><Link to={`/projects/${projectId}?tab=crew`} className={cn('rounded-full border px-2.5 py-0.5 text-xs font-medium', tone.amber)}>{pl(insuranceDue.length, 'asset')} · insurance expiring ≤30d</Link></TooltipTrigger>
+            {blocks > 0 && <span className={cn('border px-2.5 py-0.5 text-xs font-medium', tone.amber)}>{pl(blocks, 'reconciliation block')}</span>}
+            {insuranceDue.length > 0 && <Tooltip><TooltipTrigger asChild><Link to={locationHref(projectId, insuranceDue[0].location_id || locations[0]?.id || '', 'assets')} className={cn('rounded-full border px-2.5 py-0.5 text-xs font-medium', tone.amber)}>{pl(insuranceDue.length, 'asset')} · insurance expiring ≤30d</Link></TooltipTrigger>
               <TooltipContent>{insuranceDue.map(r => `${r.assets?.label} — ${r.assets?.insurance_expires_on}`).join(' · ')}</TooltipContent></Tooltip>}
             {chips.every(c => c.n === 0) && blocks === 0 && insuranceDue.length === 0 && <span className="text-xs text-success">All locations on track</span>}
           </div>

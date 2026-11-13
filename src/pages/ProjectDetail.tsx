@@ -312,7 +312,7 @@ const ProjectDetail = () => {
           <CrewsSection projectId={id} crews={crews} canEdit={canArchive}/>
         </TabsContent>
         <TabsContent value="financials">
-          <ProjectFinancialsTab projectId={id} project={project} customer={customer} />
+          {canArchive ? <ProjectFinancialsTab projectId={id} project={project} customer={customer} /> : <p className="text-muted-foreground">Financials are available to managers and administrators.</p>}
         </TabsContent>
         <TabsContent value="docs">
           <div className="space-y-8">

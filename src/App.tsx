@@ -48,6 +48,7 @@ const ProjectJoin = lazy(() => import("./pages/ProjectJoin"));
 const CustomerPortal = lazy(() => import("./pages/CustomerPortal"));
 const AgencyPortal = lazy(() => import("./pages/AgencyPortal"));
 const FieldMode = lazy(() => import("./pages/FieldMode"));
+const FieldHome = lazy(() => import("./pages/FieldHome"));
 const Vendors = lazy(() => import("./pages/Vendors"));
 const VendorDetail = lazy(() => import("./pages/VendorDetail"));
 const VendorBills = lazy(() => import("./pages/VendorBills"));
@@ -450,6 +451,7 @@ const App = () => {
                       <Route path="/projects/:id" element={<ProjectDetail />} />
                       <Route path="/projects/:projectId/locations/:locationId" element={<LocationDetail />} />
                       <Route path="/field/:projectId" element={<FieldMode />} />
+                      <Route path="/field" element={<FieldHome />} />
                       <Route path="/vendors" element={<Vendors />} />
                       <Route path="/vendors/:id" element={<VendorDetail />} />
                       <Route path="/vendor-bills" element={<VendorBills />} />

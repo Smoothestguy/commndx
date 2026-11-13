@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useUserRole } from '@/hooks/useUserRole';
+import {scopeLocationReviews} from '@/lib/locationReviewScope';
 export function useShiftReviews(projectId: string, locationIds: string[]) {
  const {isAdmin,isManager}=useUserRole();const ids=[...locationIds].sort();
  return useQuery({queryKey:['shift-reviews',projectId,ids],enabled:(isAdmin||isManager)&&ids.length>0,refetchInterval:60_000,queryFn:async()=>{
