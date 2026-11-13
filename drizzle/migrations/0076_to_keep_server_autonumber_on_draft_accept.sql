@@ -1,0 +1,1 @@
+DO $$ DECLARE d text;BEGIN SELECT pg_get_functiondef('public.save_location_to_engine(uuid,uuid,timestamptz,jsonb,jsonb,jsonb)'::regprocedure) INTO d;d:=replace(d,'to_number=p_values->>''to_number''','to_number=COALESCE(NULLIF(p_values->>''to_number'',''''),old.to_number)');EXECUTE d;END $$;
