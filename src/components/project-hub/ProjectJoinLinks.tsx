@@ -25,18 +25,21 @@ import { toast } from 'sonner';
 import { CustomerPortalLinks } from './CustomerPortalLinks';
 import { useProject } from '@/integrations/supabase/hooks/useProjects';
 import { usePublicLang } from '@/lib/publicLang';
+import { eventCustomers } from '@/lib/projectEvent';
 
 export function ProjectJoinLinks({ projectId, locationId, iconOnly = false, menu = false }: { projectId: string; locationId?: string; iconOnly?: boolean; menu?: boolean }) {
   const { isAdmin, isManager } = useUserRole();
   const [open, setOpen] = useState(false);
   const [portalOpen,setPortalOpen]=useState(false);
   const {data:project}=useProject(projectId);
+  const {data:portalLocations=[]}=useProjectLocations(projectId);
+  const portalCustomer=eventCustomers(portalLocations,project?.customer_id)[0]?.id;
   if (!isAdmin && !isManager) return null;
   const trigger = <Button type="button" size={iconOnly ? 'icon' : 'sm'} variant="ghost" className={iconOnly ? 'h-9 w-9 shrink-0' : ''} aria-label="Join link" onClick={() => setOpen(true)}><Link2 className="h-4 w-4" />{!iconOnly && <span className="ml-1">Join link</span>}</Button>;
   return <>
     {menu ? <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label="Project actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => setOpen(true)}><Link2 className="h-4 w-4 mr-2" />Join link</DropdownMenuItem><DropdownMenuItem disabled={!project?.customer_id} onSelect={()=>setPortalOpen(true)}><Link2 className="h-4 w-4 mr-2"/>Customer portal</DropdownMenuItem></DropdownMenuContent></DropdownMenu> : iconOnly ? <Tooltip><TooltipTrigger asChild>{trigger}</TooltipTrigger><TooltipContent>Join link</TooltipContent></Tooltip> : trigger}
     <Dialog open={open} onOpenChange={setOpen}>{open && <JoinLinksDialog projectId={projectId} locationId={locationId} />}</Dialog>
-    {portalOpen&&project?.customer_id&&<CustomerPortalLinks projectId={projectId} customerId={project.customer_id} open={portalOpen} onOpenChange={setPortalOpen}/>}
+    {portalOpen&&portalCustomer&&<CustomerPortalLinks projectId={projectId} customerId={portalCustomer} open={portalOpen} onOpenChange={setPortalOpen}/>}
   </>;
 }
 function JoinLinksDialog({ projectId, locationId }: { projectId: string; locationId?: string }) {

@@ -307,6 +307,7 @@ const Projects = () => {
     setFormData({
       name: project.name,
       customer_id: project.customer_id || '',
+      type_id:project.type_id || '',
       status: project.status,
       stage: project.stage || "quote",
       start_date: project.start_date,
@@ -336,6 +337,7 @@ const Projects = () => {
     const submitData = {
       ...submitFields,
       customer_id: formData.customer_id || null,
+      type_id:formData.type_id || null,
       end_date: formData.end_date || null,
       description: formData.description || null,
       address: formData.address || null,

@@ -1,4 +1,5 @@
 # Asset rules
+- Event summaries derive location customers in a paginated shared projection; retained project customer only supplies compatibility defaults. Customer-token reads/submissions scope to the location customer to prevent cross-customer access.
 - Read asset catalog/placements through authenticated role-aware projections; keep base financial rows manager/admin-only to protect costs beyond presentation gates.
 - Append custody history separately from placement periods; lifecycle triggers release current responsibility without splitting customer billable days.- Asset allocated cost/day is derived on read from asset cost inputs via `src/lib/assetCost.ts` (never stored); cost fields travel only in the manager/admin block of the catalog projection.
 - Equipment per-diem billing is derived on read from `asset_assignments` (location_id, billable, day_rate ?? assets.default_day_rate) via `src/lib/assetBilling.ts`; never store accrued totals, so project, location and financial views stay consistent.

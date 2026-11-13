@@ -1,6 +1,6 @@
 import { stripWhiteBackground } from './signatureInk';
 export type SignFieldKind = 'signature' | 'name' | 'date';
-export const SIGN_BINDINGS = ['date', 'project_name', 'mission_number', 'location_name', 'location_address', 'employee_name', 'position', 'signature', 'time_in', 'time_out', 'total_hours', 'name'] as const;
+export const SIGN_BINDINGS = ['date', 'project_name', 'customer_name', 'mission_number', 'location_name', 'location_address', 'employee_name', 'position', 'signature', 'time_in', 'time_out', 'total_hours', 'name'] as const;
 export type SignBinding = typeof SIGN_BINDINGS[number];
 export interface SignField { id: string; page: number; x_pct: number; y_pct: number; w_pct: number; kind: string; h_pct?: number | null; binding?: string; scope?: string; }
 

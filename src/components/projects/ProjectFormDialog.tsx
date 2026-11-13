@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { ProjectTypeSelect } from './ProjectTypeSelect';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ interface Customer {
 interface ProjectFormData {
   name: string;
   customer_id: string;
+  type_id?: string;
   status: "active" | "completed" | "on-hold";
   stage: ProjectStage;
   start_date: string;
@@ -107,6 +109,7 @@ export const ProjectFormDialog = ({
                 />
               </div>
 
+              <ProjectTypeSelect value={formData.type_id} onChange={type_id=>setFormData({...formData,type_id})}/>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="customer">Default customer</Label>

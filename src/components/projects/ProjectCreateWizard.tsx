@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ProjectTypeSelect } from './ProjectTypeSelect';
 import {
   Dialog,
   DialogContent,
@@ -70,6 +71,7 @@ interface Props {
 
 interface Basics {
   name: string;
+  type_id?: string;
   customer_id: string;
   status: "active" | "completed" | "on-hold";
   stage: ProjectStage;
@@ -265,6 +267,7 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
     const { use_customer_address, ...rest } = basics;
     return {
       ...rest,
+      type_id: basics.type_id || null,
       customer_id: basics.customer_id || null,
       end_date: basics.end_date || null,
       description: basics.description || null,
@@ -749,6 +752,7 @@ function BasicsForm({
             required
           />
         </div>
+        <ProjectTypeSelect value={basics.type_id} onChange={type_id=>set({type_id})}/>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>Default customer</Label>

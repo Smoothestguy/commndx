@@ -105,11 +105,13 @@ export const useProjectsByCustomer = (customerId: string | null) => {
     queryKey: ["projects", "customer", customerId],
     queryFn: async () => {
       if (!customerId) return [];
-      
+      const locations = await supabase.from('project_locations').select('project_id').eq('customer_id',customerId);
+      if(locations.error)throw locations.error;
+      const ids=[...new Set(locations.data.map(l=>l.project_id))];
       const { data, error } = await supabase
         .from("projects")
         .select("*")
-        .eq("customer_id", customerId)
+        .or(`customer_id.eq.${customerId}${ids.length?`,id.in.(${ids.join(',')})`:''}`)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
