@@ -9,7 +9,7 @@ export function useJoinRequests(projectId: string) {
   return useQuery({ queryKey: ['project-join-requests', user?.id, projectId], enabled: !!user && !!projectId && canReviewJoinRequests(role), staleTime: 15_000, refetchOnWindowFocus: 'always', refetchInterval: 30_000, queryFn: async () => {
     const rows = [];
     for (let offset = 0; ; offset += 500) {
-      const { data, error } = await supabase.from('project_join_requests').select('id,project_id,location_id,first_name,last_name,phone,requested_at,matched_personnel_id,status').eq('project_id', projectId).eq('status', 'pending').order('requested_at', { ascending: true }).order('id').range(offset, offset + 499);
+      const { data, error } = await supabase.from('project_join_requests').select('id,project_id,location_id,first_name,last_name,phone,requested_at,matched_personnel_id,status,token_id').eq('project_id', projectId).eq('status', 'pending').order('requested_at', { ascending: true }).order('id').range(offset, offset + 499);
       if (error) throw error; rows.push(...data); if (data.length < 500) break;
     }
     const ids = [...new Set(rows.flatMap(r => r.matched_personnel_id ? [r.matched_personnel_id] : []))];
@@ -19,7 +19,9 @@ export function useJoinRequests(projectId: string) {
       if (error) throw error;
       for (const p of data || []) if (p.id) names[p.id] = [p.first_name, p.last_name].filter(Boolean).join(' ');
     }
-    return rows.map(r => ({ ...r, matched_name: r.matched_personnel_id ? names[r.matched_personnel_id] || `${r.first_name} ${r.last_name}` : null }));
+    const tokens=rows.length?await supabase.from('project_join_tokens').select('id,vendor_id').in('id',[...new Set(rows.map(r=>r.token_id))]):{data:[],error:null};if(tokens.error)throw tokens.error;
+    const people=ids.length?await supabase.from('personnel').select('id,vendor_id,employer_customer_id').in('id',ids):{data:[],error:null};
+    return rows.map(r => {const agency=tokens.data?.find(t=>t.id===r.token_id)?.vendor_id;const p=people.data?.find(p=>p.id===r.matched_personnel_id);return {...r,agency_id:agency??null,current_vendor:p?.vendor_id??null,agency_conflict:!!agency&&!!p&&(p.vendor_id!==agency||!!p.employer_customer_id),matched_name:r.matched_personnel_id?names[r.matched_personnel_id]||`${r.first_name} ${r.last_name}`:null};});
   } });
 }
 export function useInvalidateJoinApproval() {
