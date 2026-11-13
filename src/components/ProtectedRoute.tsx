@@ -1,10 +1,13 @@
 import { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { fieldPhoneHomeAllowed } from "@/lib/mobileOperations";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Loader2 } from "lucide-react";
 
 export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
+  const mobile=useIsMobile(),location=useLocation();
   const { user, loading: authLoading } = useAuth();
   const { isPersonnel, isVendor, isAdmin, isManager, isUser, role, loading: roleLoading, hasError } = useUserRole();
 
@@ -24,7 +27,7 @@ export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const hasAdminAccess = isAdmin || isManager;
 
   // Redirect personnel users to the portal (unless they have admin/manager role)
-  if (isPersonnel && !hasAdminAccess) {
+  if (isPersonnel && !hasAdminAccess && !fieldPhoneHomeAllowed(role,mobile,location.pathname)) {
     return <Navigate to="/portal" replace />;
   }
 

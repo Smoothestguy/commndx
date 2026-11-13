@@ -1,3 +1,7 @@
+# MX-style mobile Home
+- [ ] Light profile/featured/menu cards and floating role dock, real read/online status and scope switcher; existing actions/destinations retained.
+- [ ] Verify manager and approved jperez linked to Juan at 390px read-only; retain personnel link and all punches/messages.
+
 # Phone-first operations
 - [x] Five-item manager phone navigation, shared live approvals badge/inbox, focused Home without Sales; field phone navigation omits manager tools.
 - [x] Location attendance-first layout, military edits, grouped roster and authorization; secondary details collapsed. Phone grid cards preserve desktop tables.

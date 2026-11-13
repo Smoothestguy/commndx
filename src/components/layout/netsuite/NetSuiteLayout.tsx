@@ -1,6 +1,6 @@
 import { RouteSkeleton } from "../RouteSkeleton";
 import { ReactNode, useState, Suspense } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { TopNavBar } from "./TopNavBar";
 import { TabsBar } from "../TabsBar";
@@ -33,6 +33,7 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(true);
   const isMobile = useIsMobile();
+  const phoneHome=isMobile&&useLocation().pathname==='/';
 
   return (
     <SidebarProvider defaultOpen>
@@ -40,8 +41,8 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
         <MessageBannerProvider>
           <IncomingMessageListenerMount />
           <MessageBanner />
-          <div className="app-workspace min-h-screen flex flex-col w-full bg-background overflow-x-clip max-w-full">
-            <BackgroundMediaLayer />
+          <div className={cn("app-workspace min-h-screen flex flex-col w-full bg-background overflow-x-clip max-w-full",phoneHome&&"phone-surface")}>
+            {!phoneHome&&<BackgroundMediaLayer />}
 
             <TopNavBar onMobileMenuToggle={() => setMobileMenuOpen(true)} />
 
