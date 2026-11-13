@@ -1,0 +1,2 @@
+CREATE OR REPLACE FUNCTION public.notify_closed_shift_request() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ BEGIN RETURN NEW;END $$; REVOKE ALL ON FUNCTION public.notify_closed_shift_request() FROM PUBLIC,anon,authenticated;
+DO $$ DECLARE definition text; BEGIN SELECT pg_get_functiondef('public.request_closed_shift_extension(uuid,text,timestamptz)'::regprocedure) INTO definition;definition:=replace(definition,'''Worker reported ''+to_char','''Worker reported ''||to_char'); EXECUTE definition; END $$;
