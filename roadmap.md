@@ -1,4 +1,5 @@
 # Task-order engine
+- [ ] Finish owner-requested verification: 5049 unchanged; disposable create/edit/accept, carried terms, reduction enforcement, sheets/math, text rejection, agency provenance, grants and desktop/phone checks; remove all fixtures.
 - [ ] Extend location TO structured labor/assets, carried housing/per diem/mobilization terms and effective delta previews.
 - [ ] Add TO-owned MOBE/DEMOBE sheets, immediate over-authorization controls, signed-source billing summaries and customer-reference exports.
 - [ ] Enforce location-active-roster text recipients and permanent agency-link attribution without relabeling historical workers.
