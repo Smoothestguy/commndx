@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ProjectTypeSelect } from './ProjectTypeSelect';
 import {
   Dialog,
   DialogContent,
@@ -70,6 +71,7 @@ interface Props {
 
 interface Basics {
   name: string;
+  type_id?: string;
   customer_id: string;
   status: "active" | "completed" | "on-hold";
   stage: ProjectStage;
@@ -252,7 +254,7 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
 
   const canNext = () => {
     if (step === 1) {
-      return !!basics.name.trim() && !!basics.customer_id && !!basics.start_date;
+      return !!basics.name.trim() && !!basics.start_date;
     }
     if (step === 3 && hiring) {
       return !workSummaryMissing;
@@ -265,6 +267,8 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
     const { use_customer_address, ...rest } = basics;
     return {
       ...rest,
+      type_id: basics.type_id || null,
+      customer_id: basics.customer_id || null,
       end_date: basics.end_date || null,
       description: basics.description || null,
       address: basics.address || null,
@@ -748,17 +752,19 @@ function BasicsForm({
             required
           />
         </div>
+        <ProjectTypeSelect value={basics.type_id} onChange={type_id=>set({type_id})}/>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>Customer *</Label>
+            <Label>Default customer</Label>
             <Select
-              value={basics.customer_id}
-              onValueChange={(v) => set({ customer_id: v })}
+              value={basics.customer_id||"none"}
+              onValueChange={(v) => set({ customer_id: v==="none"?"":v })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a customer" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="none">No default customer</SelectItem>
                 {customers?.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.company || c.name}

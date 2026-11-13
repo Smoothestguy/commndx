@@ -1,4 +1,10 @@
 import { useSessionState } from "@/hooks/useSessionState";
+import { useProjectTypes, useEventLocationIndex } from '@/hooks/useProjectEvent';
+import { eventCustomers } from '@/lib/projectEvent';
+import { EventCustomers, ProjectTypeChip } from '@/components/projects/EventCustomers';
+import { ProjectTypesDialog } from '@/components/projects/ProjectTypesDialog';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { formatLocalDate } from '@/lib/dateUtils';
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { SEO } from "@/components/SEO";
@@ -61,6 +67,12 @@ const Projects = () => {
   // Fetch ALL (including archived) so we can bucket + count in one pass
   const { data: allProjects, isLoading, error, refetch, isFetching } = useProjects({ includeArchived: true });
   const { data: customers } = useCustomers();
+  const types = useProjectTypes(), locationIndex = useEventLocationIndex();
+  const [filterType,setFilterType] = useSessionState('projects:type','all');
+  const [filterCustomer,setFilterCustomer] = useSessionState('projects:customer','all');
+  const locationsFor = (id:string) => (locationIndex.data || []).filter(l=>l.project_id===id);
+  const customersFor = (p:Project) => eventCustomers(locationsFor(p.id),p.customer_id);
+  const customerNames = (p:Project) => customersFor(p).map(r=>getCustomerDisplayName(customers?.find(c=>c.id===r.id))).join(', ');
   const addProject = useAddProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
@@ -109,9 +121,9 @@ const Projects = () => {
   const baseFilteredProjects = tabProjects.filter((p) => {
     const searchMatch =
       p.name.toLowerCase().includes(search.toLowerCase()) ||
-      getCustomerDisplayName(customers?.find(c => c.id === p.customer_id)).toLowerCase().includes(search.toLowerCase());
+      customerNames(p).toLowerCase().includes(search.toLowerCase());
     const stageMatch = filterStage === "all" || p.stage === filterStage;
-    return searchMatch && stageMatch;
+    return searchMatch && stageMatch && (filterType==='all'||p.type_id===filterType) && (filterCustomer==='all'||customersFor(p).some(c=>c.id===filterCustomer));
   });
 
   const filteredProjects = filterProjectsByCategory(
@@ -127,8 +139,8 @@ const Projects = () => {
     jobPostingCounts
   );
 
-  const hasActiveFilters = filterStage !== "all" || filterCategory !== "all" || !!search;
-  const clearFilters = () => { setFilterStage("all"); setFilterCategory("all"); setSearch(""); };
+  const hasActiveFilters = filterStage !== "all" || filterCategory !== "all" || !!search || filterType !== 'all' || filterCustomer !== 'all';
+  const clearFilters = () => { setFilterStage("all"); setFilterCategory("all"); setSearch(""); setFilterType('all');setFilterCustomer('all'); };
 
   const toggleSelect = (id: string, checked: boolean) => {
     setSelectedIds(prev => {
@@ -167,7 +179,9 @@ const Projects = () => {
   const handleExport = () => {
     const rows = filteredProjects.map((p) => ({
       Name: p.name,
-      Customer: getCustomerDisplayName(customers?.find((c) => c.id === p.customer_id)),
+      Type: types.data?.find(t=>t.id===p.type_id)?.code || '',
+      Customers: customerNames(p),
+      Locations: locationsFor(p.id).length,
       Status: p.status,
       Stage: p.stage,
       "Start Date": p.start_date || "",
@@ -187,7 +201,7 @@ const Projects = () => {
   const columns: EnhancedColumn<Project>[] = [
     {
       key: "name",
-      header: "Project Name",
+      header: "Name",
       sortable: true,
       filterable: true,
       getValue: (item) => item.name,
@@ -209,31 +223,28 @@ const Projects = () => {
       ),
     },
     {
+      key: 'type', header: 'Type', sortable:true, filterable:true,
+      getValue:p=>types.data?.find(t=>t.id===p.type_id)?.code || '',
+      render:p=><ProjectTypeChip type={types.data?.find(t=>t.id===p.type_id)}/>,
+    },
+    {
       key: "customer",
-      header: "Customer",
+      header: "Customers",
       sortable: true,
       filterable: true,
-      getValue: (item) => getCustomerDisplayName(customers?.find(c => c.id === item.customer_id)),
+      getValue: customerNames,
       render: (item) => {
-        const customer = customers?.find(c => c.id === item.customer_id);
-        return customer ? (
-          <Link
-            to={`/customers/${customer.id}`}
-            className="text-primary hover:underline"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {getCustomerDisplayName(customer)}
-          </Link>
-        ) : <span className="text-muted-foreground">Unknown</span>;
+        return <EventCustomers rows={customersFor(item)} customers={customers}/>;
       },
     },
+    {key:'locations',header:'Locations',sortable:true,getValue:p=>locationsFor(p.id).length,render:p=>locationsFor(p.id).length},
     {
       key: "start_date",
       header: "Start Date",
       sortable: true,
       filterable: false,
       getValue: (item) => item.start_date,
-      render: (item) => format(new Date(item.start_date), "MMM dd, yyyy"),
+      render: (item) => formatLocalDate(item.start_date, "MMM dd, yyyy"),
     },
     {
       key: "end_date",
@@ -241,7 +252,7 @@ const Projects = () => {
       sortable: true,
       filterable: false,
       getValue: (item) => item.end_date || "",
-      render: (item) => item.end_date ? format(new Date(item.end_date), "MMM dd, yyyy") : "-",
+      render: (item) => item.end_date ? formatLocalDate(item.end_date, "MMM dd, yyyy") : "-",
     },
     {
       key: "stage",
@@ -295,7 +306,8 @@ const Projects = () => {
     setEditingProject(project);
     setFormData({
       name: project.name,
-      customer_id: project.customer_id,
+      customer_id: project.customer_id || '',
+      type_id:project.type_id || '',
       status: project.status,
       stage: project.stage || "quote",
       start_date: project.start_date,
@@ -324,6 +336,8 @@ const Projects = () => {
     const { use_customer_address, ...submitFields } = formData;
     const submitData = {
       ...submitFields,
+      customer_id: formData.customer_id || null,
+      type_id:formData.type_id || null,
       end_date: formData.end_date || null,
       description: formData.description || null,
       address: formData.address || null,
@@ -367,7 +381,7 @@ const Projects = () => {
           <div>
             <ProjectCard
               project={project}
-              customerName={getCustomerDisplayName(customers?.find(c => c.id === project.customer_id))}
+              customerName={customerNames(project)}
               assignmentCount={assignmentCounts?.[project.id] ?? 0}
               onEdit={() => handleEdit(project)}
               onDelete={() => handleDelete(project.id)}
@@ -426,10 +440,10 @@ const Projects = () => {
         description={isMobile ? undefined : "Manage customer projects and track their status"}
         actions={
           !isMobile ? (
-            <Button variant="glow" onClick={openNewDialog}>
+            <div className="flex gap-2">{canArchive&&<ProjectTypesDialog/>}<Button variant="glow" onClick={openNewDialog}>
               <Plus className="h-4 w-4" />
               Add Project
-            </Button>
+            </Button></div>
           ) : undefined
         }
       >
@@ -481,6 +495,10 @@ const Projects = () => {
                 inline
                 hideStatus
               />
+              <Select value={filterType} onValueChange={setFilterType}><SelectTrigger aria-label="Filter project type" className="w-40"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All types</SelectItem>{types.data?.map(t=><SelectItem key={t.id} value={t.id}>{t.code} — {t.name}</SelectItem>)}</SelectContent></Select>
+              <Select value={filterCustomer} onValueChange={setFilterCustomer}><SelectTrigger aria-label="Filter project customer" className="w-48"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All customers</SelectItem>{customers?.map(c=><SelectItem key={c.id} value={c.id}>{getCustomerDisplayName(c)}</SelectItem>)}</SelectContent></Select>
+              {isMobile&&canArchive&&<ProjectTypesDialog/>}
+              {(locationIndex.error||types.error)&&<span role="alert" className="text-destructive text-sm">Event summaries unavailable</span>}
               <div className="ml-auto">
                 <Button
                   variant="outline"

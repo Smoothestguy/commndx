@@ -50,6 +50,8 @@ import { LocationLodging } from "./LocationLodging";
 import { useLastServiced } from "@/integrations/supabase/hooks/useDeployment";
 import { formatLocalDate } from "@/lib/dateUtils";
 import { useProject } from "@/integrations/supabase/hooks/useProjects";
+import { useCustomers } from '@/integrations/supabase/hooks/useCustomers';
+import { getCustomerDisplayName } from '@/utils/customerDisplayName';
 
 type ReqRow = { key: string; id?: string; role_label: string; headcount: string; rate: string };
 let rowSeq = 0;
@@ -59,6 +61,7 @@ const newRow = (r?: LocationRequirement): ReqRow => ({
 });
 
 const EMPTY = {
+  customer_id: '',
   name: "", project_number: "", scope: "", address: "", city: "", state: "", zip: "",
   poc_name: "", poc_phone: "", poc_email: "", status: "active", sort_order: "",
   housing_provided_by: "none", meals_provided: false as boolean, meals_notes: "", mobe_date: "", demobe_date: "",
@@ -86,6 +89,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
   const { isAdmin, isManager } = useUserRole();
   const canWrite = isAdmin || isManager;
   const { data: project } = useProject(projectId);
+  const customers=useCustomers();
   const { data: locations = [], isLoading } = useProjectLocations(projectId);
   const authorization = useLocationAuthorization(locations);
   const { data: documents = [] } = useProjectDocuments(projectId);
@@ -131,11 +135,12 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
     setSeeded(true);
   }
 
-  const openNew = () => { setEditing(null); setForm(EMPTY); setRows([newRow()]); setSeeded(true); setOpen(true); };
+  const openNew = () => { setEditing(null); setForm({...EMPTY,customer_id:project?.customer_id||''}); setRows([newRow()]); setSeeded(true); setOpen(true); };
   useEffect(() => { if (locationParams.get('action') === 'new-location' && canWrite) openNew(); }, [canWrite, locationParams.get('action')]);
   const openEdit = (l: ProjectLocation) => {
     setEditing(l);
     setForm({
+      customer_id:l.customer_id||project?.customer_id||'',
       lat: l.lat == null ? "" : String(l.lat), lng: l.lng == null ? "" : String(l.lng), timezone: l.timezone ?? "", geofence_radius_m: String(l.geofence_radius_m ?? 300),
       name: l.name, project_number: l.project_number ?? "", scope: l.scope ?? "", address: l.address ?? "",
       city: l.city ?? "", state: l.state ?? "", zip: l.zip ?? "", poc_name: l.poc_name ?? "",
@@ -168,6 +173,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
     }
     const n = (v: string) => (v.trim() ? v.trim() : null);
     const payload = {
+      customer_id:form.customer_id||null,
       lat: hasLat ? Number(form.lat) : null, lng: hasLng ? Number(form.lng) : null, timezone, geofence_radius_m: Number(form.geofence_radius_m),
       project_id: projectId, name: form.name.trim(), project_number: n(form.project_number), scope: n(form.scope),
       address: n(form.address), city: n(form.city), state: n(form.state), zip: n(form.zip),
@@ -320,6 +326,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
           <DialogHeader><DialogTitle>{editing ? "Edit location" : "Add location"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2"><Label>Name *</Label><Input {...f("name")} /></div>
+            <div className="col-span-2"><Label>Customer</Label><Select value={form.customer_id||'none'} onValueChange={v=>setForm({...form,customer_id:v==='none'?'':v})}><SelectTrigger aria-label="Location customer"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="none">No customer</SelectItem>{customers.data?.map(c=><SelectItem key={c.id} value={c.id}>{getCustomerDisplayName(c)}</SelectItem>)}</SelectContent></Select></div>
             <div><Label>Project #</Label><Input {...f("project_number")} /></div>
             <div><Label>Status</Label>
               <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>

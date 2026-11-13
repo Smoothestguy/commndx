@@ -41,7 +41,7 @@ export function rowsForDay(stays: SheetStay[], locationId: string, day: string, 
   }).sort((a, b) => a.inAt.localeCompare(b.inAt) || a.id.localeCompare(b.id));
 }
 export const sheetFileName = (location: string, day: string) => `${location.replace(/[^\p{L}\p{N} ._-]/gu, '').trim() || 'location'}-${day}.pdf`;
-export async function generateSigninSheet(original: ArrayBuffer, fields: SignField[], rows: SheetRow[], config: { rowsPerPage: number; rowHeight: number; zone: string; day: string; project: string; mission: string; location: string; address: string }, loadSignature: (path: string) => Promise<ArrayBuffer>) {
+export async function generateSigninSheet(original: ArrayBuffer, fields: SignField[], rows: SheetRow[], config: { rowsPerPage: number; rowHeight: number; zone: string; day: string; project: string; mission: string; location: string; address: string; customer?: string }, loadSignature: (path: string) => Promise<ArrayBuffer>) {
   const { PDFDocument, StandardFonts, pushGraphicsState, popGraphicsState, concatTransformationMatrix } = await import('pdf-lib');
   if (!Number.isInteger(config.rowsPerPage) || config.rowsPerPage < 1 || config.rowsPerPage > 100 || config.rowHeight <= 0 || config.rowHeight > 1) throw new Error('Invalid row band settings');
   if (!fields.some(f => f.scope === 'row')) throw new Error('Place row fields before generating sheets');
@@ -69,7 +69,7 @@ export async function generateSigninSheet(original: ArrayBuffer, fields: SignFie
       for (let i = 0; i < band.length; i++) {
         const row = band[i], yPct = field.y_pct + (row ? i * config.rowHeight : 0), hPct = fieldHeight(field);
         if (![field.x_pct, yPct, field.w_pct, hPct].every(Number.isFinite) || field.x_pct < 0 || field.w_pct <= 0 || hPct <= 0 || yPct < 0 || field.x_pct + field.w_pct > 1.00001 || yPct + hPct > 1.00001) throw new Error('Fields or row bands extend beyond the page');
-        const values: Record<string, string> = { date: config.day, project_name: config.project, mission_number: config.mission, location_name: config.location, location_address: config.address, employee_name: row?.name ?? '', name: row?.name ?? '', position: row?.position ?? '', time_in: row ? localTime(row.inAt, config.zone) : '', time_out: row ? localTime(row.outAt, config.zone) : '', total_hours: row?.hours == null ? '' : row.hours.toFixed(2) };
+        const values: Record<string, string> = { date: config.day, project_name: config.project, customer_name: config.customer || '', mission_number: config.mission, location_name: config.location, location_address: config.address, employee_name: row?.name ?? '', name: row?.name ?? '', position: row?.position ?? '', time_in: row ? localTime(row.inAt, config.zone) : '', time_out: row ? localTime(row.outAt, config.zone) : '', total_hours: row?.hours == null ? '' : row.hours.toFixed(2) };
         page.pushOperators(pushGraphicsState(), concatTransformationMatrix(...matrix));
         const x = field.x_pct * width, bottom = height * (1 - yPct - hPct), w = field.w_pct * width, h = hPct * height;
         if ((field.binding || field.kind) === 'signature' && row?.signature) {

@@ -1,7 +1,7 @@
 # Projects as events
-- [ ] Managed types, location customer backfill and compatibility defaults.
-- [ ] Event overview map/parameters/summaries and derived customer grid filters.
-- [ ] Assign EM to Florida Floods; browser verification and focused tests.
+- [x] Managed EM/DC/DCBASECAMP types with manager settings, optional project default, location customer backfill, new-location defaults, and location-scoped portal reads/submissions; historical orders/PDFs untouched.
+- [x] Event overview with editable parameters, four status-colored location pins, customer/vendor/location/on-site summaries, and type/customer grid filters; Locations command center retained.
+- [x] Florida Floods saved as EM; Patriot derived across four locations, pin navigation, combined filters, settings and desktop/mobile verified. Forty-six focused tests passed; preview clean. No verification rows, punches, messages or historical financial changes.
 
 # Security lockdown
 - [x] Inventory and revoke anonymous privileged non-public RPCs; close backup conversation tables and future function defaults.

@@ -9,7 +9,9 @@ export type ProjectStage = "quote" | "task_order" | "active" | "complete" | "can
 export interface Project {
   id: string;
   name: string;
-  customer_id: string;
+  customer_id: string | null;
+  type_id?: string | null;
+  region?: string | null;
   status: "active" | "completed" | "on-hold";
   stage: ProjectStage;
   start_date: string;
@@ -103,11 +105,13 @@ export const useProjectsByCustomer = (customerId: string | null) => {
     queryKey: ["projects", "customer", customerId],
     queryFn: async () => {
       if (!customerId) return [];
-      
+      const locations = await supabase.from('project_locations').select('project_id').eq('customer_id',customerId);
+      if(locations.error)throw locations.error;
+      const ids=[...new Set(locations.data.map(l=>l.project_id))];
       const { data, error } = await supabase
         .from("projects")
         .select("*")
-        .eq("customer_id", customerId)
+        .or(`customer_id.eq.${customerId}${ids.length?`,id.in.(${ids.join(',')})`:''}`)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -381,6 +385,8 @@ export const useDuplicateProject = () => {
       const insertPayload: Record<string, unknown> = {
         name: `${source.name} (Copy)`,
         customer_id: source.customer_id,
+        type_id: source.type_id || null,
+        region: source.region || null,
         status: "active",
         stage: "quote",
         start_date: today,

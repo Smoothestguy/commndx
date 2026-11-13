@@ -5,6 +5,7 @@ import { toast } from "sonner";
 export interface ProjectLocation {
   id: string;
   project_id: string;
+  customer_id?: string | null;
   name: string;
   project_number: string | null;
   scope: string | null;
@@ -64,7 +65,7 @@ export function useAddProjectLocation() {
       if (error) throw error;
       return { pid: input.project_id, id: data.id as string };
     },
-    onSuccess: ({ pid }) => { qc.invalidateQueries({ queryKey: key(pid) }); toast.success("Location added"); },
+    onSuccess: ({ pid }) => { qc.invalidateQueries({ queryKey: key(pid) }); qc.invalidateQueries({queryKey:['event-location-index']}); toast.success("Location added"); },
     onError: (e: any) => toast.error(e?.message ?? "Failed to add location"),
   });
 }
@@ -77,7 +78,7 @@ export function useUpdateProjectLocation() {
       if (error) throw error;
       return project_id;
     },
-    onSuccess: (pid) => { qc.invalidateQueries({ queryKey: key(pid) }); toast.success("Location updated"); },
+    onSuccess: (pid) => { qc.invalidateQueries({ queryKey: key(pid) }); qc.invalidateQueries({queryKey:['event-location-index']}); toast.success("Location updated"); },
     onError: (e: any) => toast.error(e?.message ?? "Failed to update location"),
   });
 }
@@ -90,7 +91,7 @@ export function useDeleteProjectLocation() {
       if (error) throw error;
       return project_id;
     },
-    onSuccess: (pid) => { qc.invalidateQueries({ queryKey: key(pid) }); toast.success("Location deleted"); },
+    onSuccess: (pid) => { qc.invalidateQueries({ queryKey: key(pid) }); qc.invalidateQueries({queryKey:['event-location-index']}); toast.success("Location deleted"); },
     onError: (e: any) => toast.error(e?.message ?? "Failed to delete location"),
   });
 }

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { ProjectTypeSelect } from './ProjectTypeSelect';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ interface Customer {
 interface ProjectFormData {
   name: string;
   customer_id: string;
+  type_id?: string;
   status: "active" | "completed" | "on-hold";
   stage: ProjectStage;
   start_date: string;
@@ -107,18 +109,19 @@ export const ProjectFormDialog = ({
                 />
               </div>
 
+              <ProjectTypeSelect value={formData.type_id} onChange={type_id=>setFormData({...formData,type_id})}/>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="customer">Customer *</Label>
+                  <Label htmlFor="customer">Default customer</Label>
                   <Select
-                    value={formData.customer_id}
-                    onValueChange={(value) => setFormData({ ...formData, customer_id: value })}
-                    required
+                    value={formData.customer_id||"none"}
+                    onValueChange={(value) => setFormData({ ...formData, customer_id: value==="none"?"":value })}
                   >
                     <SelectTrigger className="bg-secondary border-border">
                       <SelectValue placeholder="Select a customer" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">No default customer</SelectItem>
                       {customers?.map((customer) => (
                         <SelectItem key={customer.id} value={customer.id}>
                           {customer.company || customer.name}
@@ -291,7 +294,6 @@ export const ProjectFormDialog = ({
                     type="date"
                     value={formData.start_date}
                     onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                    required
                     className="bg-secondary border-border"
                   />
                 </div>

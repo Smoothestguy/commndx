@@ -1,0 +1,4 @@
+import { useProjectTypes } from '@/hooks/useProjectEvent';
+import { Label } from '@/components/ui/label';
+import { Select,SelectTrigger,SelectValue,SelectContent,SelectItem } from '@/components/ui/select';
+export function ProjectTypeSelect({value,onChange}:{value?:string|null;onChange:(v:string)=>void}){const types=useProjectTypes();return <div className="space-y-2"><Label>Type</Label><Select value={value||'none'} onValueChange={v=>onChange(v==='none'?'':v)}><SelectTrigger aria-label="Project type"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="none">Unassigned</SelectItem>{types.data?.filter(t=>t.active||t.id===value).map(t=><SelectItem key={t.id} value={t.id}>{t.code} — {t.name}</SelectItem>)}</SelectContent></Select></div>;}

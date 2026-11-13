@@ -8960,7 +8960,7 @@ export type Database = {
           customer_field_supervisor_email: string | null
           customer_field_supervisor_name: string | null
           customer_field_supervisor_phone: string | null
-          customer_id: string
+          customer_id: string | null
           customer_pm_email: string | null
           customer_pm_name: string | null
           customer_pm_phone: string | null
@@ -9018,7 +9018,7 @@ export type Database = {
           customer_field_supervisor_email?: string | null
           customer_field_supervisor_name?: string | null
           customer_field_supervisor_phone?: string | null
-          customer_id: string
+          customer_id?: string | null
           customer_pm_email?: string | null
           customer_pm_name?: string | null
           customer_pm_phone?: string | null
@@ -9076,7 +9076,7 @@ export type Database = {
           customer_field_supervisor_email?: string | null
           customer_field_supervisor_name?: string | null
           customer_field_supervisor_phone?: string | null
-          customer_id?: string
+          customer_id?: string | null
           customer_pm_email?: string | null
           customer_pm_name?: string | null
           customer_pm_phone?: string | null
