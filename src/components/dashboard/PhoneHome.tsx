@@ -4,7 +4,7 @@ import { useQuery,useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useMyDay } from '@/hooks/useMyDay';
-import { useHomeLocations,useHomeDaily } from '@/hooks/useHomeOperations';
+import { useHomeLocations } from '@/hooks/useHomeOperations';
 import { useMobileApprovals } from '@/hooks/useMobileApprovals';
 import { useProfile } from '@/integrations/supabase/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Dialog,DialogContent,DialogHeader,DialogTitle } from '@/components/ui/dialog';
 import { Activity,ArrowLeftRight,ChevronDown,ChevronRight,CheckCheck,MapPin,Clock,Users,Tent,Settings,FileSignature,MessageSquare,X,User } from 'lucide-react';
 import { localTime } from '@/lib/signinSheets';
-import { PhoneQuickActions } from './PhoneQuickActions';
 function clock(at:string,zone:string){return localTime(at,zone).replace(':','');}
 export function PhoneHome(){
  const {isAdmin,isManager,loading}=useUserRole();
@@ -20,8 +19,8 @@ export function PhoneHome(){
  return isAdmin||isManager?<ManagerHome/>:<WorkerHome/>;
 }
 function ManagerHome(){
- const scope=useHomeLocations(),inbox=useMobileApprovals(),daily=useHomeDaily(scope.data?.locations||[]);
- return <HomeCards manager sites={(scope.data?.locations||[]).map(l=>({id:l.id,name:l.name,project:scope.data?.projects.find(p=>p.id===l.project_id)?.name||'',projectId:l.project_id}))} count={inbox.data?.count} updatedAt={Math.min(scope.dataUpdatedAt||Infinity,inbox.dataUpdatedAt||Infinity)} error={!!(scope.error||inbox.error)} totals={{people:daily.data?.people,hours:daily.data?.hours}} context={inbox.data?.count?`Last alert: ${inbox.data.count} pending actions`:undefined}/>;
+ const scope=useHomeLocations(),inbox=useMobileApprovals();
+ return <HomeCards manager sites={(scope.data?.locations||[]).map(l=>({id:l.id,name:l.name,project:scope.data?.projects.find(p=>p.id===l.project_id)?.name||'',projectId:l.project_id}))} count={inbox.data?.count} updatedAt={Math.min(scope.dataUpdatedAt||Infinity,inbox.dataUpdatedAt||Infinity)} error={!!(scope.error||inbox.error)} context={inbox.data?.count?`Last alert: ${inbox.data.count} pending actions`:undefined}/>;
 }
 function WorkerHome(){
  const q=useMyDay();
@@ -32,10 +31,10 @@ function WorkerHome(){
 type Site={id:string;name:string;project:string;projectId:string;openAt?:string|null;zone?:string};
 function HomeCards({manager,sites,count,updatedAt,error,context,fullName,hours,totals}:{manager:boolean;sites:Site[];count?:number;updatedAt:number;error:boolean;context?:string;fullName?:string;hours?:number;totals?:{people?:number;hours?:number}}){
  const {data:profile}=useProfile(),{signOut}=useAuth(),qc=useQueryClient();
- const [params,setParams]=useSearchParams(),[selected,setSelected]=useState(''),[switcher,setSwitcher]=useState(false),[more,setMore]=useState(false),[dismiss,setDismiss]=useState(false),[online,setOnline]=useState(navigator.onLine),[tick,setTick]=useState(0),[add,setAdd]=useState(false);
+ const [params]=useSearchParams(),[selected,setSelected]=useState(''),[switcher,setSwitcher]=useState(false),[more,setMore]=useState(false),[dismiss,setDismiss]=useState(false),[online,setOnline]=useState(navigator.onLine),[tick,setTick]=useState(0);
  useEffect(()=>{const update=()=>setOnline(navigator.onLine);window.addEventListener('online',update);window.addEventListener('offline',update);const timer=setInterval(()=>setTick(t=>t+1),30000);return()=>{window.removeEventListener('online',update);window.removeEventListener('offline',update);clearInterval(timer);};},[]);
  useEffect(()=>{if(params.get('profile')==='1')setMore(true);},[params]);
- const site=sites.find(s=>s.id===selected)||sites[0],name=fullName||[profile?.first_name,profile?.last_name].filter(Boolean).join(' ')||'Your account';
+ const site=sites.find(s=>s.id===selected)||sites.find(s=>s.project.toLowerCase().includes('florida floods'))||sites[0],name=fullName||[profile?.first_name,profile?.last_name].filter(Boolean).join(' ')||'Your account';
  const elapsed=Number.isFinite(updatedAt)&&updatedAt?Math.max(0,Math.floor((Date.now()-updatedAt)/60000)):null;
  const status=error?'Sync unavailable':elapsed===null?'Loading…':elapsed===0?'Synced just now':`Synced ${elapsed}m ago`;
  const last=context||(site?.openAt?`Last punch: ${clock(site.openAt,site.zone||'America/Chicago')} · ${site.name}`:undefined);

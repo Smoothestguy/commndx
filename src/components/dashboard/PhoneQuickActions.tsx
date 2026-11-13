@@ -13,7 +13,8 @@ import { demobilizedFilter } from '@/integrations/supabase/hooks/useLocationStaf
 import { Clock, Send, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
 export function PhoneQuickActions({onClose}:{onClose:()=>void}){
- const {isAdmin,isManager}=useUserRole();
+ const {isAdmin,isManager,loading}=useUserRole();
+ if(loading)return <Dialog open><DialogContent className="phone-surface"><DialogHeader><DialogTitle>Add</DialogTitle></DialogHeader><p>Loading actions…</p></DialogContent></Dialog>;
  return isAdmin||isManager?<ManagerActions onClose={onClose}/>:<WorkerActions onClose={onClose}/>;
 }
 function WorkerActions({onClose}:{onClose:()=>void}){
