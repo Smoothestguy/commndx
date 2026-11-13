@@ -57,6 +57,7 @@ import { PersonnelRolesDialog } from "./PersonnelRolesDialog";
 import { BenchStar, TagChips } from "./PersonnelTags";
 import { NonBillableChip } from "./NonBillableChip";
 import { useBulkPersonnelUpdate } from '@/hooks/usePersonnelTags';
+import {BulkAssignLocationDialog} from './BulkAssignLocationDialog';
 
 type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
 
@@ -98,6 +99,7 @@ export function PersonnelTable({
   const { isAdmin, isManager } = useUserRole();
   const navigate = useNavigate();
   const statusUpdate = useBulkPersonnelUpdate();
+  const [bulkAssignOpen,setBulkAssignOpen]=useState(false);
   const isMobile = useIsMobile();
   const { data: vendors } = useVendors();
   const { data: qbConfig } = useQuickBooksConfig();
@@ -561,7 +563,8 @@ export function PersonnelTable({
 
   return (
     <div className="space-y-3 sm:space-y-4">
-      {/* Desktop Table - hidden below 1180px */}
+      <BulkAssignLocationDialog open={bulkAssignOpen} onOpenChange={setBulkAssignOpen} personnelIds={selectedIds} onDone={onClearSelection}/>
+      {/* Shared desktop grid and phone cards */}
       <div>
         <EnhancedDataTable
           fillViewport
@@ -573,6 +576,7 @@ export function PersonnelTable({
           onEdit={person=>navigate(`/personnel/${person.id}?edit=true`)}
           onAdd={()=>navigate('/personnel?action=add')}
           entityName="personnel"
+          primaryBulkActions={()=> <Button variant="outline" size="sm" onClick={()=>setBulkAssignOpen(true)}>Assign</Button>}
           onSetActive={async(people,active)=>{await statusUpdate.mutateAsync({ids:people.map(p=>p.id),patch:{status:active?'active':'inactive'}});}}
           bulkActions={() => <><Button size="sm" variant="outline" onClick={onPrintBadges}><Printer className="h-3.5 w-3.5 mr-1" />Print badges</Button>{bulkActions}</>}
           attention={person => !person.phone ? "Missing phone" : null}

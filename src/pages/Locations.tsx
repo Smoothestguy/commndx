@@ -63,7 +63,7 @@ export default function Locations() {
       onAdd={()=>{const pid=project!=='all'?project:rows[0]?.project_id;if(pid)navigate(`/projects/${pid}?tab=locations&action=new-location`);}}
       canSetActive={r=>r.status==='active'||r.status==='on_hold'}
       onSetActive={async(selected,active)=>{try{for(const r of selected)await update.mutateAsync({id:r.id,project_id:r.project_id,name:r.name,status:active?'active':'on_hold'});}finally{qc.invalidateQueries({queryKey:['project-locations']});}}}
-      bulkActions={selected=>selected.length===1?<Button size="sm" variant="outline" onClick={()=>navigate(`${locationHref(selected[0].project_id,selected[0].id)}?tab=staffing&action=assign`)}>Assign</Button>:null}
+      primaryBulkActions={selected=>selected.length===1?<Button size="sm" variant="outline" onClick={()=>navigate(`${locationHref(selected[0].project_id,selected[0].id)}?tab=staffing&action=assign`)}>Assign</Button>:null}
       rowMenu={r=>(isAdmin||isManager)?<><DropdownMenuItem onSelect={()=>navigate(`${locationHref(r.project_id,r.id)}?tab=staffing&action=assign`)}>Assign people</DropdownMenuItem><DropdownMenuItem onSelect={()=>navigate(`${locationHref(r.project_id,r.id)}?tab=sheets&action=daily`)}>Daily timesheet PDF</DropdownMenuItem></>:null}
       emptyText={index.isLoading?"Loading locations…":"No locations match."}/>
   </div></PageLayout>;

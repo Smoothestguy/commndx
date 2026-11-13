@@ -92,6 +92,7 @@ interface EnhancedDataTableProps<T> {
   toolbar?: React.ReactNode;
   /** Bulk actions bar content shown while rows are selected. */
   bulkActions?: (selected: T[], clear: () => void) => React.ReactNode;
+  primaryBulkActions?: (selected: T[], clear: () => void) => React.ReactNode;
   /** Return a reason to show a warning dot (e.g. missing phone/signature). */
   attention?: (item: T) => string | null | undefined;
   /** File name stem for XLSX/CSV export (enables footer export). */
@@ -175,6 +176,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   searchPlaceholder = "Search…",
   toolbar,
   bulkActions,
+  primaryBulkActions,
   attention,
   exportName,
   defaultPageSize = 50,
@@ -401,13 +403,14 @@ export function EnhancedDataTable<T extends { id: string | number }>({
           <span className="font-semibold">{selectedRows.length} selected</span>
           {manager && onSetActive && selectedRows.every(i=>!canSetActive || canSetActive(i)) && <><Button variant="outline" size="sm" disabled={busy} onClick={()=>void changeActive(selectedRows,false)}>Deactivate</Button><Button variant="outline" size="sm" disabled={busy} onClick={()=>void changeActive(selectedRows,true)}>Activate</Button></>}
           {canEditSelection(manager,selectedRows.length) && onEdit && <Button variant="outline" size="sm" onClick={()=>onEdit(selectedRows[0])}>Edit</Button>}
+          {manager && primaryBulkActions?.(selectedRows,clearSelection)}
           {manager && bulkActions && <DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" variant="outline">More actions</Button></DropdownMenuTrigger><DropdownMenuContent className="max-h-[50vh] overflow-auto max-w-[calc(100vw-2rem)]"><div className="flex flex-col gap-2 p-1 [&_button]:justify-start">{bulkActions(selectedRows,clearSelection)}</div></DropdownMenuContent></DropdownMenu>}
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => exportRows("xlsx", true)}><Download className="h-3 w-3 mr-1" />Export selected</Button>
           <Button size="icon" variant="ghost" aria-label="Clear selection" onClick={clearSelection}><X className="h-4 w-4"/></Button>
         </div>,document.body)
       )}
       {!mobile && selectable && selectedRows.length > 0 && <div role="region" aria-label="Bulk actions" className="flex flex-wrap items-center gap-2 px-3 py-1.5 border-b border-border bg-primary/5 text-xs"><span>{selectedRows.length} selected</span>{manager && onSetActive && selectedRows.every(i=>!canSetActive || canSetActive(i)) && <><Button size="sm" variant="outline" disabled={busy} onClick={()=>void changeActive(selectedRows,false)}>Deactivate</Button><Button size="sm" variant="outline" disabled={busy} onClick={()=>void changeActive(selectedRows,true)}>Activate</Button></>}{canEditSelection(manager,selectedRows.length) && onEdit && <Button size="sm" variant="outline" onClick={()=>onEdit(selectedRows[0])}>Edit</Button>}{manager && bulkActions?.(selectedRows,clearSelection)}<Button size="sm" variant="outline" onClick={()=>exportRows('xlsx',true)}>Export selected</Button><Button size="icon" variant="ghost" aria-label="Clear selection" onClick={clearSelection}><X className="h-4 w-4"/></Button></div>}
-      {menu && <DropdownMenu open onOpenChange={open=>{if(!open)setMenu(null);}}><DropdownMenuTrigger asChild><span className="fixed h-px w-px" style={{left:menu.x,top:menu.y}}/></DropdownMenuTrigger><DropdownMenuContent className="max-h-[60vh] overflow-auto min-w-48" onCloseAutoFocus={e=>e.preventDefault()} onClick={e=>e.stopPropagation()}>
+      {menu && <DropdownMenu open onOpenChange={open=>{if(!open)setMenu(null);}}><DropdownMenuTrigger asChild><span className="fixed h-px w-px" style={{left:menu.x,top:menu.y}}/></DropdownMenuTrigger><DropdownMenuContent className="max-h-[60vh] overflow-auto min-w-48 bg-card text-foreground shadow-lg" onCloseAutoFocus={e=>e.preventDefault()} onClick={e=>e.stopPropagation()}>
         <DropdownMenuItem onSelect={()=>rowHref ? navigate(rowHref(menu.item)) : onRowClick?.(menu.item)}>Open</DropdownMenuItem>
         {manager && onEdit && <DropdownMenuItem onSelect={()=>onEdit(menu.item)}>Edit</DropdownMenuItem>}
         {manager && onSetActive && (!canSetActive || canSetActive(menu.item)) && <><DropdownMenuItem disabled={busy} onSelect={()=>void changeActive([menu.item],false)}>Deactivate</DropdownMenuItem><DropdownMenuItem disabled={busy} onSelect={()=>void changeActive([menu.item],true)}>Activate</DropdownMenuItem></>}
