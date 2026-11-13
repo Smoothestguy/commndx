@@ -372,6 +372,13 @@
       "when": 1794530383849,
       "tag": "0052_security_safe_vendor_onboarding",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1794530455625,
+      "tag": "0053_security_guard_intake_identity",
+      "breakpoints": true
     }
   ]
 }
