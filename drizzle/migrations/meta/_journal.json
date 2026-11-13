@@ -428,6 +428,13 @@
       "when": 1794537203978,
       "tag": "0060_optional_project_default_customer",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1794537326000,
+      "tag": "0061_customer_portal_location_scoping",
+      "breakpoints": true
     }
   ]
 }
