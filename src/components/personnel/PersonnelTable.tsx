@@ -561,51 +561,6 @@ export function PersonnelTable({
 
   return (
     <div className="space-y-3 sm:space-y-4">
-      {/* Bulk Action Bar */}
-      {false && selectionMode && selectedIds.length > 0 && (
-        <div className="flex min-[1180px]:hidden flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 bg-muted rounded-lg">
-          <span className="text-xs sm:text-sm font-medium">
-            {selectedIds.length} selected
-          </span>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              onClick={onPrintBadges}
-              className="min-h-[36px] sm:min-h-[32px] text-xs sm:text-sm flex-1 sm:flex-none"
-            >
-              <Printer className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
-              Print Badges
-            </Button>
-            {bulkActions}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={onClearSelection}
-              className="min-h-[36px] sm:min-h-[32px] text-xs sm:text-sm flex-1 sm:flex-none"
-            >
-              <XSquare className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
-              Clear
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Mobile/Tablet Cards - hidden on desktop (1180px+) */}
-      <div className="hidden">
-        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-          {pageRows.map((person) => (
-            <MobilePersonnelCard
-              key={person.id}
-              personnel={person}
-              selectionMode={selectionMode}
-              isSelected={selectedIds.includes(person.id)}
-              onSelect={onToggleSelection}
-              onPrintBadge={handlePrintSingleBadge}
-            />
-          ))}
-        </div>
-      </div>
-
       {/* Desktop Table - hidden below 1180px */}
       <div>
         <EnhancedDataTable
@@ -629,18 +584,6 @@ export function PersonnelTable({
             for (const id of cur) if (!next.has(id) && personnel.some(p => p.id === id)) onToggleSelection(id);
           }}
         />
-      </div>
-
-      {/* Pagination (phone cards; the desktop grid has its own footer) */}
-      <div className="hidden">
-      <TablePagination
-        currentPage={currentPage}
-        totalCount={totalCount}
-        rowsPerPage={rowsPerPage}
-        onPageChange={onPageChange}
-        onRowsPerPageChange={onRowsPerPageChange}
-        rowsPerPageOptions={[10, 20, 30, 40]}
-      />
       </div>
 
       {/* Deactivate Confirmation Dialog */}
