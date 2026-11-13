@@ -1,0 +1,1 @@
+CREATE POLICY "Manager delete disposable verification objects" ON storage.objects FOR DELETE TO authenticated USING (bucket_id='field-captures' AND (storage.foldername(name))[1]='verification' AND (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'manager')));
