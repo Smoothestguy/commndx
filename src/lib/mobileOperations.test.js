@@ -1,5 +1,5 @@
 import { expect, it } from 'bun:test';
-import { mobileDestinations, pendingInboxCount, fieldPhoneHomeAllowed } from './mobileOperations';
+import { mobileDestinations, pendingInboxCount, fieldPhoneHomeAllowed, phoneDefaultSite } from './mobileOperations';
 it('manager phone has five operational destinations', () => {
   expect(mobileDestinations('manager')).toEqual(['/', 'search', 'add', '/approvals', 'profile']);
   expect(mobileDestinations('admin')).toEqual(mobileDestinations('manager'));
@@ -12,3 +12,8 @@ it('inbox count includes every pending item and individual signature nudges', ()
   expect(pendingInboxCount({joins:[1,2],shifts:[1],requests:[1],orders:[1],signatures:[{count:3}]})).toBe(8);
 });
 it('linked field user gets only phone Home, without widening other portal routes',()=>{expect(fieldPhoneHomeAllowed('user',true,'/')).toBe(true);expect(fieldPhoneHomeAllowed('user',true,'/projects')).toBe(false);expect(fieldPhoneHomeAllowed('user',false,'/')).toBe(false);expect(fieldPhoneHomeAllowed(null,true,'/')).toBe(false);});
+it('phone defaults to the latest open personal site, not a named event', () => {
+  expect(phoneDefaultSite([{id:'older',openAt:'2026-11-12T07:30:00Z'},{id:'recent',openAt:'2026-11-13T07:30:00Z'}])).toBe('recent');
+  expect(phoneDefaultSite([{id:'real-assignment',openAt:null}])).toBe('real-assignment');
+  expect(phoneDefaultSite([])).toBeUndefined();
+});
