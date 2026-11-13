@@ -64,7 +64,7 @@ interface ComplianceIssue {
 
 const PersonnelDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams,setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const defaultTab = searchParams.get("tab") || "overview";
   const { isAdmin, isManager } = useUserRole();
@@ -81,6 +81,12 @@ const PersonnelDetail = () => {
   const updateReimbursementStatus = useUpdateReimbursementStatus();
   const [badgeDialogOpen, setBadgeDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  useEffect(()=>{
+    if(searchParams.get('edit')==='true' && (isAdmin||isManager) && personnel){
+      setEditDialogOpen(true);
+      setSearchParams(prev=>{const next=new URLSearchParams(prev);next.delete('edit');return next;},{replace:true});
+    }
+  },[searchParams,setSearchParams,isAdmin,isManager,personnel]);
   const getOrCreateConversation = useGetOrCreateConversation();
   const { openConversationWith } = useMessageDrawer();
   const [generate1099Open, setGenerate1099Open] = useState(false);
