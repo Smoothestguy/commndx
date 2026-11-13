@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { cn } from "@/lib/utils";
-import { Menu, User, LogOut, MessageCircle, MessageSquareText } from "lucide-react";
+import { Smartphone, Menu, User, LogOut, MessageCircle, MessageSquareText } from "lucide-react";
 import { useTotalUnreadCount } from "@/integrations/supabase/hooks/useConversations";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,6 +52,7 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
             variant="ghost"
             size="icon"
             className="lg:hidden text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 h-8 w-8"
+            aria-label="Open navigation"
             onClick={onMobileMenuToggle}
           >
             <Menu className="h-4 w-4" />
@@ -72,6 +73,7 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
 
         {/* Right Section: Session + Actions + User */}
         <div className="flex items-center gap-1">
+          {(isAdmin || isManager || isUser) && <Button asChild size="icon" variant="ghost" className="h-8 w-8 text-header-foreground" title="Field Mode"><Link to="/field" aria-label="Field Mode"><Smartphone className="h-4 w-4"/></Link></Button>}
           {/* Messages Icon - iPhone style */}
           <Link to="/messages">
             <Button

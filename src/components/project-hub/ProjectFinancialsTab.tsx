@@ -1,3 +1,9 @@
+import { EventRollups } from './EventRollups';
+import { MileageCard } from './ProjectDeploymentTab';
+import { useCrews } from '@/integrations/supabase/hooks/useCrews';
+import { useProjectLocations } from '@/integrations/supabase/hooks/useProjectLocations';
+import { currentWeekStart,addDays } from '@/lib/shifts';
+import { useUserRole } from '@/hooks/useUserRole';
 import { useAppModules } from '@/hooks/useAppModules';
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -41,6 +47,9 @@ interface Props {
 
 export function ProjectFinancialsTab({ projectId, project, customer }: Props) {
   const navigate = useNavigate();
+  const {data:locations=[]}=useProjectLocations(projectId),{data:crews=[]}=useCrews(projectId);
+  const {isAdmin,isManager}=useUserRole();
+  const week=currentWeekStart();
   const modules=useAppModules();
   const { data: estimates = [] } = useEstimatesByProject(projectId);
   const { data: jobOrders = [] } = useJobOrdersByProject(projectId);
@@ -204,7 +213,9 @@ export function ProjectFinancialsTab({ projectId, project, customer }: Props) {
 
   return (
     <div className="space-y-8">
+      <EventRollups project={project} locations={locations} warningsOnly/>
       <ProjectFinancialSummary data={financialData} />
+      <MileageCard crews={crews} locations={locations} from={week} to={addDays(week,6)} mileageRate={project.mileage_rate} canEdit={isAdmin||isManager}/>
       <PersonnelExpensesCard projectId={projectId} />
       <ProjectUnbilledLabor projectId={projectId} totalInvoiced={financialData.totalInvoiced} />
       <ProjectEquipmentCharges projectId={projectId} />

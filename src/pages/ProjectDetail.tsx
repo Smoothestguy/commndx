@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
+  MoreHorizontal,
   ChevronDown,
   ArrowLeft,
   Loader2,
@@ -48,13 +49,19 @@ import { ProjectStatusMenu } from "@/components/projects/ProjectStatusMenu";
 import { ProjectLocationsTab } from "@/components/project-hub/ProjectLocationsTab";
 import { useProjectLocations } from "@/integrations/supabase/hooks/useProjectLocations";
 import { ProjectRosterCard } from "@/components/personnel/lifecycle/ProjectRosterCard";
-import { ProjectDeploymentTab } from "@/components/project-hub/ProjectDeploymentTab";
+import { DeploymentSettings, CrewsSection } from "@/components/project-hub/ProjectDeploymentTab";
+import { EVENT_TABS, eventTabDestination } from "@/lib/eventNavigation";
+import { LocationAuthorizationAlerts } from "@/components/signin/DeploymentAlerts";
+import { CustomerProjectAlerts } from "@/components/project-hub/CustomerProjectAlerts";
+import { ProjectPersonnelRosterSection } from "@/components/project-hub/ProjectPersonnelRoster";
+import { useCrews } from "@/integrations/supabase/hooks/useCrews";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useUpdateProject } from "@/integrations/supabase/hooks/useProjects";
 import { Switch } from "@/components/ui/switch";
 import { ProjectJoinLinks } from '@/components/project-hub/ProjectJoinLinks';
 import { CustomerProjectMessages } from '@/components/project-hub/CustomerProjectMessages';
 
-const TABS = ["event", "locations", "deployment", "recruiting", "crew", "financials", "time", "docs"] as const;
+const TABS = EVENT_TABS;
 type TabValue = (typeof TABS)[number];
 
 const ProjectDetail = () => {
@@ -85,18 +92,20 @@ const ProjectDetail = () => {
   const updateProject = useUpdateProject();
 
   const deploymentMode = !!project?.deployment_mode;
-  const { data: recruitingExists } = useQuery({ queryKey: ['project-recruiting-presence', id], enabled: !!id, queryFn: async () => {
-    const { data: orders, error } = await supabase.from('project_task_orders').select('id').eq('project_id', id || '');
-    if (error) throw error;
-    // Keep recruiting available whenever task-order setup exists, even before its first posting.
-    return !!orders?.length;
-  } });
-  const showRecruiting = !deploymentMode || recruitingExists !== false;
-
+  const { data: crews = [] } = useCrews(id);
   const tabParam = searchParams.get("tab");
-  const activeTab: TabValue = (TABS as readonly string[]).includes(tabParam || "") && (tabParam !== "deployment" || deploymentMode) && (tabParam !== "recruiting" || showRecruiting) && (tabParam !== "time" || !deploymentMode)
-    ? (tabParam as TabValue)
-    : tabParam === "time" && deploymentMode ? "deployment" : "event";
+  const activeTab: TabValue = eventTabDestination(tabParam);
+  useEffect(() => {
+    if (tabParam && tabParam !== activeTab) {
+      const next = new URLSearchParams(searchParams);
+      next.set('tab', activeTab);
+      const location = next.get('location');
+      if (location && id) {
+        next.delete('location'); next.set('tab', tabParam === 'crew' ? 'assets' : 'attendance');
+        navigate(`/projects/${id}/locations/${location}?${next}`, { replace: true });
+      } else setSearchParams(next, { replace: true });
+    }
+  }, [tabParam, activeTab, searchParams, setSearchParams, id, navigate]);
 
   const [detailsOpen, setDetailsOpen] = useSessionState(`project:${id}:details`, false);
   const locationView = searchParams.get('view') ?? (() => { try { return localStorage.getItem(`locations-view2:${id}`) || 'list'; } catch { return 'list'; } })();
@@ -181,7 +190,7 @@ const ProjectDetail = () => {
 
   const projectActions = (
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-          {canArchive && <ProjectStatusMenu project={project} />}
+          {canArchive && <Popover><PopoverTrigger asChild><Button variant="outline" size="icon" aria-label="Project menu"><MoreHorizontal className="h-4 w-4"/></Button></PopoverTrigger><PopoverContent align="end" className="w-64 space-y-2"><DeploymentSettings projectId={id} canEdit={canArchive}/><ProjectStatusMenu project={project} /></PopoverContent></Popover>}
           {canArchive && <ProjectJoinLinks projectId={project.id} menu />}
           {canArchive && <ProjectCloseout project={project as any} />}
           {canArchive && <Button variant="outline" onClick={handleExportPDF}>
@@ -279,47 +288,35 @@ const ProjectDetail = () => {
       </div>
 
       </div>
-      {activeTab !== "locations" && activeTab !== 'event' && <ProjectHeaderKpis projectId={id} deploymentMode={deploymentMode} />}
+
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="overflow-x-auto -mx-1 px-1 mb-4 min-[1180px]:mb-2">
           <TabsList className="w-max">
             <TabsTrigger value="event">Event overview</TabsTrigger>
-            <TabsTrigger value="locations">Locations{locations.length > 0 ? ` (${locations.length})` : ""}</TabsTrigger>
-            {deploymentMode && <TabsTrigger value="deployment">Deployment</TabsTrigger>}
-            {showRecruiting && <TabsTrigger value="recruiting">Recruiting</TabsTrigger>}
-            <TabsTrigger value="crew">Crew &amp; Logistics</TabsTrigger>
+            <TabsTrigger value="locations">Locations</TabsTrigger>
+            <TabsTrigger value="recruiting">Recruiting</TabsTrigger>
             <TabsTrigger value="financials">Financials</TabsTrigger>
-            {!deploymentMode && <TabsTrigger value="time">Time</TabsTrigger>}
             <TabsTrigger value="docs">Docs &amp; Activity</TabsTrigger>
           </TabsList>
         </div>
 
         <TabsContent value="event"><EventOverview project={project} locations={locations}/></TabsContent>
         <TabsContent value="locations">
+          <div className="mb-2 space-y-2"><LocationAuthorizationAlerts projectId={id} locations={locations}/><CustomerProjectAlerts projectId={id} locations={locations}/></div>
           <ProjectLocationsTab projectId={id} projectName={project.name} deploymentMode={deploymentMode} />
         </TabsContent>
-        {deploymentMode && (
-          <TabsContent value="deployment">
-            <ProjectDeploymentTab projectId={id} />
-          </TabsContent>
-        )}
-        <TabsContent value="recruiting">
+        <TabsContent value="recruiting" className="space-y-6">
           <ProjectRecruitingSection projectId={id} />
-        </TabsContent>
-        <TabsContent value="crew" className="space-y-4">
-          {!deploymentMode && <ProjectRosterCard projectId={id} />}
-          <ProjectCrewTab projectId={id} projectName={project.name} />
+          <ProjectPersonnelRosterSection projectId={id}/>
+          <CrewsSection projectId={id} crews={crews} canEdit={canArchive}/>
         </TabsContent>
         <TabsContent value="financials">
           <ProjectFinancialsTab projectId={id} project={project} customer={customer} />
         </TabsContent>
-        <TabsContent value="time">
-          <ProjectTimeEntriesList projectId={id} />
-        </TabsContent>
         <TabsContent value="docs">
           <div className="space-y-8">
-            {project.customer_id&&<CustomerProjectMessages projectId={id} customerId={project.customer_id}/>}
+            {derivedCustomers.map(c=><CustomerProjectMessages key={c.id} projectId={id} customerId={c.id}/>)}
             <ProjectOverviewTab projectId={id} project={project} />
             <ProjectDocuments projectId={id} projectName={project.name} />
             <ProjectActivityTimeline projectId={id} />

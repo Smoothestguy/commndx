@@ -21,6 +21,7 @@ import { useProjectLocations } from '@/integrations/supabase/hooks/useProjectLoc
 import { useLocationStaffingSummary } from '@/integrations/supabase/hooks/useLocationStaffing';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useNavigationValue } from '@/hooks/useNavigationValue';
+import { LocationTaskOrders } from '@/components/project-hub/LocationTaskOrders';
 import { LocationStaffing } from '@/components/project-hub/LocationStaffing';
 import { ProjectLocationsTab } from '@/components/project-hub/ProjectLocationsTab';
 import { LocationLodging } from '@/components/project-hub/LocationLodging';
@@ -31,20 +32,20 @@ import { ProjectJoinLinks } from '@/components/project-hub/ProjectJoinLinks';
 import { LocationKioskActions } from '@/components/signin/LocationKioskActions';
 import { DailyTimesheetPanel } from '@/components/signin/DailyTimesheetPanel';
 import { SigninStatusBoard } from '@/components/signin/SigninStatusBoard';
-import { VisitsCard } from '@/components/project-hub/ProjectDeploymentTab';
+import { ServiceGrid,VisitsCard } from '@/components/project-hub/ProjectDeploymentTab';
 import { ProjectDocuments } from '@/components/projects/ProjectDocuments';
 import { currentWeekStart, addDays, resolveShifts } from '@/lib/shifts';
 import { formatLocalDate } from '@/lib/dateUtils';
 import { localDay } from '@/lib/signinSheets';
-const tabs = ['staffing','attendance','sheets','lodging','assets','documents'] as const;
+const tabs = ['staffing','attendance','taskorders','service','sheets','lodging','assets','documents'] as const;
 const attViews = ['day','detail'] as const;
-const labels = { staffing:'Staffing',attendance:'Attendance',sheets:'Sign-in sheets',lodging:'Lodging',assets:'Assets',documents:'Documents' };
+const labels = { taskorders:'Task orders',service:'Services',staffing:'Staffing',attendance:'Attendance',sheets:'Sign-in sheets',lodging:'Lodging',assets:'Assets',documents:'Documents' };
 export default function LocationDetail() {
   const { projectId, locationId } = useParams();
   const { data: project, isLoading: projectLoading, error: projectError } = useProject(projectId);
   const { data: locations = [], isLoading, error } = useProjectLocations(projectId);
-  const { data: customer } = useCustomer(project?.customer_id);
   const location = locations.find(l => l.id === locationId);
+  const { data: customer } = useCustomer(location?.customer_id || project?.customer_id || undefined);
   const { isAdmin, isManager } = useUserRole(), canWrite = isAdmin || isManager;
   const { data: staffing } = useLocationStaffingSummary(locationId ? [locationId] : []);
   const scoped = useMemo(() => location ? [location] : [], [location]);
@@ -98,6 +99,8 @@ export default function LocationDetail() {
         <div className="flex flex-wrap items-center gap-2"><div role="tablist" aria-label="Attendance view" className="inline-flex rounded-md border p-0.5">{attViews.map(v=><Button key={v} role="tab" aria-selected={attView===v} size="sm" variant={attView===v?'secondary':'ghost'} onClick={()=>setAttView(v)}>{v==='day'?'Day':'Trail & weekly timesheet'}</Button>)}</div>{canWrite&&<BulkLogTimesDialog projectId={projectId} location={location}/>}</div>
         {attView==='day' ? <LocationDayAttendance projectId={projectId} locationId={location.id} timezone={location.timezone} canWrite={canWrite}/> : <><div className="flex items-center gap-2"><label htmlFor="location-week" className="text-sm">Week of</label><Input id="location-week" type="date" className="w-44" value={week} onChange={e=>{if(e.target.value)setWeek(e.target.value);}}/></div><VisitsCard projectId={projectId} locations={scoped} crews={[]} from={week} to={addDays(week,6)} canEdit={canWrite} defaultView="timesheet" locationScopeId={location.id} unframed/></>}
       </div>}
+      {tab==='taskorders' && <LocationTaskOrders inline projectId={projectId} locationId={location.id} locationName={location.name} timezone={location.timezone}/>}
+      {tab==='service' && <ServiceGrid locations={scoped}/>}
       {tab==='staffing' && <LocationStaffing locationId={location.id} locationName={location.name} projectId={projectId} timezone={location.timezone} summary={summary} canWrite={canWrite}/>}
       {tab==='sheets' && <SigninStatusBoard projectId={projectId} locations={scoped} onSelect={(id,day)=>{setSheet({location:id,day});setParams(prev=>{const next=new URLSearchParams(prev);next.set('day',day);return next;});}}/>}
       {tab==='lodging' && <LocationLodging projectId={projectId} locationId={location.id} housingBy={location.housing_provided_by} canWrite={canWrite}/>}

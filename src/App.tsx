@@ -444,6 +444,7 @@ const App = () => {
                         element={<CustomerDetail />}
                       />
                       <Route path="/projects" element={<Projects />} />
+                      <Route path="/locations" element={<Locations />} />
                       <Route path="/events" element={<EventManager />} />
                       <Route path="/events/:campId" element={<EventManager />} />
                       <Route path="/projects/:id" element={<ProjectDetail />} />

@@ -112,7 +112,7 @@ const DateHead = ({ d }: { d: string }) => (
 
 // ---------- Service grid ----------
 
-function ServiceGrid({ locations }: { locations: ProjectLocation[] }) {
+export function ServiceGrid({ locations }: { locations: ProjectLocation[] }) {
   const r = useDateRange();
   const { data: marks = {}, isLoading } = useServiceLog(locations.map((l) => l.id), r.from, r.to);
   const toggle = useToggleServiceMark();
@@ -641,12 +641,12 @@ function CrewDialog({ open, onOpenChange, projectId, crew }: {
   );
 }
 
-function CrewsSection({ projectId, crews, canEdit }: { projectId: string; crews: Crew[]; canEdit: boolean }) {
+export function CrewsSection({ projectId, crews, canEdit }: { projectId: string; crews: Crew[]; canEdit: boolean }) {
   const [dialog, setDialog] = useState<{ open: boolean; crew: Crew | null }>({ open: false, crew: null });
   return (
     <Card>
       <CardHeader className="py-3 flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4" />Crews</CardTitle>
+        <CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4" />Project crews</CardTitle>
         {canEdit && (
           <Button size="sm" variant="outline" className="gap-1" onClick={() => setDialog({ open: true, crew: null })}>
             <Plus className="h-4 w-4" />New crew
@@ -684,7 +684,7 @@ function CrewsSection({ projectId, crews, canEdit }: { projectId: string; crews:
 
 // ---------- Mileage ----------
 
-function MileageCard({ crews, locations, from, to, mileageRate, canEdit }: {
+export function MileageCard({ crews, locations, from, to, mileageRate, canEdit }: {
   crews: Crew[]; locations: ProjectLocation[]; from: string; to: string; mileageRate: number | null; canEdit: boolean;
 }) {
   const crewIds = crews.map((c) => c.id);
@@ -717,7 +717,7 @@ function MileageCard({ crews, locations, from, to, mileageRate, canEdit }: {
   return (
     <Card>
       <CardHeader className="py-3 flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-sm flex items-center gap-2"><Truck className="h-4 w-4" />Mileage</CardTitle>
+        <CardTitle className="text-sm flex items-center gap-2"><Truck className="h-4 w-4" />Project crew mileage</CardTitle>
         <Button size="sm" variant="outline" className="gap-1" onClick={() => setOpen(true)}><Plus className="h-4 w-4" />Log miles</Button>
       </CardHeader>
       <CardContent className="pt-0 space-y-2">
@@ -1022,7 +1022,7 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
   return (
     <Card className={unframed ? "border-0 shadow-none bg-transparent" : undefined}>
       <CardHeader className="py-3 flex-row items-center justify-between space-y-0 gap-2 flex-wrap">
-        <CardTitle className="text-sm flex items-center gap-2"><Smartphone className="h-4 w-4" />Visits</CardTitle>
+        <CardTitle className="text-sm flex items-center gap-2"><Smartphone className="h-4 w-4" />{locationScopeId ? "Location attendance" : "Visits"}</CardTitle>
         <Button size="sm" variant="outline" className="gap-1" disabled={pdfBusy || !visits.length} onClick={() => makePdf()}>
           {pdfBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
           Sign-in sheet PDF ({formatLocalDate(to, "M/d")})
