@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {authorize,service,json} from '../_shared/signinJobs.ts';
+import {scheduledClose} from '../_shared/scheduledClose.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,8 +14,11 @@ serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  console.log('Starting stale clock check...');
-
+  const db=service();
+  const auth=await authorize(req,db,true);
+  if(!auth)return json({error:'Unauthorized'},403);
+  return json(await scheduledClose(db,false));
+  /* Legacy stale-location closure is retired: schedule closure is handled above.
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -178,5 +183,5 @@ serve(async (req: Request) => {
       JSON.stringify({ success: false, error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-  }
+  } */
 });
