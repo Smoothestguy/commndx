@@ -9,7 +9,9 @@ export type ProjectStage = "quote" | "task_order" | "active" | "complete" | "can
 export interface Project {
   id: string;
   name: string;
-  customer_id: string;
+  customer_id: string | null;
+  type_id?: string | null;
+  region?: string | null;
   status: "active" | "completed" | "on-hold";
   stage: ProjectStage;
   start_date: string;

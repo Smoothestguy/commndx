@@ -1,4 +1,10 @@
 import { useEffect, useMemo } from "react";
+import { EventOverview } from '@/components/project-hub/EventOverview';
+import '@/components/project-hub/eventOverview.css';
+import { useProjectTypes } from '@/hooks/useProjectEvent';
+import { useCustomers } from '@/integrations/supabase/hooks/useCustomers';
+import { EventCustomers,ProjectTypeChip } from '@/components/projects/EventCustomers';
+import { eventCustomers } from '@/lib/projectEvent';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
@@ -48,7 +54,7 @@ import { Switch } from "@/components/ui/switch";
 import { ProjectJoinLinks } from '@/components/project-hub/ProjectJoinLinks';
 import { CustomerProjectMessages } from '@/components/project-hub/CustomerProjectMessages';
 
-const TABS = ["locations", "deployment", "recruiting", "crew", "financials", "time", "docs"] as const;
+const TABS = ["event", "locations", "deployment", "recruiting", "crew", "financials", "time", "docs"] as const;
 type TabValue = (typeof TABS)[number];
 
 const ProjectDetail = () => {
@@ -72,6 +78,8 @@ const ProjectDetail = () => {
   const { isAdmin, isManager } = useUserRole();
   const canArchive = isAdmin || isManager;
   const { data: locations = [] } = useProjectLocations(id);
+  const types=useProjectTypes(), customers=useCustomers();
+  const derivedCustomers=eventCustomers(locations,project?.customer_id);
   const archiveProject = useArchiveProject();
   const unarchiveProject = useUnarchiveProject();
   const updateProject = useUpdateProject();
@@ -88,7 +96,7 @@ const ProjectDetail = () => {
   const tabParam = searchParams.get("tab");
   const activeTab: TabValue = (TABS as readonly string[]).includes(tabParam || "") && (tabParam !== "deployment" || deploymentMode) && (tabParam !== "recruiting" || showRecruiting) && (tabParam !== "time" || !deploymentMode)
     ? (tabParam as TabValue)
-    : tabParam === "time" && deploymentMode ? "deployment" : "locations";
+    : tabParam === "time" && deploymentMode ? "deployment" : "event";
 
   const [detailsOpen, setDetailsOpen] = useSessionState(`project:${id}:details`, false);
   const locationView = searchParams.get('view') ?? (() => { try { return localStorage.getItem(`locations-view2:${id}`) || 'list'; } catch { return 'list'; } })();
@@ -208,7 +216,7 @@ const ProjectDetail = () => {
           <Link to="/projects" aria-label="Back to projects" className="text-muted-foreground"><ArrowLeft className="h-4 w-4" /></Link>
           <h1 className="font-heading font-bold text-lg truncate">{project.name}</h1>
           <StatusBadge status={project.status} />
-          {customer && <Link to={`/customers/${customer.id}`} className="text-sm text-muted-foreground truncate">{getCustomerDisplayName(customer)}</Link>}
+          <ProjectTypeChip type={types.data?.find(t=>t.id===project.type_id)}/><EventCustomers rows={derivedCustomers} customers={customers.data}/>
           <span className="text-xs text-muted-foreground whitespace-nowrap">{formatLocalDate(project.start_date, 'MMM dd, yyyy')} – {project.end_date ? formatLocalDate(project.end_date, 'MMM dd, yyyy') : 'Ongoing'}</span>
           <Button variant="ghost" size="sm" className="ml-auto shrink-0 h-8" aria-expanded={detailsOpen} aria-controls="project-header-details" onClick={() => setDetailsOpen(v => !v)}>Details<ChevronDown className={`ml-1 h-4 w-4 ${detailsOpen ? 'rotate-180' : ''}`} /></Button>
         </div>
@@ -228,6 +236,7 @@ const ProjectDetail = () => {
       <div className="mb-4 space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={project.status} />
+          <ProjectTypeChip type={types.data?.find(t=>t.id===project.type_id)}/>
           <Badge variant={stage.variant} className={`text-xs ${stage.className}`}>
             {stage.label}
           </Badge>
@@ -253,19 +262,12 @@ const ProjectDetail = () => {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-          {customer && (
-            <span className="flex items-center gap-1">
-              <User className="h-3.5 w-3.5" />
-              <Link className="text-primary hover:underline" to={`/customers/${customer.id}`}>
-                {getCustomerDisplayName(customer)}
-              </Link>
-            </span>
-          )}
+          <EventCustomers rows={derivedCustomers} customers={customers.data}/>
           <span className="flex items-center gap-1">
             <Calendar className="h-3.5 w-3.5" />
-            {format(new Date(project.start_date), "MMM dd, yyyy")}
+            {formatLocalDate(project.start_date, "MMM dd, yyyy")}
             {" – "}
-            {project.end_date ? format(new Date(project.end_date), "MMM dd, yyyy") : "Ongoing"}
+            {project.end_date ? formatLocalDate(project.end_date, "MMM dd, yyyy") : "Ongoing"}
           </span>
           {addressLine && (
             <span className="flex items-center gap-1 truncate max-w-full">
@@ -277,11 +279,12 @@ const ProjectDetail = () => {
       </div>
 
       </div>
-      {activeTab !== "locations" && <ProjectHeaderKpis projectId={id} deploymentMode={deploymentMode} />}
+      {activeTab !== "locations" && activeTab !== 'event' && <ProjectHeaderKpis projectId={id} deploymentMode={deploymentMode} />}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="overflow-x-auto -mx-1 px-1 mb-4 min-[1180px]:mb-2">
           <TabsList className="w-max">
+            <TabsTrigger value="event">Event overview</TabsTrigger>
             <TabsTrigger value="locations">Locations{locations.length > 0 ? ` (${locations.length})` : ""}</TabsTrigger>
             {deploymentMode && <TabsTrigger value="deployment">Deployment</TabsTrigger>}
             {showRecruiting && <TabsTrigger value="recruiting">Recruiting</TabsTrigger>}
@@ -292,6 +295,7 @@ const ProjectDetail = () => {
           </TabsList>
         </div>
 
+        <TabsContent value="event"><EventOverview project={project} locations={locations}/></TabsContent>
         <TabsContent value="locations">
           <ProjectLocationsTab projectId={id} projectName={project.name} deploymentMode={deploymentMode} />
         </TabsContent>
@@ -315,7 +319,7 @@ const ProjectDetail = () => {
         </TabsContent>
         <TabsContent value="docs">
           <div className="space-y-8">
-            <CustomerProjectMessages projectId={id} customerId={project.customer_id}/>
+            {project.customer_id&&<CustomerProjectMessages projectId={id} customerId={project.customer_id}/>}
             <ProjectOverviewTab projectId={id} project={project} />
             <ProjectDocuments projectId={id} projectName={project.name} />
             <ProjectActivityTimeline projectId={id} />
