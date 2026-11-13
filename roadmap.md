@@ -1,11 +1,13 @@
 # MX-style mobile Home
+- [x] Final pass: white dock verified at 390px; profile uses self-only active sites or the user's last eligible selection, never a hardcoded event. Owner top bar, 17-count inbox, switcher/reload, dismiss, lazy Add/New TO, Profile and online/offline checked; desktop unchanged, 20 tests pass and build OK. Juan link confirmed intact; no business writes or sends.
+- [ ] Fresh jperez 390px verification blocked: the approved-account session mint now refuses because user approval is unavailable in this context. Prior real field verification remains recorded below; no new impersonation or data changes attempted.
 - [x] Light profile/featured/menu cards and floating role dock, real read/online status and scope switcher; existing actions/destinations retained.
 - [x] Manager and approved jperez/ Juan verified at 390px: menu, switcher, Add, Profile, online/offline, 47.86 worker hours and no manager/dollar content; approvals access redirects to worker portal. Desktop operations retained; 19 tests pass. Juan link confirmed unchanged, no punches/texts/business data writes.
 
 # Phone-first operations
 - [x] Five-item manager phone navigation, shared live approvals badge/inbox, focused Home without Sales; field phone navigation omits manager tools.
 - [x] Location attendance-first layout, military edits, grouped roster and authorization; secondary details collapsed. Phone grid cards preserve desktop tables.
-- [x] Owner 390px Home/inbox (17 pending actions)/5049 location/audited-edit dialog/public live punch page verified; phone Personnel/Time/Event screens show no visible spreadsheets or overflow, desktop retains its table. Thirty-six focused tests pass; no owner decisions, punches, messages, records or schedules changed. Worker check remains blocked below.
+- [x] Owner 390px Home/inbox (17 pending actions)/5049 location/audited-edit dialog/public live punch page verified; phone Personnel/Time/Event screens show no visible spreadsheets or overflow, desktop retains its table. Thirty-six focused tests pass; no owner decisions, punches, messages, records or schedules changed. Worker verification completed below.
 - [x] Approved jperez linked to Juan verified read-only at 390px with populated self-only My Day and 47.86 weekly hours; link retained.
 
 # Information architecture

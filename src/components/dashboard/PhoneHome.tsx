@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog,DialogContent,DialogHeader,DialogTitle } from '@/components/ui/dialog';
 import { Activity,ArrowLeftRight,ChevronDown,ChevronRight,CheckCheck,MapPin,Clock,Users,Tent,Settings,FileSignature,MessageSquare,X,User } from 'lucide-react';
 import { localTime } from '@/lib/signinSheets';
+import { phoneDefaultSite } from '@/lib/mobileOperations';
 function clock(at:string,zone:string){return localTime(at,zone).replace(':','');}
 export function PhoneHome(){
  const {isAdmin,isManager,loading}=useUserRole();
@@ -19,22 +20,25 @@ export function PhoneHome(){
  return isAdmin||isManager?<ManagerHome/>:<WorkerHome/>;
 }
 function ManagerHome(){
- const scope=useHomeLocations(),inbox=useMobileApprovals();
- return <HomeCards manager sites={(scope.data?.locations||[]).map(l=>({id:l.id,name:l.name,project:scope.data?.projects.find(p=>p.id===l.project_id)?.name||'',projectId:l.project_id}))} count={inbox.data?.count} updatedAt={Math.min(scope.dataUpdatedAt||Infinity,inbox.dataUpdatedAt||Infinity)} error={!!(scope.error||inbox.error)} context={inbox.data?.count?`Last alert: ${inbox.data.count} pending actions`:undefined}/>;
+ const scope=useHomeLocations(),inbox=useMobileApprovals(),personal=useMyDay();
+ return <HomeCards manager defaultSiteId={phoneDefaultSite(personal.data?.sites||[])} sites={(scope.data?.locations||[]).map(l=>({id:l.id,name:l.name,project:scope.data?.projects.find(p=>p.id===l.project_id)?.name||'',projectId:l.project_id}))} count={inbox.data?.count} updatedAt={Math.min(scope.dataUpdatedAt||Infinity,inbox.dataUpdatedAt||Infinity)} error={!!(scope.error||inbox.error)} context={inbox.data?.count?`Last alert: ${inbox.data.count} pending actions`:undefined}/>;
 }
 function WorkerHome(){
  const q=useMyDay();
  const {user}=useAuth();
  const identity=useQuery({queryKey:['phone-worker-identity',user?.id],enabled:!!user,queryFn:async()=>{const r=await supabase.from('personnel').select('first_name,last_name').eq('user_id',user?.id||'').maybeSingle();if(r.error)throw r.error;return r.data;}});
- return <HomeCards manager={false} fullName={identity.data?[identity.data.first_name,identity.data.last_name].filter(Boolean).join(' '):undefined} sites={(q.data?.sites||[]).map(l=>({id:l.id,name:l.name,project:l.project.name,projectId:l.project_id,openAt:l.openAt,zone:l.timezone||'America/Chicago'}))} updatedAt={q.dataUpdatedAt} error={!!q.error}/>;
+ return <HomeCards manager={false} defaultSiteId={phoneDefaultSite(q.data?.sites||[])} fullName={identity.data?[identity.data.first_name,identity.data.last_name].filter(Boolean).join(' '):undefined} sites={(q.data?.sites||[]).map(l=>({id:l.id,name:l.name,project:l.project.name,projectId:l.project_id,openAt:l.openAt,zone:l.timezone||'America/Chicago'}))} updatedAt={q.dataUpdatedAt} error={!!q.error}/>;
 }
 type Site={id:string;name:string;project:string;projectId:string;openAt?:string|null;zone?:string};
-function HomeCards({manager,sites,count,updatedAt,error,context,fullName}:{manager:boolean;sites:Site[];count?:number;updatedAt:number;error:boolean;context?:string;fullName?:string}){
- const {data:profile}=useProfile(),{signOut}=useAuth(),qc=useQueryClient();
- const [params]=useSearchParams(),[selected,setSelected]=useState(''),[switcher,setSwitcher]=useState(false),[more,setMore]=useState(false),[dismiss,setDismiss]=useState(false),[online,setOnline]=useState(navigator.onLine),[,setTick]=useState(0);
+function HomeCards({manager,sites,count,updatedAt,error,context,fullName,defaultSiteId}:{manager:boolean;sites:Site[];count?:number;updatedAt:number;error:boolean;context?:string;fullName?:string;defaultSiteId?:string}){
+ const {data:profile}=useProfile(),{signOut,user}=useAuth(),qc=useQueryClient();
+ const storageKey=`phone-home-site:${user?.id||''}`;
+ const [params]=useSearchParams(),[selected,setSelected]=useState(()=>sessionStorage.getItem(storageKey)||''),[switcher,setSwitcher]=useState(false),[more,setMore]=useState(false),[dismiss,setDismiss]=useState(false),[online,setOnline]=useState(navigator.onLine),[,setTick]=useState(0);
+ useEffect(()=>{setSelected(sessionStorage.getItem(storageKey)||'');},[storageKey]);
+ useEffect(()=>{if(selected)sessionStorage.setItem(storageKey,selected);},[selected,storageKey]);
  useEffect(()=>{const update=()=>setOnline(navigator.onLine);window.addEventListener('online',update);window.addEventListener('offline',update);const timer=setInterval(()=>setTick(t=>t+1),30000);return()=>{window.removeEventListener('online',update);window.removeEventListener('offline',update);clearInterval(timer);};},[]);
  useEffect(()=>{if(params.get('profile')==='1')setMore(true);},[params]);
- const site=sites.find(s=>s.id===selected)||sites[0],name=fullName||[profile?.first_name,profile?.last_name].filter(Boolean).join(' ')||'Your account';
+ const site=sites.find(s=>s.id===selected)||sites.find(s=>s.id===defaultSiteId),name=fullName||[profile?.first_name,profile?.last_name].filter(Boolean).join(' ')||'Your account';
  const elapsed=Number.isFinite(updatedAt)&&updatedAt?Math.max(0,Math.floor((Date.now()-updatedAt)/60000)):null;
  const status=error?'Sync unavailable':elapsed===null?'Loading…':elapsed===0?'Synced just now':`Synced ${elapsed}m ago`;
  const last=context||(site?.openAt?`Last punch: ${clock(site.openAt,site.zone||'America/Chicago')} · ${site.name}`:undefined);
