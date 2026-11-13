@@ -1,6 +1,6 @@
 import { ScheduledPunchNote } from '@/components/signin/ScheduledPunchNote';
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams,useSearchParams } from "react-router-dom";
 import { localStamp } from "../../supabase/functions/_shared/locationTime";
 import { supabase } from "@/integrations/supabase/client";
 import { ForceDarkTheme } from "@/components/ForceDarkTheme";
@@ -39,6 +39,9 @@ function getPos(): Promise<{ lat: number; lng: number; accuracy: number } | null
 
 export default function SitePunch() {
   const { token } = useParams<{ token: string }>();
+  const [search]=useSearchParams();
+  const openedToken=useRef<string|null>(null);
+  useEffect(()=>{if(!token||openedToken.current===token)return;openedToken.current=token;const id=crypto.randomUUID();void getPos().then(pos=>supabase.rpc('record_punch_link_open',{p_token:token,p_id:id,p_lat:pos?.lat??undefined,p_lng:pos?.lng??undefined,p_accuracy:pos?.accuracy??undefined})).catch(()=>{});},[token]);
   const { tr } = usePublicLang();
   const trRef = useRef(tr); trRef.current = tr;
   const [info, setInfo] = useState<Info | null>(() => token ? cachedInfo(token) : null);
@@ -176,7 +179,7 @@ export default function SitePunch() {
     blocked.current = false; setRejection(null); setOverriding(false);
     try{if(!await prepare(next))return;savePunch(next);await flush();}catch(e){setError(e instanceof Error?e.message:'Check-in unavailable');}
   };
-  const t = (iso: string) => new Intl.DateTimeFormat('en-GB', { timeZone: rejection?.timezone || info?.timezone || 'America/Chicago', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso));
+  const t = (iso: string) => new Intl.DateTimeFormat('en-GB', { timeZone: rejection?.timezone || info?.timezone || 'America/Chicago', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso)).replace(':','');
   const onSite = !!info?.on_site_since;
   const mapsHref = info?.address ? `https://maps.google.com/?q=${encodeURIComponent(info.address)}` : null;
 
@@ -218,7 +221,7 @@ export default function SitePunch() {
           {(!done || done.action === "in") && <Button onClick={punch} disabled={busy} className={`w-full h-28 text-2xl font-bold ${onSite ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : "bg-success text-success-foreground hover:bg-success/90"}`}>
             {busy ? <Loader2 className="h-8 w-8 animate-spin" /> : onSite ? tr("CHECK OUT", "REGISTRAR SALIDA") : tr("I'M HERE — CHECK IN", "YA LLEGUÉ — REGISTRAR ENTRADA")}
           </Button>}
-          {onSite && token && <ShiftExtensionRequest token={token} />}
+          {token && <ShiftExtensionRequest token={token} initialOpen={search.get('extension')==='1'} />}
         </>}
         {rejection?.reason === 'late' ? <LateCheckIn rejection={rejection} timezone={rejection.timezone||info?.timezone} busy={busy} onSubmit={async reason => { if (!token || busy) return; const intent=readPunch(token); if (!intent) return; savePunch({...intent,lateReason:reason,tries:0});setRejection(null);blocked.current=false;await flush(); }} /> : rejection?.reason === 'before_shift' ? <EarlyCheckIn rejection={rejection} timezone={rejection.timezone||info?.timezone} busy={busy} onSubmit={async reason => { if (!token || busy) return; const intent=readPunch(token); if (!intent) return; savePunch({...intent,earlyReason:reason,tries:0});setRejection(null);blocked.current=false;await flush(); }} /> : rejection && <div role="status" className={`rounded-md border-2 p-5 space-y-4 ${rejection.reason === 'already_signed_today' ? 'border-success text-success' : 'border-warning text-warning'}`}>
           <h1 className="text-2xl font-bold">{rejection.reason === 'out_of_range' ? tr(`You're ${Math.round(rejection.distance_m ?? 0)}m from ${info?.location_name || 'the site'} (allowed ${rejection.radius_m ?? 300}m)`, `Estás a ${Math.round(rejection.distance_m ?? 0)} m de ${info?.location_name || 'el sitio'} (permitido ${rejection.radius_m ?? 300} m)`) : rejection.reason === 'no_gps' ? tr("Couldn't get your location", "No se pudo obtener tu ubicación") : tr('Already signed in today at this site', 'Ya registraste tu entrada hoy en este sitio')}</h1>

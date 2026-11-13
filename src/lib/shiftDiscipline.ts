@@ -11,6 +11,12 @@ export function extensionChoices(now = Date.now(), shiftEnd?: string | null) {
 export function earlyApproval(reason?: string | null, by?: string | null, at?: string | null) {
   return reason ? (by && at ? 'approved' : 'pending supervisor approval') : null;
 }
+export function reportedCheckoutChoices(now:number,shiftEnd?:string|null){
+ if(!shiftEnd)return [];
+ const end=Date.parse(shiftEnd),step=15*60000,limit=Math.min(now,end+6*3600000),choices:string[]=[];
+ for(let at=Math.floor(end/step)*step+step;at<=limit;at+=step)choices.push(new Date(at).toISOString());
+ return choices;
+}
 export function earlyMinutes(at: string, zone: string, day: string, night: string) {
  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:zone,hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date(at));
  const n=(key:string)=>Number(parts.find(p=>p.type===key)?.value||0),minute=n('hour')*60+n('minute')+n('second')/60;
