@@ -7,7 +7,9 @@ import { useApplicantLocations } from "@/hooks/useZipLookup";
 import { useMemo, useState } from "react";
 import { ApplicantStarButton } from "@/components/staffing/ApplicantStarButton";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery,useQueryClient } from "@tanstack/react-query";
+import {useUserRole} from '@/hooks/useUserRole';
+import {toast} from 'sonner';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -99,6 +101,7 @@ const useMasterApplicants = () =>
 type SortKey = "name" | "last_applied_at" | "application_count" | "city";
 
 export default function MasterApplicants() {
+  const qc=useQueryClient(),{isAdmin,isManager}=useUserRole();
   const { data: rawData, isLoading } = useMasterApplicants();
   const resolveLocation = useApplicantLocations(rawData ?? []);
   const data = useMemo(() => rawData?.map(resolveLocation), [rawData, resolveLocation]);
@@ -219,6 +222,9 @@ export default function MasterApplicants() {
         </CardHeader>
         <CardContent className="min-[1180px]:p-0">
           <EnhancedDataTable fillViewport tableId="master-applicants" data={filtered} columns={columns} selectedIds={selected} onSelectionChange={setSelected}
+            selectable={isAdmin||isManager} entityName="applicant"
+            canSetActive={r=>r.status==='new'||r.status==='inactive'}
+            onSetActive={async(rows,active)=>{const {error}=await supabase.from('applicants').update({status:active?'new':'inactive'}).in('id',rows.map(r=>r.id));if(error){toast.error(error.message);throw error;}await qc.invalidateQueries({queryKey:['master-applicants']});}}
             defaultSortKey="last_applied_at" defaultSortDirection="desc" exportName="applicant-pool" attention={r => !r.phone ? 'Missing phone' : null}
             pinFirst={r => !!r.starred_at} emptyText={isLoading ? 'Loading…' : 'No applicants match your filters.'}
             bulkActions={() => <Button size="sm" variant="outline" onClick={() => setInviteOpen(true)}><Send className="h-3.5 w-3.5 mr-1" />Invite to Job</Button>} />

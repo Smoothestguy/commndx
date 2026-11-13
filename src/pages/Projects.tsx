@@ -410,6 +410,9 @@ const Projects = () => {
       selectedIds={selectedIds}
       onSelectionChange={setSelectedIds}
       exportName="projects"
+      onEdit={handleEdit} onAdd={openNewDialog} entityName="project"
+      canSetActive={p=>!p.archived_at && p.status!=='closed' && p.status!=='completed'}
+      onSetActive={async(rows,active)=>{for(const p of rows)await updateProject.mutateAsync({id:p.id,status:active?'active':'on-hold'});}}
       bulkActions={() => canArchive ? <Button size="sm" variant="outline" disabled={archiveProject.isPending || unarchiveProject.isPending} onClick={isArchivedTab ? handleBulkUnarchive : handleBulkArchive}>{isArchivedTab ? "Unarchive selected" : "Archive selected"}</Button> : null}
     />
   );
