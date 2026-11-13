@@ -26,7 +26,7 @@ import { DirectDepositView } from "@/components/personnel/DirectDepositView";
 import { AgreementSignatureView } from "@/components/personnel/AgreementSignatureView";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { BadgeGenerator } from "@/components/badges/BadgeGenerator";
 import { PersonnelForm } from "@/components/personnel/PersonnelForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -64,7 +64,7 @@ interface ComplianceIssue {
 
 const PersonnelDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams,setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const defaultTab = searchParams.get("tab") || "overview";
   const { isAdmin, isManager } = useUserRole();
@@ -81,6 +81,12 @@ const PersonnelDetail = () => {
   const updateReimbursementStatus = useUpdateReimbursementStatus();
   const [badgeDialogOpen, setBadgeDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  useEffect(()=>{
+    if(searchParams.get('edit')==='true' && (isAdmin||isManager) && personnel){
+      setEditDialogOpen(true);
+      setSearchParams(prev=>{const next=new URLSearchParams(prev);next.delete('edit');return next;},{replace:true});
+    }
+  },[searchParams,setSearchParams,isAdmin,isManager,personnel]);
   const getOrCreateConversation = useGetOrCreateConversation();
   const { openConversationWith } = useMessageDrawer();
   const [generate1099Open, setGenerate1099Open] = useState(false);

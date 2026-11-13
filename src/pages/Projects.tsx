@@ -14,7 +14,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2, Users as UsersIcon, User, Archive, ArchiveRestore, X, Download } from "lucide-react";
 import * as XLSX from "xlsx";
-import { ProjectContextMenu, ProjectRowActionsMenu } from "@/components/projects/ProjectContextMenu";
+import { ProjectContextMenu, ProjectRowActionsMenu, ProjectMenuItems } from "@/components/projects/ProjectContextMenu";
 import { SearchInput } from "@/components/ui/search-input";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import { ProjectCard } from "@/components/projects/ProjectCard";
@@ -374,7 +374,7 @@ const Projects = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  const renderProjectCards = (projectList: Project[]) => (
+  const renderProjectCards = (projectList: Project[]) => isMobile ? renderProjectTable(projectList, `projects-phone-${projectList[0]?.id ?? 'empty'}`) : (
     <div className="grid gap-2 grid-cols-1 sm:grid-cols-2">
       {projectList.map((project) => (
         <ProjectContextMenu key={project.id} project={project} onEdit={handleEdit}>
@@ -388,7 +388,7 @@ const Projects = () => {
               onClick={() => navigate(`/projects/${project.id}`)}
               compact
               stale={isStale(project)}
-              selectable
+              selectable={canArchive}
               selected={selectedIds.has(project.id)}
               onSelectChange={(c) => toggleSelect(project.id, c)}
               extraActions={<ProjectRowActionsMenu project={project} onEdit={handleEdit} />}
@@ -406,10 +406,14 @@ const Projects = () => {
       data={projectList}
       columns={columns}
       rowHref={(item) => `/projects/${item.id}`}
-      selectable
+      selectable={canArchive}
       selectedIds={selectedIds}
       onSelectionChange={setSelectedIds}
       exportName="projects"
+      onEdit={handleEdit} onAdd={openNewDialog} entityName="project"
+      rowMenu={p=><ProjectMenuItems project={p} onEdit={handleEdit}/>}
+      canSetActive={p=>!p.archived_at && p.status!=='completed'}
+      onSetActive={async(rows,active)=>{for(const p of rows)await updateProject.mutateAsync({id:p.id,status:active?'active':'on-hold'});}}
       bulkActions={() => canArchive ? <Button size="sm" variant="outline" disabled={archiveProject.isPending || unarchiveProject.isPending} onClick={isArchivedTab ? handleBulkUnarchive : handleBulkArchive}>{isArchivedTab ? "Unarchive selected" : "Archive selected"}</Button> : null}
     />
   );

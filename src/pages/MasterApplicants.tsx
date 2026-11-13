@@ -7,7 +7,10 @@ import { useApplicantLocations } from "@/hooks/useZipLookup";
 import { useMemo, useState } from "react";
 import { ApplicantStarButton } from "@/components/staffing/ApplicantStarButton";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery,useQueryClient } from "@tanstack/react-query";
+import {useUserRole} from '@/hooks/useUserRole';
+import {toast} from 'sonner';
+import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogFooter} from '@/components/ui/dialog';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -99,6 +102,10 @@ const useMasterApplicants = () =>
 type SortKey = "name" | "last_applied_at" | "application_count" | "city";
 
 export default function MasterApplicants() {
+  const qc=useQueryClient(),{isAdmin,isManager}=useUserRole();
+  const [editor,setEditor]=useState<{id?:string;first_name:string;last_name:string;email:string;phone:string}|null>(null);
+  const [editing,setEditing]=useState(false),[saving,setSaving]=useState(false);
+  const openApplicant=(r:Row,edit:boolean)=>{setEditing(edit);setEditor({id:r.id,first_name:r.first_name,last_name:r.last_name,email:r.email,phone:r.phone??''});};
   const { data: rawData, isLoading } = useMasterApplicants();
   const resolveLocation = useApplicantLocations(rawData ?? []);
   const data = useMemo(() => rawData?.map(resolveLocation), [rawData, resolveLocation]);
@@ -219,6 +226,11 @@ export default function MasterApplicants() {
         </CardHeader>
         <CardContent className="min-[1180px]:p-0">
           <EnhancedDataTable fillViewport tableId="master-applicants" data={filtered} columns={columns} selectedIds={selected} onSelectionChange={setSelected}
+            selectable={isAdmin||isManager} entityName="applicant"
+            onRowClick={r=>openApplicant(r,false)} onEdit={r=>openApplicant(r,true)}
+            onAdd={()=>{setEditing(true);setEditor({first_name:'',last_name:'',email:'',phone:''});}}
+            canSetActive={r=>r.status==='new'||r.status==='inactive'}
+            onSetActive={async(rows,active)=>{const {error}=await supabase.from('applicants').update({status:active?'new':'inactive'}).in('id',rows.map(r=>r.id));if(error){toast.error(error.message);throw error;}await qc.invalidateQueries({queryKey:['master-applicants']});}}
             defaultSortKey="last_applied_at" defaultSortDirection="desc" exportName="applicant-pool" attention={r => !r.phone ? 'Missing phone' : null}
             pinFirst={r => !!r.starred_at} emptyText={isLoading ? 'Loading…' : 'No applicants match your filters.'}
             bulkActions={() => <Button size="sm" variant="outline" onClick={() => setInviteOpen(true)}><Send className="h-3.5 w-3.5 mr-1" />Invite to Job</Button>} />
@@ -234,6 +246,7 @@ export default function MasterApplicants() {
         onOpenChange={setInviteOpen}
         applicantIds={Array.from(selected)}
       />
+      <Dialog open={!!editor} onOpenChange={o=>{if(!o&&!saving)setEditor(null);}}><DialogContent><DialogHeader><DialogTitle>{editing?(editor?.id?'Edit applicant':'Add applicant'):'Applicant'}</DialogTitle></DialogHeader>{editor&&<form onSubmit={async e=>{e.preventDefault();if(!editing||!(isAdmin||isManager))return;setSaving(true);try{const {id,...fields}=editor;const payload={...fields,phone:fields.phone||null};const result=id?await supabase.from('applicants').update(payload).eq('id',id):await supabase.from('applicants').insert({...payload,status:'new'});if(result.error)throw result.error;await qc.invalidateQueries({queryKey:['master-applicants']});setEditor(null);}catch(e){toast.error(e instanceof Error?e.message:'Could not save applicant');}finally{setSaving(false);}}} className="space-y-3">{(['first_name','last_name','email','phone'] as const).map(key=><label key={key} className="block space-y-1 text-sm"><span>{key.replace(/_/g,' ')}</span><Input readOnly={!editing} required={key!=='phone'} type={key==='email'?'email':key==='phone'?'tel':'text'} value={editor[key]} onChange={e=>setEditor({...editor,[key]:e.target.value})}/></label>)}<DialogFooter><Button type="button" variant="outline" disabled={saving} onClick={()=>setEditor(null)}>Close</Button>{editing&&<Button type="submit" disabled={saving}>Save</Button>}</DialogFooter></form>}</DialogContent></Dialog>
     </div>
   );
 }

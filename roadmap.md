@@ -1,6 +1,6 @@
 # Mobile bulk actions and long-press
-- [ ] Shared phone selection bar, scroll-cancelled 500ms menus and desktop row menus; manager-only status actions across supported entities.
-- [ ] Verify 390px Locations/Personnel, disposable status round-trip and cleanup, focused tests and preview errors.
+- [x] Shared compact phone selection bar above dock, direct status/Assign/Edit/export, additional actions menu, scroll-cancelled 500ms selection/context menus and desktop row right-click. Existing row actions retained; manager-only controls, supported status equivalents and no deletes. Phone Personnel/projects/assets now use shared cards; Applicant Pool has guarded contact Open/Edit/Add and new/inactive toggles without approvals.
+- [x] 390px Locations and Personnel disposable deactivate/activate readback restored active, all fixture projects/locations/personnel removed (zero remaining). Long-press selects, movement cancels, multi-select hides Edit, existing edit dialogs and Personnel Assign open without saving, selected exports download, desktop menu works. Twelve focused tests pass; preview clean and final browser reports no page errors. Owner records read-only, no texts/punches. Separate field browser not exercised; shared role gating and dollar columns preserved.
 
 # Task-order engine
 - [x] Finish owner-requested verification: 5049 TO-1..4 unchanged (current 4 Operator/2 Supervisor/2 Truck), legacy terms absent; disposable draft create/edit/accept and terms carry passed. Reduction blocked additions and browser Demobilize saved. Agency signup conflict, manager resolution/approval and permanent ownership guard passed without texts. All disposable rows, private signatures and related audit records removed.

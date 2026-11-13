@@ -262,6 +262,10 @@ export function ProjectContextMenu({
 }
 
 /** Compact "⋯" dropdown for row actions. */
+export function ProjectMenuItems({project,onEdit}:Props) {
+  const a=useRowActions({project,onEdit});
+  return <>{renderMenuItems(a,project,DropdownMenuItem,DropdownMenuSeparator)}<ProjectDialogs a={a} project={project}/></>;
+}
 export function ProjectRowActionsMenu({ project, onEdit }: Props) {
   const a = useRowActions({ project, onEdit });
   return (

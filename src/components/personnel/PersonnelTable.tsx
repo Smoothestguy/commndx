@@ -56,6 +56,8 @@ import { TablePagination } from "@/components/shared/TablePagination";
 import { PersonnelRolesDialog } from "./PersonnelRolesDialog";
 import { BenchStar, TagChips } from "./PersonnelTags";
 import { NonBillableChip } from "./NonBillableChip";
+import { useBulkPersonnelUpdate } from '@/hooks/usePersonnelTags';
+import {BulkAssignLocationDialog} from './BulkAssignLocationDialog';
 
 type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
 
@@ -96,6 +98,8 @@ export function PersonnelTable({
 }: PersonnelTableProps) {
   const { isAdmin, isManager } = useUserRole();
   const navigate = useNavigate();
+  const statusUpdate = useBulkPersonnelUpdate();
+  const [bulkAssignOpen,setBulkAssignOpen]=useState(false);
   const isMobile = useIsMobile();
   const { data: vendors } = useVendors();
   const { data: qbConfig } = useQuickBooksConfig();
@@ -439,6 +443,7 @@ export function PersonnelTable({
     {
       key: "actions",
       header: "",
+      noExport: true,
       sortable: false,
       filterable: false,
       render: (person: Personnel) => (
@@ -455,21 +460,21 @@ export function PersonnelTable({
               <Eye className="mr-2 h-4 w-4" />
               View
             </DropdownMenuItem>
-            <DropdownMenuItem
+            {(isAdmin || isManager) && <DropdownMenuItem
               onClick={() =>
                 navigate(`/personnel/${person.id}?edit=true`)
               }
             >
               <Edit className="mr-2 h-4 w-4" />
               Edit
-            </DropdownMenuItem>
+            </DropdownMenuItem>}
             <DropdownMenuItem
               onClick={() => handlePrintSingleBadge(person.id)}
             >
               <Printer className="mr-2 h-4 w-4" />
               Print Badge
             </DropdownMenuItem>
-            <DropdownMenuItem
+            {(isAdmin || isManager) && <><DropdownMenuItem
               onClick={(e) => {
                 e.stopPropagation();
                 setRolesDialogPerson(person);
@@ -549,6 +554,7 @@ export function PersonnelTable({
               <Trash2 className="mr-2 h-4 w-4" />
               Delete Permanently
             </DropdownMenuItem>
+            </>}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -557,53 +563,9 @@ export function PersonnelTable({
 
   return (
     <div className="space-y-3 sm:space-y-4">
-      {/* Bulk Action Bar */}
-      {selectionMode && selectedIds.length > 0 && (
-        <div className="flex min-[1180px]:hidden flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 bg-muted rounded-lg">
-          <span className="text-xs sm:text-sm font-medium">
-            {selectedIds.length} selected
-          </span>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              onClick={onPrintBadges}
-              className="min-h-[36px] sm:min-h-[32px] text-xs sm:text-sm flex-1 sm:flex-none"
-            >
-              <Printer className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
-              Print Badges
-            </Button>
-            {bulkActions}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={onClearSelection}
-              className="min-h-[36px] sm:min-h-[32px] text-xs sm:text-sm flex-1 sm:flex-none"
-            >
-              <XSquare className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
-              Clear
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Mobile/Tablet Cards - hidden on desktop (1180px+) */}
-      <div className="block min-[1180px]:hidden">
-        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-          {pageRows.map((person) => (
-            <MobilePersonnelCard
-              key={person.id}
-              personnel={person}
-              selectionMode={selectionMode}
-              isSelected={selectedIds.includes(person.id)}
-              onSelect={onToggleSelection}
-              onPrintBadge={handlePrintSingleBadge}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Desktop Table - hidden below 1180px */}
-      <div className="hidden min-[1180px]:block">
+      <BulkAssignLocationDialog open={bulkAssignOpen} onOpenChange={setBulkAssignOpen} personnelIds={selectedIds} onDone={onClearSelection}/>
+      {/* Shared desktop grid and phone cards */}
+      <div>
         <EnhancedDataTable
           fillViewport
           tableId="personnel"
@@ -611,9 +573,14 @@ export function PersonnelTable({
           columns={columns.filter(c => c.key !== "rate" || isAdmin || isManager)}
           rowHref={person => `/personnel/${person.id}`}
           exportName="personnel"
+          onEdit={person=>navigate(`/personnel/${person.id}?edit=true`)}
+          onAdd={()=>navigate('/personnel?action=add')}
+          entityName="personnel"
+          primaryBulkActions={()=> <Button variant="outline" size="sm" onClick={()=>setBulkAssignOpen(true)}>Assign</Button>}
+          onSetActive={async(people,active)=>{await statusUpdate.mutateAsync({ids:people.map(p=>p.id),patch:{status:active?'active':'inactive'}});}}
           bulkActions={() => <><Button size="sm" variant="outline" onClick={onPrintBadges}><Printer className="h-3.5 w-3.5 mr-1" />Print badges</Button>{bulkActions}</>}
           attention={person => !person.phone ? "Missing phone" : null}
-          selectable={selectionMode}
+          selectable={(isAdmin || isManager) && selectionMode}
           selectedIds={new Set(selectedIds)}
           onSelectionChange={(next) => {
             const cur = new Set(selectedIds);
@@ -621,18 +588,6 @@ export function PersonnelTable({
             for (const id of cur) if (!next.has(id) && personnel.some(p => p.id === id)) onToggleSelection(id);
           }}
         />
-      </div>
-
-      {/* Pagination (phone cards; the desktop grid has its own footer) */}
-      <div className="min-[1180px]:hidden">
-      <TablePagination
-        currentPage={currentPage}
-        totalCount={totalCount}
-        rowsPerPage={rowsPerPage}
-        onPageChange={onPageChange}
-        onRowsPerPageChange={onRowsPerPageChange}
-        rowsPerPageOptions={[10, 20, 30, 40]}
-      />
       </div>
 
       {/* Deactivate Confirmation Dialog */}

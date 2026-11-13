@@ -1,4 +1,9 @@
-import {Link} from 'react-router-dom';
+import {Link,useNavigate} from 'react-router-dom';
+import {useUserRole} from '@/hooks/useUserRole';
+import {useUpdateProjectLocation} from '@/integrations/supabase/hooks/useProjectLocations';
+import {useQueryClient} from '@tanstack/react-query';
+import {Button} from '@/components/ui/button';
+import {DropdownMenuItem} from '@/components/ui/dropdown-menu';
 import {useMemo} from 'react';
 import {PageLayout} from '@/components/layout/PageLayout';
 import {EnhancedDataTable,type EnhancedColumn} from '@/components/shared/EnhancedDataTable';
@@ -16,6 +21,7 @@ import {ProjectTypeChip} from '@/components/projects/EventCustomers';
 import {locationHref} from '@/lib/navigationState';
 
 export default function Locations() {
+  const navigate=useNavigate(),{isAdmin,isManager}=useUserRole(),update=useUpdateProjectLocation(),qc=useQueryClient();
   const index=useGlobalLocations(),types=useProjectTypes(),customers=useCustomers();
   const locations=index.data?.locations??[],projects=index.data?.projects??[];
   const [project,setProject]=useSessionState('global-locations:project','all');
@@ -52,6 +58,13 @@ export default function Locations() {
       <Select value={customer} onValueChange={setCustomer}><SelectTrigger aria-label="Filter by customer" className="w-full sm:w-56"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All customers</SelectItem>{customers.data?.filter(c=>locations.some(l=>(l.customer_id||projects.find(p=>p.id===l.project_id)?.customer_id)===c.id)).map(c=><SelectItem key={c.id} value={c.id}>{getCustomerDisplayName(c)}</SelectItem>)}</SelectContent></Select>
     </div>
     {(index.error||staffing.error||authorization.error||ops.error)&&<p role="alert" className="text-destructive">Some location details could not be loaded.</p>}
-    <EnhancedDataTable fillViewport tableId="global-locations" searchable={false} data={rows} columns={columns} rowHref={r=>locationHref(r.project_id,r.id)} exportName="locations" emptyText={index.isLoading?"Loading locations…":"No locations match."}/>
+    <EnhancedDataTable fillViewport tableId="global-locations" searchable={false} data={rows} columns={columns} rowHref={r=>locationHref(r.project_id,r.id)} exportName="locations" selectable={isAdmin||isManager}
+      entityName="location" onEdit={r=>navigate(`${locationHref(r.project_id,r.id)}?action=edit`)}
+      onAdd={()=>{const pid=project!=='all'?project:rows[0]?.project_id;if(pid)navigate(`/projects/${pid}?tab=locations&action=new-location`);}}
+      canSetActive={r=>r.status==='active'||r.status==='on_hold'}
+      onSetActive={async(selected,active)=>{try{for(const r of selected)await update.mutateAsync({id:r.id,project_id:r.project_id,name:r.name,status:active?'active':'on_hold'});}finally{qc.invalidateQueries({queryKey:['project-locations']});}}}
+      primaryBulkActions={selected=>selected.length===1?<Button size="sm" variant="outline" onClick={()=>navigate(`${locationHref(selected[0].project_id,selected[0].id)}?tab=staffing&action=assign`)}>Assign</Button>:null}
+      rowMenu={r=>(isAdmin||isManager)?<><DropdownMenuItem onSelect={()=>navigate(`${locationHref(r.project_id,r.id)}?tab=staffing&action=assign`)}>Assign people</DropdownMenuItem><DropdownMenuItem onSelect={()=>navigate(`${locationHref(r.project_id,r.id)}?tab=sheets&action=daily`)}>Daily timesheet PDF</DropdownMenuItem></>:null}
+      emptyText={index.isLoading?"Loading locations…":"No locations match."}/>
   </div></PageLayout>;
 }

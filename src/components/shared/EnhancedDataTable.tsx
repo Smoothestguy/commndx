@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Children, isValidElement, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { createPortal } from 'react-dom';
+import { useUserRole } from '@/hooks/useUserRole';
+import { CARD_HOLD_MS, cancelCardHold, canEditSelection } from '@/lib/cardInteraction';
 import * as XLSX from "xlsx";
 import {
   DndContext,
@@ -63,6 +66,12 @@ export interface EnhancedColumn<T> {
 }
 
 interface EnhancedDataTableProps<T> {
+  onEdit?: (item: T) => void;
+  onAdd?: () => void;
+  entityName?: string;
+  rowMenu?: (item: T) => React.ReactNode;
+  onSetActive?: (items: T[], active: boolean) => Promise<unknown>;
+  canSetActive?: (item: T) => boolean;
   tableId: string;
   data: T[];
   columns: EnhancedColumn<T>[];
@@ -83,6 +92,7 @@ interface EnhancedDataTableProps<T> {
   toolbar?: React.ReactNode;
   /** Bulk actions bar content shown while rows are selected. */
   bulkActions?: (selected: T[], clear: () => void) => React.ReactNode;
+  primaryBulkActions?: (selected: T[], clear: () => void) => React.ReactNode;
   /** Return a reason to show a warning dot (e.g. missing phone/signature). */
   attention?: (item: T) => string | null | undefined;
   /** File name stem for XLSX/CSV export (enables footer export). */
@@ -139,8 +149,18 @@ const cellText = <T,>(item: T, column: EnhancedColumn<T>) => {
   const v = column.getValue ? column.getValue(item) : (item as Record<string, unknown>)[String(column.key)];
   return v == null ? "" : typeof v === "object" ? "" : String(v);
 };
+function existingMenu(node:React.ReactNode):React.ReactNode {
+  for (const child of Children.toArray(node)) {
+    if (!isValidElement<{children?:React.ReactNode}>(child)) continue;
+    if (child.type === DropdownMenuContent) return child.props.children;
+    const nested = existingMenu(child.props.children);
+    if (nested) return nested;
+  }
+  return null;
+}
 
 export function EnhancedDataTable<T extends { id: string | number }>({
+  onEdit, onAdd, entityName = 'record', rowMenu, onSetActive, canSetActive,
   tableId,
   data,
   columns,
@@ -156,6 +176,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   searchPlaceholder = "Search…",
   toolbar,
   bulkActions,
+  primaryBulkActions,
   attention,
   exportName,
   defaultPageSize = 50,
@@ -164,6 +185,17 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   emptyText = "No results found",
 }: EnhancedDataTableProps<T>) {
   const mobile = useIsMobile();
+  const navigate = useNavigate();
+  const { isAdmin, isManager } = useUserRole();
+  const manager = isAdmin || isManager;
+  const [menu, setMenu] = useState<{item:T; x:number; y:number} | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [highlight, setHighlight] = useState<string | null>(null);
+  const hold = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const origin = useRef({x:0,y:0});
+  const suppressClick = useRef(false);
+  const cancelHold = () => { if (hold.current) clearTimeout(hold.current); hold.current = null; };
+  useEffect(() => { window.addEventListener('scroll', cancelHold, true); return () => { cancelHold(); window.removeEventListener('scroll', cancelHold, true); }; }, []);
   const defaultColumnKeys = columns.map(col => String(col.key));
   const { preferences, setSort, toggleColumnVisibility, setColumnOrder, setColumnFilter } = useTablePreferences({
     tableId, defaultColumns: defaultColumnKeys, defaultSortKey, defaultSortDirection,
@@ -286,6 +318,35 @@ export function EnhancedDataTable<T extends { id: string | number }>({
     onSelectionChange(next);
   };
   const clearSelection = () => onSelectionChange?.(new Set());
+  const changeActive = async (items:T[], active:boolean) => {
+    if (!manager || !onSetActive || busy) return;
+    setBusy(true);
+    try { await onSetActive(items, active); clearSelection(); } catch { /* existing mutation reports the failure */ } finally { setBusy(false); }
+  };
+  const openMenu = (item:T, element:HTMLElement, x:number, y:number) => {
+    if (!rowMenu && !onEdit && !onSetActive && !onAdd) {
+      const trigger = element.querySelector<HTMLElement>('[data-row-actions] button,button[aria-haspopup="menu"]');
+      if (trigger) { trigger.click(); return; }
+    }
+    setMenu({item,x,y});
+  };
+  const contextRow = (event:React.MouseEvent<HTMLElement>, item:T) => {
+    if (event.target instanceof Element && event.target.closest('a[href]')) return;
+    event.preventDefault(); event.stopPropagation();
+    openMenu(item,event.currentTarget,event.clientX,event.clientY);
+  };
+  const holdStart = (event:React.PointerEvent<HTMLElement>, item:T) => {
+    if (event.pointerType !== 'touch' || (event.target instanceof Element && event.target.closest('button,input,[role="checkbox"],summary'))) return;
+    cancelHold(); suppressClick.current = false;
+    origin.current = {x:event.clientX,y:event.clientY};
+    const element = event.currentTarget;
+    hold.current = setTimeout(() => {
+      suppressClick.current = true;
+      if (manager && selectable) handleSelectOne(String(item.id), true);
+      setHighlight(String(item.id)); setTimeout(() => setHighlight(null), 250);
+      openMenu(item, element, origin.current.x, origin.current.y);
+    }, CARD_HOLD_MS);
+  };
 
   const handleSort = (key: string, direction: 'asc' | 'desc') => setSort(key, direction);
 
@@ -338,16 +399,27 @@ export function EnhancedDataTable<T extends { id: string | number }>({
 
       {/* Bulk actions bar */}
       {selectable && selectedRows.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 px-3 py-1.5 border-b border-border bg-primary/5 text-xs" role="region" aria-label="Bulk actions">
+        createPortal(<div className={cn("flex flex-wrap items-center gap-2 px-3 py-1.5 border border-border bg-card text-xs", mobile ? "fixed inset-x-2 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-40 rounded-lg shadow-lg max-h-[35vh] overflow-auto animate-in slide-in-from-bottom-4 motion-reduce:animate-none [&_button]:min-h-11" : "hidden")} role="region" aria-label="Phone bulk actions">
           <span className="font-semibold">{selectedRows.length} selected</span>
-          {bulkActions?.(selectedRows, clearSelection)}
+          {manager && onSetActive && selectedRows.every(i=>!canSetActive || canSetActive(i)) && <><Button variant="outline" size="sm" disabled={busy} onClick={()=>void changeActive(selectedRows,false)}>Deactivate</Button><Button variant="outline" size="sm" disabled={busy} onClick={()=>void changeActive(selectedRows,true)}>Activate</Button></>}
+          {canEditSelection(manager,selectedRows.length) && onEdit && <Button variant="outline" size="sm" onClick={()=>onEdit(selectedRows[0])}>Edit</Button>}
+          {manager && primaryBulkActions?.(selectedRows,clearSelection)}
+          {manager && bulkActions && <DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" variant="outline">More actions</Button></DropdownMenuTrigger><DropdownMenuContent className="max-h-[50vh] overflow-auto max-w-[calc(100vw-2rem)]"><div className="flex flex-col gap-2 p-1 [&_button]:justify-start">{bulkActions(selectedRows,clearSelection)}</div></DropdownMenuContent></DropdownMenu>}
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => exportRows("xlsx", true)}><Download className="h-3 w-3 mr-1" />Export selected</Button>
-          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={clearSelection}>Clear</Button>
-        </div>
+          <Button size="icon" variant="ghost" aria-label="Clear selection" onClick={clearSelection}><X className="h-4 w-4"/></Button>
+        </div>,document.body)
       )}
+      {!mobile && selectable && selectedRows.length > 0 && <div role="region" aria-label="Bulk actions" className="flex flex-wrap items-center gap-2 px-3 py-1.5 border-b border-border bg-primary/5 text-xs"><span>{selectedRows.length} selected</span>{manager && onSetActive && selectedRows.every(i=>!canSetActive || canSetActive(i)) && <><Button size="sm" variant="outline" disabled={busy} onClick={()=>void changeActive(selectedRows,false)}>Deactivate</Button><Button size="sm" variant="outline" disabled={busy} onClick={()=>void changeActive(selectedRows,true)}>Activate</Button></>}{canEditSelection(manager,selectedRows.length) && onEdit && <Button size="sm" variant="outline" onClick={()=>onEdit(selectedRows[0])}>Edit</Button>}{manager && bulkActions?.(selectedRows,clearSelection)}<Button size="sm" variant="outline" onClick={()=>exportRows('xlsx',true)}>Export selected</Button><Button size="icon" variant="ghost" aria-label="Clear selection" onClick={clearSelection}><X className="h-4 w-4"/></Button></div>}
+      {menu && <DropdownMenu open onOpenChange={open=>{if(!open)setMenu(null);}}><DropdownMenuTrigger asChild><span className="fixed h-px w-px" style={{left:menu.x,top:menu.y}}/></DropdownMenuTrigger><DropdownMenuContent className="max-h-[60vh] overflow-auto min-w-48 bg-card text-foreground shadow-lg" onCloseAutoFocus={e=>e.preventDefault()} onClick={e=>e.stopPropagation()}>
+        <DropdownMenuItem onSelect={()=>rowHref ? navigate(rowHref(menu.item)) : onRowClick?.(menu.item)}>Open</DropdownMenuItem>
+        {manager && onEdit && <DropdownMenuItem onSelect={()=>onEdit(menu.item)}>Edit</DropdownMenuItem>}
+        {manager && onSetActive && (!canSetActive || canSetActive(menu.item)) && <><DropdownMenuItem disabled={busy} onSelect={()=>void changeActive([menu.item],false)}>Deactivate</DropdownMenuItem><DropdownMenuItem disabled={busy} onSelect={()=>void changeActive([menu.item],true)}>Activate</DropdownMenuItem></>}
+        {manager && onAdd && <DropdownMenuItem onSelect={onAdd}>Add new {entityName}</DropdownMenuItem>}
+        {rowMenu ? <><DropdownMenuSeparator/>{rowMenu(menu.item)}</> : <><DropdownMenuSeparator/>{columns.map(c=>existingMenu(c.render?.(menu.item)))}</>}
+      </DropdownMenuContent></DropdownMenu>}
 
       {mobile ? <div aria-label="Phone card list" className="divide-y min-w-0">
-        {pageRows.map(item => <article key={String(item.id)} className="p-3 space-y-3 min-w-0">
+        {pageRows.map(item => <article key={String(item.id)} onContextMenu={e=>contextRow(e,item)} onPointerDown={e=>holdStart(e,item)} onPointerMove={e=>{if(cancelCardHold(origin.current,e.clientX,e.clientY))cancelHold();}} onPointerUp={cancelHold} onPointerCancel={cancelHold} onClickCapture={e=>{if(suppressClick.current){e.preventDefault();e.stopPropagation();suppressClick.current=false;}}} className={cn("p-3 space-y-3 min-w-0 transition-colors", selectedIds.has(String(item.id)) && 'bg-primary/5', highlight===String(item.id) && 'bg-accent')}>
           <div className="flex gap-3 items-start">{selectable && <Checkbox className="mt-1 h-5 w-5" aria-label="Select row" checked={selectedIds.has(String(item.id))} onCheckedChange={v=>handleSelectOne(String(item.id),!!v)}/>}<div className="min-w-0 flex-1">{visibleColumns.slice(0,1).map(c=><div key={String(c.key)} className="font-semibold break-words">{rowHref?<Link to={rowHref(item)}>{c.render?c.render(item):cellText(item,c)}</Link>:onRowClick?<Button variant="ghost" className="p-0 min-h-11 h-auto text-left whitespace-normal justify-start" onClick={()=>onRowClick(item)}>{c.render?c.render(item):cellText(item,c)}</Button>:c.render?c.render(item):cellText(item,c)}</div>)}{attention?.(item)&&<p className="text-xs text-warning">{attention(item)}</p>}</div></div>
           <dl className="grid grid-cols-2 gap-x-3 gap-y-2 min-w-0">{visibleColumns.slice(1,5).filter(c=>!c.noExport).map(c=><div key={String(c.key)} className="min-w-0"><dt className="text-xs text-muted-foreground">{c.header}</dt><dd className="text-sm break-words [&_*]:max-w-full">{c.render?c.render(item):cellText(item,c)||'—'}</dd></div>)}</dl>
           {visibleColumns.length>5&&<details><summary className="min-h-11 flex items-center text-sm text-primary cursor-pointer">More details</summary><dl className="space-y-2">{visibleColumns.slice(5).filter(c=>!c.noExport).map(c=><div key={String(c.key)} className="min-w-0"><dt className="text-xs text-muted-foreground">{c.header}</dt><dd className="text-sm break-words [&_*]:max-w-full">{c.render?c.render(item):cellText(item,c)||'—'}</dd></div>)}</dl></details>}
@@ -421,6 +493,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                 return (
                   <tr
                     key={id}
+                    onContextMenu={e=>contextRow(e,item)}
                     onClick={rowHref ? undefined : e => { if (e.target instanceof Element && e.target.closest('a,button,input,[role="button"],[role="switch"],[role="checkbox"]')) return; if (!e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) onRowClick?.(item); }}
                     className={cn("group/row", rowBg, (onRowClick || rowHref) && "cursor-pointer")}
                   >
