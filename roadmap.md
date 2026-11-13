@@ -1,6 +1,6 @@
 # Punch improvements
-- [ ] Guarded schedule-end auto-close and deduplicated worker extension text using an existing active callback; dry-run verification without worker texts.
-- [ ] Token-scoped link-open GPS/unavailable events and manager attendance details, including opens without a punch; privacy and disposable-record verification.
+- [x] Guarded frozen-schedule auto-close via existing active ten-minute roster callback; blank actual checkout and separate reported corrections, owner approval/denial recount, opt-out-aware reserved SMS. Existing jobs unchanged. Disposable close verified exact end/12h, approval 13.25h and denial 12h; live roster dry-run HTTP 200 with zero texts. Unmanaged stale callback now requires existing service/job credentials; its older unauthenticated requests cannot mutate records.
+- [x] Immediate token-scoped GPS/unavailable link-open events; manager attendance details retain events without same-day punches. Real anonymous 390px GPS/denial and correction dialog, manager detail checked. Disposable project/location/worker/stay/events/requests/ledger/alerts/audits removed; Juan link and owner punches untouched. Focused regressions and preview pass; no worker texts sent. The existing ten-minute callback closes at stored schedule time, with up to ten minutes notification delay.
 
 # MX-style mobile Home
 - [x] Final pass: white dock verified at 390px; profile uses self-only active sites or the user's last eligible selection, never a hardcoded event. Owner top bar, 17-count inbox, switcher/reload, dismiss, lazy Add/New TO, Profile and online/offline checked; desktop unchanged, 20 tests pass and build OK. Juan link confirmed intact; no business writes or sends.

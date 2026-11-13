@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useEffect } from 'react';
 
-type Stay = { id: string; personnel_id: string; name: string; in_at: string; out_at: string | null; actual_in_at?: string | null; actual_out_at?: string | null; hours: number | null; late_minutes: number | null; late_reason: string | null; late_ack_reason: string | null; in_geofence: boolean | null; offsite_reason: string | null; synced_late: boolean | null;demobe?:boolean };
+type Stay = { id: string; personnel_id: string; name: string; in_at: string; out_at: string | null; actual_in_at?: string | null; actual_out_at?: string | null;auto_closed_at?:string|null;reported_out_at?:string|null; hours: number | null; late_minutes: number | null; late_reason: string | null; late_ack_reason: string | null; in_geofence: boolean | null; offsite_reason: string | null; synced_late: boolean | null;demobe?:boolean };
 const hm = (iso: string | null, tz: string) => iso ? localTime(iso, tz) : '—';
 const dayLabel = (iso: string, tz: string) => new Date(iso).toLocaleDateString('en-US', { timeZone: tz, month: '2-digit', day: '2-digit' });
 
@@ -50,6 +50,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   const editTimes = useEditStayTimes(projectId);
   const logTime = useLogManualTime(projectId);
   const {data:roster=[]}=useAttendanceRoster(projectId,locationId,day,tz);
+  const linkEvents=useQuery({queryKey:['punch-link-events',locationId,day],enabled:canWrite,refetchInterval:60000,queryFn:async()=>{const result=await supabase.from('punch_link_events').select('id,personnel_id,opened_at,lat,lng,gps_status').eq('location_id',locationId).eq('local_date',day).order('opened_at').limit(500);if(result.error)throw result.error;return result.data;}});
   const q = useQuery({
     queryKey: ['visits-window', 'location-day', locationId, day], refetchInterval: 60000,
     queryFn: async () => {
@@ -61,9 +62,9 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
       if (win.error) throw win.error; if (open.error) throw open.error;
       const rows = [...(win.data ?? []).filter(r => r.in_at && localDay(r.in_at, tz) === day), ...(open.data ?? [])];
       const ids = [...new Set(rows.flatMap(r => r.visit_personnel_id ? [r.visit_personnel_id] : []))];
-      const meta = ids.length ? await supabase.from('visit_personnel').select('id,actual_in_at,actual_out_at,late_minutes,late_reason,late_ack_reason,in_geofence,offsite_reason,synced_late,demobe_task_order_id').in('id', ids) : { data: [], error: null };
+      const meta = ids.length ? await supabase.from('visit_personnel').select('id,actual_in_at,actual_out_at,auto_closed_at,reported_out_at,late_minutes,late_reason,late_ack_reason,in_geofence,offsite_reason,synced_late,demobe_task_order_id').in('id', ids) : { data: [], error: null };
       if (meta.error) throw meta.error;
-      const toStay = (r: typeof rows[number]): Stay => { const m = meta.data?.find(x => x.id === r.visit_personnel_id); return { id: r.visit_personnel_id ?? '', personnel_id: r.personnel_id ?? '', name: [r.first_name, r.last_name].filter(Boolean).join(' '), in_at: r.in_at ?? '', out_at: r.out_at, actual_in_at: m?.actual_in_at, actual_out_at: m?.actual_out_at, demobe:!!m?.demobe_task_order_id, hours: r.hours, late_minutes: m?.late_minutes ?? null, late_reason: m?.late_reason ?? null, late_ack_reason: m?.late_ack_reason ?? null, in_geofence: m?.in_geofence ?? null, offsite_reason: m?.offsite_reason ?? null, synced_late: m?.synced_late ?? null }; };
+      const toStay = (r: typeof rows[number]): Stay => { const m = meta.data?.find(x => x.id === r.visit_personnel_id); return { id: r.visit_personnel_id ?? '', personnel_id: r.personnel_id ?? '', name: [r.first_name, r.last_name].filter(Boolean).join(' '), in_at: r.in_at ?? '', out_at: r.out_at, actual_in_at: m?.actual_in_at, actual_out_at: m?.actual_out_at,auto_closed_at:m?.auto_closed_at,reported_out_at:m?.reported_out_at, demobe:!!m?.demobe_task_order_id, hours: r.hours, late_minutes: m?.late_minutes ?? null, late_reason: m?.late_reason ?? null, late_ack_reason: m?.late_ack_reason ?? null, in_geofence: m?.in_geofence ?? null, offsite_reason: m?.offsite_reason ?? null, synced_late: m?.synced_late ?? null }; };
       const dayStays = (win.data ?? []).filter(r => r.visit_personnel_id && r.in_at && localDay(r.in_at, tz) === day).map(toStay);
       const openStays = (open.data ?? []).filter(r => r.visit_personnel_id && r.in_at).map(toStay);
       const sigRows = (win.data ?? []).filter(r => r.personnel_id && r.in_at && localDay(r.in_at, tz) === day).map(r => ({ personnelId: r.personnel_id ?? '', name: [r.first_name, r.last_name].filter(Boolean).join(' '), signature: r.signature_url }));
@@ -78,6 +79,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
     return [...people.values()].map(p => ({ ...p, stays: p.stays.sort((a, b) => a.in_at.localeCompare(b.in_at)) })).sort((a, b) => (a.stays[0]?.in_at ?? 'z').localeCompare(b.stays[0]?.in_at ?? 'z') || a.name.localeCompare(b.name));
   }, [roster, q.data]);
   const today = localDay(new Date().toISOString(), tz);
+  const openedPeople=useQuery({queryKey:['punch-open-names',locationId,day,(linkEvents.data||[]).map(e=>e.personnel_id).join(',')],enabled:canWrite&&!!linkEvents.data?.length,queryFn:async()=>{const ids=[...new Set((linkEvents.data||[]).map(e=>e.personnel_id))];const result=await supabase.from('personnel_directory').select('id,first_name,last_name').in('id',ids);if(result.error)throw result.error;return result.data;}});
   const stale = (q.data?.openStays ?? []).filter(s => localDay(s.in_at, tz) < today);
   const present = rows.filter(r => r.stays.length).length;
   const total = rows.reduce((s, r) => s + r.stays.reduce((h, x) => h + (x.out_at ? Number(x.hours) || 0 : 0), 0), 0);
@@ -134,6 +136,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
       render: r => { const late = r.stays.find(st => (st.late_minutes ?? 0) > 0); return <span className="flex flex-wrap items-center gap-1">
         {!r.stays.length && <Badge variant="outline">Not signed in</Badge>}
         {r.stays.some(st=>st.demobe)&&<Badge variant="outline">Demobe</Badge>}
+        {r.stays.some(st=>st.auto_closed_at)&&<Badge variant="outline" className="text-warning">Forgot to clock out · auto-closed</Badge>}
         {r.offRoster && <Badge variant="outline">Not on roster this day</Badge>}
         {late ? <Badge variant="outline" className={late.late_ack_reason ? 'text-warning' : 'text-destructive'} title={[late.late_reason, late.late_ack_reason].filter(Boolean).join(' · ')}>LATE {late.late_minutes}m{late.late_ack_reason ? ' · approved' : ''}</Badge> : r.stays.length > 0 && <Badge variant="outline" className="text-success">On time</Badge>}
         {late && canWrite && <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setAck({ stay: late, preset: '', text: '' })}><CheckCircle2 className="h-3 w-3 mr-1" />{late.late_ack_reason ? 'Change approval' : 'Approve late'}</Button>}
@@ -164,6 +167,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
       <p className="text-sm font-medium"><AlertTriangle className="inline h-4 w-4 mr-1 text-warning" />{stale.length} open punch{stale.length === 1 ? '' : 'es'} from earlier days — not counted in hours until closed</p>
       <ul className="divide-y">{stale.map(s => <li key={s.id} className="flex items-center justify-between gap-2 py-1.5 text-sm"><span>{s.name} · in {dayLabel(s.in_at, tz)} {hm(s.in_at, tz)}</span>{canWrite && <Button size="sm" variant="outline" onClick={() => setEdit({ ids: [s.id], name: s.name })}>Close / fix</Button>}</li>)}</ul>
     </div>}
+    {canWrite&&<details className="border-b pb-3"><summary className="cursor-pointer text-sm font-medium">Link opened · {linkEvents.data?.length??0}</summary>{linkEvents.error?<p role="alert">Link-open records could not be loaded.</p>:<ul className="divide-y">{linkEvents.data?.map(e=>{const p=openedPeople.data?.find(p=>p.id===e.personnel_id);return <li key={e.id} className="py-2 text-sm">{p?[p.first_name,p.last_name].filter(Boolean).join(' '):'Worker'} · {hm(e.opened_at,tz).replace(':','')} · {e.gps_status==='captured'?`${e.lat?.toFixed(6)}, ${e.lng?.toFixed(6)}`:'GPS unavailable'}{!rows.find(r=>r.id===e.personnel_id)?.stays.length&&' · No punch recorded'}</li>;})}</ul>}</details>}
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : q.error ? <p role="alert" className="text-sm text-destructive">Attendance could not be loaded.</p> :
       <EnhancedDataTable tableId={`attendance:${locationId}`} data={rows} columns={columns}
         selectable={canWrite} selectedIds={sel} onSelectionChange={setSel} exportName={`attendance-${day}`}

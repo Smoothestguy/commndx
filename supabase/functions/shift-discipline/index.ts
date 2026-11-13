@@ -17,9 +17,13 @@ Deno.serve(async req=>{
    const {data:extension,error:ee}=await db.from('shift_extensions').select('status,until_at').eq('personnel_id',t.personnel_id).eq('location_id',t.location_id).eq('ext_date',day).maybeSingle();if(ee)throw ee;
    const {data:open,error:oe}=await db.from('visit_personnel').select('scheduled_start_at,scheduled_end_at,checked_in_at,location_visits!inner(location_id)').eq('personnel_id',t.personnel_id).eq('location_visits.location_id',t.location_id).is('checked_out_at',null).order('checked_in_at',{ascending:false}).limit(1).maybeSingle();if(oe)throw oe;
    const {data:start,error:se}=await db.rpc('_shift_start_for',{p_location:t.location_id,p_at:new Date().toISOString()});if(se)throw se;
-   const begins=open?.scheduled_start_at||start;
+   const {data:closed,error:closedError}=await db.from('visit_personnel').select('scheduled_start_at,scheduled_end_at,checked_in_at,auto_closed_at,checked_out_at,location_visits!inner(location_id)').eq('personnel_id',t.personnel_id).eq('location_visits.location_id',t.location_id).gte('auto_closed_at',new Date(Date.now()-48*3600000).toISOString()).eq('manual_time_override',false).order('auto_closed_at',{ascending:false}).limit(1).maybeSingle();if(closedError)throw closedError;
+   const recovery=!open&&closed?closed:null;
+   const begins=open?.scheduled_start_at||recovery?.scheduled_start_at||start;
    const {data:end,error:endError}=await db.rpc('_shift_end_for',{p_location:t.location_id,p_in:open?.checked_in_at||begins||new Date().toISOString()});if(endError)throw endError;
-   return json({timezone,timezone_missing:!l.timezone,shift_start:begins,shift_end:open?.scheduled_end_at||end,extension});
+   let currentExtension=extension;
+   if(recovery){const originalDay=new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(recovery.scheduled_start_at||recovery.checked_in_at));const original=await db.from('shift_extensions').select('status,until_at').eq('personnel_id',t.personnel_id).eq('location_id',t.location_id).eq('ext_date',originalDay).maybeSingle();if(original.error)throw original.error;currentExtension=original.data;}
+   return json({timezone,timezone_missing:!l.timezone,shift_start:begins,shift_end:open?.scheduled_end_at||recovery?.scheduled_end_at||end,extension:currentExtension,auto_closed:!!recovery,closed_at:recovery?.checked_out_at});
   }
   if(v.action==='review'){
    const auth=await authorize(req,db);if(!auth?.uid)return json({error:'Manager access required'},403);
