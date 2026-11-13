@@ -1,4 +1,5 @@
 # Architecture rules
+- SECURITY DEFINER: REVOKE ALL from PUBLIC/anon/authenticated, then explicit grants only.
 - Signature PDF exports share stamp-time canvas paper removal without modifying stored originals; template renderers clamp legacy box heights to row bands and clone overflow pages. Customer locks retain their immutable primary PDF; FRG secondary reports are separate generated copies, never overwrite customer evidence.
 - Shared Input adapts time/date-time controls to military drafts and canonical clock values; site texts/windows/details resolve location then project timezone, with visible fallback. Shift ends inherit; payroll stays Chicago-segmented. Bulk saves retain partial successes without atomicity claims.
 - Construction-module visibility is UI-only, stored as allow-listed booleans in the existing integration_settings app_modules JSON row; defaults hide construction without deleting data or altering authorization. Shared path visibility governs navigation and project sections.

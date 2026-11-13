@@ -79,6 +79,8 @@ function directUrl(bucket: string, urlOrPath: string): string | null {
  * and batched across simultaneous mounts.
  */
 export function useSecureUrl(bucket: string, urlOrPath: string | null | undefined) {
+  const actualBucket = urlOrPath?.match(/\/storage\/v1\/object\/(?:public|sign|authenticated)\/([^/]+)\//)?.[1] || bucket;
+  bucket = actualBucket;
   const direct = urlOrPath ? directUrl(bucket, urlOrPath) : null;
   const path = urlOrPath && !direct ? getPathFromUrl(urlOrPath, bucket) : "";
   // Safety net: if the original input was an absolute URL, fall back to it when
