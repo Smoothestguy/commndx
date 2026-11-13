@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { WelcomeStrip } from "./WelcomeStrip";
 import { OperationsHome } from '../OperationsHome';
 import { MyDayHome } from '../MyDayHome';
@@ -37,6 +38,7 @@ import {
 
 export function RowBasedDashboard() {
   const { isAdmin, isManager, role, loading: roleLoading, hasError: roleError } = useUserRole();
+  const mobile = useIsMobile();
   const [salesOpen, setSalesOpen] = useState(false);
   const {
     activeTheme,
@@ -242,7 +244,7 @@ export function RowBasedDashboard() {
         <WelcomeStrip />
 
         {view === 'operations' ? <OperationsHome /> : <MyDayHome />}
-        {canCustomize && <section aria-label="Sales" className="border-t pt-3">
+        {canCustomize && !mobile && <section aria-label="Sales" className="border-t pt-3">
           <Button variant="ghost" className="w-full justify-between h-12 px-0" aria-expanded={salesOpen} onClick={() => setSalesOpen(v => !v)}>
             <span className="font-semibold">Sales</span><ChevronDown className={`h-4 w-4 transition-transform ${salesOpen ? 'rotate-180' : ''}`} />
           </Button>
