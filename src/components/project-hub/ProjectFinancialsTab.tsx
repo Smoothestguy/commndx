@@ -1,4 +1,6 @@
 import { EventRollups } from './EventRollups';
+import { ReconcileView } from '@/components/signin/ReconcileView';
+import { ProjectTimeEntriesList } from './ProjectTimeEntriesList';
 import { MileageCard } from './ProjectDeploymentTab';
 import { useCrews } from '@/integrations/supabase/hooks/useCrews';
 import { useProjectLocations } from '@/integrations/supabase/hooks/useProjectLocations';
@@ -50,6 +52,7 @@ export function ProjectFinancialsTab({ projectId, project, customer }: Props) {
   const {data:locations=[]}=useProjectLocations(projectId),{data:crews=[]}=useCrews(projectId);
   const {isAdmin,isManager}=useUserRole();
   const week=currentWeekStart();
+  const [reconciliationWeek,setReconciliationWeek]=useState(week);
   const modules=useAppModules();
   const { data: estimates = [] } = useEstimatesByProject(projectId);
   const { data: jobOrders = [] } = useJobOrdersByProject(projectId);
@@ -219,6 +222,8 @@ export function ProjectFinancialsTab({ projectId, project, customer }: Props) {
       <PersonnelExpensesCard projectId={projectId} />
       <ProjectUnbilledLabor projectId={projectId} totalInvoiced={financialData.totalInvoiced} />
       <ProjectEquipmentCharges projectId={projectId} />
+      <details className="border-y py-3"><summary className="cursor-pointer text-sm font-semibold">Time reconciliation</summary><div className="pt-3"><ReconcileView projectId={projectId} week={reconciliationWeek} setWeek={setReconciliationWeek}/></div></details>
+      <details className="border-y py-3"><summary className="cursor-pointer text-sm font-semibold">Time entries</summary><div className="pt-3"><ProjectTimeEntriesList projectId={projectId}/></div></details>
       <ProjectLaborAllocation projectId={projectId} />
       <ProjectRateBracketsSection projectId={projectId} />
 

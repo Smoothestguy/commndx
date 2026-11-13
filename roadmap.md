@@ -1,7 +1,7 @@
 # Information architecture
-- [ ] Global Locations grid and shared desktop/mobile navigation; app-wide Field Mode.
-- [ ] Event-only tabs, rollups/settings, location alerts and Financials warnings; legacy-link redirects.
-- [ ] Customer/supplier naming and location-scope audit; browser and focused tests without production writes.
+- [x] Global Locations shared grid defaults to active sites; project/status/customer filters and project/type/count columns verified. Locations follows Projects in desktop/mobile navigation; Staffing Map follows Bench. Field Mode has a header/Home action and event chooser.
+- [x] Five event-only tabs; aggregate rollups/map and separate Customers / Vendors & Agencies panels, project-menu settings, location authorization/customer/demob strips, Financials missing-rate warnings and crew mileage. Old deployment/crew/time tabs redirect; task orders and service detail remain location-owned; roster/crew setup resides in Recruiting.
+- [x] Confirmed early-arrival review query now constrains exact location plus project. Signed-in Florida checks: four pins, 18 person-days/207.03 hours, active 2/all 4 locations and Patriot filtering, 5049 attendance/TOs, settings, old link redirect, phone navigation/no overflow. Thirty-eight focused tests passed; no production records, files, messages, or schedules changed.
 
 # Projects as events
 - [x] Managed EM/DC/DCBASECAMP types with manager settings, optional project default, location customer backfill, new-location defaults, and location-scoped portal reads/submissions; historical orders/PDFs untouched.
