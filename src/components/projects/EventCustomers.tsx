@@ -1,0 +1,7 @@
+import { Link } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge';
+import { getCustomerDisplayName } from '@/utils/customerDisplayName';
+import type { ProjectType } from '@/hooks/useProjectEvent';
+const tones:Record<string,string>={primary:'bg-primary/10 text-primary border-primary/30',success:'bg-success/10 text-success border-success/30',warning:'bg-warning/10 text-warning border-warning/30',destructive:'bg-destructive/10 text-destructive border-destructive/30',muted:'bg-muted text-muted-foreground border-border'};
+export function ProjectTypeChip({type}:{type?:ProjectType}) {return type?<Badge variant="outline" className={tones[type.color]||tones.primary} title={type.name}>{type.code}</Badge>:<span className="text-muted-foreground">—</span>;}
+export function EventCustomers({rows,customers}:{rows:{id:string;count:number}[];customers?:{id:string;name:string;company?:string|null}[]}) {return <div className="flex flex-wrap gap-1">{rows.map(r=>{const customer=customers?.find(c=>c.id===r.id);return <Link key={r.id} to={`/customers/${r.id}`} onClick={e=>e.stopPropagation()}><Badge variant="outline">{customer?getCustomerDisplayName(customer):'Customer'} <span className="ml-1 text-muted-foreground">({r.count})</span></Badge></Link>;})}</div>;}
