@@ -221,7 +221,8 @@ export function FormFileUpload({
 
   const displayName = fileName || (isUrlValue ? value.split("/").pop() : null);
   const hasFile = isUrlValue || fileName;
-  const displayPreview = preview || (isUrlValue && value?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? value : null);
+  // New anonymous uploads preview locally; durable private references are never fetched publicly.
+  const displayPreview = preview;
   const showRetry = !!error && !uploading;
 
   return (

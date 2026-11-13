@@ -1,3 +1,9 @@
+# Security lockdown
+- [x] Inventory and revoke anonymous privileged non-public RPCs; close backup conversation tables and future function defaults.
+- [ ] Guard intake and authenticated mutation callers; token-only safe vendor onboarding.
+- [ ] Private evidence buckets with authorized short-lived previews and PDF stamping.
+- [ ] Anonymous public-flow smoke, forbidden-call checks, focused security tests and advisor remediation; clean verification records.
+
 # Location-first join headings
 - [x] Location-scoped registration/confirmation leads with location and secondary project in EN/ES, including agency branding; whole-project links remain project-led. Copy/SMS text uses the same primary scope and translated sign-up label.
 - [x] Anonymous exact DOM token EN/ES and intercepted confirmations passed; owner clipboard showed location-led agency text. No active whole-project token found on Florida, so whole-project EN/ES presentation checked with intercepted info only. No production writes or sends.

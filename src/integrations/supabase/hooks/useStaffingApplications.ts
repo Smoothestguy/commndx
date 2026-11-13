@@ -493,6 +493,7 @@ export const useSubmitApplication = () => {
     mutationFn: async ({
       posting_id,
       agencyToken,
+      postingToken,
       applicant: applicantData,
       answers,
       geo,
@@ -504,6 +505,7 @@ export const useSubmitApplication = () => {
     }: {
       posting_id: string;
       agencyToken?: string;
+      postingToken?: string;
       applicant: {
         first_name: string;
         last_name: string;
@@ -523,148 +525,13 @@ export const useSubmitApplication = () => {
       smsConsentPhone?: string;
       smsConsentTextVersion?: string;
     }) => {
-      if (agencyToken) {
-        const {data,error}=await supabase.functions.invoke('agency-application',{body:{action:'submit',agency_token:agencyToken,posting_id,applicant:applicantData,answers,geo,clientSubmittedAt,userAgent,smsConsent,smsConsentPhone,smsConsentTextVersion}});
-        if(error||!data?.id)throw new Error(data?.error||'Agency application could not be submitted');
-        if(smsConsent&&smsConsentPhone)await supabase.functions.invoke('send-application-sms-confirmation',{body:{applicationId:data.id,phone:smsConsentPhone,firstName:applicantData.first_name}});
-        return data as {id:string;applicant_id:string};
-      }
-      console.log("[Application] Starting submission for posting:", posting_id);
-      console.log("[Application] Applicant data:", applicantData);
-      
-      // Look up existing applicant by email via SECURITY DEFINER RPC.
-      // Anon users have no direct SELECT on applicants, so a normal query would
-      // always return null and cause a unique-email conflict on insert below.
-      console.log("[Application] Looking up existing applicant by email/phone via RPC:", applicantData.email);
-      const { data: existingApplicantId, error: fetchError } = await supabase
-        .rpc("find_applicant_id_by_contact", { _email: applicantData.email, _phone: applicantData.phone ?? undefined });
-
-      if (fetchError) {
-        console.error("[Application] Error checking existing applicant:", fetchError);
-        throw fetchError;
-      }
-      console.log("[Application] Existing applicant id:", existingApplicantId);
-
-      let applicantId: string;
-      let isResubmission = false;
-
-      if (existingApplicantId) {
-        applicantId = existingApplicantId as string;
-        console.log("[Application] Using existing applicant:", applicantId);
-
-        // Refresh profile fields (photo, address, phone, ...) — only fills gaps,
-        // never overwrites existing values with blanks.
-        const { error: profileError } = await supabase.rpc(
-          "update_applicant_profile_on_submit",
-          {
-            _applicant_id: applicantId,
-            _first_name: applicantData.first_name ?? null,
-            _last_name: applicantData.last_name ?? null,
-            _phone: applicantData.phone ?? null,
-            _address: applicantData.address ?? null,
-            _city: applicantData.city ?? null,
-            _state: applicantData.state ?? null,
-            _home_zip: applicantData.home_zip ?? null,
-            _photo_url: applicantData.photo_url ?? null,
-          }
-        );
-        if (profileError) {
-          console.error("[Application] Error refreshing applicant profile (non-fatal):", profileError);
-        }
-
-        // Check active (non-rejected) application via SECURITY DEFINER RPC.
-        const { data: hasActive, error: checkError } = await supabase
-          .rpc("has_active_application_for_posting", {
-            _applicant_id: applicantId,
-            _job_posting_id: posting_id,
-          });
-
-        if (checkError) {
-          console.error("[Application] Error checking existing application:", checkError);
-          throw checkError;
-        }
-
-        if (hasActive) {
-          console.log("[Application] Active application exists — resubmitting in place");
-          isResubmission = true;
-        }
-      } else {
-        // Create new applicant via SECURITY DEFINER RPC.
-        // Anon users have no SELECT on `applicants` (PII protection), so a
-        // direct .insert().select() from PostgREST fails with an RLS error
-        // when it tries to return the inserted row. The RPC bypasses that
-        // by inserting on the caller's behalf and returning just the id.
-        console.log("[Application] Creating new applicant via RPC");
-        const { data: newApplicantId, error: insertError } = await supabase
-          .rpc("create_applicant_return_id", {
-            _first_name: applicantData.first_name,
-            _last_name: applicantData.last_name,
-            _email: applicantData.email,
-            _phone: applicantData.phone ?? null,
-            _address: applicantData.address ?? null,
-            _city: applicantData.city ?? null,
-            _state: applicantData.state ?? null,
-            _home_zip: applicantData.home_zip ?? null,
-            _photo_url: applicantData.photo_url ?? null,
-          });
-
-        if (insertError) {
-          console.error("[Application] Error creating applicant:", insertError);
-          throw insertError;
-        }
-        applicantId = newApplicantId as string;
-        console.log("[Application] New applicant created:", applicantId);
-      }
-
-      // Files are now uploaded immediately by FormFileUpload component
-      // Just filter out any empty objects or null values that might have been left from failed uploads
-      const processedAnswers: Record<string, unknown> = {};
-      for (const [fieldId, value] of Object.entries(answers)) {
-        // Skip empty objects (failed uploads or unset file fields)
-        if (typeof value === "object" && value !== null && !Array.isArray(value) && Object.keys(value).length === 0) {
-          console.log("[Application] Skipping empty object for field:", fieldId);
-          continue;
-        }
-        // Keep all other values (including URL strings from successful uploads)
-        processedAnswers[fieldId] = value;
-      }
-      console.log("[Application] Processed answers:", processedAnswers);
-
-      // Create the application with geo data and timestamps
-      console.log("[Application] Creating application record for applicant:", applicantId);
-      console.log("[Application] Geo data:", geo);
-      
-      // Create the application via SECURITY DEFINER RPC — anon has no SELECT
-      // on `applications`, so a direct .insert().select() fails with an RLS
-      // error when PostgREST tries to return the inserted row.
-      console.log("[Application] Creating application record for applicant:", applicantId);
-      console.log("[Application] Geo data:", geo);
-
-      const rpcName = isResubmission ? "resubmit_application" : "create_application_return_id";
-      const { data: newApplicationId, error: appError } = await supabase
-        .rpc(rpcName as any, {
-          _job_posting_id: posting_id,
-          _applicant_id: applicantId,
-          _answers: processedAnswers as any,
-          _client_submitted_at: clientSubmittedAt || null,
-          _geo_lat: geo?.lat ?? null,
-          _geo_lng: geo?.lng ?? null,
-          _geo_accuracy: geo?.accuracy ?? null,
-          _geo_source: geo?.source ?? null,
-          _geo_captured_at: geo?.capturedAt ?? null,
-          _geo_error: geo?.error ?? null,
-          _user_agent: userAgent ?? null,
-          _sms_consent: !!smsConsent,
-          _sms_consent_phone: smsConsent ? (smsConsentPhone ?? null) : null,
-          _sms_consent_text_version: smsConsent ? (smsConsentTextVersion ?? 'v1.0') : null,
-        });
-
-      if (appError) {
-        console.error(`[Application] Error running ${rpcName}:`, appError);
-        throw appError;
-      }
-      const application = { id: newApplicationId as string };
-      console.log(`[Application] ${isResubmission ? 'Resubmitted' : 'Created'} application:`, application.id);
+      const { data, error } = await supabase.functions.invoke("public-application", { body: {
+        action: "submit", agency_token: agencyToken, posting_token: postingToken,
+        posting_id, applicant: applicantData, answers, geo, clientSubmittedAt,
+        userAgent, smsConsent, smsConsentPhone, smsConsentTextVersion,
+      } });
+      if (error || !data?.id) throw new Error(data?.error || "Application could not be submitted");
+      const application = data as { id: string; intake_token: string };
 
       // Send SMS confirmation if consent was given
       if (smsConsent && smsConsentPhone) {
@@ -684,64 +551,6 @@ export const useSubmitApplication = () => {
         }
       }
 
-      // Auto-geocode applicant if they have address info but no coordinates
-      try {
-        // Check if applicant already has coordinates
-        const { data: applicant } = await supabase
-          .from("applicants")
-          .select("home_lat, home_lng, address, city, state, home_zip")
-          .eq("id", applicantId)
-          .single();
-
-        if (!applicant?.home_lat && !applicant?.home_lng) {
-          // Build address from applicant data or form answers
-          const addressParts = [
-            applicant?.address || applicantData.address || answers.address || answers.street_address,
-            applicant?.city || applicantData.city || answers.city,
-            applicant?.state || applicantData.state || answers.state,
-            applicant?.home_zip || applicantData.home_zip || answers.zip || answers.zipcode,
-          ].filter(Boolean);
-
-          const address = addressParts.join(", ");
-          
-          if (address) {
-            console.log("[Application] Auto-geocoding applicant address:", address);
-            const { data: geo } = await supabase.functions.invoke("geocode", {
-              body: { address },
-            });
-
-            if (geo?.ok && geo.lat && geo.lng) {
-              console.log("[Application] Geocode successful:", geo.lat, geo.lng);
-              await supabase
-                .from("applicants")
-                .update({
-                  home_lat: geo.lat,
-                  home_lng: geo.lng,
-                  geocoded_at: new Date().toISOString(),
-                  geocode_source: 'mapbox_submission',
-                  is_geocodable: true,
-                })
-                .eq("id", applicantId);
-            } else {
-              console.log("[Application] Geocode returned no result:", geo?.reason || geo?.error);
-              // Mark as geocodable but without coordinates
-              await supabase
-                .from("applicants")
-                .update({ is_geocodable: false })
-                .eq("id", applicantId);
-            }
-          } else {
-            // No address data available
-            await supabase
-              .from("applicants")
-              .update({ is_geocodable: false })
-              .eq("id", applicantId);
-          }
-        }
-      } catch (geoError) {
-        // Non-critical error - log but don't fail the submission
-        console.error("[Application] Geocoding failed (non-critical):", geoError);
-      }
 
       return application;
     },

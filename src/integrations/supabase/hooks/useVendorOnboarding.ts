@@ -95,48 +95,15 @@ export function useVendorOnboardingToken(token: string | undefined) {
         return { isValid: false, isExpired: false, isUsed: false, token: null, vendor: null };
       }
 
-      // Fetch token data
-      const { data: tokenData, error: tokenError } = await supabase
-        .from("vendor_onboarding_tokens")
-        .select("*")
-        .eq("token", token)
-        .maybeSingle();
-
-      if (tokenError) {
-        console.error("Error fetching token:", tokenError);
-        return { isValid: false, isExpired: false, isUsed: false, token: null, vendor: null };
-      }
-
-      if (!tokenData) {
-        return { isValid: false, isExpired: false, isUsed: false, token: null, vendor: null };
-      }
-
-      // Check if expired
-      const isExpired = new Date(tokenData.expires_at) < new Date();
-      const isUsed = !!tokenData.used_at;
-
-      if (isExpired || isUsed) {
-        return { isValid: false, isExpired, isUsed, token: tokenData, vendor: null };
-      }
-
-      // Fetch vendor data
-      const { data: vendorData, error: vendorError } = await supabase
-        .from("vendors")
-        .select("*")
-        .eq("id", tokenData.vendor_id)
-        .single();
-
-      if (vendorError) {
-        console.error("Error fetching vendor:", vendorError);
-        return { isValid: false, isExpired: false, isUsed: false, token: tokenData, vendor: null };
-      }
-
+      const { data, error } = await supabase.rpc("get_vendor_onboarding_info", { p_token: token });
+      if (error) throw error;
+      const result = data as unknown as { status: string; token?: Omit<VendorOnboardingTokenData, "token">; vendor?: VendorData };
       return {
-        isValid: true,
-        isExpired: false,
-        isUsed: false,
-        token: tokenData,
-        vendor: vendorData,
+        isValid: result.status === "valid",
+        isExpired: result.status === "expired",
+        isUsed: result.status === "used",
+        token: result.token ? { ...result.token, token } : null,
+        vendor: result.vendor ?? null,
       };
     },
     enabled: !!token,

@@ -73,7 +73,7 @@ export async function loadSheetSignature(path: string) {
   if (path.startsWith('http')) {
     const parsed = new URL(path), origin = new URL(import.meta.env.VITE_SUPABASE_URL).origin;
     if (parsed.origin !== origin || !parsed.pathname.includes('/storage/v1/object/')) throw new Error('Invalid signature storage URL');
-    url = parsed.pathname.includes('/field-captures/') ? path : await signatureImageUrl(path);
+    url = await signatureImageUrl(path);
   } else url = await signatureImageUrl(path);
   const response = await fetch(url); if (!response.ok) throw new Error('Signature image unavailable'); return response.arrayBuffer();
 }

@@ -925,6 +925,7 @@ export type Database = {
           geo_lng: number | null
           geo_source: string | null
           id: string
+          intake_token: string
           job_posting_id: string
           missing_fields: Json | null
           notes: string | null
@@ -959,6 +960,7 @@ export type Database = {
           geo_lng?: number | null
           geo_source?: string | null
           id?: string
+          intake_token?: string
           job_posting_id: string
           missing_fields?: Json | null
           notes?: string | null
@@ -993,6 +995,7 @@ export type Database = {
           geo_lng?: number | null
           geo_source?: string | null
           id?: string
+          intake_token?: string
           job_posting_id?: string
           missing_fields?: Json | null
           notes?: string | null
@@ -13428,6 +13431,7 @@ export type Database = {
       get_quick_apply_invite: { Args: { _token: string }; Returns: Json }
       get_site_checkin_info: { Args: { p_token: string }; Returns: Json }
       get_vendor_id_for_user: { Args: { _user_id: string }; Returns: string }
+      get_vendor_onboarding_info: { Args: { p_token: string }; Returns: Json }
       get_workforce_invite: {
         Args: { _token: string }
         Returns: {
@@ -13631,6 +13635,10 @@ export type Database = {
           _sms_consent?: boolean
           _sms_version?: string
         }
+        Returns: boolean
+      }
+      record_applicant_intake_secure: {
+        Args: { p_application: string; p_intake: Json; p_receipt: string }
         Returns: boolean
       }
       request_shift_extension: {

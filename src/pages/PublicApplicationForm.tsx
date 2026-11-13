@@ -934,6 +934,7 @@ export default function PublicApplicationForm() {
 
       const submitResult = await submitApplication.mutateAsync({
         agencyToken: searchParams.get('agency') || undefined,
+        postingToken: token,
         posting_id: posting.id,
         applicant: {
           first_name: data.first_name,
@@ -961,15 +962,15 @@ export default function PublicApplicationForm() {
         const r = submitResult as any;
         const appId = r?.application?.id ?? r?.id ?? null;
         if (appId) {
-          const { error: intakeErr } = await supabase.rpc("record_applicant_intake" as any, {
-            _application_id: appId,
-            _gender: gender,
-            _photo_url: data.photo_url || null,
-            _sms_consent: smsConsent,
-            _sms_version: SMS_CONSENT_VERSION,
-            _photo_consent: photoConsent,
-            _photo_version: PHOTO_CONSENT_VERSION,
-            _language: intakeLang(currentLanguage),
+          const { error: intakeErr } = await supabase.rpc("record_applicant_intake_secure", {
+            p_application: appId, p_receipt: r.intake_token, p_intake: {
+            gender: gender,
+            photo_url: data.photo_url || null,
+            sms_consent: smsConsent,
+            sms_version: SMS_CONSENT_VERSION,
+            photo_consent: photoConsent,
+            photo_version: PHOTO_CONSENT_VERSION,
+            language: intakeLang(currentLanguage), },
           });
           if (intakeErr) logEvent("submit_error", { stage: "intake_consents", message: intakeErr.message });
         }

@@ -2,15 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getPathFromUrl } from "@/utils/signedUrlUtils";
 
-const EXPIRES_IN = 7200; // 2h signed URLs
-const STALE_MS = 45 * 60 * 1000; // reuse for 45 min, well inside expiry
+const EXPIRES_IN = 600;
+const STALE_MS = 5 * 60 * 1000;
 
 /**
  * Buckets that are PUBLIC in this project: their URLs are directly usable.
  * Anything matching /object/public/<publicBucket>/ must be used as-is —
  * routing it through createSignedUrls silently breaks rendering.
  */
-const PUBLIC_BUCKETS = new Set(["application-files", "form-uploads", "logos", "dashboard-backgrounds"]);
+const PUBLIC_BUCKETS = new Set(["logos", "dashboard-backgrounds"]);
 
 /**
  * Batches signed-URL requests per bucket: every avatar that mounts in the same
@@ -83,7 +83,7 @@ export function useSecureUrl(bucket: string, urlOrPath: string | null | undefine
   const path = urlOrPath && !direct ? getPathFromUrl(urlOrPath, bucket) : "";
   // Safety net: if the original input was an absolute URL, fall back to it when
   // the signing call fails instead of showing nothing.
-  const fallback = urlOrPath && urlOrPath.startsWith("http") ? urlOrPath : null;
+  const fallback = null;
 
   const q = useQuery({
     queryKey: ["signed-url", bucket, path],
