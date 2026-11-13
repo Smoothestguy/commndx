@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Children, isValidElement, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { createPortal } from 'react-dom';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -148,6 +148,15 @@ const cellText = <T,>(item: T, column: EnhancedColumn<T>) => {
   const v = column.getValue ? column.getValue(item) : (item as Record<string, unknown>)[String(column.key)];
   return v == null ? "" : typeof v === "object" ? "" : String(v);
 };
+function existingMenu(node:React.ReactNode):React.ReactNode {
+  for (const child of Children.toArray(node)) {
+    if (!isValidElement<{children?:React.ReactNode}>(child)) continue;
+    if (child.type === DropdownMenuContent) return child.props.children;
+    const nested = existingMenu(child.props.children);
+    if (nested) return nested;
+  }
+  return null;
+}
 
 export function EnhancedDataTable<T extends { id: string | number }>({
   onEdit, onAdd, entityName = 'record', rowMenu, onSetActive, canSetActive,
@@ -392,7 +401,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
           <span className="font-semibold">{selectedRows.length} selected</span>
           {manager && onSetActive && selectedRows.every(i=>!canSetActive || canSetActive(i)) && <><Button variant="outline" size="sm" disabled={busy} onClick={()=>void changeActive(selectedRows,false)}>Deactivate</Button><Button variant="outline" size="sm" disabled={busy} onClick={()=>void changeActive(selectedRows,true)}>Activate</Button></>}
           {canEditSelection(manager,selectedRows.length) && onEdit && <Button variant="outline" size="sm" onClick={()=>onEdit(selectedRows[0])}>Edit</Button>}
-          {manager && bulkActions?.(selectedRows, clearSelection)}
+          {manager && bulkActions && <DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" variant="outline">More actions</Button></DropdownMenuTrigger><DropdownMenuContent className="max-h-[50vh] overflow-auto max-w-[calc(100vw-2rem)]"><div className="flex flex-col gap-2 p-1 [&_button]:justify-start">{bulkActions(selectedRows,clearSelection)}</div></DropdownMenuContent></DropdownMenu>}
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => exportRows("xlsx", true)}><Download className="h-3 w-3 mr-1" />Export selected</Button>
           <Button size="icon" variant="ghost" aria-label="Clear selection" onClick={clearSelection}><X className="h-4 w-4"/></Button>
         </div>,document.body)
@@ -403,7 +412,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
         {manager && onEdit && <DropdownMenuItem onSelect={()=>onEdit(menu.item)}>Edit</DropdownMenuItem>}
         {manager && onSetActive && (!canSetActive || canSetActive(menu.item)) && <><DropdownMenuItem disabled={busy} onSelect={()=>void changeActive([menu.item],false)}>Deactivate</DropdownMenuItem><DropdownMenuItem disabled={busy} onSelect={()=>void changeActive([menu.item],true)}>Activate</DropdownMenuItem></>}
         {manager && onAdd && <DropdownMenuItem onSelect={onAdd}>Add new {entityName}</DropdownMenuItem>}
-        {rowMenu && <><DropdownMenuSeparator/>{rowMenu(menu.item)}</>}
+        {rowMenu ? <><DropdownMenuSeparator/>{rowMenu(menu.item)}</> : <><DropdownMenuSeparator/>{columns.map(c=>existingMenu(c.render?.(menu.item)))}</>}
       </DropdownMenuContent></DropdownMenu>}
 
       {mobile ? <div aria-label="Phone card list" className="divide-y min-w-0">

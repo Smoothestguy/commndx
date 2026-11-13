@@ -441,6 +441,7 @@ export function PersonnelTable({
     {
       key: "actions",
       header: "",
+      noExport: true,
       sortable: false,
       filterable: false,
       render: (person: Personnel) => (
@@ -457,21 +458,21 @@ export function PersonnelTable({
               <Eye className="mr-2 h-4 w-4" />
               View
             </DropdownMenuItem>
-            <DropdownMenuItem
+            {(isAdmin || isManager) && <DropdownMenuItem
               onClick={() =>
                 navigate(`/personnel/${person.id}?edit=true`)
               }
             >
               <Edit className="mr-2 h-4 w-4" />
               Edit
-            </DropdownMenuItem>
+            </DropdownMenuItem>}
             <DropdownMenuItem
               onClick={() => handlePrintSingleBadge(person.id)}
             >
               <Printer className="mr-2 h-4 w-4" />
               Print Badge
             </DropdownMenuItem>
-            <DropdownMenuItem
+            {(isAdmin || isManager) && <><DropdownMenuItem
               onClick={(e) => {
                 e.stopPropagation();
                 setRolesDialogPerson(person);
@@ -551,6 +552,7 @@ export function PersonnelTable({
               <Trash2 className="mr-2 h-4 w-4" />
               Delete Permanently
             </DropdownMenuItem>
+            </>}
           </DropdownMenuContent>
         </DropdownMenu>
       ),

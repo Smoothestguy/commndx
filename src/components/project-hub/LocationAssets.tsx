@@ -21,7 +21,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useUserRole } from "@/hooks/useUserRole";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAssets, useCreateAsset } from "@/integrations/supabase/hooks/useAssets";
+import { useAssets, useCreateAsset, useUpdateAsset } from "@/integrations/supabase/hooks/useAssets";
+import {DropdownMenuItem} from '@/components/ui/dropdown-menu';
 import {
   AssetBillingRow, useAssignAssetToLocation, useEndAssetAssignment, useProjectAssetBilling, useUnassignAsset,
 } from "@/integrations/supabase/hooks/useAssetAssignments";
@@ -220,6 +221,7 @@ export function LocationAssets({ projectId, locationId, locationName, canWrite, 
   const [editAsset, setEditAsset] = useState<EditableAsset | null>(null);
   const [selected, setSelected] = useSessionState<string[]>(`location-assets:${locationId}:selection`, []);
   const [bulkEnd, setBulkEnd] = useState<AssetBillingRow[] | null>(null);
+  const updateAsset=useUpdateAsset();
   const columns: EnhancedColumn<AssetBillingRow>[] = [
     { key: 'asset', header: 'Asset', width: 250, getValue: r => r.assets?.label ?? 'Asset', render: r => <span className="flex items-center gap-1"><AssetIcon type={r.assets?.type} />{r.assets?.asset_number && !r.assets?.label?.includes(r.assets.asset_number) && `${r.assets.asset_number} · `}{r.assets?.label ?? 'Asset'}</span> },
     { key: 'ownership', header: 'Ownership', getValue: r => ownershipText(r.assets), render: r => <Badge variant="outline">{ownershipText(r.assets)}</Badge> },
@@ -245,6 +247,10 @@ export function LocationAssets({ projectId, locationId, locationName, canWrite, 
         {canWrite && <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setOpen(true)}><Plus className="h-3 w-3 mr-1" />Assign asset</Button>}
       </div>
       <EnhancedDataTable tableId={`location-assets:${locationId}:${canBill ? 'manager' : 'field'}`} data={here} columns={columns}
+        selectable={canBill} entityName="asset" onEdit={r=>setEditAsset(r.assets??null)} onAdd={()=>setOpen(true)}
+        onRowClick={r=>{if(canBill)setEditAsset(r.assets??null);}}
+        onSetActive={async(selectedRows,active)=>{for(const r of selectedRows)await updateAsset.mutateAsync({id:r.asset_id,status:active?(r.status==='active'&&!r.end_at?'assigned':'available'):'retired'});}}
+        rowMenu={r=><>{canBill&&<DropdownMenuItem onSelect={()=>setDates(r)}>Edit billable dates</DropdownMenuItem>}{canWrite&&!r.end_at&&<DropdownMenuItem onSelect={()=>setBulkEnd([r])}>End assignment</DropdownMenuItem>}</>}
         selectedIds={new Set(selected)} onSelectionChange={ids => setSelected([...ids])} exportName="location-assets"
         attention={r => canBill && r.billable && r.rate == null ? 'Billable without a bill rate' : null}
         bulkActions={canWrite ? (selectedRows) => <Button size="sm" variant="outline" onClick={() => setBulkEnd(selectedRows)}>End selected assignments</Button> : undefined} />
