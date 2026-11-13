@@ -12,6 +12,8 @@ export function useJoinRequests(projectId: string) {
       const { data, error } = await supabase.from('project_join_requests').select('id,project_id,location_id,first_name,last_name,phone,requested_at,matched_personnel_id,status,token_id').eq('project_id', projectId).eq('status', 'pending').order('requested_at', { ascending: true }).order('id').range(offset, offset + 499);
       if (error) throw error; rows.push(...data); if (data.length < 500) break;
     }
+    const phoneMatches=rows.length?await supabase.from('personnel').select('id,phone').in('phone',[...new Set(rows.flatMap(r=>[r.phone,`1${r.phone}`]))]):{data:[],error:null};
+    for(const r of rows){if(!r.matched_personnel_id){const person=phoneMatches.data?.find(p=>p.phone?.replace(/\D/g,'').replace(/^1(?=\d{10}$)/,'')===r.phone);if(person)r.matched_personnel_id=person.id;}}
     const ids = [...new Set(rows.flatMap(r => r.matched_personnel_id ? [r.matched_personnel_id] : []))];
     const names: Record<string, string> = {};
     for (let i = 0; i < ids.length; i += 200) {
