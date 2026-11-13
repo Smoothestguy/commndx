@@ -385,6 +385,8 @@ export const useDuplicateProject = () => {
       const insertPayload: Record<string, unknown> = {
         name: `${source.name} (Copy)`,
         customer_id: source.customer_id,
+        type_id: source.type_id || null,
+        region: source.region || null,
         status: "active",
         stage: "quote",
         start_date: today,
