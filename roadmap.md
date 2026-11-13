@@ -1,3 +1,7 @@
+# Punch improvements
+- [ ] Guarded schedule-end auto-close and deduplicated worker extension text using an existing active callback; dry-run verification without worker texts.
+- [ ] Token-scoped link-open GPS/unavailable events and manager attendance details, including opens without a punch; privacy and disposable-record verification.
+
 # MX-style mobile Home
 - [x] Final pass: white dock verified at 390px; profile uses self-only active sites or the user's last eligible selection, never a hardcoded event. Owner top bar, 17-count inbox, switcher/reload, dismiss, lazy Add/New TO, Profile and online/offline checked; desktop unchanged, 20 tests pass and build OK. Juan link confirmed intact; no business writes or sends.
 - [ ] Fresh jperez 390px verification blocked: the approved-account session mint now refuses because user approval is unavailable in this context. Prior real field verification remains recorded below; no new impersonation or data changes attempted.
