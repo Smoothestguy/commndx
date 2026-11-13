@@ -34,7 +34,7 @@ function HomeCards({manager,sites,count,updatedAt,error,context,fullName,hours,t
  const [params]=useSearchParams(),[selected,setSelected]=useState(''),[switcher,setSwitcher]=useState(false),[more,setMore]=useState(false),[dismiss,setDismiss]=useState(false),[online,setOnline]=useState(navigator.onLine),[tick,setTick]=useState(0);
  useEffect(()=>{const update=()=>setOnline(navigator.onLine);window.addEventListener('online',update);window.addEventListener('offline',update);const timer=setInterval(()=>setTick(t=>t+1),30000);return()=>{window.removeEventListener('online',update);window.removeEventListener('offline',update);clearInterval(timer);};},[]);
  useEffect(()=>{if(params.get('profile')==='1')setMore(true);},[params]);
- const site=sites.find(s=>s.id===selected)||sites.find(s=>s.project.toLowerCase().includes('florida floods'))||sites[0],name=fullName||[profile?.first_name,profile?.last_name].filter(Boolean).join(' ')||'Your account';
+ const site=sites.find(s=>s.id===selected)||sites[0],name=fullName||[profile?.first_name,profile?.last_name].filter(Boolean).join(' ')||'Your account';
  const elapsed=Number.isFinite(updatedAt)&&updatedAt?Math.max(0,Math.floor((Date.now()-updatedAt)/60000)):null;
  const status=error?'Sync unavailable':elapsed===null?'Loading…':elapsed===0?'Synced just now':`Synced ${elapsed}m ago`;
  const last=context||(site?.openAt?`Last punch: ${clock(site.openAt,site.zone||'America/Chicago')} · ${site.name}`:undefined);
