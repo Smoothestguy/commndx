@@ -52,6 +52,6 @@ export default function Locations() {
       <Select value={customer} onValueChange={setCustomer}><SelectTrigger aria-label="Filter by customer" className="w-full sm:w-56"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All customers</SelectItem>{customers.data?.filter(c=>locations.some(l=>(l.customer_id||projects.find(p=>p.id===l.project_id)?.customer_id)===c.id)).map(c=><SelectItem key={c.id} value={c.id}>{getCustomerDisplayName(c)}</SelectItem>)}</SelectContent></Select>
     </div>
     {(index.error||staffing.error||authorization.error||ops.error)&&<p role="alert" className="text-destructive">Some location details could not be loaded.</p>}
-    <EnhancedDataTable fillViewport tableId="global-locations" data={rows} columns={columns} rowHref={r=>locationHref(r.project_id,r.id)} exportName="locations" emptyText={index.isLoading?"Loading locations…":"No locations match."}/>
+    <EnhancedDataTable fillViewport tableId="global-locations" searchable={false} data={rows} columns={columns} rowHref={r=>locationHref(r.project_id,r.id)} exportName="locations" emptyText={index.isLoading?"Loading locations…":"No locations match."}/>
   </div></PageLayout>;
 }
