@@ -13933,6 +13933,10 @@ export type Database = {
           line_kind: string
         }[]
       }
+      location_to_billing_sources: {
+        Args: { p_location: string }
+        Returns: Json
+      }
       log_application_attempt_error: {
         Args: {
           _job_posting_id: string
