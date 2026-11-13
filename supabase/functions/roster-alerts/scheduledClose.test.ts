@@ -7,7 +7,7 @@ function fakeDb(optedOut=false) {
  const calls:string[]=[];
  const db={rpc:()=>Promise.resolve({data:{entries:[{end_at:stay.scheduled_end_at,timezone:'America/New_York'}]},error:null}),from:(table:string)=>{
   let inserted:any=null;let kind='';
-  const q:any={select:()=>q,eq:(k:string,v:string)=>{if(k==='kind')kind=v;return q;},gte:()=>q,gt:()=>q,order:()=>q,limit:()=>q,update:()=>q,insert:(v:any)=>{inserted=v;calls.push(table);return q;},maybeSingle:()=>Promise.resolve({data:table==='site_checkin_tokens'?{id:'private-test-token'}:null,error:null}),single:()=>{
+  const q:any={select:()=>q,returns:()=>q,eq:(k:string,v:string)=>{if(k==='kind')kind=v;return q;},gte:()=>q,gt:()=>q,order:()=>q,limit:()=>q,update:()=>q,insert:(v:any)=>{inserted=v;calls.push(table);return q;},maybeSingle:()=>Promise.resolve({data:table==='site_checkin_tokens'?{id:'private-test-token'}:null,error:null}),single:()=>{
    if(table==='personnel')return Promise.resolve({data:{phone:'2025550100',applicant_id:'applicant'},error:null});
    if(table==='applicants')return Promise.resolve({data:{sms_opted_out:optedOut},error:null});
    const key=inserted?.kind||kind;if(reservations.has(key))return Promise.resolve({data:null,error:{code:'23505'}});
