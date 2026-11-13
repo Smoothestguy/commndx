@@ -92,6 +92,7 @@ export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationI
   const loc = locOptions.find((l) => l.id === locId) ?? null;
   const rosterProjectId=projectId||loc?.project_id;
   const roster=useProjectPersonnelRoster(rosterProjectId,open);
+  const locationRoster=useQuery({queryKey:['site-text-active-roster',locId,personnelIds],enabled:open&&!!locId,queryFn:async()=>{const now=new Date().toISOString();const r=await supabase.from('location_assignments').select('personnel_id').eq('location_id',locId??'').eq('status','active').lte('assigned_at',now).or(`unassigned_at.is.null,unassigned_at.gt.${now}`);if(r.error)throw r.error;return r.data;}});
   const zone = locationZone(loc || {});
   const reportIso = reportAt ? locationTimeIso(reportAt.split('T')[0],reportAt.split('T')[1]||'',zone) : null;
   const hasPoc = !!(loc?.poc_name || loc?.poc_phone);
@@ -114,7 +115,7 @@ export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationI
 
   const send = useMutation({
     mutationFn: async () => {
-      if(!roster.data||personnelIds.some(id=>!roster.data.some(p=>p.id===id)))throw new Error('Add recipients to the project roster first');
+      if(!locationRoster.data||personnelIds.some(id=>!locationRoster.data.some(p=>p.personnel_id===id)))throw new Error('Recipients must be assigned to this location’s active roster');
       const { data, error } = await supabase.functions.invoke("send-site-assignment-sms", {
         body: { location_id: locId, personnel_ids: personnelIds, report_at: reportIso, include: inc, custom_note: note.trim() || undefined },
       });
@@ -163,7 +164,7 @@ export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationI
           {preview && <pre className="whitespace-pre-wrap text-xs rounded-md border bg-muted/40 p-3 font-sans">{preview}</pre>}
           <div className="space-y-1">
             <Label>Recipients ({personnelIds.length})</Label>
-            {rosterProjectId&&<AddToProject projectId={rosterProjectId}/>}
+            {locationRoster.data&&personnelIds.some(id=>!locationRoster.data.some(p=>p.personnel_id===id))&&<p role="alert" className="text-sm text-destructive">Assign recipients to this location’s active roster before texting.</p>}
             <div className="flex flex-wrap gap-1">
               {personnelIds.map((id) => {
                 const p: any = people.find((x: any) => x.id === id);
@@ -179,7 +180,7 @@ export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationI
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Skip</Button>
-          <Button disabled={!locId || !roster.data || personnelIds.some(id=>!roster.data.some(p=>p.id===id)) || (inc.report_time && !!reportAt && !reportIso) || send.isPending} onClick={() => send.mutate()}>
+          <Button disabled={!locId || !locationRoster.data || personnelIds.some(id=>!locationRoster.data.some(p=>p.personnel_id===id)) || (inc.report_time && !!reportAt && !reportIso) || send.isPending} onClick={() => send.mutate()}>
             {send.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Send
           </Button>
         </DialogFooter>
