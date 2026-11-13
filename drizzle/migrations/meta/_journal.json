@@ -533,6 +533,13 @@
       "when": 1794598735630,
       "tag": "0075_to_exact_time_and_validated_change_lines",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1794598849387,
+      "tag": "0076_to_keep_server_autonumber_on_draft_accept",
+      "breakpoints": true
     }
   ]
 }
