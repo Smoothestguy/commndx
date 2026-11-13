@@ -13672,6 +13672,7 @@ export type Database = {
       }
       data_hygiene_preview: { Args: never; Returns: Json }
       data_hygiene_run: { Args: never; Returns: Json }
+      delete_location_to_draft: { Args: { p_id: string }; Returns: undefined }
       deny_join_request: { Args: { p_request: string }; Returns: Json }
       edit_application_by_token: {
         Args: { p_answers: Json; p_applicant: Json; p_token: string }
@@ -14062,6 +14063,10 @@ export type Database = {
       }
       reset_vendor_bill_sequence_for_new_year: {
         Args: never
+        Returns: undefined
+      }
+      resolve_join_agency: {
+        Args: { p_expected_vendor: string; p_person: string; p_request: string }
         Returns: undefined
       }
       resubmit_application: {
