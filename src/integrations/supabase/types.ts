@@ -13428,6 +13428,7 @@ export type Database = {
       get_quick_apply_invite: { Args: { _token: string }; Returns: Json }
       get_site_checkin_info: { Args: { p_token: string }; Returns: Json }
       get_vendor_id_for_user: { Args: { _user_id: string }; Returns: string }
+      get_vendor_onboarding_info: { Args: { p_token: string }; Returns: Json }
       get_workforce_invite: {
         Args: { _token: string }
         Returns: {

@@ -365,6 +365,13 @@
       "when": 1794530342698,
       "tag": "0051_security_close_function_execution",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1794530383849,
+      "tag": "0052_security_safe_vendor_onboarding",
+      "breakpoints": true
     }
   ]
 }
