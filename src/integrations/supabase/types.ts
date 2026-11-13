@@ -13472,6 +13472,16 @@ export type Database = {
         }
         Returns: Json
       }
+      assign_to_authorization: {
+        Args: {
+          p_asset?: string
+          p_kind: string
+          p_label: string
+          p_order: string
+          p_person?: string
+        }
+        Returns: string
+      }
       check_returning_contact: { Args: { _contact: string }; Returns: boolean }
       complete_personnel_onboarding:
         | {
@@ -13541,6 +13551,15 @@ export type Database = {
             }
             Returns: Json
           }
+      complete_to_sheet: {
+        Args: {
+          p_person: string
+          p_role: string
+          p_sheet: string
+          p_stay: string
+        }
+        Returns: string
+      }
       complete_vendor_onboarding: {
         Args: {
           p_address?: string
