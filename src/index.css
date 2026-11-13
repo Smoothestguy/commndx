@@ -624,4 +624,4 @@
 .phone-card { background: hsl(var(--card)); border-radius: 20px; color: hsl(var(--card-foreground)); }
 .phone-icon { background: hsl(var(--phone-icon)); color: hsl(var(--info)); border-radius: 14px; display:flex; align-items:center; justify-content:center; }
 .phone-feature::before { content:''; position:absolute; left:0; top:20px; bottom:20px; width:5px; border-radius:5px; background:hsl(var(--primary)); }
-.phone-dock { box-shadow:var(--phone-shadow); }
+.phone-dock { background:hsl(var(--card)); box-shadow:var(--phone-shadow); }
