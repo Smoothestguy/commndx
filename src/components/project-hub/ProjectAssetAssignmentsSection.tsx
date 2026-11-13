@@ -269,66 +269,6 @@ export function ProjectAssetAssignmentsSection({
                     Assign Asset
                   </Button>
                 </div>
-              ) : false ? (
-                // Mobile Card View
-                <div className="space-y-3">
-                  {activeAssignments.map((assignment) => {
-                    const asset = assignment.assets;
-                    if (!asset) return null;
-                    
-                    return (
-                      <div
-                        key={assignment.id}
-                        className="p-4 rounded-lg border bg-card"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                              {getAssetIcon(asset.type)}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-medium truncate">{asset.label}</p><Badge variant="outline">{ownershipText(asset)}</Badge>
-                              <p className="text-sm text-muted-foreground capitalize">
-                                {asset.type}
-                              </p>
-                            </div>
-                          </div>
-                          {canEdit && (
-                            <Button variant="ghost" size="icon" aria-label="Edit asset" title="Edit asset" onClick={() => setEditAsset(asset)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="flex-shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleUnassign(assignment.id, asset.label)}
-                          >
-                            <UserMinus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <div className="mt-3 pt-3 border-t flex flex-wrap items-center gap-2 text-sm">
-                          <Badge variant="outline" className={statusColors[assignment.status]}>
-                            {assignment.status}
-                          </Badge>
-                          <AssetLocationCell row={assignment} projectId={projectId} locations={locations} canEdit={canEdit} />
-                          {canEdit && <div className="w-full"><AssetBillingCell row={assignment} projectId={projectId} canEdit={canEdit} /></div>}
-                          {canEdit && <><AssetCostBadge asset={asset} billRate={assignment.billable ? assignment.rate : null} /><InsuranceBadge asset={asset} /></>}
-                          {assignment.personnel && (
-                            <span className="text-muted-foreground">
-                              → {assignment.personnel.first_name} {assignment.personnel.last_name}
-                            </span>
-                          )}
-                          {assignment.start_at && (
-                            <span className="text-muted-foreground ml-auto">
-                              Since {format(new Date(assignment.start_at), "MMM d, yyyy")}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
               ) : (
                 // Desktop data grid (shared): sort, search, column menus, bulk actions
                 <EnhancedDataTable<AssetBillingRow>
