@@ -20,9 +20,10 @@ export async function sendJoinApproval(db: SupabaseClient, uid: string, body: un
   if (!/^\d{10}$/.test(ten)) return json({ sms_status: 'failed', reason: 'Approved request has no valid phone' });
   let name: string, token: string | null = null;
   if (request.location_id) {
+    const activeAt=new Date().toISOString();
     const [loc, assigned, tokens] = await Promise.all([
       db.from('project_locations').select('name,project_id').eq('id', request.location_id).maybeSingle(),
-      db.from('location_assignments').select('id').eq('location_id', request.location_id).eq('personnel_id', request.matched_personnel_id).eq('status', 'active').limit(1),
+      db.from('location_assignments').select('id').eq('location_id', request.location_id).eq('personnel_id', request.matched_personnel_id).eq('status', 'active').lte('assigned_at',activeAt).or(`unassigned_at.is.null,unassigned_at.gt.${activeAt}`).limit(1),
       db.from('site_checkin_tokens').select('id').eq('location_id', request.location_id).eq('personnel_id', request.matched_personnel_id).gt('expires_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1),
     ]);
     if (loc.error || assigned.error || tokens.error || loc.data?.project_id !== request.project_id || !assigned.data?.length || !tokens.data?.[0]) return json({ sms_status: 'failed', reason: 'Approved check-in link unavailable' });
@@ -36,6 +37,7 @@ export async function sendJoinApproval(db: SupabaseClient, uid: string, body: un
     name = project.data.name;
   }
   const sid = Deno.env.get('TWILIO_ACCOUNT_SID'), secret = Deno.env.get('TWILIO_AUTH_TOKEN'), from = Deno.env.get('TWILIO_PHONE_NUMBER');
+  const person=await db.from('personnel').select('applicant_id').eq('id',request.matched_personnel_id).single();if(person.error)return json({error:'Recipient unavailable'},500);if(person.data.applicant_id){const opt=await db.from('applicants').select('sms_opted_out').eq('id',person.data.applicant_id).single();if(opt.error)return json({error:'Recipient consent unavailable'},500);if(opt.data.sms_opted_out)return json({sms_status:'skipped',reason:'SMS opted out'});}
   if (!sid || !secret || !from) return json({ sms_status: 'failed', reason: 'Text service not configured' });
   const site = Deno.env.get('SITE_URL') || 'https://fairfieldrg.com';
   if (dry_run) return json({ sms_status: 'dry_run', has_punch_link: !!token });

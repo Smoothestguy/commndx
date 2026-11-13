@@ -1,0 +1,11 @@
+import {jsPDF} from 'jspdf';
+import {signatureImageUrl} from '@/utils/signedDocumentExport';
+import {fitSignatureInCell,stripWhiteBackground} from './signatureInk';
+import {localTime} from './signinSheets';
+export async function downloadToSheet(input:{number:string;customerRef:string;kind:string;timezone:string;requirements:{label:string;count:number}[];entries:{personnel_id:string;role_label:string;in_at:string;out_at:string;signature_url:string}[];names:Record<string,string>}){
+ const pdf=new jsPDF({unit:'pt',format:'letter'});let y=115;
+ const header=()=>{pdf.setFontSize(16).text(`FRG — ${input.kind.toUpperCase()} SIGN-IN SHEET`,36,42);pdf.setFontSize(10).text(`${input.number} · Customer ref: ${input.customerRef||'—'} · ${input.timezone}`,36,62);pdf.text('Name / Role                         In / Out         Hours          Signature',36,91);};header();
+ const rows=input.requirements.flatMap(r=>{const signed=input.entries.filter(e=>e.role_label.toLowerCase()===r.label.toLowerCase());return Array.from({length:Math.max(r.count,signed.length)},(_,i)=>({role:r.label,entry:signed[i]}));});
+ for(const row of rows){if(y>720){pdf.addPage();header();y=115;}pdf.setDrawColor(120);pdf.rect(36,y,540,48);const e=row.entry;pdf.setFontSize(9).text(e?(input.names[e.personnel_id]||'Worker'): '________________________',42,y+15);pdf.text(row.role,42,y+31);if(e){pdf.text(`${localTime(e.in_at,input.timezone).replace(':','')} / ${localTime(e.out_at,input.timezone).replace(':','')}`,240,y+20);pdf.text(((Date.parse(e.out_at)-Date.parse(e.in_at))/3600000).toFixed(2),345,y+20);const url=await signatureImageUrl(e.signature_url);const res=await fetch(url);if(!res.ok)throw new Error('Signature unavailable');const bytes=await stripWhiteBackground(new Uint8Array(await res.arrayBuffer()));const image=pdf.getImageProperties(bytes);const box=fitSignatureInCell({x:405,y:y+3,width:165,height:42},image);pdf.addImage(bytes,'PNG',box.x,box.y,box.width,box.height);}y+=48;}
+ pdf.save(`${input.number}-${input.kind}-sign-in.pdf`);
+}

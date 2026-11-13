@@ -470,6 +470,62 @@
       "when": 1794595986537,
       "tag": "0066_restrict_punch_open_event_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1794596677453,
+      "tag": "0067_location_to_structured_engine",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1794596748664,
+      "tag": "0068_to_engine_allocation_and_sheet_controls",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1794596824487,
+      "tag": "0069_to_engine_scoped_billing_sources",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1794596909630,
+      "tag": "0070_to_drafts_and_agency_conflict_resolution",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1794597077900,
+      "tag": "0071_to_engine_financial_grants_and_evidence_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1794597163816,
+      "tag": "0072_to_allocation_retirement_and_source_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1794597250657,
+      "tag": "0073_to_sheet_capture_without_punch_mutation",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1794597290572,
+      "tag": "0074_to_allocation_role_and_lock_validation",
+      "breakpoints": true
     }
   ]
 }

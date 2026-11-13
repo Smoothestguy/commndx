@@ -46,6 +46,10 @@ Deno.serve(async (req) => {
     if (locErr || !loc) return json({ error: "Location not found" }, 404);
     if(loc.status==='closed')return json({error:'Location is closed'},409);
     const {data:project,error:projectError}=await service.from('projects').select('*').eq('id',loc.project_id).single();if(projectError)throw projectError;const zone=locationZone(loc,project);
+    const member=roles?.some((r:any)=>['admin','manager'].includes(r.role))?true:(await service.from('project_assignments').select('id').eq('project_id',loc.project_id).eq('user_id',user.id).limit(1)).data?.length;
+    if(!member)return json({error:'Location access required'},403);
+    const now=new Date().toISOString();const roster=await service.from('location_assignments').select('personnel_id').eq('location_id',location_id).eq('status','active').lte('assigned_at',now).or(`unassigned_at.is.null,unassigned_at.gt.${now}`).in('personnel_id',personnel_ids);
+    if(roster.error)throw roster.error;if(personnel_ids.some((id:string)=>!roster.data?.some(a=>a.personnel_id===id)))return json({error:'Recipients must belong to this location’s active roster'},409);
     const addr = [loc.address, [loc.city, [loc.state, loc.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ")].filter(Boolean).join(", ");
 
     const { data: people, error: pErr } = await service.from("personnel")
@@ -62,6 +66,9 @@ Deno.serve(async (req) => {
     for (const pid of personnel_ids) {
       const p: any = (people ?? []).find((x: any) => x.id === pid);
       if (!p) { results.push({ personnel_id: pid, status: "failed", reason: "not found" }); continue; }
+      const checkAt=new Date().toISOString();const stillAssigned=await service.from('location_assignments').select('id').eq('location_id',location_id).eq('personnel_id',pid).eq('status','active').lte('assigned_at',checkAt).or(`unassigned_at.is.null,unassigned_at.gt.${checkAt}`).limit(1);
+      if(stillAssigned.error||!stillAssigned.data?.length){results.push({personnel_id:pid,status:'failed',reason:'Not on active location roster'});continue;}
+      if(p.applicant_id){const opt=await service.from('applicants').select('sms_opted_out').eq('id',p.applicant_id).single();if(opt.error)throw opt.error;if(opt.data.sms_opted_out){results.push({personnel_id:pid,status:'skipped',reason:'SMS opted out'});continue;}}
       const d = String(p.phone ?? "").replace(/\D/g, "");
       const ten = d.length === 11 && d.startsWith("1") ? d.slice(1) : d;
       if (ten.length !== 10) { results.push({ personnel_id: pid, status: "failed", reason: "no valid phone" }); continue; }
@@ -90,7 +97,7 @@ Deno.serve(async (req) => {
 
       if (p.applicant_id) {
         const { error: logErr } = await service.from("applicant_messages").insert({
-          applicant_id: p.applicant_id, channel: "sms", body: msg, status, error: err, twilio_sid: twilioSid, created_by: user.id,
+          applicant_id: p.applicant_id, channel: "sms", body: 'Site assignment notification (private check-in link omitted)', status, error: err, twilio_sid: twilioSid, created_by: user.id,
         });
         if (logErr) console.error("[site-sms] log failed", logErr.message);
       }

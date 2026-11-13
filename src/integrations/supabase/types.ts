@@ -5527,6 +5527,203 @@ export type Database = {
           },
         ]
       }
+      location_to_allocations: {
+        Row: {
+          asset_assignment_id: string | null
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          effective_until: string | null
+          id: string
+          label: string
+          line_kind: string
+          personnel_id: string | null
+          task_order_id: string
+        }
+        Insert: {
+          asset_assignment_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          effective_from: string
+          effective_until?: string | null
+          id?: string
+          label: string
+          line_kind: string
+          personnel_id?: string | null
+          task_order_id: string
+        }
+        Update: {
+          asset_assignment_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_until?: string | null
+          id?: string
+          label?: string
+          line_kind?: string
+          personnel_id?: string | null
+          task_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_to_allocations_asset_assignment_id_fkey"
+            columns: ["asset_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "asset_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_to_allocations_task_order_id_fkey"
+            columns: ["task_order_id"]
+            isOneToOne: false
+            referencedRelation: "location_task_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      location_to_sheet_entries: {
+        Row: {
+          created_by: string | null
+          id: string
+          in_at: string
+          out_at: string
+          personnel_id: string
+          role_label: string
+          sheet_id: string
+          signature_url: string
+          signed_at: string
+          visit_personnel_id: string | null
+          voided_at: string | null
+        }
+        Insert: {
+          created_by?: string | null
+          id?: string
+          in_at: string
+          out_at: string
+          personnel_id: string
+          role_label: string
+          sheet_id: string
+          signature_url: string
+          signed_at?: string
+          visit_personnel_id?: string | null
+          voided_at?: string | null
+        }
+        Update: {
+          created_by?: string | null
+          id?: string
+          in_at?: string
+          out_at?: string
+          personnel_id?: string
+          role_label?: string
+          sheet_id?: string
+          signature_url?: string
+          signed_at?: string
+          visit_personnel_id?: string | null
+          voided_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_to_sheet_entries_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "location_to_sheets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_to_sheet_entries_visit_personnel_id_fkey"
+            columns: ["visit_personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_location_trail"
+            referencedColumns: ["visit_personnel_id"]
+          },
+          {
+            foreignKeyName: "location_to_sheet_entries_visit_personnel_id_fkey"
+            columns: ["visit_personnel_id"]
+            isOneToOne: false
+            referencedRelation: "visit_personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      location_to_sheets: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          required_counts: Json
+          task_order_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          required_counts: Json
+          task_order_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          required_counts?: Json
+          task_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_to_sheets_task_order_id_fkey"
+            columns: ["task_order_id"]
+            isOneToOne: false
+            referencedRelation: "location_task_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      location_to_terms: {
+        Row: {
+          housing_enabled: boolean
+          housing_rate: number
+          line_rates: Json
+          mobe_approved: boolean
+          mobe_cap: number | null
+          mobe_terms: string | null
+          per_diem_enabled: boolean
+          per_diem_rate: number
+          task_order_id: string
+          updated_at: string
+        }
+        Insert: {
+          housing_enabled?: boolean
+          housing_rate?: number
+          line_rates?: Json
+          mobe_approved?: boolean
+          mobe_cap?: number | null
+          mobe_terms?: string | null
+          per_diem_enabled?: boolean
+          per_diem_rate?: number
+          task_order_id: string
+          updated_at?: string
+        }
+        Update: {
+          housing_enabled?: boolean
+          housing_rate?: number
+          line_rates?: Json
+          mobe_approved?: boolean
+          mobe_cap?: number | null
+          mobe_terms?: string | null
+          per_diem_enabled?: boolean
+          per_diem_rate?: number
+          task_order_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_to_terms_task_order_id_fkey"
+            columns: ["task_order_id"]
+            isOneToOne: true
+            referencedRelation: "location_task_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       location_visits: {
         Row: {
           auto_closed: boolean
@@ -6169,6 +6366,52 @@ export type Database = {
           },
           {
             foreignKeyName: "personnel_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personnel_agency_provenance: {
+        Row: {
+          join_request_id: string | null
+          join_token_id: string | null
+          personnel_id: string
+          recorded_at: string
+          vendor_id: string
+        }
+        Insert: {
+          join_request_id?: string | null
+          join_token_id?: string | null
+          personnel_id: string
+          recorded_at?: string
+          vendor_id: string
+        }
+        Update: {
+          join_request_id?: string | null
+          join_token_id?: string | null
+          personnel_id?: string
+          recorded_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_agency_provenance_join_request_id_fkey"
+            columns: ["join_request_id"]
+            isOneToOne: false
+            referencedRelation: "project_join_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_agency_provenance_join_token_id_fkey"
+            columns: ["join_token_id"]
+            isOneToOne: false
+            referencedRelation: "project_join_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_agency_provenance_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
@@ -13229,6 +13472,16 @@ export type Database = {
         }
         Returns: Json
       }
+      assign_to_authorization: {
+        Args: {
+          p_asset?: string
+          p_kind: string
+          p_label: string
+          p_order: string
+          p_person?: string
+        }
+        Returns: string
+      }
       check_returning_contact: { Args: { _contact: string }; Returns: boolean }
       complete_personnel_onboarding:
         | {
@@ -13298,6 +13551,15 @@ export type Database = {
             }
             Returns: Json
           }
+      complete_to_sheet: {
+        Args: {
+          p_person: string
+          p_role: string
+          p_sheet: string
+          p_stay: string
+        }
+        Returns: string
+      }
       complete_vendor_onboarding: {
         Args: {
           p_address?: string
@@ -13410,6 +13672,7 @@ export type Database = {
       }
       data_hygiene_preview: { Args: never; Returns: Json }
       data_hygiene_run: { Args: never; Returns: Json }
+      delete_location_to_draft: { Args: { p_id: string }; Returns: undefined }
       deny_join_request: { Args: { p_request: string }; Returns: Json }
       edit_application_by_token: {
         Args: { p_answers: Json; p_applicant: Json; p_token: string }
@@ -13663,6 +13926,18 @@ export type Database = {
           line_kind: string
         }[]
       }
+      location_to_at: {
+        Args: { p_at: string; p_location: string }
+        Returns: {
+          authorized: number
+          label: string
+          line_kind: string
+        }[]
+      }
+      location_to_billing_sources: {
+        Args: { p_location: string }
+        Returns: Json
+      }
       log_application_attempt_error: {
         Args: {
           _job_posting_id: string
@@ -13778,6 +14053,17 @@ export type Database = {
         }
         Returns: Json
       }
+      record_to_sheet_signature: {
+        Args: {
+          p_in: string
+          p_out: string
+          p_path: string
+          p_person: string
+          p_role: string
+          p_sheet: string
+        }
+        Returns: string
+      }
       request_closed_shift_extension: {
         Args: { p_reason: string; p_token: string; p_until: string }
         Returns: Json
@@ -13788,6 +14074,10 @@ export type Database = {
       }
       reset_vendor_bill_sequence_for_new_year: {
         Args: never
+        Returns: undefined
+      }
+      resolve_join_agency: {
+        Args: { p_expected_vendor: string; p_person: string; p_request: string }
         Returns: undefined
       }
       resubmit_application: {
@@ -13809,6 +14099,10 @@ export type Database = {
         }
         Returns: string
       }
+      retire_to_allocation: {
+        Args: { p_id: string; p_until: string }
+        Returns: undefined
+      }
       review_punch_shift: {
         Args: { p_id: string; p_kind: string; p_status: string }
         Returns: Json
@@ -13824,6 +14118,17 @@ export type Database = {
           _user_agent?: string
         }
         Returns: undefined
+      }
+      save_location_to_engine: {
+        Args: {
+          p_expected: string
+          p_id: string
+          p_lines: Json
+          p_location: string
+          p_terms: Json
+          p_values: Json
+        }
+        Returns: string
       }
       scheduled_close_punches: {
         Args: { p_at?: string; p_dry?: boolean; p_location?: string }
