@@ -1,3 +1,8 @@
+# Projects as events
+- [ ] Managed types, location customer backfill and compatibility defaults.
+- [ ] Event overview map/parameters/summaries and derived customer grid filters.
+- [ ] Assign EM to Florida Floods; browser verification and focused tests.
+
 # Security lockdown
 - [x] Inventory and revoke anonymous privileged non-public RPCs; close backup conversation tables and future function defaults.
 - [x] Guard intake and authenticated mutation callers; token-only safe vendor onboarding; one-time token application edits restored.
