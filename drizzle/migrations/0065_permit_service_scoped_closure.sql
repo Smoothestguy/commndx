@@ -1,0 +1,1 @@
+DO $$ DECLARE definition text; BEGIN SELECT pg_get_functiondef('public.scheduled_close_punches(timestamptz,boolean,uuid)'::regprocedure) INTO definition;definition:=replace(definition,' OR p_location IS NOT NULL','');EXECUTE definition;END $$;

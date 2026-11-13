@@ -456,6 +456,13 @@
       "when": 1794588720213,
       "tag": "0064_fix_closed_shift_notification_expression",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1794588882492,
+      "tag": "0065_permit_service_scoped_closure",
+      "breakpoints": true
     }
   ]
 }
