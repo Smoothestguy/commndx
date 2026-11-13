@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { INTAKE_TEXT, IntakeLang } from "@/lib/intakeConsents";
+import { uploadPrivateFile } from '@/utils/privateUpload';
+import { useSecureUrl } from '@/hooks/useSecureUrl';
 
 /** Center-crops an image file to a square JPEG (max 640px). */
 export async function cropSquare(file: File, size = 640): Promise<Blob> {
@@ -15,17 +17,15 @@ export async function cropSquare(file: File, size = 640): Promise<Blob> {
     const s = Math.min(img.naturalWidth, img.naturalHeight);
     const out = Math.min(size, s);
     const c = document.createElement("canvas"); c.width = out; c.height = out;
-    c.getContext("2d")!.drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, out, out);
+    const context = c.getContext("2d"); if (!context) throw new Error("Image unavailable");
+    context.drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, out, out);
     return await new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("Crop failed"))), "image/jpeg", 0.88));
   } finally { URL.revokeObjectURL(url); }
 }
 
 export async function uploadProfilePhoto(file: File, bucket = "application-files", folder = "profile-photos"): Promise<string> {
   const blob = await cropSquare(file);
-  const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.jpg`;
-  const { error } = await supabase.storage.from(bucket).upload(path, blob, { contentType: "image/jpeg", upsert: false });
-  if (error) throw error;
-  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+  return (await uploadPrivateFile(bucket, folder, blob)).reference;
 }
 
 interface Props {
@@ -46,6 +46,7 @@ export function ProfilePhotoCapture({ lang, value, onChange, consented, required
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
+  const { url: savedPreview } = useSecureUrl('application-files', localPreview ? null : value);
   const locked = !consented || disabled;
 
   const handle = async (f?: File | null) => {
@@ -61,7 +62,7 @@ export function ProfilePhotoCapture({ lang, value, onChange, consented, required
       <Label>{t.photoTitle}{required && <span className="text-destructive"> *</span>}</Label>
       <div className="flex items-center gap-4">
         <div className="h-24 w-24 shrink-0 overflow-hidden rounded-md border bg-muted flex items-center justify-center">
-          {localPreview ? <img src={localPreview} alt="" className="h-full w-full object-cover" /> : locked ? <Lock className="h-6 w-6 text-muted-foreground" /> : <Camera className="h-6 w-6 text-muted-foreground" />}
+          {localPreview || savedPreview ? <img src={localPreview || savedPreview || undefined} alt="" className="h-full w-full object-cover" /> : locked ? <Lock className="h-6 w-6 text-muted-foreground" /> : <Camera className="h-6 w-6 text-muted-foreground" />}
         </div>
         <div className="flex flex-col gap-2">
           <Button type="button" variant="outline" size="sm" disabled={locked || busy} onClick={() => camRef.current?.click()}>

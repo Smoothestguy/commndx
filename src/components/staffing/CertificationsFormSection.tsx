@@ -7,6 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Award, ChevronDown, FileText, Loader2, Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { uploadPrivateFile } from '@/utils/privateUpload';
 
 export const CERT_TYPES = [
   "Forklift", "OSHA 10", "OSHA 30", "CDL", "TWIC", "First Aid/CPR", "Flagger", "Welding", "Other",
@@ -55,11 +56,8 @@ export function CertificationsFormSection({ entries, onChange }: Props) {
     try {
       const ext = file.name.split(".").pop() || "bin";
       const path = `certifications/${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${ext}`;
-      const { error } = await supabase.storage
-        .from(CERT_BUCKET)
-        .upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type });
-      if (error) throw error;
-      update(id, { file_path: path, file_name: file.name, uploading: false });
+      const uploaded = await uploadPrivateFile(CERT_BUCKET,'certifications',file);
+      update(id, { file_path: uploaded.path, file_name: file.name, uploading: false });
     } catch (e) {
       console.warn("[Certifications] upload failed", e);
       toast.error("Couldn't upload that file — you can still submit without it.");

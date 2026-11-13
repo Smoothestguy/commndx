@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { uploadPrivateFile } from '@/utils/privateUpload';
+import { useSecureUrl } from '@/hooks/useSecureUrl';
 
 interface FormFileUploadProps {
   value?: File | string | null;
@@ -67,6 +69,7 @@ export function FormFileUpload({
 
   // Check if value is a URL string (already uploaded)
   const isUrlValue = typeof value === "string" && value.length > 0;
+  const { url: savedPreview } = useSecureUrl(storageBucket, preview ? null : typeof value === 'string' ? value : null);
 
   // Notify parent of upload state changes. Hold callbacks in refs so effects
   // don't fire from parent re-renders that pass new arrow functions.
@@ -98,9 +101,7 @@ export function FormFileUpload({
 
     // Race the upload against a hard client timeout so a hung mobile network
     // doesn't leave the form spinning forever.
-    const uploadPromise = supabase.storage
-      .from(storageBucket)
-      .upload(uniqueFileName, file, { cacheControl: "3600", upsert: false });
+    const uploadPromise = uploadPrivateFile(storageBucket, storagePath, file);
 
     const timeoutPromise = new Promise<{ error: { message: string } }>((resolve) => {
       setTimeout(
@@ -114,8 +115,7 @@ export function FormFileUpload({
       if (result?.error) {
         return { url: null, error: result.error.message || "storage upload failed" };
       }
-      const { data: { publicUrl } } = supabase.storage.from(storageBucket).getPublicUrl(uniqueFileName);
-      return { url: publicUrl };
+      return { url: result.reference };
     } catch (err: any) {
       return { url: null, error: err?.message || "unknown storage error" };
     }
@@ -222,7 +222,7 @@ export function FormFileUpload({
   const displayName = fileName || (isUrlValue ? value.split("/").pop() : null);
   const hasFile = isUrlValue || fileName;
   // New anonymous uploads preview locally; durable private references are never fetched publicly.
-  const displayPreview = preview;
+  const displayPreview = preview || (isUrlValue && value?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? savedPreview : null);
   const showRetry = !!error && !uploading;
 
   return (

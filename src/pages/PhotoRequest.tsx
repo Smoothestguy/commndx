@@ -5,6 +5,7 @@ import { ForceDarkTheme } from "@/components/ForceDarkTheme";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Camera, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
+import { uploadPrivateFile } from '@/utils/privateUpload';
 
 type State = "loading" | "invalid" | "ready" | "uploading" | "done";
 
@@ -35,10 +36,8 @@ export default function PhotoRequest() {
     try {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
       const path = `profile-photos/${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("application-files").upload(path, file, { contentType: file.type });
-      if (upErr) throw upErr;
-      const { data: pub } = supabase.storage.from("application-files").getPublicUrl(path);
-      const { data: ok, error: rpcErr } = await (supabase as any).rpc("set_photo_by_token", { _token: token, _photo_url: pub.publicUrl });
+      const uploaded = await uploadPrivateFile('application-files','profile-photos',file);
+      const { data: ok, error: rpcErr } = await (supabase as any).rpc("set_photo_by_token", { _token: token, _photo_url: uploaded.reference });
       if (rpcErr || !ok) throw rpcErr ?? new Error("Link expired");
       setState("done");
     } catch (e) {
