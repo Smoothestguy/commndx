@@ -519,6 +519,13 @@
       "when": 1794597250657,
       "tag": "0073_to_sheet_capture_without_punch_mutation",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1794597290572,
+      "tag": "0074_to_allocation_role_and_lock_validation",
+      "breakpoints": true
     }
   ]
 }
