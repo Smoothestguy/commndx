@@ -9151,6 +9151,67 @@ export type Database = {
           },
         ]
       }
+      punch_link_events: {
+        Row: {
+          accuracy_m: number | null
+          gps_status: string
+          id: string
+          lat: number | null
+          lng: number | null
+          local_date: string
+          location_id: string
+          opened_at: string
+          personnel_id: string
+          visit_personnel_id: string | null
+        }
+        Insert: {
+          accuracy_m?: number | null
+          gps_status: string
+          id: string
+          lat?: number | null
+          lng?: number | null
+          local_date: string
+          location_id: string
+          opened_at?: string
+          personnel_id: string
+          visit_personnel_id?: string | null
+        }
+        Update: {
+          accuracy_m?: number | null
+          gps_status?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          local_date?: string
+          location_id?: string
+          opened_at?: string
+          personnel_id?: string
+          visit_personnel_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "punch_link_events_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "punch_link_events_visit_personnel_id_fkey"
+            columns: ["visit_personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_location_trail"
+            referencedColumns: ["visit_personnel_id"]
+          },
+          {
+            foreignKeyName: "punch_link_events_visit_personnel_id_fkey"
+            columns: ["visit_personnel_id"]
+            isOneToOne: false
+            referencedRelation: "visit_personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_orders: {
         Row: {
           approved_at: string | null
@@ -12344,6 +12405,8 @@ export type Database = {
           accuracy_m: number | null
           actual_in_at: string | null
           actual_out_at: string | null
+          auto_close_reason: string | null
+          auto_closed_at: string | null
           checked_in_at: string | null
           checked_in_by: string | null
           checked_out_at: string | null
@@ -12363,6 +12426,7 @@ export type Database = {
           offsite_approved_by: string | null
           offsite_reason: string | null
           personnel_id: string
+          reported_out_at: string | null
           scheduled_end_at: string | null
           scheduled_start_at: string | null
           selfie_url: string | null
@@ -12375,6 +12439,8 @@ export type Database = {
           accuracy_m?: number | null
           actual_in_at?: string | null
           actual_out_at?: string | null
+          auto_close_reason?: string | null
+          auto_closed_at?: string | null
           checked_in_at?: string | null
           checked_in_by?: string | null
           checked_out_at?: string | null
@@ -12394,6 +12460,7 @@ export type Database = {
           offsite_approved_by?: string | null
           offsite_reason?: string | null
           personnel_id: string
+          reported_out_at?: string | null
           scheduled_end_at?: string | null
           scheduled_start_at?: string | null
           selfie_url?: string | null
@@ -12406,6 +12473,8 @@ export type Database = {
           accuracy_m?: number | null
           actual_in_at?: string | null
           actual_out_at?: string | null
+          auto_close_reason?: string | null
+          auto_closed_at?: string | null
           checked_in_at?: string | null
           checked_in_by?: string | null
           checked_out_at?: string | null
@@ -12425,6 +12494,7 @@ export type Database = {
           offsite_approved_by?: string | null
           offsite_reason?: string | null
           personnel_id?: string
+          reported_out_at?: string | null
           scheduled_end_at?: string | null
           scheduled_start_at?: string | null
           selfie_url?: string | null
@@ -13698,6 +13768,20 @@ export type Database = {
         Args: { p_application: string; p_intake: Json; p_receipt: string }
         Returns: boolean
       }
+      record_punch_link_open: {
+        Args: {
+          p_accuracy?: number
+          p_id: string
+          p_lat?: number
+          p_lng?: number
+          p_token: string
+        }
+        Returns: Json
+      }
+      request_closed_shift_extension: {
+        Args: { p_reason: string; p_token: string; p_until: string }
+        Returns: Json
+      }
       request_shift_extension: {
         Args: { p_reason: string; p_token: string; p_until: string }
         Returns: Json
@@ -13740,6 +13824,10 @@ export type Database = {
           _user_agent?: string
         }
         Returns: undefined
+      }
+      scheduled_close_punches: {
+        Args: { p_at?: string; p_dry?: boolean; p_location?: string }
+        Returns: Json
       }
       set_photo_by_token: {
         Args: { _photo_url: string; _token: string }

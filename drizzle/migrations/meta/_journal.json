@@ -442,6 +442,13 @@
       "when": 1794537498450,
       "tag": "0062_close_project_type_anonymous_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1794588693845,
+      "tag": "0063_punch_autoclose_and_link_open_events",
+      "breakpoints": true
     }
   ]
 }
