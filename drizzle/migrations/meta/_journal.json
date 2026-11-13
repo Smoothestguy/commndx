@@ -386,6 +386,13 @@
       "when": 1794531805156,
       "tag": "0054_security_private_evidence_access",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1794531913737,
+      "tag": "0055_security_receipt_intake_validation",
+      "breakpoints": true
     }
   ]
 }
