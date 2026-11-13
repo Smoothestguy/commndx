@@ -7,3 +7,4 @@
 - TO creation shares dated current-level drafts; demobe stays use the guarded manual path, same-location accepted order FK and unique order/person key, so ledger source/billing/audit persist without duplicate retries or changing authorization history.
 - Project vendor membership uses soft-active unique pairs and minimal staff name reads; project pickers never default globally, existing employers/links retain history.
 - Project personnel choices use the minimal active roster RPC and shared AddToProject; dated worked-history eligibility remains separate so deactivation never erases evidence. Roster additions never send messages.
+- Structured TO terms and allocations use manager-authorized transactions and derived signed-source billing; private sheet snapshots never mutate punches, and worked-day allowances deduplicate across TO splits to avoid double charges.
