@@ -1,11 +1,7 @@
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useMyDay } from '@/hooks/useMyDay';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import { Clock, FileSignature, MapPin, Phone, ArrowRight, RefreshCw } from 'lucide-react';
-import { z } from 'zod';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { localTime } from '@/lib/signinSheets';

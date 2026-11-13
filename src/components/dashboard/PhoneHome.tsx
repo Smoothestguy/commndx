@@ -26,12 +26,12 @@ function WorkerHome(){
  const q=useMyDay();
  const {user}=useAuth();
  const identity=useQuery({queryKey:['phone-worker-identity',user?.id],enabled:!!user,queryFn:async()=>{const r=await supabase.from('personnel').select('first_name,last_name').eq('user_id',user?.id||'').maybeSingle();if(r.error)throw r.error;return r.data;}});
- return <HomeCards manager={false} fullName={identity.data?[identity.data.first_name,identity.data.last_name].filter(Boolean).join(' '):undefined} sites={(q.data?.sites||[]).map(l=>({id:l.id,name:l.name,project:l.project.name,projectId:l.project_id,openAt:l.openAt,zone:l.timezone||'America/Chicago'}))} updatedAt={q.dataUpdatedAt} error={!!q.error} hours={q.data?.hours}/>;
+ return <HomeCards manager={false} fullName={identity.data?[identity.data.first_name,identity.data.last_name].filter(Boolean).join(' '):undefined} sites={(q.data?.sites||[]).map(l=>({id:l.id,name:l.name,project:l.project.name,projectId:l.project_id,openAt:l.openAt,zone:l.timezone||'America/Chicago'}))} updatedAt={q.dataUpdatedAt} error={!!q.error}/>;
 }
 type Site={id:string;name:string;project:string;projectId:string;openAt?:string|null;zone?:string};
-function HomeCards({manager,sites,count,updatedAt,error,context,fullName,hours,totals}:{manager:boolean;sites:Site[];count?:number;updatedAt:number;error:boolean;context?:string;fullName?:string;hours?:number;totals?:{people?:number;hours?:number}}){
+function HomeCards({manager,sites,count,updatedAt,error,context,fullName}:{manager:boolean;sites:Site[];count?:number;updatedAt:number;error:boolean;context?:string;fullName?:string}){
  const {data:profile}=useProfile(),{signOut}=useAuth(),qc=useQueryClient();
- const [params]=useSearchParams(),[selected,setSelected]=useState(''),[switcher,setSwitcher]=useState(false),[more,setMore]=useState(false),[dismiss,setDismiss]=useState(false),[online,setOnline]=useState(navigator.onLine),[tick,setTick]=useState(0);
+ const [params]=useSearchParams(),[selected,setSelected]=useState(''),[switcher,setSwitcher]=useState(false),[more,setMore]=useState(false),[dismiss,setDismiss]=useState(false),[online,setOnline]=useState(navigator.onLine),[,setTick]=useState(0);
  useEffect(()=>{const update=()=>setOnline(navigator.onLine);window.addEventListener('online',update);window.addEventListener('offline',update);const timer=setInterval(()=>setTick(t=>t+1),30000);return()=>{window.removeEventListener('online',update);window.removeEventListener('offline',update);clearInterval(timer);};},[]);
  useEffect(()=>{if(params.get('profile')==='1')setMore(true);},[params]);
  const site=sites.find(s=>s.id===selected)||sites[0],name=fullName||[profile?.first_name,profile?.last_name].filter(Boolean).join(' ')||'Your account';
