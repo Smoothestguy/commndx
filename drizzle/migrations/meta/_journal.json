@@ -421,6 +421,13 @@
       "when": 1794537141833,
       "tag": "0059_project_event_types_location_customers",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1794537203978,
+      "tag": "0060_optional_project_default_customer",
+      "breakpoints": true
     }
   ]
 }
