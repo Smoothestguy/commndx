@@ -3,10 +3,13 @@ import { stampDocument, type SignField } from '@/lib/documentStamp';
 import { loadDocumentFields } from '@/lib/documentSignFields';
 import type { DocumentSignature } from '@/integrations/supabase/hooks/useDocumentSignatures';
 import type { ProjectDocument } from '@/integrations/supabase/hooks/useProjectDocuments';
+import { getBucketFromUrl, getPathFromUrl } from './signedUrlUtils';
 export async function signatureImageUrl(path: string) {
   // Persist private object paths, never expired signed URLs.
-  const objectPath = path.includes('/project-documents/') ? decodeURIComponent(path.split('/project-documents/')[1].split('?')[0]) : path;
-  const { data, error } = await supabase.storage.from('project-documents').createSignedUrl(objectPath, 3600);
+  const bucket = path.startsWith('http') ? getBucketFromUrl(path) : 'project-documents';
+  if (!bucket) throw new Error('Invalid signature storage URL');
+  const objectPath = getPathFromUrl(path, bucket);
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(objectPath, 600);
   if (error) throw error;
   return data.signedUrl;
 }

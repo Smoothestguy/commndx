@@ -91,7 +91,7 @@ async function fetchDirectoryNames(personnelIds: string[]) {
   return map;
 }
 
-/** Upload a file/blob to the public field-captures bucket, return its public URL. */
+/** Store a durable evidence reference; readers resolve authorized short-lived URLs. */
 export async function uploadCapture(path: string, file: File | Blob): Promise<string> {
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true });
   if (error) throw error;
@@ -127,7 +127,7 @@ async function fetchVisitBundle(locationIds: string[], fromIso: string, toIso: s
 
   const names = await fetchDirectoryNames((ppl.data ?? []).map((p: any) => p.personnel_id));
   const urls = new Map<string, string>();
-  await Promise.all([...new Set<string>((ppl.data ?? []).map((p: any) => p.signature_url).filter(Boolean))].map(async path => { urls.set(path, path.startsWith('http') ? path : await signatureImageUrl(path)); }));
+  await Promise.all([...new Set<string>((ppl.data ?? []).map((p: any) => p.signature_url).filter(Boolean))].map(async path => { urls.set(path, await signatureImageUrl(path)); }));
   const people = (ppl.data ?? []).map((p: any) => ({ ...p, signature_url: p.signature_url ? urls.get(p.signature_url) : null, personnel: names[p.personnel_id] ?? null })) as VisitPerson[];
   return { visits: visits ?? [], people, purchases: pur.data ?? [], photos: pho.data ?? [] };
 }

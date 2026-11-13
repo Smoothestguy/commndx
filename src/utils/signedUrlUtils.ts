@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 // Buckets that require signed URLs
-const PRIVATE_BUCKETS = ['personnel-photos', 'application-files', 'document-attachments'];
+const PRIVATE_BUCKETS = ['personnel-photos', 'application-files', 'form-uploads', 'field-captures', 'project-documents', 'document-attachments', 'vendor-documents'];
 
 /**
  * Extract file path from a full public URL or return path as-is
@@ -29,7 +29,7 @@ export function getPathFromUrl(urlOrPath: string, bucket: string): string {
 export async function getSignedUrl(
   bucket: string,
   urlOrPath: string | null,
-  expiresIn = 3600
+  expiresIn = 600
 ): Promise<string | null> {
   if (!urlOrPath) return null;
   

@@ -45,12 +45,13 @@ export function ProfilePhotoCapture({ lang, value, onChange, consented, required
   const camRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [localPreview, setLocalPreview] = useState<string | null>(null);
   const locked = !consented || disabled;
 
   const handle = async (f?: File | null) => {
     if (!f) return;
     setBusy(true); onUploadingChange?.(true);
-    try { onChange(await uploadProfilePhoto(f)); }
+    try { const uploaded = await uploadProfilePhoto(f); setLocalPreview(URL.createObjectURL(f)); onChange(uploaded); }
     catch (e: any) { onError?.(e?.message || "Upload failed"); }
     finally { setBusy(false); onUploadingChange?.(false); if (camRef.current) camRef.current.value = ""; if (fileRef.current) fileRef.current.value = ""; }
   };
@@ -60,7 +61,7 @@ export function ProfilePhotoCapture({ lang, value, onChange, consented, required
       <Label>{t.photoTitle}{required && <span className="text-destructive"> *</span>}</Label>
       <div className="flex items-center gap-4">
         <div className="h-24 w-24 shrink-0 overflow-hidden rounded-md border bg-muted flex items-center justify-center">
-          {value ? <img src={value} alt="" className="h-full w-full object-cover" /> : locked ? <Lock className="h-6 w-6 text-muted-foreground" /> : <Camera className="h-6 w-6 text-muted-foreground" />}
+          {localPreview ? <img src={localPreview} alt="" className="h-full w-full object-cover" /> : locked ? <Lock className="h-6 w-6 text-muted-foreground" /> : <Camera className="h-6 w-6 text-muted-foreground" />}
         </div>
         <div className="flex flex-col gap-2">
           <Button type="button" variant="outline" size="sm" disabled={locked || busy} onClick={() => camRef.current?.click()}>
