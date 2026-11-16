@@ -18,6 +18,7 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   horizontalListSortingStrategy,
+  verticalListSortingStrategy,
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -34,11 +35,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import {
   ArrowUp, ArrowDown, ArrowUpDown, GripVertical, Search, Filter, Rows3, Rows4, Maximize2, Minimize2,
-  Settings2, Download, ChevronLeft, ChevronRight, X,
+  Settings2, Columns3, Download, ChevronLeft, ChevronRight, X,
 } from "lucide-react";
 import { ColumnHeaderMenu, ColumnConfig } from "./ColumnHeaderMenu";
 import { useTablePreferences } from "@/hooks/useTablePreferences";
@@ -103,6 +105,10 @@ interface EnhancedDataTableProps<T> {
   maxHeight?: string;
   fillViewport?: boolean;
   emptyText?: string;
+  /** Quick filter pills above the grid (page owns the filter logic). */
+  quickFilters?: { value: string; label: string; count?: number }[];
+  quickFilter?: string;
+  onQuickFilterChange?: (value: string) => void;
 }
 
 /** Colored status pill used across grids (ACTIVE green etc.). */
@@ -114,7 +120,7 @@ export function StatusPill({ value }: { value: string | null | undefined }) {
     : /^(inactive|closed|terminated|denied|rejected|void|demobilized|do[_ ]not[_ ]hire|checked[_ ]out|expired)$/.test(v) ? "bg-destructive/10 text-destructive border-destructive/30"
     : "bg-muted text-muted-foreground border-border";
   if (!v) return null;
-  return <span className={cn("inline-flex items-center rounded-full border px-2 py-px text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap", tone)}>{String(value).replace(/_/g, " ")}</span>;
+  return <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize whitespace-nowrap", tone)}>{String(value).replace(/_/g, " ")}</span>;
 }
 
 function SortableHeader({ id, children, className, width, onResize, left }: { left?: number; id: string; children: React.ReactNode; className?: string; width?: number; onResize: (w: number) => void }) {
@@ -145,6 +151,31 @@ function SortableHeader({ id, children, className, width, onResize, left }: { le
   );
 }
 
+function SortableColumnItem({ id, header, checked, disabled, onToggle }: { id: string; header: string; checked: boolean; disabled: boolean; onToggle: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={cn("flex items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-muted", isDragging && "bg-muted shadow-sm z-10")}>
+    <button type="button" className="cursor-grab text-muted-foreground touch-none" aria-label={`Drag to reorder ${header}`} {...attributes} {...listeners}><GripVertical className="h-3.5 w-3.5" /></button>
+    <Checkbox id={`col-${id}`} checked={checked} disabled={disabled} onCheckedChange={onToggle} aria-label={`Show ${header}`} />
+    <label htmlFor={`col-${id}`} className="flex-1 truncate cursor-pointer">{header}</label>
+  </li>;
+}
+function ColumnsPopover({ columns, order, visible, visibleCount, onToggle, onReorder, onResetWidths }: { columns: { key: string; header: string }[]; order: string[]; visible: string[]; visibleCount: number; onToggle: (k: string) => void; onReorder: (o: string[]) => void; onResetWidths?: () => void }) {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+  const items = order.map(k => columns.find(c => c.key === k)).filter((c): c is { key: string; header: string } => !!c);
+  return <Popover>
+    <PopoverTrigger asChild><Button variant="outline" size="sm" className="h-8 text-xs" aria-label="Columns"><Columns3 className="h-3.5 w-3.5 mr-1" />Columns</Button></PopoverTrigger>
+    <PopoverContent align="end" className="w-64 p-2">
+      <p className="px-1.5 pb-1 text-xs font-medium text-muted-foreground">Show and drag to reorder</p>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={({ active, over }) => { if (over && active.id !== over.id) onReorder(arrayMove(order, order.indexOf(String(active.id)), order.indexOf(String(over.id)))); }}>
+        <SortableContext items={items.map(c => c.key)} strategy={verticalListSortingStrategy}>
+          <ul className="max-h-80 overflow-auto" aria-label="Columns">{items.map(c => { const on = visible.includes(c.key); return <SortableColumnItem key={c.key} id={c.key} header={c.header} checked={on} disabled={on && visibleCount === 1} onToggle={() => onToggle(c.key)} />; })}</ul>
+        </SortableContext>
+      </DndContext>
+      {onResetWidths && <Button variant="ghost" size="sm" className="mt-1 w-full h-7 text-xs" onClick={onResetWidths}>Reset widths</Button>}
+    </PopoverContent>
+  </Popover>;
+}
+
 const cellText = <T,>(item: T, column: EnhancedColumn<T>) => {
   const v = column.getValue ? column.getValue(item) : (item as Record<string, unknown>)[String(column.key)];
   return v == null ? "" : typeof v === "object" ? "" : String(v);
@@ -173,7 +204,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   defaultSortDirection = 'desc',
   pinFirst,
   searchable = true,
-  searchPlaceholder = "Search…",
+  searchPlaceholder = "Search all columns…",
   toolbar,
   bulkActions,
   primaryBulkActions,
@@ -183,6 +214,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   maxHeight = "70vh",
   fillViewport = false,
   emptyText = "No results found",
+  quickFilters, quickFilter, onQuickFilterChange,
 }: EnhancedDataTableProps<T>) {
   const mobile = useIsMobile();
   const navigate = useNavigate();
@@ -206,7 +238,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   const [search, setSearch] = useSessionState(`${scope}:q`, "");
   const [page, setPage] = useSessionState(`${scope}:page`, 0);
   const [pageSize, setPageSize] = useSessionState(`${scope}:size`, defaultPageSize);
-  const [dense, setDense] = useSessionState(`grid:${tableId}:dense`, true);
+  const [dense, setDense] = useSessionState(`grid:${tableId}:comfort-dense`, false);
   const [widths, setWidths] = useSessionState<Record<string, number>>(`grid:${tableId}:widths`, {});
   const [selection, setSelection] = useSessionState<string[]>(`${scope}:selection`, []);
   const selectedIds = controlledIds ?? new Set(selection);
@@ -255,6 +287,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
     return [...all.filter(c => c.frozen), ...all.filter(c => !c.frozen)];
   }, [columns, preferences.columnOrder, preferences.visibleColumns]);
 
+  const fullOrder = useMemo(() => { const keys = columns.map(c => String(c.key)); return [...preferences.columnOrder.filter(k => keys.includes(k)), ...keys.filter(k => !preferences.columnOrder.includes(k))]; }, [columns, preferences.columnOrder]);
   const columnConfigs: ColumnConfig[] = useMemo(() => columns.map(col => ({
     key: String(col.key), header: col.header, sortable: col.sortable, filterable: col.filterable,
   })), [columns]);
@@ -363,7 +396,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   const getResponsiveClass = (hideBelow?: 'sm' | 'md' | 'lg' | 'xl') =>
     hideBelow ? { sm: 'hidden sm:table-cell', md: 'hidden md:table-cell', lg: 'hidden lg:table-cell', xl: 'hidden xl:table-cell' }[hideBelow] : '';
 
-  const cellPad = dense ? "py-1 px-2 h-7" : "py-2 px-3 h-10";
+  const cellPad = dense ? "py-1 px-2 h-8" : "py-2.5 px-3 h-12";
   const hasLead = selectable || !!attention;
   const leadWidth = (selectable ? 32 : 0) + (attention ? 16 : 0);
   const columnWidths = gridColumnWidths(visibleColumns.map(c => ({ ...c, key: String(c.key) })), widths, availableWidth, leadWidth);
@@ -378,24 +411,36 @@ export function EnhancedDataTable<T extends { id: string | number }>({
       fillViewport && "viewport-grid",
       fullscreen && "fixed inset-0 z-50 rounded-none"
     )}>
-      {/* Top bar: instant search + toolbar */}
-      {(searchable || toolbar) && (
-        <div className="flex flex-wrap items-center gap-2 px-2 py-1.5 border-b border-border bg-card">
-          {searchable && (
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input ref={searchRef} value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} placeholder={searchPlaceholder} aria-label="Search grid" className="h-8 pl-7 pr-7 text-xs" />
-              {search && <Button variant="ghost" size="icon" type="button" onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Clear search"><X className="h-3.5 w-3.5" /></Button>}
-            </div>
-          )}
-          {toolbar}
-          {activeFilters > 0 && (
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => Object.keys(preferences.columnFilters).forEach(k => setColumnFilter(k, ""))}>
-              Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
-            </Button>
-          )}
-        </div>
-      )}
+      {/* Top bar: quick filter pills, search, filters, columns */}
+      <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-border bg-card">
+        {quickFilters && quickFilters.length > 0 && (
+          <div role="tablist" aria-label="Quick filters" className="inline-flex items-center gap-1 rounded-full bg-muted p-0.5">
+            {quickFilters.map(f => (
+              <button key={f.value} type="button" role="tab" aria-selected={quickFilter === f.value} onClick={() => { onQuickFilterChange?.(f.value); setPage(0); }}
+                className={cn("rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap", quickFilter === f.value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+                {f.label}{f.count != null && <span className="ml-1 tabular-nums text-muted-foreground">{f.count}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+        {searchable && (
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input ref={searchRef} value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} placeholder={searchPlaceholder} aria-label="Search grid" className="h-8 pl-8 pr-7 text-sm" />
+            {search && <Button variant="ghost" size="icon" type="button" onClick={() => setSearch("")} className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground hover:text-foreground" aria-label="Clear search"><X className="h-3.5 w-3.5" /></Button>}
+          </div>
+        )}
+        {!mobile && <Button variant={showFilters || activeFilters > 0 ? "secondary" : "outline"} size="sm" className="h-8 text-xs" aria-pressed={showFilters} onClick={() => setShowFilters(v => !v)}><Filter className="h-3.5 w-3.5 mr-1" />Filters{activeFilters > 0 && ` (${activeFilters})`}</Button>}
+        {toolbar}
+        {activeFilters > 0 && (
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => Object.keys(preferences.columnFilters).forEach(k => setColumnFilter(k, ""))}>
+            Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
+          </Button>
+        )}
+        <div className="flex-1" />
+        {!mobile && <ColumnsPopover columns={columns.filter(c => c.header).map(c => ({ key: String(c.key), header: c.header }))} order={fullOrder} visible={preferences.visibleColumns} visibleCount={visibleColumns.length}
+          onToggle={toggleColumnVisibility} onReorder={setColumnOrder} onResetWidths={Object.keys(widths).length ? () => setWidths({}) : undefined} />}
+      </div>
 
       {/* Bulk actions bar */}
       {selectable && selectedRows.length > 0 && (
@@ -452,7 +497,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                         left={ci === 0 ? leadWidth : undefined}
                         onResize={(w) => setWidths(prev => ({ ...prev, [key]: w }))}
                         className={cn(
-                          "bg-table-header text-table-header-foreground font-semibold whitespace-nowrap border-b border-table-border",
+                          "bg-table-header text-table-header-foreground text-xs font-medium whitespace-nowrap border-b border-table-border",
                           cellPad, column.className, getResponsiveClass(column.hideBelow),
                           ci === 0 && "sticky z-30 border-r border-table-border"
                         )}
