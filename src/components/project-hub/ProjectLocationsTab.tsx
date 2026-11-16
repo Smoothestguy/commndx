@@ -1,3 +1,5 @@
+import {perDiemText,validPerDiemDays} from '@/lib/locationPerDiem';
+import {useLocationPerDiemCounts} from '@/hooks/useLocationPerDiem';
 import { Time24Input } from '@/components/ui/time24-input';
 import { DailyTimesheetPanel } from '@/components/signin/DailyTimesheetPanel';
 import { LocationTaskOrders } from './LocationTaskOrders';
@@ -61,6 +63,7 @@ const newRow = (r?: LocationRequirement): ReqRow => ({
 });
 
 const EMPTY = {
+  per_diem_days: "", per_diem_day_rate: "", per_diem_headcount: "", per_diem_notes: "",
   customer_id: '',
   name: "", project_number: "", scope: "", address: "", city: "", state: "", zip: "",
   poc_name: "", poc_phone: "", poc_email: "", status: "active", sort_order: "",
@@ -122,6 +125,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
   }, [scrollTo, effectiveView]);
 
   const [editing, setEditing] = useState<ProjectLocation | null>(null);
+  const perDiemCounts=useLocationPerDiemCounts(locations.filter(l=>l.per_diem_days!=null||l.id===editing?.id).map(l=>l.id));
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [toDelete, setToDelete] = useState<ProjectLocation | null>(null);
@@ -141,6 +145,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
   const openEdit = (l: ProjectLocation) => {
     setEditing(l);
     setForm({
+      per_diem_days: l.per_diem_days==null?"":String(l.per_diem_days), per_diem_day_rate:l.per_diem_day_rate==null?"":String(l.per_diem_day_rate), per_diem_headcount:l.per_diem_headcount==null?"":String(l.per_diem_headcount), per_diem_notes:l.per_diem_notes??"",
       customer_id:l.customer_id||project?.customer_id||'',
       lat: l.lat == null ? "" : String(l.lat), lng: l.lng == null ? "" : String(l.lng), timezone: l.timezone ?? "", geofence_radius_m: String(l.geofence_radius_m ?? 300),
       name: l.name, project_number: l.project_number ?? "", scope: l.scope ?? "", address: l.address ?? "",
@@ -162,7 +167,15 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
   }, [editTargetId, canWrite, locations, editing]);
 
   const save = async () => {
-    if (!form.name.trim()) return;
+    if (!canWrite || !form.name.trim()) return;
+    if(form.per_diem_days.trim()&&!validPerDiemDays(Number(form.per_diem_days))){toast.error('Days must be 0–365 in half-day steps');return;}
+    if(form.per_diem_day_rate.trim()&&(!Number.isFinite(Number(form.per_diem_day_rate))||Number(form.per_diem_day_rate)<0)){toast.error('Enter a nonnegative per diem rate');return;}
+    if(form.per_diem_headcount.trim()&&(!Number.isInteger(Number(form.per_diem_headcount))||Number(form.per_diem_headcount)<0)){toast.error('Headcount must be a nonnegative whole number');return;}
+    const perDiem={per_diem_days:form.per_diem_days.trim()?Number(form.per_diem_days):null,per_diem_day_rate:form.per_diem_day_rate.trim()?Number(form.per_diem_day_rate):null,per_diem_headcount:form.per_diem_headcount.trim()?Number(form.per_diem_headcount):null,per_diem_notes:form.per_diem_notes.trim()||null};
+    if(editing?.status==='closed'){
+      await update.mutateAsync({id:editing.id,project_id:projectId,name:editing.name,...perDiem});
+      setOpen(false);onEditClosed?.();return;
+    }
     if (form.poc_email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.poc_email.trim())) { toast.error('Enter a valid POC email'); return; }
     const hasLat = !!form.lat.trim(), hasLng = !!form.lng.trim();
     if (hasLat !== hasLng || (hasLat && (!Number.isFinite(Number(form.lat)) || Math.abs(Number(form.lat)) > 90 || !Number.isFinite(Number(form.lng)) || Math.abs(Number(form.lng)) > 180)) || !Number.isFinite(Number(form.geofence_radius_m)) || Number(form.geofence_radius_m) <= 0) { toast.error('Enter valid coordinates and a positive radius'); return; }
@@ -174,6 +187,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
     }
     const n = (v: string) => (v.trim() ? v.trim() : null);
     const payload = {
+      ...perDiem,
       customer_id:form.customer_id||null,
       lat: hasLat ? Number(form.lat) : null, lng: hasLng ? Number(form.lng) : null, timezone, geofence_radius_m: Number(form.geofence_radius_m),
       project_id: projectId, name: form.name.trim(), project_number: n(form.project_number), scope: n(form.scope),
@@ -307,6 +321,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
                     {lastServiced?.[l.id] && <span>Last serviced {formatLocalDate(lastServiced[l.id], "M/d")}</span>}
                   </div>
                 )}
+                {l.per_diem_days!=null&&<p className="text-sm break-words">{perDiemText(l,canWrite,perDiemCounts[l.id])}</p>}
                 {l.scope && <ScopeText text={l.scope} />}
                 <DailyTimesheetPanel projectId={projectId} projectName={project?.name || projectName || 'Project'} locationId={l.id} />
                 <LocationDocumentsLine projectId={projectId} locationId={l.id} documents={documents} signatures={signatures} />
@@ -326,16 +341,26 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Edit location" : "Add location"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
+            {canWrite&&<section aria-label="Per diem" className="col-span-2 grid grid-cols-2 gap-3 border-b pb-3">
+              <h3 className="col-span-2 font-semibold text-sm">Per diem</h3>
+              <div className="col-span-2"><Label htmlFor="loc-perdiem-days">Days</Label><div className="flex flex-wrap gap-2"><Input className="w-28" id="loc-perdiem-days" type="number" min={0} max={365} step={0.5} {...f('per_diem_days')}/>{[{label:'½',value:0.5},{label:'1',value:1},{label:'+1',value:Math.min(365,(Number(form.per_diem_days)||0)+1)}].map(x=><Button key={x.label} type="button" variant="outline" aria-label={`Per diem days ${x.label}`} onClick={()=>setForm({...form,per_diem_days:String(x.value)})}>{x.label}</Button>)}</div></div>
+              <div><Label htmlFor="loc-perdiem-rate">Rate $/day per person</Label><Input id="loc-perdiem-rate" type="number" min={0} step="0.01" {...f('per_diem_day_rate')}/></div>
+              <div><Label htmlFor="loc-perdiem-count">Headcount</Label><Input id="loc-perdiem-count" type="number" min={0} step={1} placeholder={`Auto: ${editing?perDiemCounts[editing.id]??'…':0}`} {...f('per_diem_headcount')}/><p className="text-xs text-muted-foreground">Blank = auto · billable signed stays</p></div>
+              <div className="col-span-2"><Label htmlFor="loc-perdiem-notes">Notes</Label><Textarea id="loc-perdiem-notes" rows={2} {...f('per_diem_notes')}/></div>
+              {form.per_diem_days!==''&&<p className="col-span-2 text-sm break-words">{perDiemText({per_diem_days:Number(form.per_diem_days),per_diem_day_rate:form.per_diem_day_rate===''?null:Number(form.per_diem_day_rate),per_diem_headcount:form.per_diem_headcount===''?null:Number(form.per_diem_headcount)},true,editing?perDiemCounts[editing.id]:0)}</p>}
+            </section>}
+            <fieldset disabled={editing?.status==='closed'} className="col-span-2 grid grid-cols-2 gap-3">
             <div className="col-span-2"><Label>Name *</Label><Input {...f("name")} /></div>
             <div className="col-span-2"><Label>Customer</Label><Select value={form.customer_id||'none'} onValueChange={v=>setForm({...form,customer_id:v==='none'?'':v})}><SelectTrigger aria-label="Location customer"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="none">No customer</SelectItem>{customers.data?.map(c=><SelectItem key={c.id} value={c.id}>{getCustomerDisplayName(c)}</SelectItem>)}</SelectContent></Select></div>
             <div><Label>Project #</Label><Input {...f("project_number")} /></div>
             <div><Label>Status</Label>
-              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+              <Select disabled={editing?.status==='closed'} value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="on_hold">On hold</SelectItem>
                   <SelectItem value="complete">Complete</SelectItem>
+                  {editing?.status==='closed'&&<SelectItem value="closed">Closed</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
@@ -396,6 +421,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
               </div>
               {form.meals_provided && <div className="col-span-2"><Label>Meals notes</Label><Input {...f("meals_notes")} placeholder="e.g. Lunch on site" /></div>}
             </div>
+            </fieldset>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {setOpen(false);onEditClosed?.();}}>Cancel</Button>
