@@ -1,3 +1,5 @@
+import {perDiemText} from '@/lib/locationPerDiem';
+import {useLocationPerDiemCounts} from '@/hooks/useLocationPerDiem';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { PageLayout } from '@/components/layout/PageLayout';
@@ -49,6 +51,7 @@ export default function LocationDetail() {
   const { data: project, isLoading: projectLoading, error: projectError } = useProject(projectId);
   const { data: locations = [], isLoading, error } = useProjectLocations(projectId);
   const location = locations.find(l => l.id === locationId);
+  const perDiemCounts=useLocationPerDiemCounts(location?.per_diem_days!=null?[location.id]:[]);
   const { data: customer } = useCustomer(location?.customer_id || project?.customer_id || undefined);
   const { isAdmin, isManager } = useUserRole(), canWrite = isAdmin || isManager;
   const { data: staffing } = useLocationStaffingSummary(locationId ? [locationId] : []);
@@ -98,6 +101,7 @@ export default function LocationDetail() {
       <p className="text-sm text-muted-foreground">Shifts: {shifts.day}–{shifts.dayEnd} / {shifts.night}–{shifts.nightEnd}</p>
       <div className="flex flex-wrap items-center gap-2">{canWrite && location.status!=='closed' && <><LocationKioskActions location={location} initialOpen={params.get('action')==='kiosk'}/><ProjectJoinLinks projectId={projectId} locationId={location.id}/></>}<DailyTimesheetPanel projectId={projectId} projectName={project.name} locationId={location.id} initialSheet={sheet}/></div>
     </section>
+    {location.per_diem_days!=null&&<div className="py-3 text-sm break-words">{perDiemText(location,canWrite,perDiemCounts[location.id])}{canWrite&&location.per_diem_notes&&<p className="text-muted-foreground whitespace-pre-wrap">{location.per_diem_notes}</p>}</div>}
     {!mobile && <div className="mt-4"><LocationAuthorizationPanel projectId={projectId} locationId={location.id} locationName={location.name} timezone={location.timezone}/></div>}
     <FieldRequestsDialog open={reqOpen} onOpenChange={setReqOpen} locationId={location.id} locationName={location.name} canAct={canWrite}/>
     {canWrite && projectId && <LocationCloseoutDialog projectId={projectId} location={location} open={closeOpen} onOpenChange={setCloseOpen}/>}

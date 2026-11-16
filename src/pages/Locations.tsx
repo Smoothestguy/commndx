@@ -1,3 +1,5 @@
+import {perDiemText} from '@/lib/locationPerDiem';
+import {useLocationPerDiemCounts} from '@/hooks/useLocationPerDiem';
 import {Link,useNavigate} from 'react-router-dom';
 import {useUserRole} from '@/hooks/useUserRole';
 import {useUpdateProjectLocation} from '@/integrations/supabase/hooks/useProjectLocations';
@@ -29,6 +31,7 @@ export default function Locations() {
   const [customer,setCustomer]=useSessionState('global-locations:customer','all');
   const [search,setSearch]=useSessionState('global-locations:search','');
   const scope=useMemo(()=>locations.filter(l=>(project==='all'||l.project_id===project)&&(status==='all'||l.status===status)),[locations,project,status]);
+  const perDiemCounts=useLocationPerDiemCounts(scope.filter(l=>l.per_diem_days!=null).map(l=>l.id));
   const staffing=useGlobalLocationStaffing(scope.map(l=>l.id));
   const authorization=useLocationAuthorization(scope);
   const ops=useLocationCommandCenter([...new Set(scope.map(l=>l.project_id))],scope);
@@ -48,6 +51,7 @@ export default function Locations() {
     {key:'status',header:'Status',render:r=><Badge variant="outline">{r.status}</Badge>},
     {key:'staffed',header:'Staffed / Auth',getValue:r=>r.staffed??0,render:r=><span className="tabular-nums">{r.staffed??'…'} / {r.authorized??'…'}</span>},
     {key:'onSite',header:'On-site now',getValue:r=>r.onSite??0,render:r=><span className="tabular-nums">{r.onSite??'…'}</span>},
+    {key:'perDiem',header:'Per diem',width:260,getValue:r=>perDiemText(r,isAdmin||isManager,perDiemCounts[r.id],true),render:r=><span className="text-sm">{perDiemText(r,isAdmin||isManager,perDiemCounts[r.id],true)}</span>},
     {key:'customerName',header:'Customer',width:240,render:r=>r.customerId?<Link className="block truncate hover:underline" title={r.customerName} to={`/customers/${r.customerId}`}>{r.customerName}</Link>:'—'},
   ];
   return <PageLayout title="Locations" desktopCompact><div data-viewport-list className="desktop-list-page space-y-3">

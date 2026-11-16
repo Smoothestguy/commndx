@@ -8680,6 +8680,10 @@ export type Database = {
           name: string
           night_shift_end: string | null
           night_shift_start: string | null
+          per_diem_day_rate: number | null
+          per_diem_days: number | null
+          per_diem_headcount: number | null
+          per_diem_notes: string | null
           poc_email: string | null
           poc_name: string | null
           poc_phone: string | null
@@ -8716,6 +8720,10 @@ export type Database = {
           name: string
           night_shift_end?: string | null
           night_shift_start?: string | null
+          per_diem_day_rate?: number | null
+          per_diem_days?: number | null
+          per_diem_headcount?: number | null
+          per_diem_notes?: string | null
           poc_email?: string | null
           poc_name?: string | null
           poc_phone?: string | null
@@ -8752,6 +8760,10 @@ export type Database = {
           name?: string
           night_shift_end?: string | null
           night_shift_start?: string | null
+          per_diem_day_rate?: number | null
+          per_diem_days?: number | null
+          per_diem_headcount?: number | null
+          per_diem_notes?: string | null
           poc_email?: string | null
           poc_name?: string | null
           poc_phone?: string | null

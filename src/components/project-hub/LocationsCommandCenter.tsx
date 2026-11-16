@@ -1,3 +1,5 @@
+import {perDiemText} from '@/lib/locationPerDiem';
+import {useLocationPerDiemCounts} from '@/hooks/useLocationPerDiem';
 import { EnhancedDataTable, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
 import { useSessionState } from '@/hooks/useSessionState';
 import { useMemo, useState } from 'react';
@@ -32,6 +34,7 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
   projectId: string; locations: ProjectLocation[]; staffing?: Record<string, LocationStaffingSummary>; canWrite: boolean;
 }) {
   const navigate = useNavigate();
+  const perDiemCounts=useLocationPerDiemCounts(locations.filter(l=>l.per_diem_days!=null).map(l=>l.id));
   const auth = useLocationAuthorization(locations);
   const ops = useLocationCommandCenter(projectId, locations);
   const reqs = useLocationRequests(locations.map(l => l.id));
@@ -167,6 +170,7 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
   type LocationRow = typeof rows[number] & { id: string };
   const columns: EnhancedColumn<LocationRow>[] = [
     { key: 'name', header: 'Location', width: 320, render: r => <NameCell r={r} /> },
+    {key:'perDiem',header:'Per diem',width:260,getValue:r=>perDiemText(r.l,canWrite,perDiemCounts[r.l.id],true),render:r=><span className="text-sm">{perDiemText(r.l,canWrite,perDiemCounts[r.l.id],true)}</span>},
     { key: 'status', header: 'Status', getValue: r => r.l.status },
     { key: 'staffed', header: 'Staffed', getValue: r => r.actual, render: r => <StaffCell r={r} /> },
     { key: 'today', header: 'Today', getValue: r => r.o?.onSite ?? 0, render: r => <TodayCell r={r} /> },
@@ -227,6 +231,7 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
             <span>Closed <span className="text-muted-foreground font-normal">({closedRows.length})</span></span><span className="text-xs text-muted-foreground">{showClosed ? 'Hide' : 'Show'}</span></button>
           {showClosed && <ul className="divide-y border-t max-h-40 overflow-auto">{closedRows.map(r => <li key={r.l.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 text-sm text-muted-foreground">
             <Link to={locationHref(projectId, r.l.id)} className="hover:underline hover:text-primary">{r.l.name}</Link>
+            <span className="text-xs">{perDiemText(r.l,canWrite,perDiemCounts[r.l.id],true)}</span>
             <span className="text-xs">Closed{r.l.closeout_date ? ` ${r.l.closeout_date}` : ''} · <Dates l={r.l} /></span></li>)}</ul>}
         </div>}
       </div>

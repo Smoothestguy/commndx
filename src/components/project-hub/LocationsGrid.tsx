@@ -1,4 +1,6 @@
 import { useSessionState } from "@/hooks/useSessionState";
+import {perDiemText} from '@/lib/locationPerDiem';
+import {useLocationPerDiemCounts} from '@/hooks/useLocationPerDiem';
 import { gridColumnWidths } from "@/lib/gridSizing";
 import { assetCareLabel, ownershipText } from '@/lib/assetDetails';
 import { NonBillableChip } from '@/components/personnel/NonBillableChip';
@@ -77,6 +79,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
   onOpenCard: (locationId: string) => void; onEditLocation?: (location: ProjectLocation) => void;
 }) {
   const navigate = useNavigate();
+  const perDiemCounts=useLocationPerDiemCounts(locations.filter(l=>l.per_diem_days!=null).map(l=>l.id));
   const [logFor,setLogFor]=useState<{personnelId:string;locationId:string}>();
   const [expenseFor,setExpenseFor]=useState<string>();
   const [roleFor,setRoleFor]=useState<(typeof assignments)[number]>();
@@ -302,6 +305,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                   </span>
                 </div>
                 {isOpen && meta.length > 0 && <div className="pl-5 mt-0.5 text-[11px] text-muted-foreground">{meta.join(" · ")}</div>}
+                {l.per_diem_days!=null&&<div className="pl-5 text-xs break-words">{perDiemText(l,canWrite,perDiemCounts[l.id])}</div>}
                 <JoinRequests projectId={projectId} locationId={l.id} />
                 <AuthorizationBadge value={authorization.data?.[l.id]} />
                 {canWrite && isOpen && <LocationKioskActions location={l} />}
@@ -405,6 +409,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                           <IconBtn label="Open location card" onClick={() => onOpenCard(l.id)}><ExternalLink className="h-3.5 w-3.5" /></IconBtn>
                         </span>
                       </div>
+                      {l.per_diem_days!=null&&<div className="text-xs whitespace-normal break-words">{perDiemText(l,canWrite,perDiemCounts[l.id])}</div>}
                     </td>
                   </tr></EntityContextMenu>
                   {canWrite && isOpen && <tr><td colSpan={cols} className="px-2 py-1"><LocationKioskActions location={l} /></td></tr>}
