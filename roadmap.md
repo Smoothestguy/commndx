@@ -1,3 +1,6 @@
+# Location per diem day counts
+- [ ] Add manager-only half-day forms and summaries/column, manual TO billing and exports, preserve unset auto behavior; regenerate types, focused tests/typecheck and desktop/mobile verification without owner writes.
+
 # Mobile bulk actions and long-press
 - [x] Shared compact phone selection bar above dock, direct status/Assign/Edit/export, additional actions menu, scroll-cancelled 500ms selection/context menus and desktop row right-click. Existing row actions retained; manager-only controls, supported status equivalents and no deletes. Phone Personnel/projects/assets now use shared cards; Applicant Pool has guarded contact Open/Edit/Add and new/inactive toggles without approvals.
 - [x] 390px Locations and Personnel disposable deactivate/activate readback restored active, all fixture projects/locations/personnel removed (zero remaining). Long-press selects, movement cancels, multi-select hides Edit, existing edit dialogs and Personnel Assign open without saving, selected exports download, desktop menu works. Twelve focused tests pass; preview clean and final browser reports no page errors. Owner records read-only, no texts/punches. Separate field browser not exercised; shared role gating and dollar columns preserved.
