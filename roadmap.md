@@ -1,5 +1,5 @@
 # Location per diem day counts
-- [ ] Add manager-only half-day forms and summaries/column, manual TO billing and exports, preserve unset auto behavior; regenerate types, focused tests/typecheck and desktop/mobile verification without owner writes.
+- [x] Manager-only half-day forms, location summaries/optional columns, manual TO billing and labeled XLSX export added. Types regenerated; 31 focused tests and requested tsgo pass, preview clean. Seeded 5050/5051 inspected read-only; disposable active/complete/closed saves read back at 390px and all fixtures removed. Desktop/phone forms and export verified; 5049 null-days auto billing unchanged. Fresh field browser not exercised; manager-only source query gating and dollar-free formatter retained.
 
 # Mobile bulk actions and long-press
 - [x] Shared compact phone selection bar above dock, direct status/Assign/Edit/export, additional actions menu, scroll-cancelled 500ms selection/context menus and desktop row right-click. Existing row actions retained; manager-only controls, supported status equivalents and no deletes. Phone Personnel/projects/assets now use shared cards; Applicant Pool has guarded contact Open/Edit/Add and new/inactive toggles without approvals.
