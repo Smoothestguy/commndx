@@ -106,13 +106,16 @@ export const useProjectsByCustomer = (customerId: string | null) => {
     queryKey: ["projects", "customer", customerId],
     queryFn: async () => {
       if (!customerId) return [];
-      const locations = await supabase.from('project_locations').select('project_id').eq('customer_id',customerId);
+      const locations = await supabase.from('project_locations').select('project_id,customer_id').or(`customer_id.eq.${customerId},customer_id.is.null`);
       if(locations.error)throw locations.error;
-      const ids=[...new Set(locations.data.map(l=>l.project_id))];
+      const ids=[...new Set(locations.data.filter(l=>l.customer_id===customerId).map(l=>l.project_id))];
+      const legacyIds=[...new Set(locations.data.filter(l=>!l.customer_id).map(l=>l.project_id))];
+      const conditions=[...(ids.length?[`id.in.(${ids.join(',')})`]:[]),...(legacyIds.length?[`and(customer_id.eq.${customerId},id.in.(${legacyIds.join(',')}))`]:[])];
+      if (!conditions.length) return [];
       const { data, error } = await supabase
         .from("projects")
         .select("*")
-        .or(`customer_id.eq.${customerId}${ids.length?`,id.in.(${ids.join(',')})`:''}`)
+        .or(conditions.join(','))
         .order("created_at", { ascending: false });
 
       if (error) throw error;

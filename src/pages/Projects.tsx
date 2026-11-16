@@ -481,7 +481,7 @@ const Projects = () => {
               <ProjectFilters
                 filterStatus="all"
                 setFilterStatus={() => {}}
-                filterStage={filterStage}
+                filterStage={filterStage === "quote" ? "standby" : filterStage}
                 setFilterStage={setFilterStage}
                 filterCategory={filterCategory}
                 setFilterCategory={setFilterCategory}

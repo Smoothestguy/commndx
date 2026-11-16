@@ -61,6 +61,7 @@ interface TimeEntryWithRelations {
   overtime_hours?: number | null;
   hourly_rate?: number | null;
   project_id: string;
+  location_id?: string | null;
   personnel_id?: string | null;
   personnel?: {
     id: string;
@@ -256,6 +257,10 @@ export function WH347ExportDialog({
 
       // Get project info
       const project = entries[0]?.projects;
+      const locationIds = [...new Set(filteredEntries.flatMap(e => e.location_id ? [e.location_id] : []))];
+      const refs = locationIds.length ? await supabase.from('location_task_orders').select('customer_ref').in('location_id',locationIds).eq('status','accepted').not('customer_ref','is',null) : {data:[],error:null};
+      if (refs.error) throw refs.error;
+      const contractRefs = [...new Set((refs.data || []).map(t => t.customer_ref).filter(Boolean))];
       const projectLocation = project
         ? [project.address, project.city, project.state].filter(Boolean).join(", ")
         : "";
@@ -297,7 +302,7 @@ export function WH347ExportDialog({
         weekEnding: format(weekEnd, "MM/dd/yyyy"),
         projectName: projectName || project?.name || "Project",
         projectLocation,
-        contractNumber: "",
+        contractNumber: contractRefs.join(', '),
         employees: employeeRows.map((emp) => ({
           name: `${emp.personnel.lastName}, ${emp.personnel.firstName}`,
           address: [emp.personnel.address, emp.personnel.city, emp.personnel.state, emp.personnel.zip]
