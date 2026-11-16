@@ -9,7 +9,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
+import { StatusPill, EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2, Users as UsersIcon, User, Archive, ArchiveRestore, X, Download } from "lucide-react";
@@ -268,7 +268,7 @@ const Projects = () => {
       sortable: true,
       filterable: true,
       getValue: (item) => item.status,
-      render: (item) => <StatusBadge status={item.status} />,
+      render: (item) => <StatusPill value={item.status} />,
     },
     {
       key: "team",
