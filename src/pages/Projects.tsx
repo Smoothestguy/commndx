@@ -46,12 +46,12 @@ import { format } from "date-fns";
 import { stageConfig } from "@/components/projects/ProjectCard";
 import { getCustomerDisplayName } from "@/utils/customerDisplayName";
 
-type TabKey = "active" | "quotes" | "completed" | "on-hold" | "archived";
-const TAB_KEYS: TabKey[] = ["active", "quotes", "completed", "on-hold", "archived"];
+type TabKey = "active" | "standby" | "completed" | "on-hold" | "archived";
+const TAB_KEYS: TabKey[] = ["active", "standby", "completed", "on-hold", "archived"];
 
 function bucketOf(p: Project): TabKey {
   if (p.archived_at) return "archived";
-  if (p.stage === "quote") return "quotes";
+  if (p.stage === "standby") return "standby";
   if (p.status === "on-hold") return "on-hold";
   if (p.status === "completed" || p.stage === "complete" || p.stage === "canceled") return "completed";
   return "active";
@@ -95,7 +95,7 @@ const Projects = () => {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [formData, setFormData] = useState<ProjectFormData>(initialProjectFormData);
 
-  const tabParam = (searchParams.get("tab") || "active") as TabKey;
+  const tabParam = (searchParams.get("tab") === "quotes" ? "standby" : searchParams.get("tab") || "active") as TabKey;
   const activeTab: TabKey = TAB_KEYS.includes(tabParam) ? tabParam : "active";
   const setActiveTab = (v: string) => {
     const next = new URLSearchParams(searchParams);
@@ -106,7 +106,7 @@ const Projects = () => {
 
   // Bucket counts
   const bucketCounts = useMemo(() => {
-    const c: Record<TabKey, number> = { active: 0, quotes: 0, completed: 0, "on-hold": 0, archived: 0 };
+    const c: Record<TabKey, number> = { active: 0, standby: 0, completed: 0, "on-hold": 0, archived: 0 };
     (allProjects || []).forEach(p => { c[bucketOf(p)]++; });
     return c;
   }, [allProjects]);
@@ -122,7 +122,7 @@ const Projects = () => {
     const searchMatch =
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       customerNames(p).toLowerCase().includes(search.toLowerCase());
-    const stageMatch = filterStage === "all" || p.stage === filterStage;
+    const stageMatch = filterStage === "all" || p.stage === (filterStage === "quote" ? "standby" : filterStage);
     return searchMatch && stageMatch && (filterType==='all'||p.type_id===filterType) && (filterCustomer==='all'||customersFor(p).some(c=>c.id===filterCustomer));
   });
 
@@ -183,13 +183,12 @@ const Projects = () => {
       Customers: customerNames(p),
       Locations: locationsFor(p.id).length,
       Status: p.status,
-      Stage: p.stage,
+      Stage: stageConfig[p.stage]?.label || "Stand by",
       "Start Date": p.start_date || "",
       "End Date": p.end_date || "",
       City: p.city || "",
       State: p.state || "",
       "Crew Count": assignmentCounts?.[p.id] ?? 0,
-      "Customer PO": p.customer_po || "",
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -234,7 +233,6 @@ const Projects = () => {
       filterable: true,
       getValue: customerNames,
       render: (item) => {
-        return <EventCustomers rows={customersFor(item)} customers={customers}/>;
       },
     },
     {key:'locations',header:'Locations',sortable:true,getValue:p=>locationsFor(p.id).length,render:p=>locationsFor(p.id).length},
@@ -259,9 +257,9 @@ const Projects = () => {
       header: "Stage",
       sortable: true,
       filterable: true,
-      getValue: (item) => item.stage || "quote",
+      getValue: (item) => item.stage || "standby",
       render: (item) => {
-        const stage = stageConfig[item.stage] || stageConfig.quote;
+        const stage = stageConfig[item.stage] || stageConfig.standby;
         return <Badge variant={stage.variant} className={`text-xs ${stage.className}`}>{stage.label}</Badge>;
       },
     },
@@ -306,10 +304,9 @@ const Projects = () => {
     setEditingProject(project);
     setFormData({
       name: project.name,
-      customer_id: project.customer_id || '',
       type_id:project.type_id || '',
       status: project.status,
-      stage: project.stage || "quote",
+      stage: project.stage || "standby",
       start_date: project.start_date,
       end_date: project.end_date || "",
       description: project.description || "",
@@ -317,11 +314,9 @@ const Projects = () => {
       city: project.city || "",
       state: project.state || "",
       zip: project.zip || "",
-      customer_po: project.customer_po || "",
       poc_name: project.poc_name || "",
       poc_phone: project.poc_phone || "",
       poc_email: project.poc_email || "",
-      use_customer_address: false,
       time_clock_enabled: (project as any).time_clock_enabled || false,
       require_clock_location: (project as any).require_clock_location ?? true,
       mandatory_payroll: project.mandatory_payroll || false,
@@ -333,10 +328,9 @@ const Projects = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { use_customer_address, ...submitFields } = formData;
+    const submitFields = formData;
     const submitData = {
       ...submitFields,
-      customer_id: formData.customer_id || null,
       type_id:formData.type_id || null,
       end_date: formData.end_date || null,
       description: formData.description || null,
@@ -344,7 +338,6 @@ const Projects = () => {
       city: formData.city || null,
       state: formData.state || null,
       zip: formData.zip || null,
-      customer_po: formData.customer_po || null,
       poc_name: formData.poc_name || null,
       poc_phone: formData.poc_phone || null,
       poc_email: formData.poc_email || null,
@@ -423,7 +416,7 @@ const Projects = () => {
   const tabLabel = (k: TabKey) => {
     const labels: Record<TabKey, string> = {
       active: "Active",
-      quotes: "Quotes",
+      standby: "Stand by",
       completed: "Completed",
       "on-hold": "On-Hold",
       archived: "Archived",
@@ -607,7 +600,6 @@ const Projects = () => {
           onSubmit={handleSubmit}
           formData={formData}
           setFormData={setFormData}
-          customers={customers}
           editingProject={editingProject}
           isSubmitting={addProject.isPending || updateProject.isPending}
         />

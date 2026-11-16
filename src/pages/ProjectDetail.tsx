@@ -81,7 +81,6 @@ const ProjectDetail = () => {
   }, [id, queryClient]);
 
   const { data: project, isLoading: projectLoading } = useProject(id);
-  const { data: customer } = useCustomer(project?.customer_id);
   const { isAdmin, isManager } = useUserRole();
   const canArchive = isAdmin || isManager;
   const { data: locations = [] } = useProjectLocations(id);
@@ -124,7 +123,7 @@ const ProjectDetail = () => {
   }, [project]);
 
   const handleExportPDF = async () => {
-    if (!project || !customer || !id) return;
+    if (!project || !id) return;
     try {
       toast.loading("Preparing project report...", { id: "pdf-export" });
       const [estRes, joRes, coRes, invRes, msRes] = await Promise.all([
@@ -160,7 +159,7 @@ const ProjectDetail = () => {
 
       generateProjectReportPDF({
         project: { name: project.name, status: project.status, start_date: project.start_date, end_date: project.end_date },
-        customer: { name: customer.name, company: customer.company, email: customer.email, phone: customer.phone },
+        customer: { name: derivedCustomers.map(r => getCustomerDisplayName(customers.data?.find(c => c.id === r.id))).join(", "), company: null, email: "", phone: null },
         estimates,
         jobOrders,
         invoices,
@@ -186,7 +185,7 @@ const ProjectDetail = () => {
   }
   if (!project) return <Navigate to="/projects" replace />;
 
-  const stage = stageConfig[project.stage] || stageConfig.quote;
+  const stage = stageConfig[project.stage] || stageConfig.standby;
 
   const projectActions = (
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
@@ -230,7 +229,7 @@ const ProjectDetail = () => {
           <Button variant="ghost" size="sm" className="ml-auto shrink-0 h-8" aria-expanded={detailsOpen} aria-controls="project-header-details" onClick={() => setDetailsOpen(v => !v)}>Details<ChevronDown className={`ml-1 h-4 w-4 ${detailsOpen ? 'rotate-180' : ''}`} /></Button>
         </div>
         {detailsOpen && <div id="project-header-details" className="border-y border-border py-2 space-y-2">
-          <div className="flex flex-wrap items-center gap-2"><Badge variant={stage.variant}>{stage.label}</Badge>{project.customer_po && <Badge variant="outline">PO {project.customer_po}</Badge>}{project.archived_at && <Badge variant="outline">Archived</Badge>}<span className="text-sm text-muted-foreground">{addressLine}</span>
+          <div className="flex flex-wrap items-center gap-2"><Badge variant={stage.variant}>{stage.label}</Badge>{project.archived_at && <Badge variant="outline">Archived</Badge>}<span className="text-sm text-muted-foreground">{addressLine}</span>
             {canArchive && <label className="ml-auto flex items-center gap-2 text-xs"><Switch checked={deploymentMode} disabled={updateProject.isPending} onCheckedChange={v => updateProject.mutate({ id: project.id, deployment_mode: v })} />Deployment tracking</label>}
           </div>
           {projectActions}
@@ -252,11 +251,6 @@ const ProjectDetail = () => {
           {project.archived_at && (
             <Badge variant="outline" className="text-xs gap-1 border-muted-foreground/50 text-muted-foreground">
               <Archive className="h-3 w-3" /> Archived
-            </Badge>
-          )}
-          {project.customer_po && (
-            <Badge variant="outline" className="text-xs gap-1">
-              <Hash className="h-3 w-3" /> PO {project.customer_po}
             </Badge>
           )}
           {canArchive && (

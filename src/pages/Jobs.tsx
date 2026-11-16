@@ -1,3 +1,5 @@
+import { useEventLocationIndex } from "@/hooks/useProjectEvent";
+import { eventCustomers } from "@/lib/projectEvent";
 import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
@@ -12,6 +14,7 @@ export default function Jobs() {
   const navigate = useNavigate();
   const { data: projects, isLoading: projectsLoading } = useProjects();
   const { data: customers } = useCustomers();
+  const locations = useEventLocationIndex();
 
   return (
     <PageLayout title="Jobs">
@@ -26,12 +29,12 @@ export default function Jobs() {
             <ProjectStats projects={projects} />
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {projects.map((project, index) => {
-                const customer = customers?.find(c => c.id === project.customer_id);
+                const names = eventCustomers((locations.data || []).filter(l => l.project_id === project.id), project.customer_id).map(r => getCustomerDisplayName(customers?.find(c => c.id === r.id))).join(", ");
                 return (
                   <ProjectCard 
                     key={project.id} 
                     project={project}
-                    customerName={getCustomerDisplayName(customer)}
+                    customerName={names}
                     onEdit={() => navigate(`/projects/${project.id}`)}
                     onDelete={() => {}}
                     onClick={() => navigate(`/projects/${project.id}`)}

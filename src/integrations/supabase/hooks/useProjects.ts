@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { useAuditLog, computeChanges } from "@/hooks/useAuditLog";
 import type { Json } from "@/integrations/supabase/types";
 
-export type ProjectStage = "quote" | "task_order" | "active" | "complete" | "canceled";
+export type ProjectStage = "standby" | "task_order" | "active" | "complete" | "canceled";
 
 export interface Project {
   id: string;
@@ -126,7 +126,7 @@ export const useAddProject = () => {
   const { logAction } = useAuditLog();
 
   return useMutation({
-    mutationFn: async (project: Omit<Project, "id" | "created_at" | "updated_at" | "archived_at" | "archived_by"> & { archived_at?: string | null; archived_by?: string | null }) => {
+    mutationFn: async (project: Omit<Project, "id" | "created_at" | "updated_at" | "archived_at" | "archived_by" | "customer_id" | "customer_po"> & { archived_at?: string | null; archived_by?: string | null }) => {
       const { data, error } = await supabase
         .from("projects")
         .insert([project])
@@ -143,7 +143,6 @@ export const useAddProject = () => {
         resourceNumber: data.name,
         changesAfter: data as unknown as Json,
         metadata: { 
-          customer_id: project.customer_id,
           status: project.status,
           stage: project.stage 
         } as Json,
@@ -384,11 +383,10 @@ export const useDuplicateProject = () => {
       const today = new Date().toISOString().split("T")[0];
       const insertPayload: Record<string, unknown> = {
         name: `${source.name} (Copy)`,
-        customer_id: source.customer_id,
         type_id: source.type_id || null,
         region: source.region || null,
         status: "active",
-        stage: "quote",
+        stage: "standby",
         start_date: today,
         end_date: null,
         description: source.description,
@@ -396,7 +394,6 @@ export const useDuplicateProject = () => {
         city: source.city,
         state: source.state,
         zip: source.zip,
-        customer_po: null,
         poc_name: source.poc_name,
         poc_phone: source.poc_phone,
         poc_email: source.poc_email,
