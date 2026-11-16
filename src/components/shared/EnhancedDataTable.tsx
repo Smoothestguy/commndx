@@ -267,12 +267,13 @@ export function EnhancedDataTable<T extends { id: string | number }>({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  const fullOrder = useMemo(() => { const keys = columns.map(c => String(c.key)); return [...preferences.columnOrder.filter(k => keys.includes(k)), ...keys.filter(k => !preferences.columnOrder.includes(k))]; }, [columns, preferences.columnOrder]);
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      const oldIndex = preferences.columnOrder.indexOf(String(active.id));
-      const newIndex = preferences.columnOrder.indexOf(String(over.id));
-      setColumnOrder(arrayMove(preferences.columnOrder, oldIndex, newIndex));
+      const oldIndex = fullOrder.indexOf(String(active.id));
+      const newIndex = fullOrder.indexOf(String(over.id));
+      setColumnOrder(arrayMove(fullOrder, oldIndex, newIndex));
     }
   };
 
@@ -287,7 +288,6 @@ export function EnhancedDataTable<T extends { id: string | number }>({
     return [...all.filter(c => c.frozen), ...all.filter(c => !c.frozen)];
   }, [columns, preferences.columnOrder, preferences.visibleColumns]);
 
-  const fullOrder = useMemo(() => { const keys = columns.map(c => String(c.key)); return [...preferences.columnOrder.filter(k => keys.includes(k)), ...keys.filter(k => !preferences.columnOrder.includes(k))]; }, [columns, preferences.columnOrder]);
   const columnConfigs: ColumnConfig[] = useMemo(() => columns.map(col => ({
     key: String(col.key), header: col.header, sortable: col.sortable, filterable: col.filterable,
   })), [columns]);
