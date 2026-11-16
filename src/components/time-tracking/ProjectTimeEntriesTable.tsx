@@ -992,20 +992,20 @@ export function ProjectTimeEntriesTable({
                     </TableCell>
                   )}
                   <TableCell>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       {expandedProjects.has(project.projectId) ? (
-                        <FolderOpen className="h-5 w-5 text-primary" />
+                        <FolderOpen className="h-5 w-5 shrink-0 text-primary" />
                       ) : (
-                        <Folder className="h-5 w-5 text-muted-foreground" />
+                        <Folder className="h-5 w-5 shrink-0 text-muted-foreground" />
                       )}
-                      <span className="font-semibold">
+                      <span className="block max-w-80 truncate font-semibold" title={project.projectName}>
                         {project.projectName}
                       </span>
 
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {project.customerName}
+                    <span className="block max-w-48 truncate" title={project.customerName}>{project.customerName}</span>
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     <div className="flex items-center justify-end gap-1">
@@ -1057,7 +1057,7 @@ export function ProjectTimeEntriesTable({
                             </TableCell>
                           )}
                           <TableCell>
-                            <div className="flex items-center gap-3 pl-8">
+                            <div className="flex items-center gap-3 pl-8 min-w-0 [&>span]:shrink-0">
                               <PersonnelAvatar
                                 photoUrl={personnel.personnelData?.photo_url}
                                 firstName={
@@ -1068,7 +1068,7 @@ export function ProjectTimeEntriesTable({
                                 }
                                 size="sm"
                               />
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
                                 <span className="block max-w-64 truncate font-medium" title={personnel.personnelName}>
                                   {personnel.personnelName}
                                 </span>
