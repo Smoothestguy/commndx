@@ -51,7 +51,7 @@ import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobilePersonnelCard } from "./MobilePersonnelCard";
-import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
+import { StatusPill, EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { TablePagination } from "@/components/shared/TablePagination";
 import { PersonnelRolesDialog } from "./PersonnelRolesDialog";
 import { BenchStar, TagChips } from "./PersonnelTags";
@@ -301,6 +301,17 @@ export function PersonnelTable({
           >
             {person.first_name} {person.last_name}
           </Link>
+        </div>
+      ),
+    },
+    {
+      key: "flags",
+      header: "Flags",
+      width: 130,
+      sortable: false,
+      getValue: (person) => [person.on_bench ? "Bench" : "", (person as any).portal_required === false ? "Temp" : ""].filter(Boolean).join(", "),
+      render: (person: Personnel) => (
+        <div className="flex items-center gap-1.5">
           <BenchStar on={person.on_bench} />
           <ComplianceBadge personnel={person} compact />
           {(person as any).portal_required === false && (
@@ -330,7 +341,7 @@ export function PersonnelTable({
       sortable: true,
       filterable: true,
       getValue: (person) => person.status || "active",
-      render: (person: Personnel) => getStatusBadge(person.status),
+      render: (person: Personnel) => <StatusPill value={person.status || "active"} />,
     },
     {
       key: "gender",

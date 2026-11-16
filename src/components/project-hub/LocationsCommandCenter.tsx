@@ -1,6 +1,6 @@
 import {perDiemText} from '@/lib/locationPerDiem';
 import {useLocationPerDiemCounts} from '@/hooks/useLocationPerDiem';
-import { EnhancedDataTable, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
+import { EnhancedDataTable, StatusPill, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
 import { useSessionState } from '@/hooks/useSessionState';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -156,9 +156,6 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
     <div className="flex items-center gap-1.5 min-w-0">
       <span className={cn('h-2 w-2 rounded-full shrink-0', r.severity === 'red' ? 'bg-destructive' : r.severity === 'amber' ? 'bg-warning' : 'bg-success')} aria-label={r.severity === 'ok' ? 'OK' : 'Needs attention'} />
       <Link to={locationHref(projectId, r.l.id)} onClick={e => e.stopPropagation()} className="font-semibold truncate hover:underline hover:text-primary">{r.l.name}</Link>
-      {r.l.project_number && <span className="text-xs text-muted-foreground shrink-0">#{r.l.project_number}</span>}
-      {r.l.lat != null && r.l.lng != null ? <MapPin className="h-3.5 w-3.5 text-success shrink-0" aria-label="Geofenced" /> : <MapPinOff className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-label="No geofence" />}
-      <Badge variant={r.l.status === 'active' ? 'default' : 'secondary'} className="px-1.5 py-0 text-[10px] capitalize shrink-0">{r.l.status === 'active' ? 'Active' : r.l.status === 'closed' ? 'Closed' : 'Inactive'}</Badge>
     </div>
   );
   const ReqButton = ({ r }: { r: (typeof rows)[number] }) => (
@@ -169,9 +166,11 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
 
   type LocationRow = typeof rows[number] & { id: string };
   const columns: EnhancedColumn<LocationRow>[] = [
-    { key: 'name', header: 'Location', width: 320, render: r => <NameCell r={r} /> },
+    { key: 'name', header: 'Location', width: 240, render: r => <NameCell r={r} /> },
     {key:'perDiem',header:'Per diem',width:260,getValue:r=>perDiemText(r.l,canWrite,perDiemCounts[r.l.id],true),render:r=><span className="text-sm">{perDiemText(r.l,canWrite,perDiemCounts[r.l.id],true)}</span>},
-    { key: 'status', header: 'Status', getValue: r => r.l.status },
+    { key: 'project_number', header: 'Project #', width: 120, getValue: r => r.l.project_number ?? '' },
+    { key: 'status', header: 'Status', width: 110, getValue: r => r.l.status, render: r => <StatusPill value={r.l.status === 'active' ? 'active' : r.l.status === 'closed' ? 'closed' : 'inactive'} /> },
+    { key: 'geofence', header: 'Geofence', width: 110, getValue: r => r.l.lat != null && r.l.lng != null ? 'Yes' : 'No', render: r => r.l.lat != null && r.l.lng != null ? <span className="inline-flex items-center gap-1 text-success"><MapPin className="h-3.5 w-3.5" />Yes</span> : <span className="inline-flex items-center gap-1 text-muted-foreground"><MapPinOff className="h-3.5 w-3.5" />No</span> },
     { key: 'staffed', header: 'Staffed', getValue: r => r.actual, render: r => <StaffCell r={r} /> },
     { key: 'today', header: 'Today', getValue: r => r.o?.onSite ?? 0, render: r => <TodayCell r={r} /> },
     { key: 'assets', header: 'Assets', getValue: r => r.a?.actualAssets ?? 0, render: r => <AssetCell r={r} /> },
@@ -214,9 +213,6 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
         </div>
 
         <div className="flex flex-wrap items-center gap-2 min-[1180px]:shrink-0">
-          <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="Status filter">
-            {(['active', 'inactive', 'all'] as const).map(s => <Button key={s} size="sm" variant={status === s ? 'secondary' : 'ghost'} className="h-7 px-2 text-xs capitalize" onClick={() => setStatus(s)}>{s}</Button>)}
-          </div>
           <Button size="sm" variant={filter === 'attention' ? 'secondary' : 'outline'} className="h-7 px-2 text-xs" onClick={() => toggle('attention')} aria-pressed={filter === 'attention'}>Needs attention ({totals.attention})</Button>
           {filter && filter !== 'attention' && <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setFilter(null)}>Clear filter</Button>}
           <span className="text-xs text-muted-foreground ml-auto">{visible.length} shown</span>
@@ -224,6 +220,7 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
 
         </div>
         <EnhancedDataTable fillViewport tableId={`locations-command:${projectId}`} data={visible.map(r => ({ ...r, id: r.l.id }))} columns={columns}
+          quickFilters={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }, { value: 'all', label: 'All' }]} quickFilter={status} onQuickFilterChange={v => setStatus(v as typeof status)}
           rowHref={r => locationHref(projectId, r.l.id)} exportName="locations" attention={r => r.severity !== 'ok' ? 'Needs attention' : null} emptyText="No locations match." />
 
         {closedRows.length > 0 && <div className="border rounded-md" aria-label="Closed locations">

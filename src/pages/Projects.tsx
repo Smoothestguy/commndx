@@ -9,7 +9,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
+import { StatusPill, EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2, Users as UsersIcon, User, Archive, ArchiveRestore, X, Download } from "lucide-react";
@@ -213,13 +213,13 @@ const Projects = () => {
           >
             {item.name}
           </Link>
-          {isStale(item) && (
-            <Badge variant="outline" title="No updates in 90+ days" className="text-[10px] px-1.5 py-0 h-4 border-amber-500/60 text-amber-600 dark:text-amber-400">
-              Stale
-            </Badge>
-          )}
         </div>
       ),
+    },
+    {
+      key: "flags", header: "Flags", width: 100, sortable: false,
+      getValue: (item) => isStale(item) ? "Stale" : "",
+      render: (item) => isStale(item) ? <Badge variant="outline" title="No updates in 90+ days" className="rounded-full text-xs font-medium border-warning/40 bg-warning/10 text-warning">Stale</Badge> : null,
     },
     {
       key: 'type', header: 'Type', sortable:true, filterable:true,
@@ -268,7 +268,7 @@ const Projects = () => {
       sortable: true,
       filterable: true,
       getValue: (item) => item.status,
-      render: (item) => <StatusBadge status={item.status} />,
+      render: (item) => <StatusPill value={item.status} />,
     },
     {
       key: "team",

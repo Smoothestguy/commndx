@@ -29,8 +29,10 @@ export function useTablePreferences({
       try {
         const parsed = JSON.parse(stored);
         // Ensure all default columns are included in case new columns were added
-        const visibleColumns = parsed.visibleColumns || defaultColumns;
-        const columnOrder = parsed.columnOrder || defaultColumns;
+        const storedOrder: string[] = parsed.columnOrder || defaultColumns;
+        const added = defaultColumns.filter(k => !storedOrder.includes(k));
+        const visibleColumns = [...(parsed.visibleColumns || defaultColumns), ...added];
+        const columnOrder = [...storedOrder, ...added];
         return {
           visibleColumns,
           columnOrder,
