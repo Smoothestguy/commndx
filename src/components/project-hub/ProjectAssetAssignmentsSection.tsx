@@ -172,14 +172,16 @@ export function ProjectAssetAssignmentsSection({
   const fmtDay = (v: string | null | undefined) => (v ? format(new Date(v), "MM/dd/yyyy") : "—");
   const assetColumns: EnhancedColumn<AssetBillingRow>[] = [
     { key: "asset", header: "Asset", width: 240, getValue: r => `${r.assets?.asset_number ?? ""} ${r.assets?.label ?? ""} ${r.assets?.serial_number ?? ""}`.trim(),
-      render: r => <span className="flex items-center gap-2">{getAssetIcon(r.assets?.type ?? "default")}<span className="truncate">{r.assets?.asset_number && !r.assets.label.includes(r.assets.asset_number) ? `${r.assets.asset_number} · ` : ""}{r.assets?.label ?? "Asset"}</span><Badge variant="outline" className="text-[10px] px-1">{ownershipText(r.assets)}</Badge></span> },
+      render: r => <span className="flex items-center gap-2">{getAssetIcon(r.assets?.type ?? "default")}<span className="truncate">{r.assets?.asset_number && !r.assets.label.includes(r.assets.asset_number) ? `${r.assets.asset_number} · ` : ""}{r.assets?.label ?? "Asset"}</span>{isMobile && <Badge variant="outline" className="text-[10px] px-1">{ownershipText(r.assets)}</Badge>}</span> },
+    ...(!isMobile ? [{key:"ownership",header:"Ownership",getValue:(r:AssetBillingRow)=>ownershipText(r.assets),render:(r:AssetBillingRow)=><StatusPill value={ownershipText(r.assets)}/>}]:[]),
     { key: "type", header: "Type", getValue: r => r.assets?.type ?? "", render: r => <span className="capitalize">{r.assets?.type}</span> },
     { key: "location", header: "Location", noExport: false, getValue: r => locations.find(l => l.id === r.location_id)?.name ?? "Project-wide", render: r => <AssetLocationCell row={r} projectId={projectId} locations={locations} canEdit={canEdit} /> },
     ...(canEdit ? [
       { key: "bill", header: "Bill rate", getValue: (r: AssetBillingRow) => (r.billable ? r.rate : null), render: (r: AssetBillingRow) => <AssetBillingCell row={r} projectId={projectId} canEdit={canEdit} /> },
       { key: "cost", header: "Our cost/day", getValue: (r: AssetBillingRow) => costOf(r), render: (r: AssetBillingRow) => <span className="tabular-nums">{costOf(r) != null ? `$${costOf(r)?.toFixed(2)}` : "—"}</span> },
       { key: "margin", header: "Margin", getValue: (r: AssetBillingRow) => marginOf(r), render: (r: AssetBillingRow) => <span className={cn("tabular-nums", (marginOf(r) ?? 0) < 0 && "text-destructive")}>{marginOf(r) != null ? `${marginOf(r)}%` : "—"}</span> },
-      { key: "ins", header: "Insurance expires", getValue: (r: AssetBillingRow) => r.assets?.insurance_expires_on ?? null, render: (r: AssetBillingRow) => <span className="whitespace-nowrap">{r.assets?.insurance_expires_on ?? "—"} <InsuranceBadge asset={r.assets} /></span> },
+      { key: "ins", header: "Insurance expires", getValue: (r: AssetBillingRow) => r.assets?.insurance_expires_on ?? null, render: (r: AssetBillingRow) => <span className="whitespace-nowrap">{r.assets?.insurance_expires_on ?? "—"}{isMobile && <InsuranceBadge asset={r.assets} />}</span> },
+      ...(!isMobile ? [{key:"flags",header:"Flags",sortable:false,getValue:(r:AssetBillingRow)=>r.assets?.insurance_expires_on ?? "",render:(r:AssetBillingRow)=><InsuranceBadge asset={r.assets}/>}]:[]),
     ] as EnhancedColumn<AssetBillingRow>[] : []),
     { key: "person", header: "Responsible", getValue: r => r.personnel ? `${r.personnel.first_name} ${r.personnel.last_name}` : "" , render: r => r.personnel ? `${r.personnel.first_name} ${r.personnel.last_name}` : <span className="text-muted-foreground">—</span> },
     { key: "start", header: "Start", getValue: r => r.start_at ?? null, render: r => fmtDay(r.start_at) },

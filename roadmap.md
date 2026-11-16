@@ -344,3 +344,6 @@
 - [x] Manager audited/expected-version/overlap-guarded date corrections; ended truck departure Nov 4→5 saved, status retained, billing derives corrected periods. History toggles expose ended placements.
 - [x] Manager transactional location transfer reconciles base location+project keys, indirect time/document/clock links, exclusive personnel status history, destination eligibility; evidence paths retained, shared documents and locked/financial time guarded. Browser moved test location and both project lists updated.
 - [x] Owner/admin browser checks, 20 rule tests, test records/audits cleaned. Manager-specific session and physical devices not exercised.
+
+# Grid restyle sweep
+- [x] Separate desktop flags/notes/ownership/overtime/counts in assets, both applicant grids, live hierarchical Time and location roster. Personnel/Projects each use one search/filter toolbar; mobile cards retained. Owner read-only desktop checks loaded all six pages with zero page errors, expanded 30 Time rows and project bulk selection passed; nine sizing/interaction tests pass and preview build OK. No business records or messages changed.

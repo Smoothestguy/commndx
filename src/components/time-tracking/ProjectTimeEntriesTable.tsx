@@ -22,6 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { IndeterminateCheckbox } from "@/components/ui/indeterminate-checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { StatusPill } from "@/components/shared/EnhancedDataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ComplianceBadge } from "@/components/personnel/ComplianceBadge";
 import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
@@ -955,7 +956,7 @@ export function ProjectTimeEntriesTable({
       )}
 
       <div className="rounded-lg border border-border overflow-hidden">
-        <Table>
+        <Table className="min-w-[1500px] [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
           <TableHeader>
             <TableRow className="bg-muted/50">
               {onBulkDelete && <TableHead className="w-12"></TableHead>}
@@ -966,6 +967,7 @@ export function ProjectTimeEntriesTable({
               <TableHead className="text-right">Hours</TableHead>
               <TableHead className="text-right">Cost</TableHead>
               <TableHead className="text-center">Status</TableHead>
+              <TableHead>Flags</TableHead><TableHead className="text-right">Count</TableHead><TableHead className="text-right">Overtime</TableHead><TableHead>Notes</TableHead>
               <TableHead className="w-24"></TableHead>
             </TableRow>
           </TableHeader>
@@ -999,18 +1001,7 @@ export function ProjectTimeEntriesTable({
                       <span className="font-semibold">
                         {project.projectName}
                       </span>
-                      {project.isLocked && (
-                        <Badge
-                          variant="outline"
-                          className="bg-orange-500/10 text-orange-500 border-orange-500/20 gap-1 ml-2"
-                        >
-                          <Lock className="h-3 w-3" />
-                          Locked
-                        </Badge>
-                      )}
-                      <Badge variant="secondary" className="ml-2">
-                        {project.personnelGroups.length} personnel
-                      </Badge>
+
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
@@ -1029,21 +1020,9 @@ export function ProjectTimeEntriesTable({
                     </div>
                   </TableCell>
                   <TableCell>
-                    {project.invoiceStatus === 'invoiced' ? (
-                      <Badge className="text-xs bg-success/10 text-success border-success/20 border">
-                        <Check className="h-3 w-3 mr-1" />
-                        Invoiced
-                      </Badge>
-                    ) : project.invoiceStatus === 'partial' ? (
-                      <Badge className="text-xs bg-warning/10 text-warning border-warning/20 border">
-                        Partially Invoiced
-                      </Badge>
-                    ) : (
-                      <Badge className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/20 border">
-                        Uninvoiced
-                      </Badge>
-                    )}
+                    <StatusPill value={project.invoiceStatus === "partial" ? "Partially invoiced" : project.invoiceStatus === "invoiced" ? "Invoiced" : "Uninvoiced"}/>
                   </TableCell>
+                  <TableCell>{project.isLocked && <StatusPill value="Locked"/>}</TableCell><TableCell className="text-right">{project.personnelGroups.length} personnel</TableCell><TableCell></TableCell><TableCell></TableCell>
                   <TableCell>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
                       {expandedProjects.has(project.projectId) ? (
@@ -1090,38 +1069,21 @@ export function ProjectTimeEntriesTable({
                                 size="sm"
                               />
                               <div className="flex items-center gap-2">
-                                <span className="font-medium">
+                                <span className="block max-w-64 truncate font-medium" title={personnel.personnelName}>
                                   {personnel.personnelName}
                                 </span>
-                                <ComplianceBadge
-                                  personnel={getComplianceData(
-                                    personnel.personnelData
-                                  )}
-                                  compact
-                                />
                               </div>
-                              <Badge variant="outline" className="ml-2">
-                                {personnel.dailyEntries.length} days
-                              </Badge>
                             </div>
                           </TableCell>
                           <TableCell></TableCell>
                           <TableCell className="text-right">
-                            <div className="space-y-0.5">
-                              <div className="font-medium">
-                                {personnel.totalHours.toFixed(1)}h
-                              </div>
-                              {personnel.overtimeHours > 0 && (
-                                <div className="text-xs text-orange-500">
-                                  +{personnel.overtimeHours.toFixed(1)}h OT
-                                </div>
-                              )}
-                            </div>
+                            {personnel.totalHours.toFixed(1)}h
                           </TableCell>
                           <TableCell className="text-right font-medium">
                             ${personnel.totalCost.toFixed(2)}
                           </TableCell>
                           <TableCell></TableCell>
+                          <TableCell><ComplianceBadge personnel={getComplianceData(personnel.personnelData)} compact/></TableCell><TableCell className="text-right">{personnel.dailyEntries.length} days</TableCell><TableCell className="text-right">{personnel.overtimeHours.toFixed(1)}h</TableCell><TableCell></TableCell>
                           <TableCell>
                             <Button
                               variant="ghost"
@@ -1159,27 +1121,7 @@ export function ProjectTimeEntriesTable({
                                   )}
                                   <TableCell>
                                     <div className="flex items-center gap-3 pl-16">
-                                      <div className="flex flex-col">
-                                        <span className="font-medium">
-                                          {format(
-                                            parseISO(entry.entry_date),
-                                            "EEE, MMM d"
-                                          )}
-                                        </span>
-                                        {entry.description && (
-                                          <span className="text-sm text-muted-foreground truncate max-w-[300px]">
-                                            {entry.description}
-                                          </span>
-                                        )}
-                                      </div>
-                                      {entry.is_holiday && (
-                                        <Badge
-                                          variant="outline"
-                                          className="bg-purple-500/10 text-purple-500 border-purple-500/20"
-                                        >
-                                          Holiday
-                                        </Badge>
-                                      )}
+                                      <span className="font-medium">{format(parseISO(entry.entry_date), "EEE, MMM d")}</span>
                                     </div>
                                   </TableCell>
                                   <TableCell></TableCell>
@@ -1195,9 +1137,9 @@ export function ProjectTimeEntriesTable({
                                     ).toFixed(2)}
                                   </TableCell>
                                   <TableCell className="text-center">
-                                    <StatusBadge status={getStatus(entry)} />
-                                    {entry.entry_source==='demobe'&&<Badge variant="outline">Demobe</Badge>}
+                                    <StatusPill value={getStatus(entry)} />
                                   </TableCell>
+                                  <TableCell><div className="flex items-center gap-2">{entry.is_holiday && <StatusPill value="Holiday"/>}{entry.entry_source==='demobe' && <StatusPill value="Demobe"/>}</div></TableCell><TableCell></TableCell><TableCell className="text-right">{Number(entry.overtime_hours || 0).toFixed(1)}h</TableCell><TableCell><span className="block max-w-64 truncate text-muted-foreground" title={entry.description || undefined}>{entry.description || "—"}</span></TableCell>
                                   <TableCell>
                                     <div className="flex items-center gap-1">
                                       <Button

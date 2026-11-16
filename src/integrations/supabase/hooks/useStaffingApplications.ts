@@ -67,6 +67,8 @@ export interface JobPosting {
 
 export interface Applicant {
   vendor_id?: string | null;
+  role_tags?: string[] | null;
+  staff_notes?: string | null;
   id: string;
   first_name: string;
   last_name: string;

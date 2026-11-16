@@ -394,6 +394,13 @@ const Projects = () => {
   const renderProjectTable = (projectList: Project[], tableId: string) => (
     <EnhancedDataTable
       fillViewport
+      searchable={!isMobile}
+      searchValue={isMobile ? undefined : search}
+      onSearchChange={isMobile ? undefined : setSearch}
+      quickFilters={isMobile ? undefined : TAB_KEYS.map(k => ({value:k,label:tabLabel(k),count:bucketCounts[k]}))}
+      quickFilter={activeTab}
+      onQuickFilterChange={setActiveTab}
+      filterContent={projectFilterControls}
       tableId={tableId}
       data={projectList}
       columns={columns}
@@ -422,6 +429,23 @@ const Projects = () => {
     };
     return labels[k];
   };
+
+  const projectFilterControls = <>              <ProjectFilters
+                filterStatus="all"
+                setFilterStatus={() => {}}
+                filterStage={filterStage === "quote" ? "standby" : filterStage}
+                setFilterStage={setFilterStage}
+                filterCategory={filterCategory}
+                setFilterCategory={setFilterCategory}
+                activeFiltersCount={hasActiveFilters ? 1 : 0}
+                onClearFilters={clearFilters}
+                search={search}
+                inline
+                hideStatus
+              />
+              <Select value={filterType} onValueChange={setFilterType}><SelectTrigger aria-label="Filter project type" className="w-40"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All types</SelectItem>{types.data?.map(t=><SelectItem key={t.id} value={t.id}>{t.code} — {t.name}</SelectItem>)}</SelectContent></Select>
+              <Select value={filterCustomer} onValueChange={setFilterCustomer}><SelectTrigger aria-label="Filter project customer" className="w-48"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All customers</SelectItem>{customers?.map(c=><SelectItem key={c.id} value={c.id}>{getCustomerDisplayName(c)}</SelectItem>)}</SelectContent></Select>
+<Button variant="ghost" size="sm" onClick={clearFilters}>Clear filters</Button></>;
 
   return (
     <>
@@ -453,7 +477,7 @@ const Projects = () => {
             />
           )}
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4 min-[1180px]:hidden">
             <div className="overflow-x-auto -mx-1 px-1">
               <TabsList className="w-max">
                 {TAB_KEYS.map(k => (
@@ -468,7 +492,7 @@ const Projects = () => {
             </div>
           </Tabs>
 
-          <div className="mb-4 overflow-hidden">
+          <div className="mb-4 overflow-hidden min-[1180px]:hidden">
             <div className="flex flex-wrap items-center gap-2 w-full">
               <div className="flex-1 min-w-[200px] max-w-md">
                 <SearchInput
@@ -478,21 +502,7 @@ const Projects = () => {
                   className="bg-secondary border-border w-full"
                 />
               </div>
-              <ProjectFilters
-                filterStatus="all"
-                setFilterStatus={() => {}}
-                filterStage={filterStage === "quote" ? "standby" : filterStage}
-                setFilterStage={setFilterStage}
-                filterCategory={filterCategory}
-                setFilterCategory={setFilterCategory}
-                activeFiltersCount={hasActiveFilters ? 1 : 0}
-                onClearFilters={clearFilters}
-                search={search}
-                inline
-                hideStatus
-              />
-              <Select value={filterType} onValueChange={setFilterType}><SelectTrigger aria-label="Filter project type" className="w-40"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All types</SelectItem>{types.data?.map(t=><SelectItem key={t.id} value={t.id}>{t.code} — {t.name}</SelectItem>)}</SelectContent></Select>
-              <Select value={filterCustomer} onValueChange={setFilterCustomer}><SelectTrigger aria-label="Filter project customer" className="w-48"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All customers</SelectItem>{customers?.map(c=><SelectItem key={c.id} value={c.id}>{getCustomerDisplayName(c)}</SelectItem>)}</SelectContent></Select>
+              {projectFilterControls}
               {isMobile&&canArchive&&<ProjectTypesDialog/>}
               {(locationIndex.error||types.error)&&<span role="alert" className="text-destructive text-sm">Event summaries unavailable</span>}
               <div className="ml-auto">
@@ -521,12 +531,14 @@ const Projects = () => {
             </div>
           )}
 
+          <div className="hidden min-[1180px]:block">{!isLoading && !error && renderProjectTable(filteredProjects, "projects-grid")}</div>
+
           {!isLoading && !error && filteredProjects.length === 0 && !showGroupedView && (
-            <ProjectEmptyState
+            <div className="min-[1180px]:hidden"><ProjectEmptyState
               hasFilters={hasActiveFilters}
               onAddProject={openNewDialog}
               onClearFilters={clearFilters}
-            />
+            /></div>
           )}
 
           {!isLoading && !error && showGroupedView && (
@@ -550,14 +562,7 @@ const Projects = () => {
                   {renderProjectCards(categorization.individualProjects)}
                 </ProjectSection>
               </div>
-              <div className="hidden min-[1180px]:block">
-                <ProjectSection title="Team Projects" icon={<UsersIcon className="h-4 w-4" />} count={categorization.counts.team} storageKey="projects-section-team" defaultOpen>
-                  {renderProjectTable(categorization.teamProjects, 'projects-team')}
-                </ProjectSection>
-                <ProjectSection title="Individual Contracts" icon={<User className="h-4 w-4" />} count={categorization.counts.individual} storageKey="projects-section-individual">
-                  {renderProjectTable(categorization.individualProjects, 'projects-individual')}
-                </ProjectSection>
-              </div>
+
             </>
           )}
 
@@ -566,9 +571,7 @@ const Projects = () => {
               <div className="block min-[1180px]:hidden">
                 {renderProjectCards(filteredProjects)}
               </div>
-              <div className="hidden min-[1180px]:block">
-                {renderProjectTable(filteredProjects, `projects-${activeTab}`)}
-              </div>
+
             </>
           )}
         </PullToRefreshWrapper>

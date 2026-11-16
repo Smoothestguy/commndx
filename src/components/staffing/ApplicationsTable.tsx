@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { SecureAvatar } from "@/components/ui/secure-avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Eye, CheckCircle, XCircle, User, Trash2, Undo2, Circle, CheckCircle2 } from "lucide-react";
-import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
+import { StatusPill, EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileApplicationCard } from "./MobileApplicationCard";
 import { ApplicantStarButton } from "./ApplicantStarButton";
@@ -165,19 +165,13 @@ export function ApplicationsTable({
               fallback={<User className="h-4 w-4" />}
               alt="Profile"
             />
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <p className="font-medium">
-                  {app.applicants?.first_name} {app.applicants?.last_name}
-                </p>
-                <ApplicantTagBadges applicant={app.applicants as any} certs={certSummary[app.applicant_id]} />
-              </div>
-              <ApplicantNoteLine applicant={app.applicants as any} className="max-w-[260px]" />
-            </div>
+            <span className="min-w-0 truncate font-medium" title={`${app.applicants?.first_name ?? ""} ${app.applicants?.last_name ?? ""}`}>{app.applicants?.first_name} {app.applicants?.last_name}</span>
           </div>
         );
       },
     },
+    {key:"flags",header:"Flags",width:240,sortable:false,getValue:app => [...(app.applicants?.role_tags ?? []), ...(certSummary[app.applicant_id]?.types ?? [])].join(", "),render:app => <ApplicantTagBadges applicant={app.applicants} certs={certSummary[app.applicant_id]} className="flex-nowrap"/>},
+    {key:"notes",header:"Notes",width:220,getValue:app => app.applicants?.staff_notes ?? "",render:app => <span className="block truncate text-muted-foreground" title={app.applicants?.staff_notes ?? undefined}>{app.applicants?.staff_notes || "—"}</span>},
     {
       key: "location",
       header: "Location",
@@ -196,17 +190,9 @@ export function ApplicationsTable({
       sortable: true,
       filterable: true,
       getValue: (app) => app.job_postings?.project_task_orders?.title || "",
-      render: (app: Application) => (
-        <div>
-          <p className="font-medium">
-            {app.job_postings?.project_task_orders?.title}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {app.job_postings?.project_task_orders?.projects?.name}
-          </p>
-        </div>
-      ),
+      render: app => <span className="font-medium">{app.job_postings?.project_task_orders?.title}</span>,
     },
+    {key:"project",header:"Project",getValue:app => app.job_postings?.project_task_orders?.projects?.name ?? ""},
     {
       key: "submitted",
       header: "Submitted",
@@ -229,9 +215,7 @@ export function ApplicationsTable({
       filterable: true,
       getValue: (app) => app.status,
       render: (app: Application) => (
-        <Badge className={statusColors[app.status]}>
-          {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
-        </Badge>
+        <StatusPill value={app.status} />
       ),
     },
     {
