@@ -11,6 +11,6 @@ export function perDiemText(l:LocationPerDiem,showMoney:boolean,autoCount?:numbe
  const money=(n:number)=>`$${n.toLocaleString('en-US',{maximumFractionDigits:2})}`;
  if(rate==null)return `${compact?'':'Per diem: '}${days} · no rate`;
  const person=d*rate,headcount=l.per_diem_headcount??autoCount;
- if(compact)return `${days} · ${money(person)}/person${headcount==null?' · count pending':` · ${headcount} people`}`;
- return `Per diem: ${days} × ${money(rate)} = ${money(person)}/person${headcount==null?'':` · ${headcount} people = ${money(person*headcount)}`}`;
+ if(compact)return `${days} · ${money(person)}/person${headcount==null?' · count pending':` · ${headcount} ${headcount===1?'person':'people'}${l.per_diem_headcount==null?' (auto)':''}`}`;
+ return `Per diem: ${days} × ${money(rate)} = ${money(person)}/person${headcount==null?'':` · ${headcount} ${headcount===1?'person':'people'} = ${money(person*headcount)}`}`;
 }
