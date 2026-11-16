@@ -25,6 +25,10 @@ export interface ProjectLocation {
   housing_provided_by: string | null;
   meals_provided: boolean | null;
   meals_notes: string | null;
+  per_diem_days?: number | null;
+  per_diem_day_rate?: number | null;
+  per_diem_headcount?: number | null;
+  per_diem_notes?: string | null;
   mobe_date: string | null;
   demobe_date: string | null;
   day_shift_start: string | null;
@@ -78,7 +82,7 @@ export function useUpdateProjectLocation() {
       if (error) throw error;
       return project_id;
     },
-    onSuccess: (pid) => { qc.invalidateQueries({ queryKey: key(pid) }); qc.invalidateQueries({queryKey:['event-location-index']}); toast.success("Location updated"); },
+    onSuccess: (pid) => { qc.invalidateQueries({ queryKey: ["project-locations"] }); qc.invalidateQueries({queryKey:['event-location-index']}); qc.invalidateQueries({queryKey:['to-engine-panel']}); toast.success("Location updated"); },
     onError: (e: any) => toast.error(e?.message ?? "Failed to update location"),
   });
 }

@@ -1,8 +1,9 @@
 import {localDay,midnight,nextDay} from './signinSheets';
 import {capMobilization,toBill,toRate,type ToTerms} from './taskOrderEngine';
+import {billableSignedHeadcount,type LocationPerDiem} from './locationPerDiem';
 export type BillingSource={orders:{id:string;to_number:string;customer_ref:string|null;status:string;effective_date:string;effective_time:string|null}[];terms:(ToTerms&{task_order_id:string})[];allocations:{id:string;task_order_id:string;line_kind:string;label:string;personnel_id:string|null;asset_assignment_id:string|null;effective_from:string;effective_until:string|null}[];stays:{id:string;personnel_id:string;in_at:string;out_at:string|null;signed_at:string|null;signature_url:string|null;non_billable:boolean;agency_id:string|null}[];assets:{id:string;start_at:string;end_at:string|null;type:string;label:string;billable:boolean}[];sheet_entries:{id:string;task_order_id:string;kind:string;personnel_id:string;role_label:string;in_at:string;out_at:string;non_billable:boolean;visit_personnel_id:string}[]};
-export type ToBillingRow={id:string;number:string;customerRef:string;laborHours:number;housingDays:number;perDiemDays:number;assetDays:number;mobeHours:number;demobeHours:number;labor:number|null;housing:number|null;perDiem:number|null;assets:number|null;mobe:number|null;demobe:number|null;total:number|null;unallocated:number};
-export function calculateToBilling(src:BillingSource,tz:string,at=Date.now()):ToBillingRow[]{
+export type ToBillingRow={id:string;number:string;customerRef:string;laborHours:number;housingDays:number;perDiemDays:number;perDiemManual?:boolean;assetDays:number;mobeHours:number;demobeHours:number;labor:number|null;housing:number|null;perDiem:number|null;assets:number|null;mobe:number|null;demobe:number|null;total:number|null;unallocated:number};
+export function calculateToBilling(src:BillingSource,tz:string,at=Date.now(),location?:LocationPerDiem):ToBillingRow[]{
  const changes=src.orders.filter(o=>o.status==='accepted'&&('terms_only' in o&&o.terms_only)&&src.terms.some(t=>t.task_order_id===o.id)).map(o=>({order:o,at:midnight(o.effective_date,tz)+((Number(o.effective_time?.slice(0,2))||0)*60+(Number(o.effective_time?.slice(3,5))||0))*60000})).sort((a,b)=>a.at-b.at);
  src={...src,allocations:src.allocations.flatMap(a=>{let from=Date.parse(a.effective_from),order=a.task_order_id;const end=a.effective_until?Date.parse(a.effective_until):at,parts:BillingSource['allocations']=[];for(const c of changes){if(c.at<=from||c.at>=end)continue;parts.push({...a,task_order_id:order,effective_from:new Date(from).toISOString(),effective_until:new Date(c.at).toISOString()});from=c.at;order=c.order.id;}parts.push({...a,task_order_id:order,effective_from:new Date(from).toISOString()});return parts;})};
  const dayOwner=new Map<string,{order:string;at:number}>();
@@ -13,7 +14,7 @@ export function calculateToBilling(src:BillingSource,tz:string,at=Date.now()):To
  const spans=stays.map(s=>({id:s.personnel_id,start:Date.parse(s.in_at),end:Date.parse(s.out_at??'')}));if(asset)spans.push({id:asset.id,start:Date.parse(asset.start_at),end:asset.end_at?Date.parse(asset.end_at):at});
  for(const span of spans){const start=Math.max(span.start,Date.parse(a.effective_from)),end=Math.min(span.end,a.effective_until?Date.parse(a.effective_until):at);if(end<=start)continue;let day=localDay(new Date(start).toISOString(),tz);while(midnight(day,tz)<end){const key=`${span.id}:${day}`,map=asset?assetOwner:dayOwner,old=map.get(key);if(!old||start<old.at)map.set(key,{order:a.task_order_id,at:start});day=nextDay(day);}}
  }
- return src.orders.map(o=>{
+ const rows=src.orders.map(o=>{
  const t=src.terms.find(t=>t.task_order_id===o.id);const row:ToBillingRow={id:o.id,number:o.to_number,customerRef:o.customer_ref??'',laborHours:0,housingDays:0,perDiemDays:0,assetDays:0,mobeHours:0,demobeHours:0,labor:t?0:null,housing:t?0:null,perDiem:t?0:null,assets:t?0:null,mobe:t?0:null,demobe:t?0:null,total:null,unallocated:0};
  if(o.status!=='accepted'||!t)return row;
  const personDays=new Set<string>();const assetDays=new Set<string>();
@@ -28,4 +29,16 @@ export function calculateToBilling(src:BillingSource,tz:string,at=Date.now()):To
  for(const e of src.sheet_entries.filter(e=>e.task_order_id===o.id&&!e.non_billable)){const h=(Date.parse(e.out_at)-Date.parse(e.in_at))/3600000;const amount=t.mobe_approved?toBill(h,toRate(t,'position',e.role_label)):0;if(e.kind==='mobe'){row.mobeHours+=h;row.mobe=amount===null||row.mobe===null?null:row.mobe+amount;}else{row.demobeHours+=h;row.demobe=amount===null||row.demobe===null?null:row.demobe+amount;}}
  row.mobe=capMobilization(row.mobe,t.mobe_cap);const amounts=[row.labor,row.housing,row.perDiem,row.assets,row.mobe,row.demobe];row.total=amounts.some(x=>x===null)?null:amounts.reduce<number>((n,x)=>n+(x??0),0);return row;
  });
+ if(location?.per_diem_days!=null){
+  const headcount=location.per_diem_headcount??billableSignedHeadcount(src.stays);
+  const days=location.per_diem_days*headcount;
+  const amount=days===0?0:location.per_diem_day_rate==null?null:days*location.per_diem_day_rate;
+  for(const row of rows){if(src.orders.find(o=>o.id===row.id)?.status!=='accepted')continue;row.perDiemDays=0;row.perDiem=0;}
+  const latest=src.orders.filter(o=>o.status==='accepted').slice().sort((a,b)=>`${b.effective_date}T${b.effective_time||'00:00'}`.localeCompare(`${a.effective_date}T${a.effective_time||'00:00'}`)||b.to_number.localeCompare(a.to_number,undefined,{numeric:true}))[0];
+  let target=rows.find(r=>r.id===latest?.id);
+  if(!target){target={id:'location-per-diem',number:'Location per diem (manual)',customerRef:'',laborHours:0,housingDays:0,perDiemDays:0,assetDays:0,mobeHours:0,demobeHours:0,labor:0,housing:0,perDiem:0,assets:0,mobe:0,demobe:0,total:0,unallocated:0};rows.push(target);}
+  target.perDiemDays=days;target.perDiem=amount;target.perDiemManual=true;
+  for(const row of rows){const amounts=[row.labor,row.housing,row.perDiem,row.assets,row.mobe,row.demobe];row.total=amounts.some(x=>x===null)?null:amounts.reduce<number>((n,x)=>n+(x??0),0);}
+ }
+ return rows;
 }
