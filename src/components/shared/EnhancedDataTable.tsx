@@ -141,7 +141,7 @@ function SortableHeader({ id, children, className, width, onResize, left }: { le
       {...attributes}
     >
       <div className="flex items-center gap-1 pr-1">
-        <div {...listeners} className="cursor-grab active:cursor-grabbing -ml-1 opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Drag column">
+        <div {...listeners} className="absolute left-0.5 top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Drag column">
           <GripVertical className="h-3 w-3 text-muted-foreground" />
         </div>
         {children}
@@ -512,6 +512,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                             <Input value={filterVal} onChange={e => { setColumnFilter(key, e.target.value); setPage(0); }} onClick={e => e.stopPropagation()} placeholder="Filter" aria-label={`Filter ${column.header}`} className="h-6 mt-1 px-1.5 text-[11px] font-normal" />
                           )}
                         </div>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 data-[state=open]:opacity-100 bg-table-header rounded">
                         <ColumnHeaderMenu
                           column={{ key, header: column.header, sortable: column.sortable, filterable: column.filterable }}
                           allColumns={columnConfigs}
@@ -523,6 +524,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                           onToggleColumn={toggleColumnVisibility}
                           onFilterChange={setColumnFilter}
                         />
+                        </span>
                       </SortableHeader>
                     );
                   })}
