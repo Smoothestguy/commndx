@@ -39,6 +39,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { useGlobalLocations } from "@/hooks/useGlobalLocations";
+import { customerProjectMap } from "@/lib/projectEvent";
 import { getCustomerDisplayName, getCustomerSecondaryName } from "@/utils/customerDisplayName";
 
 const statusColors: Record<string, string> = {
