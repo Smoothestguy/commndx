@@ -297,7 +297,7 @@ export function WH347ExportDialog({
         weekEnding: format(weekEnd, "MM/dd/yyyy"),
         projectName: projectName || project?.name || "Project",
         projectLocation,
-        contractNumber: project?.customer_po || "",
+        contractNumber: "",
         employees: employeeRows.map((emp) => ({
           name: `${emp.personnel.lastName}, ${emp.personnel.firstName}`,
           address: [emp.personnel.address, emp.personnel.city, emp.personnel.state, emp.personnel.zip]

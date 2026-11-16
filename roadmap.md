@@ -1,3 +1,6 @@
+# Project form cleanup
+- [ ] Stand by stage and legacy-compatible filters; customer-free forms/writes, location-first customer billing/exports, desktop/mobile creation and fixture cleanup.
+
 # Location per diem day counts
 - [x] Manager-only half-day forms, location summaries/optional columns, manual TO billing and labeled XLSX export added. Types regenerated; 31 focused tests and requested tsgo pass, preview clean. Seeded 5050/5051 inspected read-only; disposable active/complete/closed saves read back at 390px and all fixtures removed. Desktop/phone forms and export verified; 5049 null-days auto billing unchanged. Fresh field browser not exercised; manager-only source query gating and dollar-free formatter retained.
 
