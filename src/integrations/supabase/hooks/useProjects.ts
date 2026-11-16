@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../client";
 import { toast } from "sonner";
 import { useAuditLog, computeChanges } from "@/hooks/useAuditLog";
+import { projectWriteFields, normalizeProjectStage } from "@/lib/projectForm";
 import type { Json } from "@/integrations/supabase/types";
 
 export type ProjectStage = "standby" | "task_order" | "active" | "complete" | "canceled";
@@ -63,7 +64,7 @@ export const useProjects = (options: UseProjectsOptions = {}) => {
       const { data, error } = await q;
 
       if (error) throw error;
-      return data as Project[];
+      return (data || []).map(p => ({...p, stage: normalizeProjectStage(p.stage) as ProjectStage})) as Project[];
     },
   });
 };
@@ -78,7 +79,7 @@ export const useArchivedProjects = () => {
         .not("archived_at", "is", null)
         .order("archived_at", { ascending: false });
       if (error) throw error;
-      return data as Project[];
+      return (data || []).map(p => ({...p, stage: normalizeProjectStage(p.stage) as ProjectStage})) as Project[];
     },
   });
 };
@@ -94,7 +95,7 @@ export const useProject = (id: string | undefined) => {
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;
-      return data as Project | null;
+      return data ? {...data, stage: normalizeProjectStage(data.stage) as ProjectStage} as Project : null;
     },
     enabled: !!id,
   });
@@ -115,7 +116,7 @@ export const useProjectsByCustomer = (customerId: string | null) => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data as Project[];
+      return (data || []).map(p => ({...p, stage: normalizeProjectStage(p.stage) as ProjectStage})) as Project[];
     },
     enabled: !!customerId,
   });
@@ -129,7 +130,7 @@ export const useAddProject = () => {
     mutationFn: async (project: Omit<Project, "id" | "created_at" | "updated_at" | "archived_at" | "archived_by" | "customer_id" | "customer_po"> & { archived_at?: string | null; archived_by?: string | null }) => {
       const { data, error } = await supabase
         .from("projects")
-        .insert([project])
+        .insert([projectWriteFields(project)])
         .select()
         .single();
 
@@ -195,7 +196,7 @@ export const useUpdateProject = () => {
 
       const { data, error } = await supabase
         .from("projects")
-        .update(updates)
+        .update(projectWriteFields(updates))
         .eq("id", id)
         .select()
         .single();

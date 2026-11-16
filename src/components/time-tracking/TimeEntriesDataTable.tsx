@@ -1,3 +1,4 @@
+import { entryCustomer } from "@/lib/projectForm";
 import { useState } from "react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
@@ -206,10 +207,9 @@ export function TimeEntriesDataTable({
       header: "Customer",
       sortable: true,
       filterable: true,
-      getValue: (item) => item.projects?.customers?.name || "-",
+      getValue: (item) => entryCustomer(item).customer?.name || "-",
       render: (item) => {
-        const customer = item.projects?.customers;
-        const customerId = item.projects?.customer_id;
+        const {customer,id:customerId} = entryCustomer(item);
         return customer && customerId ? (
           <Link
             to={`/customers/${customerId}`}

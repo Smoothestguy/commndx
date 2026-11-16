@@ -1,3 +1,4 @@
+import { entryCustomer } from "@/lib/projectForm";
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
@@ -71,6 +72,9 @@ export const TimeEntryInvoiceForm = () => {
 
     const project = projects?.find((p) => p.id === selectedProjectId);
     if (!project) return;
+    const customerIds = new Set(selectedEntriesData?.map(e => entryCustomer(e).id));
+    const customerId = [...customerIds][0];
+    if (customerIds.size !== 1 || !customerId) { toast.error("Select entries for one location customer at a time"); return; }
 
     try {
       // Get fresh invoice number from QuickBooks (or local fallback)
@@ -93,7 +97,7 @@ export const TimeEntryInvoiceForm = () => {
       }) || [];
 
       await addInvoice.mutateAsync({
-        customer_id: project.customer_id,
+        customer_id: customerId,
         customer_name: "", // Will be filled by backend
         project_name: project.name,
         number: invoiceNumber, // Use QuickBooks-synced number

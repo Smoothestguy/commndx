@@ -186,7 +186,6 @@ export default function PortalProjectDetail() {
   }
 
   const address = formatAddress();
-  const customer = project.customer;
 
   return (
     <PortalLayout>

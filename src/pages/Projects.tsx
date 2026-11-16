@@ -232,8 +232,7 @@ const Projects = () => {
       sortable: true,
       filterable: true,
       getValue: customerNames,
-      render: (item) => {
-      },
+      render: (item) => <EventCustomers rows={customersFor(item)} customers={customers}/>,
     },
     {key:'locations',header:'Locations',sortable:true,getValue:p=>locationsFor(p.id).length,render:p=>locationsFor(p.id).length},
     {

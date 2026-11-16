@@ -86,6 +86,7 @@ const ProjectDetail = () => {
   const { data: locations = [] } = useProjectLocations(id);
   const types=useProjectTypes(), customers=useCustomers();
   const derivedCustomers=eventCustomers(locations,project?.customer_id);
+  const customer = derivedCustomers.length === 1 ? customers.data?.find(c => c.id === derivedCustomers[0]?.id) : undefined;
   const archiveProject = useArchiveProject();
   const unarchiveProject = useUnarchiveProject();
   const updateProject = useUpdateProject();
