@@ -301,6 +301,17 @@ export function PersonnelTable({
           >
             {person.first_name} {person.last_name}
           </Link>
+        </div>
+      ),
+    },
+    {
+      key: "flags",
+      header: "Flags",
+      width: 130,
+      sortable: false,
+      getValue: (person) => [person.on_bench ? "Bench" : "", (person as any).portal_required === false ? "Temp" : ""].filter(Boolean).join(", "),
+      render: (person: Personnel) => (
+        <div className="flex items-center gap-1.5">
           <BenchStar on={person.on_bench} />
           <ComplianceBadge personnel={person} compact />
           {(person as any).portal_required === false && (
