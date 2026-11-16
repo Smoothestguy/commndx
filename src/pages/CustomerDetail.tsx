@@ -41,6 +41,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useGlobalLocations } from "@/hooks/useGlobalLocations";
 import { customerProjectMap } from "@/lib/projectEvent";
+import { customerProjectMap } from "@/lib/projectEvent";
 import { getCustomerDisplayName, getCustomerSecondaryName } from "@/utils/customerDisplayName";
 
 const statusColors: Record<string, string> = {
@@ -66,6 +67,7 @@ export default function CustomerDetail() {
   
   const { data: customers, isLoading } = useCustomers();
   const { data: projects } = useProjects();
+  const { data: globalLocations } = useGlobalLocations();
   const { data: estimates } = useEstimates();
   const { data: invoices } = useInvoices();
   const updateCustomer = useUpdateCustomer();
@@ -73,7 +75,7 @@ export default function CustomerDetail() {
   const customer = customers?.find((c) => c.id === id);
   
   // Filter related data
-  const customerProjects = projects?.filter((p) => p.customer_id === id) || [];
+  const customerProjects = (() => { const ids = customerProjectMap(globalLocations?.locations ?? [], globalLocations?.projects ?? []).get(id ?? ""); return projects?.filter((p) => ids?.has(p.id)) || []; })();
   const customerEstimates = estimates?.filter((e) => e.customer_id === id) || [];
   const customerInvoices = invoices?.filter((i) => i.customer_id === id) || [];
   
