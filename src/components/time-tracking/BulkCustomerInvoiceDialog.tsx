@@ -1,3 +1,4 @@
+import { entryCustomer } from "@/lib/projectForm";
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -157,11 +158,11 @@ export function BulkCustomerInvoiceDialog({
 
   // Filter out already invoiced entries and entries without customers
   const validEntries = useMemo(() => {
-    return selectedEntries.filter(e => !e.invoice_id && e.projects?.customer_id);
+    return selectedEntries.filter(e => !e.invoice_id && entryCustomer(e).id);
   }, [selectedEntries]);
 
   const alreadyInvoicedCount = selectedEntries.filter(e => e.invoice_id).length;
-  const noCustomerCount = selectedEntries.filter(e => !e.invoice_id && !e.projects?.customer_id).length;
+  const noCustomerCount = selectedEntries.filter(e => !e.invoice_id && !entryCustomer(e).id).length;
 
   // Build project -> week groups for step 1
   useEffect(() => {
@@ -175,8 +176,8 @@ export function BulkCustomerInvoiceDialog({
     validEntries.forEach(entry => {
       const projectId = entry.project_id;
       const projectName = entry.projects?.name || "Unknown Project";
-      const customerId = entry.projects?.customer_id || "";
-      const customerName = entry.projects?.customers?.name || "Unknown Customer";
+      const customerId = entryCustomer(entry).id || "";
+      const customerName = entryCustomer(entry).customer?.name || "Unknown Customer";
       const entryDate = parseISO(entry.entry_date + 'T12:00:00');
       const weekStart = startOfWeek(entryDate, { weekStartsOn: 1 });
       const weekEnd = endOfWeek(entryDate, { weekStartsOn: 1 });
@@ -281,8 +282,9 @@ export function BulkCustomerInvoiceDialog({
     const customerMap = new Map<string, CustomerGroup>();
 
     selectedWeekEntries.forEach(entry => {
-      const customerId = entry.projects?.customer_id!;
-      const customerName = entry.projects?.customers?.name || "Unknown Customer";
+      const customerId = entryCustomer(entry).id;
+      if (!customerId) return;
+      const customerName = entryCustomer(entry).customer?.name || "Unknown Customer";
       const projectId = entry.project_id;
       const projectName = entry.projects?.name || "Unknown Project";
 

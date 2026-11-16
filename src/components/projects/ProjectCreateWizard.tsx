@@ -36,7 +36,6 @@ import QRCode from "qrcode";
 import { buildApplyUrl, buildApplyShareUrl } from "@/lib/applyLinks";
 
 import { useAddProject } from "@/integrations/supabase/hooks/useProjects";
-import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useApplicationFormTemplates } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import {
@@ -72,7 +71,6 @@ interface Props {
 interface Basics {
   name: string;
   type_id?: string;
-  customer_id: string;
   status: "active" | "completed" | "on-hold";
   stage: ProjectStage;
   start_date: string;
@@ -82,11 +80,9 @@ interface Basics {
   city: string;
   state: string;
   zip: string;
-  customer_po: string;
   poc_name: string;
   poc_phone: string;
   poc_email: string;
-  use_customer_address: boolean;
   time_clock_enabled: boolean;
   require_clock_location: boolean;
   mandatory_payroll: boolean;
@@ -99,9 +95,8 @@ function today(): string {
 
 const initialBasics: Basics = {
   name: "",
-  customer_id: "",
   status: "active",
-  stage: "quote",
+  stage: "standby",
   start_date: today(),
   end_date: "",
   description: "",
@@ -109,11 +104,9 @@ const initialBasics: Basics = {
   city: "",
   state: "",
   zip: "",
-  customer_po: "",
   poc_name: "",
   poc_phone: "",
   poc_email: "",
-  use_customer_address: false,
   time_clock_enabled: false,
   require_clock_location: true,
   mandatory_payroll: false,
@@ -145,7 +138,6 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
   const [failedError, setFailedError] = useState<string>("");
   const [successOpen, setSuccessOpen] = useState(false);
 
-  const { data: customers } = useCustomers();
   const { data: formTemplates } = useApplicationFormTemplates();
   const { data: companySettings } = useCompanySettings();
   const { data: rateBrackets } = useProjectRateBrackets(createdProjectId || undefined);
@@ -156,21 +148,6 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
   const replacePositions = useReplaceTaskOrderPositions();
   const addRateBracket = useAddRateBracket();
   const updateRateBracket = useUpdateRateBracket();
-
-  const selectedCustomer = customers?.find((c) => c.id === basics.customer_id);
-
-  useEffect(() => {
-    if (basics.use_customer_address && selectedCustomer) {
-      const c = selectedCustomer as any;
-      setBasics((b) => ({
-        ...b,
-        address: c.address || "",
-        city: c.city || "",
-        state: c.state || "",
-        zip: c.zip || "",
-      }));
-    }
-  }, [basics.use_customer_address, selectedCustomer]);
 
   useEffect(() => {
     if (!open) return;
@@ -264,18 +241,16 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
 
 
   const buildProjectPayload = () => {
-    const { use_customer_address, ...rest } = basics;
+    const rest = basics;
     return {
       ...rest,
       type_id: basics.type_id || null,
-      customer_id: basics.customer_id || null,
       end_date: basics.end_date || null,
       description: basics.description || null,
       address: basics.address || null,
       city: basics.city || null,
       state: basics.state || null,
       zip: basics.zip || null,
-      customer_po: basics.customer_po || null,
       poc_name: basics.poc_name || null,
       poc_phone: basics.poc_phone || null,
       poc_email: basics.poc_email || null,
@@ -570,7 +545,7 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
               </Card>
             </div>
           ) : step === 1 ? (
-            <BasicsForm basics={basics} setBasics={setBasics} customers={customers} />
+            <BasicsForm basics={basics} setBasics={setBasics}  />
           ) : step === 2 ? (
             <div className="space-y-4 py-2">
               <Card
@@ -727,11 +702,9 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
 function BasicsForm({
   basics,
   setBasics,
-  customers,
 }: {
   basics: Basics;
   setBasics: React.Dispatch<React.SetStateAction<Basics>>;
-  customers: any[] | undefined;
 }) {
   const set = (patch: Partial<Basics>) => setBasics((b) => ({ ...b, ...patch }));
   return (
@@ -755,28 +728,6 @@ function BasicsForm({
         <ProjectTypeSelect value={basics.type_id} onChange={type_id=>set({type_id})}/>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>Default customer</Label>
-            <Select
-              value={basics.customer_id||"none"}
-              onValueChange={(v) => set({ customer_id: v==="none"?"":v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a customer" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No default customer</SelectItem>
-                {customers?.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.company || c.name}
-                    {c.company && c.name && c.company !== c.name && (
-                      <span className="text-muted-foreground ml-1">({c.name})</span>
-                    )}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
             <Label>Stage</Label>
             <Select
               value={basics.stage}
@@ -786,7 +737,7 @@ function BasicsForm({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="quote">Quote</SelectItem>
+                <SelectItem value="standby">Stand by</SelectItem>
                 <SelectItem value="task_order">Task Order</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="complete">Complete</SelectItem>
@@ -795,14 +746,7 @@ function BasicsForm({
             </Select>
           </div>
         </div>
-        <div className="space-y-2">
-          <Label>Customer PO #</Label>
-          <Input
-            value={basics.customer_po}
-            onChange={(e) => set({ customer_po: e.target.value })}
-            placeholder="Customer reference number"
-          />
-        </div>
+
       </div>
 
       <Separator />
@@ -810,21 +754,13 @@ function BasicsForm({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-medium text-muted-foreground">Project Address</h4>
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox
-              checked={basics.use_customer_address}
-              onCheckedChange={(v) => set({ use_customer_address: !!v })}
-              disabled={!basics.customer_id}
-            />
-            Same as customer
-          </label>
+
         </div>
         <div className="space-y-2">
           <Label>Street Address</Label>
           <Input
             value={basics.address}
             onChange={(e) => set({ address: e.target.value })}
-            disabled={basics.use_customer_address}
             placeholder="123 Main St"
           />
         </div>
@@ -834,7 +770,6 @@ function BasicsForm({
             <Input
               value={basics.city}
               onChange={(e) => set({ city: e.target.value })}
-              disabled={basics.use_customer_address}
             />
           </div>
           <div className="col-span-1 space-y-2">
@@ -843,7 +778,6 @@ function BasicsForm({
               value={basics.state}
               maxLength={2}
               onChange={(e) => set({ state: e.target.value })}
-              disabled={basics.use_customer_address}
             />
           </div>
           <div className="col-span-2 space-y-2">
@@ -851,7 +785,6 @@ function BasicsForm({
             <Input
               value={basics.zip}
               onChange={(e) => set({ zip: e.target.value })}
-              disabled={basics.use_customer_address}
             />
           </div>
         </div>

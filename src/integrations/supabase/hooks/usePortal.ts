@@ -89,8 +89,7 @@ export function usePersonnelAssignments(personnelId: string | undefined) {
           project:projects(
             id, name, status, start_date, end_date,
             description, address, city, state, zip,
-            customer_po, poc_name, poc_phone, poc_email,
-            customer:customers(id, name, company, phone, email)
+            poc_name, poc_phone, poc_email
           )
         `)
         .eq("personnel_id", personnelId)
@@ -117,8 +116,7 @@ export function usePersonnelAllAssignments(personnelId: string | undefined) {
           project:projects(
             id, name, status, start_date, end_date,
             description, address, city, state, zip,
-            customer_po, poc_name, poc_phone, poc_email,
-            customer:customers(id, name, company, phone, email)
+            poc_name, poc_phone, poc_email
           )
         `)
         .eq("personnel_id", personnelId)

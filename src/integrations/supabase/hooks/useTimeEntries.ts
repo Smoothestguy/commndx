@@ -29,6 +29,7 @@ export interface TimeEntry {
 }
 
 export interface TimeEntryWithDetails extends TimeEntry {
+  location?: { customer_id?: string | null; customers?: { name: string } | null } | null;
   personnel_id?: string | null;
   invoice_id?: string | null;
   invoiced_at?: string | null;
@@ -526,6 +527,7 @@ export const useAllTimeEntries = (
           *,
           profiles:user_id(first_name, last_name, email, hourly_rate),
           personnel:personnel_id(non_billable, first_name, last_name, hourly_rate, pay_rate, bill_rate, photo_url, everify_status, everify_expiry, work_auth_expiry, i9_completed_at),
+          location:project_locations!time_entries_location_id_fkey(customer_id,customers:customer_id(name)),
           projects:project_id(
             name,
             customer_id,

@@ -91,9 +91,9 @@ const featureCategories: FeatureCategory[] = [
     id: "projects",
     icon: <FolderKanban className="h-6 w-6" />,
     title: "Project Management",
-    description: "End-to-end project lifecycle tracking from quote to completion",
+    description: "End-to-end project lifecycle tracking from stand by to completion",
     features: [
-      { text: "Create and track projects with statuses: Quote, Task Order, Active, Complete, Canceled" },
+      { text: "Create and track projects with stages: Stand by, Task Order, Active, Complete, Canceled" },
       { text: "Individual vs Team project classification" },
       { text: "Personnel assignments to projects" },
       { text: "Site location with GPS coordinates and geofence radius", highlight: "Ensures on-site presence" },

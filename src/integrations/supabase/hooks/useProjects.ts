@@ -2,9 +2,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../client";
 import { toast } from "sonner";
 import { useAuditLog, computeChanges } from "@/hooks/useAuditLog";
+import { projectWriteFields, normalizeProjectStage } from "@/lib/projectForm";
 import type { Json } from "@/integrations/supabase/types";
 
-export type ProjectStage = "quote" | "task_order" | "active" | "complete" | "canceled";
+export type ProjectStage = "standby" | "task_order" | "active" | "complete" | "canceled";
 
 export interface Project {
   id: string;
@@ -63,7 +64,7 @@ export const useProjects = (options: UseProjectsOptions = {}) => {
       const { data, error } = await q;
 
       if (error) throw error;
-      return data as Project[];
+      return (data || []).map(p => ({...p, stage: normalizeProjectStage(p.stage) as ProjectStage})) as Project[];
     },
   });
 };
@@ -78,7 +79,7 @@ export const useArchivedProjects = () => {
         .not("archived_at", "is", null)
         .order("archived_at", { ascending: false });
       if (error) throw error;
-      return data as Project[];
+      return (data || []).map(p => ({...p, stage: normalizeProjectStage(p.stage) as ProjectStage})) as Project[];
     },
   });
 };
@@ -94,7 +95,7 @@ export const useProject = (id: string | undefined) => {
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;
-      return data as Project | null;
+      return data ? {...data, stage: normalizeProjectStage(data.stage) as ProjectStage} as Project : null;
     },
     enabled: !!id,
   });
@@ -105,17 +106,20 @@ export const useProjectsByCustomer = (customerId: string | null) => {
     queryKey: ["projects", "customer", customerId],
     queryFn: async () => {
       if (!customerId) return [];
-      const locations = await supabase.from('project_locations').select('project_id').eq('customer_id',customerId);
+      const locations = await supabase.from('project_locations').select('project_id,customer_id').or(`customer_id.eq.${customerId},customer_id.is.null`);
       if(locations.error)throw locations.error;
-      const ids=[...new Set(locations.data.map(l=>l.project_id))];
+      const ids=[...new Set(locations.data.filter(l=>l.customer_id===customerId).map(l=>l.project_id))];
+      const legacyIds=[...new Set(locations.data.filter(l=>!l.customer_id).map(l=>l.project_id))];
+      const conditions=[...(ids.length?[`id.in.(${ids.join(',')})`]:[]),...(legacyIds.length?[`and(customer_id.eq.${customerId},id.in.(${legacyIds.join(',')}))`]:[])];
+      if (!conditions.length) return [];
       const { data, error } = await supabase
         .from("projects")
         .select("*")
-        .or(`customer_id.eq.${customerId}${ids.length?`,id.in.(${ids.join(',')})`:''}`)
+        .or(conditions.join(','))
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data as Project[];
+      return (data || []).map(p => ({...p, stage: normalizeProjectStage(p.stage) as ProjectStage})) as Project[];
     },
     enabled: !!customerId,
   });
@@ -126,10 +130,10 @@ export const useAddProject = () => {
   const { logAction } = useAuditLog();
 
   return useMutation({
-    mutationFn: async (project: Omit<Project, "id" | "created_at" | "updated_at" | "archived_at" | "archived_by"> & { archived_at?: string | null; archived_by?: string | null }) => {
+    mutationFn: async (project: Omit<Project, "id" | "created_at" | "updated_at" | "archived_at" | "archived_by" | "customer_id" | "customer_po"> & { archived_at?: string | null; archived_by?: string | null }) => {
       const { data, error } = await supabase
         .from("projects")
-        .insert([project])
+        .insert([projectWriteFields(project)])
         .select()
         .single();
 
@@ -143,7 +147,6 @@ export const useAddProject = () => {
         resourceNumber: data.name,
         changesAfter: data as unknown as Json,
         metadata: { 
-          customer_id: project.customer_id,
           status: project.status,
           stage: project.stage 
         } as Json,
@@ -196,7 +199,7 @@ export const useUpdateProject = () => {
 
       const { data, error } = await supabase
         .from("projects")
-        .update(updates)
+        .update(projectWriteFields(updates))
         .eq("id", id)
         .select()
         .single();
@@ -384,11 +387,10 @@ export const useDuplicateProject = () => {
       const today = new Date().toISOString().split("T")[0];
       const insertPayload: Record<string, unknown> = {
         name: `${source.name} (Copy)`,
-        customer_id: source.customer_id,
         type_id: source.type_id || null,
         region: source.region || null,
         status: "active",
-        stage: "quote",
+        stage: "standby",
         start_date: today,
         end_date: null,
         description: source.description,
@@ -396,7 +398,6 @@ export const useDuplicateProject = () => {
         city: source.city,
         state: source.state,
         zip: source.zip,
-        customer_po: null,
         poc_name: source.poc_name,
         poc_phone: source.poc_phone,
         poc_email: source.poc_email,

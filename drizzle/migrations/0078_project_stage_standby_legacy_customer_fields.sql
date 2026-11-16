@@ -1,0 +1,3 @@
+ALTER TYPE public.project_stage RENAME VALUE 'quote' TO 'standby';
+COMMENT ON COLUMN public.projects.customer_id IS 'DEPRECATED: project forms no longer write this field; use project_locations.customer_id. Retained only as fallback for locations without a customer.';
+COMMENT ON COLUMN public.projects.customer_po IS 'DEPRECATED: project forms no longer write or display this field; task orders use customer_ref. Historical data retained.';

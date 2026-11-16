@@ -26,7 +26,7 @@ interface ProjectFiltersProps {
 }
 
 const stageLabels: Record<ProjectStage, string> = {
-  quote: "Quote",
+  standby: "Stand by",
   task_order: "Task Order",
   active: "Active",
   complete: "Complete",
@@ -64,7 +64,7 @@ export function ProjectFilters({
           </SelectTrigger>
           <SelectContent className="bg-popover">
             <SelectItem value="all">All Stages</SelectItem>
-            <SelectItem value="quote">Quote</SelectItem>
+            <SelectItem value="standby">Stand by</SelectItem>
             <SelectItem value="task_order">Task Order</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="complete">Complete</SelectItem>
@@ -112,7 +112,7 @@ export function ProjectFilters({
           </SelectTrigger>
           <SelectContent className="bg-popover">
             <SelectItem value="all">All Stages</SelectItem>
-            <SelectItem value="quote">Quote</SelectItem>
+            <SelectItem value="standby">Stand by</SelectItem>
             <SelectItem value="task_order">Task Order</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="complete">Complete</SelectItem>

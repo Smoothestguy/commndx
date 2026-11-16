@@ -1,3 +1,5 @@
+import { useProjectLocations } from "@/integrations/supabase/hooks/useProjectLocations";
+import { eventCustomers } from "@/lib/projectEvent";
 import { AddProjectVendor } from '@/components/project-hub/ProjectVendorPicker';
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
@@ -293,19 +295,15 @@ export function ChangeOrderForm({
     setShowRevertDialog(false);
   };
 
-  // Auto-populate customer when project changes
+  const { data: projectLocations } = useProjectLocations(projectId || undefined);
   useEffect(() => {
-    if (projectId && projects && customers) {
-      const project = projects.find((p) => p.id === projectId);
-      if (project?.customer_id) {
-        const customer = customers.find((c) => c.id === project.customer_id);
-        if (customer) {
-          setCustomerId(customer.id);
-          setCustomerName(customer.name);
-        }
-      }
-    }
-  }, [projectId, projects, customers]);
+    if (initialData || !projectId || !projects || !customers || !projectLocations) return;
+    const project = projects.find(p => p.id === projectId);
+    const ids = eventCustomers(projectLocations, project?.customer_id);
+    const customer = ids.length === 1 ? customers.find(c => c.id === ids[0]?.id) : undefined;
+    setCustomerId(customer?.id || '');
+    setCustomerName(customer?.name || '');
+  }, [projectId, projects, customers, projectLocations, initialData]);
 
   // Auto-populate vendor name
   useEffect(() => {

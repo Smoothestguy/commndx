@@ -1,4 +1,5 @@
 # Architecture rules
+- Project writes strip legacy customer fields; billing resolves customers from each entry's location and fails closed for inaccessible locations, preventing cross-customer invoices.
 - Phone Home uses scoped light tokens and shared self-only My Day/guarded manager actions; explicit linked field users may access only mobile Home while other portal restrictions and desktop rendering remain unchanged.
 - Phone profile defaults come from self-only active sites or the user's last selected eligible site in session storage, never a named event or an arbitrary manager directory row.
 - Event tabs reuse aggregate deployment totals; location detail owns operational views, and legacy tab redirects preserve bookmarked destinations without widening permissions.

@@ -23,7 +23,7 @@ interface ProjectCardProps {
 }
 
 const stageConfig: Record<ProjectStage, { label: string; variant: "default" | "secondary" | "outline" | "destructive"; className: string }> = {
-  quote: { label: "Quote", variant: "outline", className: "border-blue-500/50 text-blue-600 dark:text-blue-400" },
+  standby: { label: "Stand by", variant: "outline", className: "border-blue-500/50 text-blue-600 dark:text-blue-400" },
   task_order: { label: "Task Order", variant: "outline", className: "border-purple-500/50 text-purple-600 dark:text-purple-400" },
   active: { label: "Active", variant: "outline", className: "border-success/50 text-success" },
   complete: { label: "Complete", variant: "outline", className: "border-primary/50 text-primary" },
@@ -50,7 +50,7 @@ export function ProjectCard({
     "on-hold": "border-warning/30",
   };
 
-  const stage = stageConfig[project.stage] || stageConfig.quote;
+  const stage = stageConfig[project.stage] || stageConfig.standby;
 
   if (compact) {
     return (

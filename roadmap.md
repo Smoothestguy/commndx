@@ -1,3 +1,6 @@
+# Project form cleanup
+- [x] Stand by enum/types/labels and legacy filters; customer-free creation/edit/duplication writes and summaries, location-first billing/customer grouping and task-order export references. Phone project creation read back Stand by with null customer fields; desktop/phone wizard and existing Florida event inspected read-only. 24 focused tests and tsgo pass; disposable projects/audits removed; preview clean. No historical customer data, task orders or locations changed.
+
 # Location per diem day counts
 - [x] Manager-only half-day forms, location summaries/optional columns, manual TO billing and labeled XLSX export added. Types regenerated; 31 focused tests and requested tsgo pass, preview clean. Seeded 5050/5051 inspected read-only; disposable active/complete/closed saves read back at 390px and all fixtures removed. Desktop/phone forms and export verified; 5049 null-days auto billing unchanged. Fresh field browser not exercised; manager-only source query gating and dollar-free formatter retained.
 

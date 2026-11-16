@@ -186,7 +186,6 @@ export default function PortalProjectDetail() {
   }
 
   const address = formatAddress();
-  const customer = project.customer;
 
   return (
     <PortalLayout>
@@ -308,34 +307,6 @@ export default function PortalProjectDetail() {
             </Card>
           )}
         </div>
-
-        {/* Customer Info */}
-        {(customer || project.customer_po) && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Building className="h-4 w-4 text-primary" />
-                Customer Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {customer && (
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Customer</p>
-                    <p className="text-sm font-medium">{customer.company || customer.name}</p>
-                  </div>
-                )}
-                {project.customer_po && (
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Customer PO</p>
-                    <p className="text-sm font-medium">{project.customer_po}</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Project Description */}
         {project.description && (
