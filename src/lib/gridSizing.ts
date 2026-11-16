@@ -2,9 +2,9 @@ export type SizingColumn = { key: string; header: string; width?: number; frozen
 export const actionColumn = (c: SizingColumn) => /^actions?$/i.test(c.header || c.key) || /^actions?$/i.test(c.key);
 export const identityColumn = (c: SizingColumn) => c.frozen || /^(name|person|location|asset|company)$/i.test(c.header);
 /** Room for header text, sort icon, menu button and comfortable padding. */
-export const headerMinWidth = (c: SizingColumn) => c.header ? Math.ceil(c.header.length * 7.5 + 64) : 0;
+export const headerMinWidth = (c: SizingColumn) => c.header ? Math.ceil(c.header.length * 7 + 50) : 0;
 export function defaultColumnWidth(c: SizingColumn): number {
-  return /^(avatar|photo)$/i.test(c.key) ? 48 : Math.max(baseColumnWidth(c), headerMinWidth(c));
+  return /^(avatar|photo)$/i.test(c.key) ? 48 : actionColumn(c) ? 100 : Math.max(baseColumnWidth(c), headerMinWidth(c));
 }
 function baseColumnWidth(c: SizingColumn): number {
   if (actionColumn(c)) return 100;
