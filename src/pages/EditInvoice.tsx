@@ -250,6 +250,7 @@ const EditInvoice = () => {
   const { data: invoice, isLoading: invoiceLoading } = useInvoice(id || "");
   const { data: customers, isLoading: customersLoading } = useCustomers();
   const { data: projects } = useProjects();
+  const { data: globalLocations } = useGlobalLocations();
   const { data: products, isLoading: productsLoading } = useProducts();
   const { data: companySettings } = useCompanySettings();
   const updateInvoice = useUpdateInvoice();
