@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
+import { StatusPill, EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -146,17 +146,7 @@ export function TimeEntriesDataTable({
       sortable: true,
       filterable: false,
       getValue: (item) => item.entry_date,
-      render: (item) => {
-        const isEntryLocked = lockedEntryIds.has(item.id) || isWeekLocked;
-        return (
-          <div className="flex items-center gap-2">
-            {isEntryLocked && (
-              <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-            )}
-            <span>{format(new Date(item.entry_date), "MMM dd, yyyy")}</span>
-          </div>
-        );
-      },
+      render: item => <span>{format(new Date(item.entry_date), "MMM dd, yyyy")}</span>,
     },
     {
       key: "personnel",
@@ -229,25 +219,10 @@ export function TimeEntriesDataTable({
       sortable: true,
       filterable: false,
       getValue: (item) => Number(item.hours),
-      render: (item) => {
-        const overtime = Number(item.overtime_hours || 0);
-        return (
-          <div className="flex items-center gap-1.5">
-            <span>{Number(item.hours).toFixed(2)}h</span>
-            {overtime > 0 && (
-              <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-500 border-orange-500/20">
-                +{overtime.toFixed(1)} OT
-              </Badge>
-            )}
-            {item.is_holiday && (
-              <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20">
-                Holiday
-              </Badge>
-            )}
-          </div>
-        );
-      },
+      render: item => <span>{Number(item.hours).toFixed(2)}h</span>,
     },
+    {key:"overtime_hours",header:"Overtime",getValue:item => Number(item.overtime_hours || 0),render:item => <span>{Number(item.overtime_hours || 0).toFixed(2)}h</span>},
+    {key:"flags",header:"Flags",getValue:item => [item.is_holiday ? "Holiday" : "",lockedEntryIds.has(item.id) || isWeekLocked ? "Locked" : ""].filter(Boolean).join(", "),render:item => <div className="flex items-center gap-2">{item.is_holiday && <StatusPill value="Holiday"/>}{(lockedEntryIds.has(item.id) || isWeekLocked) && <StatusPill value="Locked"/>}</div>},
     {
       key: "cost",
       header: "Cost",
@@ -264,7 +239,7 @@ export function TimeEntriesDataTable({
       sortable: true,
       filterable: true,
       getValue: (item) => item.status || "pending",
-      render: (item) => <StatusBadge status={getStatus(item)} />,
+      render: (item) => <StatusPill value={getStatus(item)} />,
     },
     {
       key: "actions",

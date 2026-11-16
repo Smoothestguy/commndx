@@ -62,6 +62,13 @@ import {BulkAssignLocationDialog} from './BulkAssignLocationDialog';
 type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
 
 interface PersonnelTableProps {
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
+  searchable?: boolean;
+  quickFilters?: {value:string;label:string;count?:number}[];
+  quickFilter?: string;
+  onQuickFilterChange?: (value:string) => void;
+  filterContent?: React.ReactNode;
   personnel: Personnel[];
   totalCount: number;
   currentPage: number;
@@ -80,6 +87,7 @@ interface PersonnelTableProps {
 }
 
 export function PersonnelTable({
+  searchValue, onSearchChange, searchable, quickFilters, quickFilter, onQuickFilterChange, filterContent,
   personnel,
   totalCount,
   currentPage,
@@ -580,6 +588,8 @@ export function PersonnelTable({
         <EnhancedDataTable
           fillViewport
           tableId="personnel"
+          searchValue={searchValue} onSearchChange={onSearchChange} searchable={searchable}
+          quickFilters={quickFilters} quickFilter={quickFilter} onQuickFilterChange={onQuickFilterChange} filterContent={filterContent}
           data={personnel}
           columns={columns.filter(c => c.key !== "rate" || isAdmin || isManager)}
           rowHref={person => `/personnel/${person.id}`}

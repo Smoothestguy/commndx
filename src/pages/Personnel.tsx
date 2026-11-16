@@ -40,6 +40,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useSessionState } from "@/hooks/useSessionState";
 import { SearchInput } from "@/components/ui/search-input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -55,6 +56,7 @@ import { matchesAllTags, personnelSegment } from "@/lib/personnelSegment";
 type Seg = "all" | "frg" | "agency" | "customer" | "bench";
 
 const Personnel = () => {
+  const isMobile = useIsMobile();
   const [search, setSearch] = useSessionState("personnel:search", "");
   const [status, setStatus] = useSessionState("personnel:status", "active");
   const [everifyStatus, setEverifyStatus] = useSessionState("personnel:everify", "all");
@@ -169,46 +171,8 @@ const Personnel = () => {
   };
   const bulk = canManage ? <PersonnelBulkActions people={selectedPeople} worksFor={worksFor} tagsByPerson={tagData?.byPerson} /> : null;
 
-  return (
-    <PageLayout title="Personnel Management" desktopCompact={seg !== 'bench'}>
-      <SEO
-        title="Personnel Management"
-        description="Manage your workforce with complete personnel profiles, I-9 compliance, E-Verify tracking, and certifications"
-      />
-
-      <div data-viewport-list={seg !== 'bench' || undefined} className="space-y-4 sm:space-y-6 min-[1180px]:space-y-2 w-full max-w-full overflow-hidden">
-        <PersonnelStats />
-
-        {/* Pending Registrations */}
-        {canManage && <PendingRegistrations />}
-
-
-        <Tabs value={seg} onValueChange={(v) => { setSeg(v as Seg); if (searchParams.get("segment") && v !== "bench") { const n = new URLSearchParams(searchParams); n.delete("segment"); setSearchParams(n, { replace: true }); } if (v === "agency" || v === "customer") setVendorId("all"); }}>
-          <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="all">All <Badge variant="secondary" className="ml-1.5">{counts.all}</Badge></TabsTrigger>
-            <TabsTrigger value="frg">FRG Workforce <Badge variant="secondary" className="ml-1.5">{counts.frg}</Badge></TabsTrigger>
-            <TabsTrigger value="agency">Agency <Badge variant="secondary" className="ml-1.5">{counts.agency}</Badge></TabsTrigger>
-            <TabsTrigger value="customer">Customer personnel <Badge variant="secondary" className="ml-1.5">{counts.customer}</Badge></TabsTrigger>
-            <TabsTrigger value="bench">Bench <Badge variant="secondary" className="ml-1.5">{counts.bench}</Badge></TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        {/* Search input */}
-        <SearchInput
-          placeholder="Search personnel..."
-          value={search}
-          onChange={setSearch}
-          className="w-full min-h-[44px] sm:min-h-[40px]"
-        />
-
-        {/* Filters and action buttons on the same row */}
-        <div className="flex flex-wrap items-center gap-2 w-full max-w-full">
-          {selectionMode && (
-            <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
-              Selection Mode Active
-            </Badge>
-          )}
-          <PersonnelFilters
+  const changeSegment = (v: string) => { setSeg(v as Seg); if (searchParams.get("segment") && v !== "bench") { const n = new URLSearchParams(searchParams); n.delete("segment"); setSearchParams(n, { replace: true }); } if (v === "agency" || v === "customer") setVendorId("all"); };
+  const personnelFilterControls = <>          <PersonnelFilters
             search={search}
             onSearchChange={setSearch}
             status={status}
@@ -229,6 +193,48 @@ const Personnel = () => {
               </SelectContent>
             </Select>
           )}
+</>;
+
+  return (
+    <PageLayout title="Personnel Management" desktopCompact={seg !== 'bench'}>
+      <SEO
+        title="Personnel Management"
+        description="Manage your workforce with complete personnel profiles, I-9 compliance, E-Verify tracking, and certifications"
+      />
+
+      <div data-viewport-list={seg !== 'bench' || undefined} className="space-y-4 sm:space-y-6 min-[1180px]:space-y-2 w-full max-w-full overflow-hidden">
+        <PersonnelStats />
+
+        {/* Pending Registrations */}
+        {canManage && <PendingRegistrations />}
+
+
+        <div className={seg === "bench" ? "" : "md:hidden"}><Tabs value={seg} onValueChange={(v) => { setSeg(v as Seg); if (searchParams.get("segment") && v !== "bench") { const n = new URLSearchParams(searchParams); n.delete("segment"); setSearchParams(n, { replace: true }); } if (v === "agency" || v === "customer") setVendorId("all"); }}>
+          <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="all">All <Badge variant="secondary" className="ml-1.5">{counts.all}</Badge></TabsTrigger>
+            <TabsTrigger value="frg">FRG Workforce <Badge variant="secondary" className="ml-1.5">{counts.frg}</Badge></TabsTrigger>
+            <TabsTrigger value="agency">Agency <Badge variant="secondary" className="ml-1.5">{counts.agency}</Badge></TabsTrigger>
+            <TabsTrigger value="customer">Customer personnel <Badge variant="secondary" className="ml-1.5">{counts.customer}</Badge></TabsTrigger>
+            <TabsTrigger value="bench">Bench <Badge variant="secondary" className="ml-1.5">{counts.bench}</Badge></TabsTrigger>
+          </TabsList>
+        </Tabs></div>
+
+        {/* Search input */}
+        <div className={seg === "bench" ? "" : "md:hidden"}><SearchInput
+          placeholder="Search personnel..."
+          value={search}
+          onChange={setSearch}
+          className="w-full min-h-[44px] sm:min-h-[40px]"
+        /></div>
+
+        {/* Filters and action buttons on the same row */}
+        <div className="flex flex-wrap items-center gap-2 w-full max-w-full">
+          {selectionMode && (
+            <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+              Selection Mode Active
+            </Badge>
+          )}
+          {(isMobile || seg === "bench") && personnelFilterControls}
 
           {!selectionMode ? (
             <>
@@ -309,8 +315,15 @@ const Personnel = () => {
               selected={new Set(selectedIds)} onToggle={handleToggleSelection}
               onToggleAll={(ids) => setSelectedIds((prev) => ids.every((i) => prev.includes(i)) ? prev.filter((i) => !ids.includes(i)) : [...new Set([...prev, ...ids])])} />
           </div>
-        ) : visible.length > 0 ? (
+        ) : (isMobile ? visible.length > 0 : true) ? (
           <PersonnelTable
+            searchValue={isMobile ? undefined : search}
+            onSearchChange={isMobile ? undefined : setSearch}
+            searchable={!isMobile}
+            quickFilters={isMobile ? undefined : (["all", "frg", "agency", "customer", "bench"] as Seg[]).map(value => ({value,label:({all:"All",frg:"FRG Workforce",agency:"Agency",customer:"Customer personnel",bench:"Bench"})[value],count:counts[value]}))}
+            quickFilter={seg}
+            onQuickFilterChange={changeSegment}
+            filterContent={personnelFilterControls}
             personnel={visible}
             totalCount={visible.length}
             currentPage={currentPage}

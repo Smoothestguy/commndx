@@ -1,5 +1,6 @@
-import { EnhancedDataTable, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
+import { StatusPill, EnhancedDataTable, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
 import { EditAssetPlacementDates } from './EditAssetPlacementDates';
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useSessionState } from '@/hooks/useSessionState';
 import { assetCostBreakdown, marginPct } from '@/lib/assetCost';
 import { toast } from 'sonner';
@@ -210,6 +211,7 @@ export function LocationAssets({ projectId, locationId, locationName, canWrite, 
 }) {
   const { isAdmin, isManager } = useUserRole();
   const canBill = isAdmin || isManager;
+  const mobile = useIsMobile();
   const { rows } = useProjectAssetBilling(projectId);
   const [showHistory, setShowHistory] = useState(false);
   const here = useMemo(() => showHistory ? rows.filter(r => r.location_id === locationId) : assetsAtLocation(rows, locationId), [rows, locationId, showHistory]);
@@ -232,7 +234,8 @@ export function LocationAssets({ projectId, locationId, locationName, canWrite, 
       { key: 'bill', header: 'Bill rate', getValue: (r: AssetBillingRow) => r.billable ? r.rate : null },
       { key: 'cost', header: 'Our cost/day', getValue: (r: AssetBillingRow) => r.assets ? assetCostBreakdown(r.assets).perDay : null },
       { key: 'margin', header: 'Margin %', getValue: (r: AssetBillingRow) => marginPct(r.billable ? r.rate : null, r.assets ? assetCostBreakdown(r.assets).perDay : null) },
-      { key: 'insurance', header: 'Insurance expires', getValue: (r: AssetBillingRow) => r.assets?.insurance_expires_on ?? '', render: (r: AssetBillingRow) => <span>{r.assets?.insurance_expires_on}<InsuranceBadge asset={r.assets} /></span> },
+      { key: 'insurance', header: 'Insurance expires', getValue: (r: AssetBillingRow) => r.assets?.insurance_expires_on ?? '', render: (r: AssetBillingRow) => <span>{r.assets?.insurance_expires_on || '—'}{mobile && <InsuranceBadge asset={r.assets} />}</span> },
+      ...(!mobile ? [{key:'flags',header:'Flags',sortable:false,getValue:(r:AssetBillingRow)=>r.assets?.insurance_expires_on ?? '',render:(r:AssetBillingRow)=><InsuranceBadge asset={r.assets}/>}]:[]),
     ] : []),
     { key: 'actions', header: 'Actions', sortable: false, filterable: false, noExport: true, render: r => <span className="flex items-center gap-1">{canBill && <><Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit asset" onClick={() => setEditAsset(r.assets ?? null)}><Pencil className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" aria-label={`Edit dates for ${r.assets?.label ?? 'asset'}`} title="Edit billable dates" onClick={() => setDates(r)}><Calendar className="h-3.5 w-3.5" /></Button></>}{canWrite && !r.end_at && <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="End assignment" onClick={() => setBulkEnd([r])}><Square className="h-3.5 w-3.5" /></Button>}</span> },
   ];

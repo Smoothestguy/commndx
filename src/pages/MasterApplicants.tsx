@@ -1,4 +1,5 @@
-import { EnhancedDataTable, type EnhancedColumn } from "@/components/shared/EnhancedDataTable";
+import { StatusPill, EnhancedDataTable, type EnhancedColumn } from "@/components/shared/EnhancedDataTable";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useSessionState } from "@/hooks/useSessionState";
 import { ApplicantTagBadges, ApplicantNoteLine } from "@/components/staffing/ApplicantMetaInline";
 import { useApplicantCertSummary } from "@/hooks/useApplicantCertSummary";
@@ -102,6 +103,7 @@ const useMasterApplicants = () =>
 type SortKey = "name" | "last_applied_at" | "application_count" | "city";
 
 export default function MasterApplicants() {
+  const mobile = useIsMobile();
   const qc=useQueryClient(),{isAdmin,isManager}=useUserRole();
   const [editor,setEditor]=useState<{id?:string;first_name:string;last_name:string;email:string;phone:string}|null>(null);
   const [editing,setEditing]=useState(false),[saving,setSaving]=useState(false);
@@ -172,13 +174,14 @@ export default function MasterApplicants() {
   };
 
   const columns: EnhancedColumn<Row>[] = [
-    { key: 'name', header: 'Name', width: 280, getValue: r => `${r.first_name} ${r.last_name}`, render: r => <span className="flex items-center gap-2"><ApplicantStarButton applicantId={r.id} starredAt={r.starred_at} /><span><span className="font-medium">{r.first_name} {r.last_name}</span><ApplicantTagBadges applicant={r} certs={certSummary[r.id]} /><ApplicantNoteLine applicant={r} /></span></span> },
+    { key: 'name', header: 'Name', width: 280, getValue: r => `${r.first_name} ${r.last_name}`, render: r => <span className="flex items-center gap-2">{mobile && <ApplicantStarButton applicantId={r.id} starredAt={r.starred_at} />}<span className="min-w-0 truncate font-medium" title={`${r.first_name} ${r.last_name}`}>{r.first_name} {r.last_name}{mobile && <><ApplicantTagBadges applicant={r} certs={certSummary[r.id]} /><ApplicantNoteLine applicant={r} /></>}</span></span> },
+    ...(!mobile ? [{ key: 'flags', header: 'Flags', width: 240, sortable: false, getValue: (r: Row) => [r.starred_at ? 'Starred' : '', ...(r.role_tags ?? []), ...(certSummary[r.id]?.types ?? [])].filter(Boolean).join(', '), render: (r: Row) => <div className="flex items-center gap-2 flex-nowrap [&>span]:flex-nowrap"><ApplicantStarButton applicantId={r.id} starredAt={r.starred_at}/><ApplicantTagBadges applicant={r} certs={certSummary[r.id]} className="flex-nowrap" /></div> }, {key:'notes',header:'Notes',width:220,getValue:(r:Row)=>r.staff_notes ?? '',render:(r:Row)=><span className="block truncate text-muted-foreground" title={r.staff_notes ?? undefined}>{r.staff_notes || '—'}</span>}] : []),
     { key: 'gender', header: 'Gender', width: 120, sortable: true, filterable: true, getValue: (r: any) => r.gender === 'male' ? 'Male' : r.gender === 'female' ? 'Female' : '' },
     { key: 'phone', header: 'Phone' }, { key: 'email', header: 'Email', width: 240 },
     { key: 'location', header: 'Location', getValue: formatApplicantLocation },
     { key: 'last_applied_at', header: 'Last applied', render: r => r.last_applied_at ? formatDistanceToNow(new Date(r.last_applied_at), { addSuffix: true }) : 'never' },
     { key: 'last_posting_title', header: 'Last position' }, { key: 'application_count', header: '# apps' },
-    { key: 'status', header: 'Status', render: r => <Badge variant="outline">{r.status}</Badge> },
+    { key: 'status', header: 'Status', render: r => <StatusPill value={r.status} /> },
   ];
 
   return (

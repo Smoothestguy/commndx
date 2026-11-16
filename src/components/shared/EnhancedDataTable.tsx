@@ -92,6 +92,9 @@ interface EnhancedDataTableProps<T> {
   searchPlaceholder?: string;
   /** Extra controls rendered next to the search box. */
   toolbar?: React.ReactNode;
+  filterContent?: React.ReactNode;
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
   /** Bulk actions bar content shown while rows are selected. */
   bulkActions?: (selected: T[], clear: () => void) => React.ReactNode;
   primaryBulkActions?: (selected: T[], clear: () => void) => React.ReactNode;
@@ -205,7 +208,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   pinFirst,
   searchable = true,
   searchPlaceholder = "Search all columns…",
-  toolbar,
+  toolbar, filterContent, searchValue, onSearchChange,
   bulkActions,
   primaryBulkActions,
   attention,
@@ -235,7 +238,9 @@ export function EnhancedDataTable<T extends { id: string | number }>({
 
   // Per-screen grid state preserved for the session (workspace tabs).
   const scope = `grid:${tableId}:${typeof window !== "undefined" ? window.location.pathname : ""}`;
-  const [search, setSearch] = useSessionState(`${scope}:q`, "");
+  const [savedSearch, setSavedSearch] = useSessionState(`${scope}:q`, "");
+  const search = searchValue ?? savedSearch;
+  const setSearch = onSearchChange ?? setSavedSearch;
   const [page, setPage] = useSessionState(`${scope}:page`, 0);
   const [pageSize, setPageSize] = useSessionState(`${scope}:size`, defaultPageSize);
   const [dense, setDense] = useSessionState(`grid:${tableId}:comfort-dense`, false);
@@ -441,6 +446,8 @@ export function EnhancedDataTable<T extends { id: string | number }>({
         {!mobile && <ColumnsPopover columns={columns.filter(c => c.header).map(c => ({ key: String(c.key), header: c.header }))} order={fullOrder} visible={preferences.visibleColumns} visibleCount={visibleColumns.length}
           onToggle={toggleColumnVisibility} onReorder={setColumnOrder} onResetWidths={Object.keys(widths).length ? () => setWidths({}) : undefined} />}
       </div>
+
+      {!mobile && showFilters && filterContent && <div aria-label="Grid filters" className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-border bg-card">{filterContent}</div>}
 
       {/* Bulk actions bar */}
       {selectable && selectedRows.length > 0 && (
