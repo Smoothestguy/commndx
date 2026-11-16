@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useGlobalLocations } from "@/hooks/useGlobalLocations";
+import { customerProjectMap } from "@/lib/projectEvent";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -33,6 +35,8 @@ const Customers = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: customers, isLoading, error, refetch, isFetching } = useCustomers();
   const { data: projects } = useProjects();
+  const { data: globalLocations } = useGlobalLocations();
+  const customerProjects = useMemo(() => customerProjectMap(globalLocations?.locations ?? [], globalLocations?.projects ?? []), [globalLocations]);
   const addCustomer = useAddCustomer();
   const updateCustomer = useUpdateCustomer();
   const deleteCustomer = useDeleteCustomer();
@@ -74,7 +78,7 @@ const Customers = () => {
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const total = customers?.length || 0;
   const withProjects = customers?.filter(
-    (c) => projects?.some((p) => p.customer_id === c.id)
+    (c) => customerProjects.has(c.id)
   ).length || 0;
   const newThisMonth = customers?.filter(
     (c) => new Date(c.created_at) >= firstDayOfMonth
@@ -104,7 +108,7 @@ const Customers = () => {
       sortable: false,
       filterable: false,
       render: (item: Customer) => {
-        const projectCount = projects?.filter(p => p.customer_id === item.id).length || 0;
+        const projectCount = customerProjects.get(item.id)?.size || 0;
         return (
           <div className="flex items-center gap-2">
             <FolderOpen className="h-4 w-4 text-muted-foreground" />
@@ -326,7 +330,7 @@ const Customers = () => {
                 {filteredCustomers
                   .slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
                   .map((customer) => {
-                    const projectCount = projects?.filter(p => p.customer_id === customer.id).length || 0;
+                    const projectCount = customerProjects.get(customer.id)?.size || 0;
                     return (
                       <CustomerCard
                         key={customer.id}

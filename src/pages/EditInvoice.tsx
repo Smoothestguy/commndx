@@ -1,3 +1,5 @@
+import { useGlobalLocations } from "@/hooks/useGlobalLocations";
+import { customerProjectMap } from "@/lib/projectEvent";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -248,6 +250,7 @@ const EditInvoice = () => {
   const { data: invoice, isLoading: invoiceLoading } = useInvoice(id || "");
   const { data: customers, isLoading: customersLoading } = useCustomers();
   const { data: projects } = useProjects();
+  const { data: globalLocations } = useGlobalLocations();
   const { data: products, isLoading: productsLoading } = useProducts();
   const { data: companySettings } = useCompanySettings();
   const updateInvoice = useUpdateInvoice();
@@ -654,7 +657,7 @@ const EditInvoice = () => {
   }
 
   const filteredProjects = selectedCustomerId
-    ? projects?.filter(p => p.customer_id === selectedCustomerId)
+    ? projects?.filter(p => customerProjectMap(globalLocations?.locations ?? [], globalLocations?.projects ?? []).get(selectedCustomerId)?.has(p.id))
     : projects;
 
   return (
