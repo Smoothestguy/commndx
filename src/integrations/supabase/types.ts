@@ -14305,7 +14305,12 @@ export type Database = {
       job_order_status: "active" | "in-progress" | "completed" | "on-hold"
       personnel_payment_type: "regular" | "bonus" | "reimbursement" | "advance"
       personnel_status: "active" | "inactive" | "do_not_hire"
-      project_stage: "quote" | "task_order" | "active" | "complete" | "canceled"
+      project_stage:
+        | "standby"
+        | "task_order"
+        | "active"
+        | "complete"
+        | "canceled"
       project_status: "active" | "completed" | "on-hold"
       purchase_order_status:
         | "draft"
@@ -14578,7 +14583,13 @@ export const Constants = {
       job_order_status: ["active", "in-progress", "completed", "on-hold"],
       personnel_payment_type: ["regular", "bonus", "reimbursement", "advance"],
       personnel_status: ["active", "inactive", "do_not_hire"],
-      project_stage: ["quote", "task_order", "active", "complete", "canceled"],
+      project_stage: [
+        "standby",
+        "task_order",
+        "active",
+        "complete",
+        "canceled",
+      ],
       project_status: ["active", "completed", "on-hold"],
       purchase_order_status: [
         "draft",
