@@ -956,7 +956,7 @@ export function ProjectTimeEntriesTable({
       )}
 
       <div className="rounded-lg border border-border overflow-hidden">
-        <Table>
+        <Table className="min-w-[1500px] [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
           <TableHeader>
             <TableRow className="bg-muted/50">
               {onBulkDelete && <TableHead className="w-12"></TableHead>}
@@ -1069,7 +1069,7 @@ export function ProjectTimeEntriesTable({
                                 size="sm"
                               />
                               <div className="flex items-center gap-2">
-                                <span className="font-medium">
+                                <span className="block max-w-64 truncate font-medium" title={personnel.personnelName}>
                                   {personnel.personnelName}
                                 </span>
                               </div>

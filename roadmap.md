@@ -346,4 +346,4 @@
 - [x] Owner/admin browser checks, 20 rule tests, test records/audits cleaned. Manager-specific session and physical devices not exercised.
 
 # Grid restyle sweep
-- [ ] Separate stacked desktop cell details in assets, applicants, time and location roster; consolidate Personnel/Projects controls; read-only browser checks and regression tests.
+- [x] Separate desktop flags/notes/ownership/overtime/counts in assets, both applicant grids, live hierarchical Time and location roster. Personnel/Projects each use one search/filter toolbar; mobile cards retained. Owner read-only desktop checks loaded all six pages with zero page errors, expanded 30 Time rows and project bulk selection passed; nine sizing/interaction tests pass and preview build OK. No business records or messages changed.
