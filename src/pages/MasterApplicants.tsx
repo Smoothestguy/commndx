@@ -5,6 +5,7 @@ import { useApplicantDuplicates } from '@/hooks/useApplicantDuplicates';
 import { recruitingState, submissionTime, canMergeApplicants } from '@/lib/recruiting';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSessionState } from "@/hooks/useSessionState";
+import { useTransientSelection } from "@/hooks/useTransientSelection";
 import { ApplicantTagBadges, ApplicantNoteLine } from "@/components/staffing/ApplicantMetaInline";
 import { useApplicantCertSummary } from "@/hooks/useApplicantCertSummary";
 import { formatApplicantLocation } from "@/lib/applicantLocation";
@@ -125,7 +126,7 @@ export default function MasterApplicants() {
   const [hasPhone, setHasPhone] = useSessionState("master-applicants:phone", "all");
   const [sortKey, setSortKey] = useState<SortKey>("last_applied_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [selection, setSelection] = useSessionState<string[]>("master-applicants:selection", []);
+  const [selection, setSelection] = useTransientSelection<string[]>("master-applicants:selection", []);
   const selected = new Set(selection);
   const setSelected = (next: Set<string> | ((prev: Set<string>) => Set<string>)) => setSelection(prev => [...(typeof next === "function" ? next(new Set(prev)) : next)]);
   const [inviteOpen, setInviteOpen] = useState(false);

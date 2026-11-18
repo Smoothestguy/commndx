@@ -1,4 +1,5 @@
 import { useSessionState } from '@/hooks/useSessionState';
+import { useTransientSelection } from '@/hooks/useTransientSelection';
 import { ownershipText } from '@/lib/assetDetails';
 import { useState } from "react";
 import { toast } from "sonner";
@@ -164,7 +165,7 @@ export function ProjectAssetAssignmentsSection({
     </TableHead>
   );
 
-  const [selection, setSelection] = useSessionState<string[]>(`assets:${projectId}:selection`, []);
+  const [selection, setSelection] = useTransientSelection<string[]>(`assets:${projectId}:selection`, []);
   const selectedAssets = new Set(selection);
   const setSelectedAssets = (next: Set<string>) => setSelection([...next]);
   const [bulkUnassign, setBulkUnassign] = useState<string[] | null>(null);

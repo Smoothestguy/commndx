@@ -1,7 +1,7 @@
 import { StatusPill, EnhancedDataTable, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
 import { EditAssetPlacementDates } from './EditAssetPlacementDates';
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useSessionState } from '@/hooks/useSessionState';
+import { useTransientSelection } from '@/hooks/useTransientSelection';
 import { assetCostBreakdown, marginPct } from '@/lib/assetCost';
 import { toast } from 'sonner';
 import { AssetResponsiblePicker } from './AssetResponsiblePicker';
@@ -221,7 +221,7 @@ export function LocationAssets({ projectId, locationId, locationName, canWrite, 
   const unassign = useUnassignAsset();
   const [open, setOpen] = useState(false);
   const [editAsset, setEditAsset] = useState<EditableAsset | null>(null);
-  const [selected, setSelected] = useSessionState<string[]>(`location-assets:${locationId}:selection`, []);
+  const [selected, setSelected] = useTransientSelection<string[]>(`location-assets:${locationId}:selection`, []);
   const [bulkEnd, setBulkEnd] = useState<AssetBillingRow[] | null>(null);
   const updateAsset=useUpdateAsset();
   const columns: EnhancedColumn<AssetBillingRow>[] = [

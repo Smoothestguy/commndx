@@ -2,7 +2,7 @@ import { useCallback, useState, type Dispatch, type SetStateAction } from "react
 
 /**
  * useState that survives unmounting for the browser session (per key), so a
- * screen's filters/selection are preserved when flipping workspace tabs.
+ * screen's filters are preserved when flipping workspace tabs (not row selection).
  */
 export function useSessionState<T>(key: string, initial: T): [T, Dispatch<SetStateAction<T>>] {
   const storageKey = `ss:${key}`;

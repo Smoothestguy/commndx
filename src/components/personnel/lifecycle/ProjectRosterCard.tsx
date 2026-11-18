@@ -1,6 +1,6 @@
 import { EnhancedDataTable, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
 import { PersonnelBulkActions } from '@/components/personnel/PersonnelBulkActions';
-import { useSessionState } from '@/hooks/useSessionState';
+import { useTransientSelection } from '@/hooks/useTransientSelection';
 import { Link } from 'react-router-dom';
 import { EntityContextMenu } from '@/components/shared/EntityContextMenu';
 import { NonBillableChip } from '@/components/personnel/NonBillableChip';
@@ -37,7 +37,7 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
   const { data: expenses = [] } = useProjectPersonnelExpenses(projectId);
   const equipment = useProjectAssetBilling(projectId);
   const [sel, setSel] = useState<string[]>([]);
-  const [badgeSelection, setBadgeSelection] = useSessionState<string[]>(`project-roster:${projectId}:selection`, []);
+  const [badgeSelection, setBadgeSelection] = useTransientSelection<string[]>(`project-roster:${projectId}:selection`, []);
   const [printing, setPrinting] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
   const [expFor, setExpFor] = useState<string | null>(null);

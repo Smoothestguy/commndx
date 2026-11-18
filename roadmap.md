@@ -1,3 +1,6 @@
+# Selection-state cleanup
+- [x] Removed persisted selection from Personnel, Projects, Job Postings, Master Applicants, shared grids, Event grids, location roster/attendance/assets, project assets and project roster; stale keys cleared on load/unmount. Personnel and Job Postings two-row Back roundtrips retained search and cleared IDs; Personnel exit clears IDs. Workforce already uses local state and passed unchanged. Three cleanup tests passed, preview clean, no production data changed.
+
 # Shell navigation
 - [x] Replace-current navigation; optional modifier/header tabs with five-unpinned LRU/pins/migration; Back/breadcrumbs/Recent and shell scroll restoration; shared dirty guard in TO/timesheet editors. Read-only 1440/390 checks passed for navigation, migration, pins/eviction, Recent, browser Back/Forward, desktop grid/phone scroll and dirty wizard Stay; three tab tests passed. Native phone hardware/close prompt and individual timesheet dirty forms were not exercised; no production records changed.
 

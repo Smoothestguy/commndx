@@ -1,4 +1,5 @@
 import { useSessionState } from "@/hooks/useSessionState";
+import { useTransientSelection } from "@/hooks/useTransientSelection";
 import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { buildApplyUrl, buildApplyShareUrl } from "@/lib/applyLinks";
@@ -132,7 +133,7 @@ export default function StaffingApplications() {
   const [showEditTaskOrderDialog, setShowEditTaskOrderDialog] = useState(false);
   const [editingPosting, setEditingPosting] = useState<{ id: string; formTemplateId: string | null } | null>(null);
   const [editingTaskOrder, setEditingTaskOrder] = useState<TaskOrder | null>(null);
-  const [selected, setSelected] = useSessionState<string[]>("applicant-pool:selection", []);
+  const [selected, setSelected] = useTransientSelection<string[]>("applicant-pool:selection", []);
   const selectedIds = new Set(selected);
   const setSelectedIds = (next: Set<string> | ((prev: Set<string>) => Set<string>)) => setSelected(prev => [...(typeof next === "function" ? next(new Set(prev)) : next)]);
   const [activePostingsOpen, setActivePostingsOpen] = useState(false);

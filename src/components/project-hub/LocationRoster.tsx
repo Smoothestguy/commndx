@@ -1,6 +1,7 @@
 import { EnhancedDataTable, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSessionState } from '@/hooks/useSessionState';
+import { useTransientSelection } from '@/hooks/useTransientSelection';
 import { assetCareLabel, ownershipText } from '@/lib/assetDetails';
 import type { AssetAssignmentWithDetails } from '@/integrations/supabase/hooks/useAssetAssignments';
 import { useMemo, useState } from 'react';
@@ -62,7 +63,7 @@ export function LocationRoster({ locationId, projectId, timezone, canWrite, assi
   const [demobOpen, setDemobOpen] = useState(false);
   const endAssignment = useEndAssignment();
   const [q, setQ] = useSessionState(`roster:${locationId}:search`, '');
-  const [selected, setSelected] = useSessionState<string[]>(`roster:${locationId}:selection`, []);
+  const [selected, setSelected] = useTransientSelection<string[]>(`roster:${locationId}:selection`, []);
   const sel = new Set(selected);
   const setSel = (ids: Set<string>) => setSelected([...ids]);
   const toggle = (id: string) => { const n = new Set(sel); n.has(id) ? n.delete(id) : n.add(id); setSel(n); };

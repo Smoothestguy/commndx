@@ -1,4 +1,5 @@
 import { useSessionState } from "@/hooks/useSessionState";
+import { useTransientSelection } from "@/hooks/useTransientSelection";
 import { useProjectTypes, useEventLocationIndex } from '@/hooks/useProjectEvent';
 import { eventCustomers } from '@/lib/projectEvent';
 import { EventCustomers, ProjectTypeChip } from '@/components/projects/EventCustomers';
@@ -86,7 +87,7 @@ const Projects = () => {
   const [search, setSearch] = useSessionState("projects:search", "");
   const [filterStage, setFilterStage] = useSessionState<string>("projects:stage", "all");
   const [filterCategory, setFilterCategory] = useSessionState<ProjectCategory>("projects:category", "all");
-  const [selected, setSelected] = useSessionState<string[]>("projects:selection", []);
+  const [selected, setSelected] = useTransientSelection<string[]>("projects:selection", []);
   const selectedIds = new Set(selected);
   const setSelectedIds = (next: Set<string> | ((prev: Set<string>) => Set<string>)) => setSelected(prev => [...(typeof next === "function" ? next(new Set(prev)) : next)]);
 

@@ -1,5 +1,6 @@
 import { EnhancedDataTable, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
 import { useSessionState } from '@/hooks/useSessionState';
+import { useTransientSelection } from '@/hooks/useTransientSelection';
 import {useAttendanceRoster} from '@/hooks/useAttendanceRoster';
 import { MissingSignatures } from '@/components/signin/MissingSignatures';
 import { useMemo, useState } from 'react';
@@ -40,7 +41,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   useEffect(()=>{if(todayFirst)setDay(localDay(new Date().toISOString(),tz));},[locationId,todayFirst]);
   const [edit, setEdit] = useState<{ ids: string[]; name: string; day?: string } | null>(null);
   const [log, setLog] = useState<{ id: string; name: string } | null>(null);
-  const [selected, setSelected] = useSessionState<string[]>(`attendance:${locationId}:selection`, []);
+  const [selected, setSelected] = useTransientSelection<string[]>(`attendance:${locationId}:selection`, []);
   const sel = new Set(selected);
   const setSel = (ids: Set<string>) => setSelected([...ids]);
   const [bulk, setBulk] = useState<{ date: string; inTime: string; outTime: string; note: string } | null>(null);

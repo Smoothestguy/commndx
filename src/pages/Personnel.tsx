@@ -42,6 +42,8 @@ import { Badge } from "@/components/ui/badge";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSessionState } from "@/hooks/useSessionState";
+import { useTransientSelection } from "@/hooks/useTransientSelection";
+import { clearLegacySelection } from "@/lib/transientSelection";
 import { SearchInput } from "@/components/ui/search-input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -65,8 +67,12 @@ const Personnel = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [bulkBadgeDialogOpen, setBulkBadgeDialogOpen] = useState(false);
-  const [selectionMode, setSelectionMode] = useSessionState("personnel:selMode", true);
-  const [selectedIds, setSelectedIds] = useSessionState<string[]>("personnel:selected", []);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useTransientSelection<string[]>("personnel:selected", []);
+  useEffect(() => {
+    try { clearLegacySelection(sessionStorage, 'personnel:selMode'); } catch { /* unavailable */ }
+    try { clearLegacySelection(localStorage, 'personnel:selMode'); } catch { /* unavailable */ }
+  }, []);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [seg, setSeg] = useSessionState<Seg>("personnel:seg", "all");

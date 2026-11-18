@@ -1,5 +1,5 @@
 import { useMemo, isValidElement, type ReactNode } from 'react';
-import { useSessionState } from '@/hooks/useSessionState';
+import { useTransientSelection } from '@/hooks/useTransientSelection';
 import { EnhancedDataTable, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
 
 const plainText = (node: ReactNode): string => {
@@ -17,7 +17,7 @@ export function EventGrid({ headers, rows, mobile = false, empty = 'No records y
   bulkActions?: (selected: Row[], clear: () => void) => ReactNode; exportName?: string;
 }) {
   const tableId = `event:${gridId ?? headers.join('|')}:${window.location.pathname}`;
-  const [ids, setIds] = useSessionState<string[]>(`${tableId}:selected`, []);
+  const [ids, setIds] = useTransientSelection<string[]>(`${tableId}:selected`, []);
   const selected = new Set(ids);
   const setSelected = (next: Set<string>) => setIds([...next]);
   const columns = useMemo<EnhancedColumn<Row>[]>(() => headers.map((h, i) => ({

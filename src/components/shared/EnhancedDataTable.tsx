@@ -45,6 +45,7 @@ import {
 import { ColumnHeaderMenu, ColumnConfig } from "./ColumnHeaderMenu";
 import { useTablePreferences } from "@/hooks/useTablePreferences";
 import { useSessionState } from "@/hooks/useSessionState";
+import { useTransientSelection } from "@/hooks/useTransientSelection";
 import { useViewportGrid } from "@/hooks/useViewportGrid";
 import { gridColumnWidths } from "@/lib/gridSizing";
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -248,7 +249,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   const [pageSize, setPageSize] = useSessionState(`${scope}:size`, defaultPageSize);
   const [dense, setDense] = useSessionState(`grid:${tableId}:comfort-dense`, false);
   const [widths, setWidths] = useSessionState<Record<string, number>>(`grid:${tableId}:widths`, {});
-  const [selection, setSelection] = useSessionState<string[]>(`${scope}:selection`, []);
+  const [selection, setSelection] = useTransientSelection<string[]>(`${scope}:selection`, []);
   const selectedIds = controlledIds ?? new Set(selection);
   const onSelectionChange = controlledSelection ?? ((ids: Set<string>) => setSelection([...ids]));
   const scrollRef = useRef<HTMLDivElement>(null);
