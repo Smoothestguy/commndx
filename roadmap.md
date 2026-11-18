@@ -1,3 +1,6 @@
+# Search focus stability
+- [x] Personnel hook retains previous data; page shows spinner only without data and sends 300ms-debounced search while input/session updates immediately. Projects, Job Postings, Master Applicants, Workforce, Vendors, Customers and shared grids use local search, so no matching server-search unmount fix needed. Read-only 1440/390 delayed-response checks retained raymond/focus, one request per continuous entry, matching results, backspace and clear restoration; debounce test and preview passed, no data modified.
+
 # Selection-state cleanup
 - [x] Removed persisted selection from Personnel, Projects, Job Postings, Master Applicants, shared grids, Event grids, location roster/attendance/assets, project assets and project roster; stale keys cleared on load/unmount. Personnel and Job Postings two-row Back roundtrips retained search and cleared IDs; Personnel exit clears IDs. Workforce already uses local state and passed unchanged. Three cleanup tests passed, preview clean, no production data changed.
 

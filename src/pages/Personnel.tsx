@@ -54,12 +54,14 @@ import { TagFilter } from "@/components/personnel/PersonnelTags";
 import { PersonnelBulkActions } from "@/components/personnel/PersonnelBulkActions";
 import { BenchList } from "@/components/personnel/BenchList";
 import { matchesAllTags, personnelSegment } from "@/lib/personnelSegment";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
 type Seg = "all" | "frg" | "agency" | "customer" | "bench";
 
 const Personnel = () => {
   const isMobile = useIsMobile();
   const [search, setSearch] = useSessionState("personnel:search", "");
+  const querySearch = useDebouncedValue(search);
   const [status, setStatus] = useSessionState("personnel:status", "active");
   const [everifyStatus, setEverifyStatus] = useSessionState("personnel:everify", "all");
   const [vendorId, setVendorId] = useSessionState("personnel:vendor", "all");
@@ -144,7 +146,7 @@ const Personnel = () => {
   };
 
   const filters = {
-    search,
+    search: querySearch,
     status: status === "all" ? undefined : status,
     everifyStatus: everifyStatus === "all" ? undefined : everifyStatus,
     vendorId: vendorId === "all" ? undefined : vendorId,
@@ -310,7 +312,7 @@ const Personnel = () => {
           )}
         </div>
 
-        {isLoading ? (
+        {isLoading && personnel === undefined ? (
           <div className="flex justify-center py-8 sm:py-12">
             <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
           </div>
