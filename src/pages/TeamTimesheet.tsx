@@ -18,6 +18,7 @@ import { PersonnelAssignmentDialog } from "@/components/time-tracking/PersonnelA
 import { WeekNavigator } from "@/components/time-tracking/WeekNavigator";
 import { SEO } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 
 type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
@@ -86,19 +87,7 @@ export default function TeamTimesheet() {
     return changed;
   }, [weeklyHours, initialHours]);
 
-  // Browser beforeunload warning for unsaved changes
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges) {
-        e.preventDefault();
-        e.returnValue = "You have unsaved changes. Are you sure you want to leave?";
-        return e.returnValue;
-      }
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [hasUnsavedChanges]);
+  useUnsavedChangesGuard(hasUnsavedChanges);
 
   const { data: projects = [] } = useProjects();
   const { data: assignedPersonnel = [], isLoading: loadingPersonnel, refetch: refetchPersonnel } = usePersonnelByProject(selectedProject);

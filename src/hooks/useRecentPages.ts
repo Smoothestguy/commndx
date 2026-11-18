@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface RecentPage {
   path: string;
@@ -13,7 +14,7 @@ const MAX_PAGES = 10;
 // Map paths to readable names
 export const getPageName = (pathname: string): string => {
   const pathMap: Record<string, string> = {
-    '/': 'Dashboard',
+    '/': 'Home',
     '/estimates': 'Estimates',
     '/invoices': 'Invoices',
     '/personnel': 'Personnel',
@@ -22,7 +23,7 @@ export const getPageName = (pathname: string): string => {
     '/vendors': 'Vendors',
     '/products': 'Products',
     '/time-tracking': 'Time Tracking',
-    '/purchase-orders': 'Purchase Orders',
+    '/purchase-orders': 'Work Orders',
     '/change-orders': 'Change Orders',
     '/job-orders': 'Job Orders',
     '/settings': 'Settings',
@@ -78,9 +79,11 @@ const shouldTrackPath = (pathname: string): boolean => {
 
 export function useRecentPages() {
   const location = useLocation();
+  const { user } = useAuth();
+  const storageKey = `${STORAGE_KEY}:${user?.id || 'signed-out'}`;
   const [recentPages, setRecentPages] = useState<RecentPage[]>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(storageKey);
       return stored ? JSON.parse(stored) : [];
     } catch {
       return [];
@@ -88,7 +91,12 @@ export function useRecentPages() {
   });
 
   useEffect(() => {
+    try { setRecentPages(JSON.parse(localStorage.getItem(storageKey) || '[]')); } catch { setRecentPages([]); }
+  }, [storageKey]);
+
+  useEffect(() => {
     const pathname = location.pathname;
+    const path = pathname + location.search + location.hash;
     
     // Don't track excluded paths
     if (!shouldTrackPath(pathname)) {
@@ -97,28 +105,28 @@ export function useRecentPages() {
 
     const pageName = getPageName(pathname);
     const newEntry: RecentPage = {
-      path: pathname,
+      path,
       name: pageName,
       visitedAt: Date.now(),
     };
 
     setRecentPages(prev => {
       // Remove existing entry for this path (deduplication)
-      const filtered = prev.filter(p => p.path !== pathname);
+      const filtered = prev.filter(p => p.path !== path);
       
       // Add new entry at the beginning and limit to max
       const updated = [newEntry, ...filtered].slice(0, MAX_PAGES);
       
       // Save to localStorage
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        localStorage.setItem(storageKey, JSON.stringify(updated));
       } catch (e) {
         console.warn('Failed to save recent pages to localStorage:', e);
       }
       
       return updated;
     });
-  }, [location.pathname]);
+  }, [location.pathname, location.search, location.hash, storageKey]);
 
   return recentPages;
 }

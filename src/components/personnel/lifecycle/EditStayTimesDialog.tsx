@@ -11,6 +11,7 @@ import { Clock, Loader2, Undo2, X } from 'lucide-react';
 import { draftStay, stayRange, type StayDraft } from '@/lib/stayEdits';
 import { sourceFromNotes } from '@/integrations/supabase/hooks/useTimekeeping';
 import { useEditStayTimes } from '@/hooks/useEditStayTimes';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 
 export function EditStayTimesDialog({ projectId, ids, personName, day, onClose }: { projectId: string; ids: string[]; personName: string; day?: string; onClose: () => void }) {
   const save = useEditStayTimes(projectId);
@@ -30,10 +31,11 @@ export function EditStayTimesDialog({ projectId, ids, personName, day, onClose }
   } });
   useEffect(() => { if (query.data) setDrafts(query.data.map(s => draftStay(s.id, s.inAt, s.outAt, s.zone, day))); }, [query.data, day]);
   const update = (id: string, values: Partial<StayDraft>) => setDrafts(prev => prev.map(d => d.id === id ? { ...d, ...values } : d));
+  const requestLeave=useUnsavedChangesGuard(!!query.data&&JSON.stringify(drafts)!==JSON.stringify(query.data.map(s=>draftStay(s.id,s.inAt,s.outAt,s.zone,day))));
   // Blank (untouched/cleared) fields keep the stored value, so editing one side never blocks on the other.
   const eff = (d: StayDraft): StayDraft => { const s = query.data?.find(s => s.id === d.id); if (!s) return d; const o = draftStay(s.id, s.inAt, s.outAt, s.zone, day); return { ...d, inTime: d.inTime.trim() || o.inTime, inDate: d.inDate || o.inDate, outTime: d.outTime.trim() || (s.outAt ? o.outTime : ''), outDate: d.outDate || o.outDate }; };
   const valid = drafts.length > 0 && drafts.every(d => { const s = query.data?.find(s => s.id === d.id); return d.removed || !!stayRange(eff(d), s?.zone || 'America/Chicago'); });
-  return <Dialog open onOpenChange={open => { if (!open && !save.isPending) onClose(); }}><DialogContent className="max-w-xl max-h-[90dvh] overflow-y-auto max-md:[&_button]:min-h-11 max-md:[&_input]:min-h-11"><DialogHeader><DialogTitle>Edit times · {personName}</DialogTitle></DialogHeader>
+  return <Dialog open onOpenChange={open => { if (!open && !save.isPending) requestLeave(onClose); }}><DialogContent className="max-w-xl max-h-[90dvh] overflow-y-auto max-md:[&_button]:min-h-11 max-md:[&_input]:min-h-11"><DialogHeader><DialogTitle>Edit times · {personName}</DialogTitle></DialogHeader>
     {query.isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
     {query.error && <p role="alert" className="text-sm text-destructive">Unable to load stays.</p>}
     <div className="divide-y">{drafts.map(d => { const s = query.data?.find(s => s.id === d.id); if (!s) return null; return <div key={d.id} className="py-3 space-y-2">
@@ -45,7 +47,7 @@ export function EditStayTimesDialog({ projectId, ids, personName, day, onClose }
       </>}
     </div>; })}</div>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-    <DialogFooter><Button variant="outline" disabled={save.isPending} onClick={onClose}>Cancel</Button><Button disabled={!valid || save.isPending} onClick={async () => {
+    <DialogFooter><Button variant="outline" disabled={save.isPending} onClick={()=>requestLeave(onClose)}>Cancel</Button><Button disabled={!valid || save.isPending} onClick={async () => {
       setError('');
       const changes = drafts.flatMap(d => { const s = query.data?.find(s => s.id === d.id); if (!s) return []; const r = stayRange(eff(d), s.zone); if (d.removed) return [{ id: d.id, inAt: s.inAt, outAt: s.outAt, remove: true }]; if (!r || (Date.parse(r.inAt) === Date.parse(s.inAt) && (r.outAt ? Date.parse(r.outAt) : null) === (s.outAt ? Date.parse(s.outAt) : null))) return []; return [{ id: d.id, ...r, remove: false }]; });
       if (!changes.length) { onClose(); return; }

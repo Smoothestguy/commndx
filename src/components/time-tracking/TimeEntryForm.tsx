@@ -45,6 +45,7 @@ import {
 } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { format } from "date-fns";
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 
 const formSchema = z.object({
   project_id: z.string().min(1, "Project is required"),
@@ -90,6 +91,7 @@ export function TimeEntryForm({
   });
 
   const entryDate = form.watch("entry_date");
+  const requestLeave=useUnsavedChangesGuard(open&&form.formState.isDirty);
   const { data: existingWeeklyHours = 0 } = useExistingWeeklyHours(
     entryDate,
     entry?.id
@@ -171,7 +173,7 @@ export function TimeEntryForm({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={v=>{if(v)onOpenChange(v);else requestLeave(()=>onOpenChange(false));}}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>{entry ? "Edit Time Entry" : "Add Time Entry"}</DialogTitle>

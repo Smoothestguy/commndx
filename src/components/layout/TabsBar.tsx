@@ -1,4 +1,4 @@
-import { X, Home, Users, FolderKanban, MapPin, Clock, Tent, BarChart3, Package, FileText, UserPlus, LayoutGrid, type LucideIcon } from "lucide-react";
+import { X, Pin, Home, Users, FolderKanban, MapPin, Clock, Tent, BarChart3, Package, FileText, UserPlus, LayoutGrid, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppTabs, HOME_KEY } from "@/hooks/useAppTabs";
 import { Button } from "@/components/ui/button";
@@ -18,17 +18,17 @@ const ICONS: [RegExp, LucideIcon][] = [
 ];
 const iconFor = (key: string) => ICONS.find(([re]) => re.test(key))?.[1] ?? LayoutGrid;
 
-/** Browser-style workspace tabs; horizontal scroll strip on phones. */
+/** Optional desktop workspace tabs; phones use route history instead. */
 export function TabsBar() {
-  const { tabs, activeKey, activateTab, closeTab, closeOthers, closeAll } = useAppTabs();
+  const { tabs, activeKey, activateTab, closeTab, pinTab, closeOthers, closeAll } = useAppTabs();
   if (tabs.length <= 1 && activeKey === HOME_KEY) return null;
 
   return (
-    <div className="flex items-stretch h-9 bg-muted/40 border-b border-border overflow-x-auto no-scrollbar shrink-0" role="tablist" aria-label="Open screens">
+    <div className="hidden md:flex items-stretch h-9 bg-muted/40 border-b border-border overflow-x-auto no-scrollbar shrink-0" role="tablist" aria-label="Open screens">
       {tabs.map((tab) => {
         const isActive = tab.key === activeKey;
-        const Icon = iconFor(tab.key);
-        const pinned = tab.key === HOME_KEY;
+        const Icon = iconFor(tab.path);
+        const pinned = tab.pinned;
         return (
           <ContextMenu key={tab.key}>
             <ContextMenuTrigger asChild>
@@ -48,6 +48,7 @@ export function TabsBar() {
               >
                 <Icon className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">{tab.label}</span>
+                {pinned && <Pin className="h-3 w-3 shrink-0" aria-label="Pinned" />}
                 {!pinned && (
                   <Button
                     variant="ghost" size="icon"
@@ -62,6 +63,7 @@ export function TabsBar() {
               </div>
             </ContextMenuTrigger>
             <ContextMenuContent>
+              {tab.key !== HOME_KEY && <ContextMenuItem onSelect={() => pinTab(tab.key)}>{pinned ? 'Unpin tab' : 'Pin tab'}</ContextMenuItem>}
               {!pinned && <ContextMenuItem onSelect={() => closeTab(tab.key)}>Close tab</ContextMenuItem>}
               <ContextMenuItem onSelect={() => closeOthers(tab.key)}>Close others</ContextMenuItem>
               <ContextMenuItem onSelect={() => closeAll()}>Close all tabs</ContextMenuItem>

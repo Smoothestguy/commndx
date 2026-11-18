@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useForm } from "react-hook-form";
+import { useUnsavedFormGuard } from '@/hooks/useUnsavedFormGuard';
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "@/hooks/use-toast";
@@ -176,6 +177,7 @@ export function EnhancedTimeEntryForm({
 
   // Watch hours for overtime preview
   const watchedHoursRaw = form.watch("hours");
+  const requestLeave=useUnsavedFormGuard({form:form.watch(),weeklyHours,weeklyProjectId,weeklyDescription,weeklyBillable,personnelHours,templateHours,holidayDays,dailyPersonnelHours,selectedPersonnelIds},open);
   const watchedHours = Number(watchedHoursRaw) || 0;
   const watchedIsHoliday = form.watch("is_holiday");
 
@@ -602,7 +604,7 @@ export function EnhancedTimeEntryForm({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={v=>{if(v)onOpenChange(v);else requestLeave(()=>onOpenChange(false));}}>
         <DialogContent className={cn(
           "max-h-[90vh] overflow-y-auto",
           entryType === "weekly" && !entry ? "sm:max-w-4xl" : "sm:max-w-[550px]"
@@ -860,7 +862,7 @@ export function EnhancedTimeEntryForm({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => onOpenChange(false)}
+                    onClick={() => requestLeave(()=>onOpenChange(false))}
                     className="flex-1"
                   >
                     Cancel
@@ -1037,7 +1039,7 @@ export function EnhancedTimeEntryForm({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => onOpenChange(false)}
+                  onClick={() => requestLeave(()=>onOpenChange(false))}
                   className="flex-1"
                 >
                   Cancel

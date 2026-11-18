@@ -16,14 +16,17 @@ export function useBreadcrumbs(): Crumb[] {
   const segments = location.pathname.split("/").filter(Boolean);
 
   if (segments.length === 0) {
-    return [{ label: "Dashboard", path: "/" }];
+    return [{ label: "Home", path: "/" }];
   }
 
   const crumbs: Crumb[] = [{ label: "Home", path: "/" }];
   let acc = "";
   segments.forEach((seg) => {
     acc += "/" + seg;
-    crumbs.push({ label: getPageName(acc), path: acc });
+    if (seg === 'staffing' || (seg === 'locations' && segments[0] === 'projects')) return;
+    const dynamic = /^[0-9a-f]{8}-/i.test(seg);
+    const routeLabel = dynamic ? (segments.includes('locations') && seg === segments.at(-1) ? 'Location' : getPageName(acc)) : seg === 'applications' ? 'Job Postings' : getPageName('/' + seg);
+    crumbs.push({ label: routeLabel, path: acc });
   });
   return crumbs;
 }

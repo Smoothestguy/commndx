@@ -8,6 +8,9 @@ import { useBackgroundMedia } from "./useBackgroundMedia";
 import { NavBar } from "./NavBar";
 import { TabsBar } from "./TabsBar";
 import { cn } from "@/lib/utils";
+import { WorkspaceNavigationProvider } from '@/hooks/useAppTabs';
+import { WorkspaceHeader } from './WorkspaceHeader';
+import { WorkspaceNavigationEffects } from './WorkspaceNavigationEffects';
 
 interface SidebarLayoutProps {
   children?: ReactNode;
@@ -24,7 +27,8 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   const { shouldShowBackground } = useBackgroundMedia();
 
   return (
-    <DashboardDraftProvider>
+    <WorkspaceNavigationProvider><DashboardDraftProvider>
+      <WorkspaceNavigationEffects />
       <div className="min-h-screen flex w-full bg-background overflow-x-hidden max-w-full">
         {/* Global Background Media Layer */}
         <BackgroundMediaLayer />
@@ -37,10 +41,11 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
         >
           <NavBar />
           <TabsBar />
+          <WorkspaceHeader />
           {children ?? <Outlet />}
         </SidebarInset>
       </div>
-    </DashboardDraftProvider>
+    </DashboardDraftProvider></WorkspaceNavigationProvider>
   );
 }
 

@@ -17,6 +17,9 @@ import { useDashboardConfig } from "@/hooks/useDashboardConfig";
 import { MessageBannerProvider } from "@/contexts/MessageBannerContext";
 import { MessageBanner } from "@/components/messaging/MessageBanner";
 import { useIncomingMessageListener } from "@/hooks/useIncomingMessageListener";
+import { WorkspaceNavigationProvider } from '@/hooks/useAppTabs';
+import { WorkspaceHeader } from '../WorkspaceHeader';
+import { WorkspaceNavigationEffects } from '../WorkspaceNavigationEffects';
 
 function IncomingMessageListenerMount() {
   useIncomingMessageListener();
@@ -36,7 +39,8 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
   const phoneHome=isMobile&&useLocation().pathname==='/';
 
   return (
-    <SidebarProvider defaultOpen>
+    <WorkspaceNavigationProvider><SidebarProvider defaultOpen>
+      <WorkspaceNavigationEffects />
       <DashboardDraftProvider>
         <MessageBannerProvider>
           <IncomingMessageListenerMount />
@@ -59,6 +63,7 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
                 )}
               >
                 {!isMobile && <div className="bg-background"><TabsBar /></div>}
+                <WorkspaceHeader />
                 <Suspense fallback={<RouteSkeleton />}>{children ?? <Outlet />}</Suspense>
               </main>
 
@@ -76,7 +81,7 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
           </div>
         </MessageBannerProvider>
       </DashboardDraftProvider>
-    </SidebarProvider>
+    </SidebarProvider></WorkspaceNavigationProvider>
   );
 }
 

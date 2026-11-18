@@ -48,6 +48,7 @@ import {
 import { buildTaskOrderDescription } from "@/lib/taskOrderDescription";
 import { PostingPreviewSection } from "./PostingPreviewSection";
 import { resolvePositionDrafts } from "@/lib/resolvePositions";
+import { useUnsavedFormGuard } from '@/hooks/useUnsavedFormGuard';
 
 interface Props {
   open: boolean;
@@ -117,6 +118,7 @@ export function TaskOrderWizard({
   }, [companySettings, sortedTemplates]);
 
   const selectedTemplate = sortedTemplates.find((t) => t.id === formTemplateId);
+  const requestLeave = useUnsavedFormGuard({projectId,title,jobDescription,locationAddress,startAt,approxDuration,formTemplateId,schedule,positions},open,!!projects && !!formTemplates && (!isEdit || !!existingPositions));
 
   useEffect(() => {
     if (!open) return;
@@ -408,7 +410,7 @@ export function TaskOrderWizard({
     addRateBracket.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={v=>{if(v)onOpenChange(v);else requestLeave(()=>onOpenChange(false));}}>
       <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>
@@ -637,7 +639,7 @@ export function TaskOrderWizard({
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => requestLeave(()=>onOpenChange(false))}
               type="button"
             >
               Cancel

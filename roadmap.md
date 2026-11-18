@@ -1,3 +1,6 @@
+# Shell navigation
+- [x] Replace-current navigation; optional modifier/header tabs with five-unpinned LRU/pins/migration; Back/breadcrumbs/Recent and shell scroll restoration; shared dirty guard in TO/timesheet editors. Read-only 1440/390 checks passed for navigation, migration, pins/eviction, Recent, browser Back/Forward, desktop grid/phone scroll and dirty wizard Stay; three tab tests passed. Native phone hardware/close prompt and individual timesheet dirty forms were not exercised; no production records changed.
+
 # Public application submit reliability
 - [x] Service-only transactional email/phone reuse and same-posting update; contact normalization and protected staff fields preserved. Four transport attempts verified at 1/3/6-second intervals with bilingual saved-answers/Retry, reload retained answers/consents/private photo reference and normal success screen. One disposable applicant/two applications verified across repeated and phone-only submissions; fixtures removed. Four focused tests and preview build pass. Watchdog and real incidents unchanged; no texts sent.
 
