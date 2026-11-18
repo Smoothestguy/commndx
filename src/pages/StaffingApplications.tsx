@@ -458,7 +458,7 @@ export default function StaffingApplications() {
                 {jobPostings.filter(p => p.is_open).map((posting) => (
                   <div
                     key={posting.id}
-                    className="p-3 rounded-lg border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between"
+                    className="p-3 rounded-lg border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors flex flex-col gap-3"
                     onClick={() => navigate(`/staffing/applications/posting/${posting.id}`)}
                   >
                     <div className="min-w-0 flex-1">
@@ -468,7 +468,7 @@ export default function StaffingApplications() {
                           {posting.project_task_orders?.projects?.name}
                         </p>
                         {posting.form_template_id && (
-                          <Badge variant="outline" className="text-xs shrink-0">
+                          <Badge variant="outline" className="text-xs shrink-0 whitespace-nowrap">
                             {formTemplates?.find(t => t.id === posting.form_template_id)?.name || "Custom Form"}
                           </Badge>
                         )}
@@ -478,7 +478,7 @@ export default function StaffingApplications() {
                             to="/settings?tab=watchdog"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <Badge variant="destructive" className="text-xs shrink-0 gap-1">
+                            <Badge variant="destructive" className="text-xs shrink-0 gap-1 whitespace-nowrap">
                               <ShieldAlert className="h-3 w-3" />
                               {watchdogAlerts[posting.id]} issue
                               {watchdogAlerts[posting.id] > 1 ? "s" : ""}
@@ -494,7 +494,7 @@ export default function StaffingApplications() {
                       )}
                     </div>
                     <div 
-                      className="flex flex-wrap items-center gap-1 sm:gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50 justify-end shrink-0" 
+                      className="flex flex-wrap items-center gap-2 pt-3 border-t border-border/50 justify-start"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Button
@@ -594,31 +594,33 @@ export default function StaffingApplications() {
                         <span className="sm:hidden ml-1">Candidates</span>
                       </Button>
 
-                      {posting.project_task_orders?.project_id && (
+                      <div className="ml-auto flex items-center gap-2">
+                        {posting.project_task_orders?.project_id && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-9 px-2 text-xs sm:px-3 sm:text-sm"
+                            onClick={() =>
+                              navigate(
+                                `/projects/${posting.project_task_orders!.project_id}#recruiting`
+                              )
+                            }
+                            title="Open project"
+                          >
+                            <span className="hidden sm:inline">Open project</span>
+                            <span className="sm:hidden">Project</span>
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-9 px-2 text-xs sm:px-3 sm:text-sm"
-                          onClick={() =>
-                            navigate(
-                              `/projects/${posting.project_task_orders!.project_id}#recruiting`
-                            )
-                          }
-                          title="Open project"
+                          className="h-9 w-9 p-0"
+                          onClick={() => window.open(`/apply/${posting.public_token}`, "_blank")}
+                          title="Open form in new tab"
                         >
-                          <span className="hidden sm:inline">Open project</span>
-                          <span className="sm:hidden">Project</span>
+                          <ExternalLink className="h-4 w-4" />
                         </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-9 w-9 p-0"
-                        onClick={() => window.open(`/apply/${posting.public_token}`, "_blank")}
-                        title="Open form in new tab"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
+                      </div>
                     </div>
                   </div>
                 ))}

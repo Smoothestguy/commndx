@@ -65,7 +65,7 @@ export function TaskOrderFacts({ taskOrder: t, positions, className }: Props) {
       {facts.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {facts.map((f, i) => (
-            <Badge key={i} variant="secondary" className="text-xs gap-1 font-normal">
+            <Badge key={i} variant="secondary" className="text-xs gap-1 font-normal whitespace-nowrap">
               {f.icon}
               {f.text}
             </Badge>
@@ -75,7 +75,7 @@ export function TaskOrderFacts({ taskOrder: t, positions, className }: Props) {
       {positions && positions.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {positions.map((p) => (
-            <Badge key={p.id} variant="outline" className="text-xs gap-1 font-normal">
+            <Badge key={p.id} variant="outline" className="text-xs gap-1 font-normal whitespace-nowrap">
               <Users className="h-3 w-3" />
               {p.position_label} · {p.headcount}
               {p.advertised_pay_rate != null && (
