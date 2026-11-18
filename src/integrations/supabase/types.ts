@@ -938,6 +938,7 @@ export type Database = {
           geo_lng: number | null
           geo_source: string | null
           id: string
+          intake_receipt_at: string | null
           intake_token: string
           job_posting_id: string
           missing_fields: Json | null
@@ -973,6 +974,7 @@ export type Database = {
           geo_lng?: number | null
           geo_source?: string | null
           id?: string
+          intake_receipt_at?: string | null
           intake_token?: string
           job_posting_id: string
           missing_fields?: Json | null
@@ -1008,6 +1010,7 @@ export type Database = {
           geo_lng?: number | null
           geo_source?: string | null
           id?: string
+          intake_receipt_at?: string | null
           intake_token?: string
           job_posting_id?: string
           missing_fields?: Json | null
@@ -14179,6 +14182,15 @@ export type Database = {
           p_lng?: number
           p_override_reason?: string
           p_token: string
+        }
+        Returns: Json
+      }
+      submit_public_application: {
+        Args: {
+          p_applicant: Json
+          p_posting: string
+          p_submission: Json
+          p_vendor?: string
         }
         Returns: Json
       }

@@ -1,3 +1,6 @@
+# Public application submit reliability
+- [x] Service-only transactional email/phone reuse and same-posting update; contact normalization and protected staff fields preserved. Four transport attempts verified at 1/3/6-second intervals with bilingual saved-answers/Retry, reload retained answers/consents/private photo reference and normal success screen. One disposable applicant/two applications verified across repeated and phone-only submissions; fixtures removed. Four focused tests and preview build pass. Watchdog and real incidents unchanged; no texts sent.
+
 # Project form cleanup
 - [x] Stand by enum/types/labels and legacy filters; customer-free creation/edit/duplication writes and summaries, location-first billing/customer grouping and task-order export references. Phone project creation read back Stand by with null customer fields; desktop/phone wizard and existing Florida event inspected read-only. 24 focused tests and tsgo pass; disposable projects/audits removed; preview clean. No historical customer data, task orders or locations changed.
 

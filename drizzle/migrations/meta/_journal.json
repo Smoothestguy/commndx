@@ -568,6 +568,20 @@
       "when": 1794964619555,
       "tag": "0080_recruiting_merge_audit_actor",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1795010381524,
+      "tag": "0081_atomic_public_application_submit",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1795010582117,
+      "tag": "0082_submission_receipt_and_retry_metadata",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,5 @@
 # Architecture rules
+- Public intake uses service-only transactional contact/application reuse; retry only transport failures with a stable payload, and keep token-scoped 24-hour session drafts including private upload references.
 - Project writes strip legacy customer fields; billing resolves customers from each entry's location and fails closed for inaccessible locations, preventing cross-customer invoices.
 - Phone Home uses scoped light tokens and shared self-only My Day/guarded manager actions; explicit linked field users may access only mobile Home while other portal restrictions and desktop rendering remain unchanged.
 - Phone profile defaults come from self-only active sites or the user's last selected eligible site in session storage, never a named event or an arbitrary manager directory row.

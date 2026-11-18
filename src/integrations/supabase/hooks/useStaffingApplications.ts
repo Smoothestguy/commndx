@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { retryApplicationSubmit } from '@/lib/applicationSubmit';
 
 // Types
 export interface TaskOrder {
@@ -538,16 +539,20 @@ export const useSubmitApplication = () => {
       smsConsentPhone?: string;
       smsConsentTextVersion?: string;
     }) => {
+      const data = await retryApplicationSubmit(async () => {
       const { data, error } = await supabase.functions.invoke("public-application", { body: {
         action: "submit", agency_token: agencyToken, posting_token: postingToken,
-        posting_id, applicant: applicantData, answers, geo, clientSubmittedAt,
+        posting_id, applicant: { ...applicantData, email: applicantData.email.trim().toLowerCase() }, answers, geo, clientSubmittedAt,
         userAgent, smsConsent, smsConsentPhone, smsConsentTextVersion,
       } });
-      if (error || !data?.id) throw new Error(data?.error || "Application could not be submitted");
+      if (error) throw error;
+      if (!data?.id) throw new Error(data?.error || "Application could not be submitted");
+      return data;
+      });
       const application = data as { id: string; intake_token: string };
 
       // Send SMS confirmation if consent was given
-      if (smsConsent && smsConsentPhone) {
+      if (data.created && smsConsent && smsConsentPhone) {
         try {
           console.log("[Application] Sending SMS confirmation to:", smsConsentPhone);
           await supabase.functions.invoke("send-application-sms-confirmation", {

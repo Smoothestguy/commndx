@@ -45,6 +45,7 @@ import { INTAKE_TEXT, intakeLang, SMS_CONSENT_VERSION, PHOTO_CONSENT_VERSION } f
 import { PublicJobFactsPanel } from "@/components/staffing/PublicJobFactsPanel";
 import { SocialPrefillButtons, SocialProfile } from "@/components/staffing/SocialPrefillButtons";
 import { CertificationsFormSection, saveCertifications, type CertEntry } from "@/components/staffing/CertificationsFormSection";
+import { CONNECTION_SAVED_MESSAGE, isSubmitNetworkError, readApplicationDraft } from '@/lib/applicationSubmit';
 
 
 // Helper function to render fields based on layout
@@ -96,7 +97,7 @@ function renderFieldsWithLayout(
 const baseSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email address"),
+  email: z.string().trim().toLowerCase().email("Invalid email address"),
   phone: z.string()
     .min(1, "Phone number is required")
     .regex(/^\d{10}$/, "Phone number must be exactly 10 digits"),
@@ -179,6 +180,8 @@ export default function PublicApplicationForm() {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [customFieldErrors, setCustomFieldErrors] = useState<Record<string, string>>({});
   const [submitFailureMessage, setSubmitFailureMessage] = useState<string | null>(null);
+  const draftKey = `application_draft:${token || ''}`;
+  const [savedDraft] = useState(() => readApplicationDraft(draftKey));
 
   const [smsConsent, setSmsConsent] = useState(false);
   const [smsConsentError, setSmsConsentError] = useState<string | null>(null);
@@ -272,7 +275,7 @@ export default function PublicApplicationForm() {
                 defaults[field.id] = "";
               }
             });
-            setCustomAnswers(defaults);
+            setCustomAnswers(prev => ({ ...defaults, ...prev, ...(savedDraft?.customAnswers || {}) }));
           }
           if (template.theme) {
             const nextTheme = template.theme as unknown as FormTheme;
@@ -496,6 +499,8 @@ export default function PublicApplicationForm() {
 
   // Handle auto-fill when applicant is found
   const handleAutoFill = useCallback((lookupResult: LookupResult) => {
+    // A restored local draft takes precedence over older application answers.
+    if (savedDraft) return;
     const applicantData = lookupResult.applicant;
     if (!applicantData) return;
     
@@ -585,7 +590,7 @@ export default function PublicApplicationForm() {
     setIsReturningApplicant(true);
     setCoreFieldsLocked(true);
     toast.success("Welcome back! We've pre-filled your information from your previous application.");
-  }, [form, customFields]);
+  }, [form, customFields, savedDraft]);
 
   // Handle email/phone lookup on blur
   const handleEmailBlur = useCallback(async (email: string) => {
@@ -821,6 +826,29 @@ export default function PublicApplicationForm() {
 
   const [certEntries, setCertEntries] = useState<CertEntry[]>([]);
 
+  useEffect(() => {
+    if (!savedDraft) return;
+    form.reset(savedDraft.values);
+    setCustomAnswers(savedDraft.customAnswers || {});
+    setExpressPath(savedDraft.expressPath || 'new');
+    setPositionApplyingFor(savedDraft.positionApplyingFor || '');
+    setSmsConsent(!!savedDraft.smsConsent);
+    setPhotoConsent(!!savedDraft.photoConsent);
+    setGender(savedDraft.gender || null);
+    setCertEntries(savedDraft.certEntries || []);
+  }, [savedDraft, form]);
+
+  useEffect(() => {
+    const save = () => {
+      if (submitted) return;
+      try { sessionStorage.setItem(draftKey, JSON.stringify({ savedAt: Date.now(), values: form.getValues(), customAnswers, expressPath, positionApplyingFor, smsConsent, photoConsent, gender, certEntries })); }
+      catch { /* Storage can be unavailable; in-memory form remains intact. */ }
+    };
+    save();
+    const subscription = form.watch(save);
+    return () => subscription.unsubscribe();
+  }, [draftKey, form, customAnswers, expressPath, positionApplyingFor, smsConsent, photoConsent, gender, certEntries, submitted]);
+
   const onSubmit = async (data: z.infer<typeof baseSchema>) => {
     if (!posting) return;
 
@@ -991,13 +1019,16 @@ export default function PublicApplicationForm() {
       }
       toast.success("Thank you for applying! We appreciate your interest and will review your application soon.");
       setSubmitted(true);
+      try { sessionStorage.removeItem(draftKey); } catch { /* unavailable storage */ }
     } catch (err: any) {
       console.error("[Form] Application submission error:", err);
 
       let friendly =
         "We couldn't send your application just now. Please try again in a moment. / No pudimos enviar tu solicitud. Inténtalo de nuevo en un momento.";
 
-      if (err?.message === "DUPLICATE_APPLICATION" || err?.code === "23505") {
+      if (isSubmitNetworkError(err)) {
+        friendly = CONNECTION_SAVED_MESSAGE;
+      } else if (err?.message === "DUPLICATE_APPLICATION" || err?.code === "23505") {
         friendly =
           "You've already applied for this position. / Ya aplicaste para esta posición.";
       } else if (err?.message?.includes("row-level security")) {
@@ -1887,6 +1918,9 @@ export default function PublicApplicationForm() {
                 {submitFailureMessage && (
                   <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                     {submitFailureMessage}
+                    {submitFailureMessage === CONNECTION_SAVED_MESSAGE && (
+                      <Button type="submit" variant="outline" className="mt-2" disabled={submitApplication.isPending || isAnyFileUploading}>Retry / Reintentar</Button>
+                    )}
                   </div>
                 )}
 
