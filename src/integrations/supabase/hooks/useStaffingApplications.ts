@@ -423,13 +423,18 @@ export const useApplicants = () => {
   return useQuery({
     queryKey: ["applicants"],
     queryFn: async () => {
+      const all: Applicant[] = [];
+      for (let offset = 0; ; offset += 500) {
       const { data, error } = await supabase
         .from("applicants")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }).order('id').range(offset, offset + 499);
 
       if (error) throw error;
-      return data as Applicant[];
+      all.push(...(data as Applicant[]));
+      if (data.length < 500) break;
+      }
+      return all;
     },
   });
 };

@@ -78,11 +78,12 @@ const useMasterApplicants = () =>
         if(error)throw error; apps.push(...(data??[])); if((data??[]).length<500)break;
       }
 
-      const byApplicant = new Map<string, { count: number; last?: any }>();
+      const byApplicant = new Map<string, { count: number; last?: any; state?: string }>();
       for (const a of ((apps ?? []) as any[]).sort((a,b) => submissionTime(b).localeCompare(submissionTime(a)))) {
         const cur = byApplicant.get(a.applicant_id) ?? { count: 0 };
         cur.count += 1;
         if (!cur.last) cur.last = a;
+        if (!cur.state) cur.state = recruitingState(null, a.answers);
         byApplicant.set(a.applicant_id, cur);
       }
 
@@ -95,7 +96,7 @@ const useMasterApplicants = () =>
           null;
         return {
           ...a,
-          state: recruitingState(a.state, last?.answers) || a.state,
+          state: recruitingState(a.state) || info?.state || a.state,
           application_count: info?.count ?? 0,
           last_applied_at: last ? submissionTime(last) : a.created_at,
           last_posting_id: last?.job_posting_id ?? null,

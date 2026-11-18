@@ -4,4 +4,8 @@ test('latest uses submitted time rather than original application creation', () 
 test('pool latest falls back to profile creation when no application exists', () => expect(submissionTime({last_applied_at:null,created_at:'2026-11-18T01:00:00Z'})).toBe('2026-11-18T01:00:00Z'));
 test('state resolves structured application address without overwriting profile', () => expect(recruitingState(null,{address:{city:'Tampa',state:'fl'}})).toBe('FL'));
 test('state accepts full US names and rejects foreign/unrecognized values',()=>{expect(recruitingState('Florida')).toBe('FL');expect(recruitingState('New York')).toBe('NY');expect(recruitingState('Ontario')).toBe('');});
+test('state derives from generated address fields without requiring city',()=>expect(recruitingState(null,{'field-123':{state:'Texas'}})).toBe('TX'));
+test('invalid structured state falls back to valid answer state',()=>expect(recruitingState('unknown',{state:'CA'})).toBe('CA'));
+test('state extracts a US postal address but never arbitrary text',()=>{expect(recruitingState(null,{home_address:'10 Main St, Tampa, FL 33602'})).toBe('FL');expect(recruitingState(null,{notes:'FL 33602',file:'TX 75001'})).toBe('');});
+test('structured state remains authoritative over answers',()=>expect(recruitingState('NY',{address:{state:'FL'}})).toBe('NY'));
 test('merge requires manager and exactly two distinct applicants', () => { expect(canMergeApplicants(true,['a','b'])).toBe(true); expect(canMergeApplicants(false,['a','b'])).toBe(false); expect(canMergeApplicants(true,['a','a'])).toBe(false); expect(canMergeApplicants(true,['a'])).toBe(false); expect(canMergeApplicants(true,['a','b','c'])).toBe(false); });
