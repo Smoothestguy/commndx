@@ -1,4 +1,7 @@
 import { ApplicantTagBadges, ApplicantNoteLine } from "@/components/staffing/ApplicantMetaInline";
+import { SubmittedTime } from './RecruitingControls';
+import { submissionTime, recruitingState } from '@/lib/recruiting';
+import { Checkbox } from '@/components/ui/checkbox';
 import type { CertSummary } from "@/hooks/useApplicantCertSummary";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
@@ -69,6 +72,10 @@ interface MobileApplicationCardProps {
   onToggleContacted?: (app: Application) => void;
   fieldTypeMap?: Record<string, { label: string; type: string }>;
   certs?: CertSummary;
+  possibleDuplicate?: boolean;
+  selected?: boolean;
+  onSelect?: () => void;
+  extraFields?: React.ReactNode;
 }
 
 export function MobileApplicationCard({
@@ -81,6 +88,9 @@ export function MobileApplicationCard({
   onToggleContacted,
   fieldTypeMap = {},
   certs,
+  possibleDuplicate,
+  selected, onSelect,
+  extraFields,
 }: MobileApplicationCardProps) {
   const handleClick = () => {
     onView(application);
@@ -95,6 +105,7 @@ export function MobileApplicationCard({
     >
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
+          {onSelect && <div onClick={e=>e.stopPropagation()}><Checkbox aria-label="Select applicant" checked={selected} onCheckedChange={onSelect}/></div>}
           <div className="pt-2" onClick={(e) => e.stopPropagation()}>
             <ApplicantStarButton
               applicantId={application.applicant_id}
@@ -161,6 +172,7 @@ export function MobileApplicationCard({
             </div>
 
             <div className="flex flex-wrap gap-1">
+              {possibleDuplicate && <Badge variant="outline">Possible duplicate</Badge>}
               <Badge className={statusColors[application.status]}>
                 {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
               </Badge>
@@ -194,7 +206,9 @@ export function MobileApplicationCard({
               <div className="flex items-center gap-4">
                 <span>Location: {location ?? formatApplicantLocation(application.applicants)}</span>
               </div>
+              <div>State: {recruitingState(application.applicants?.state,application.answers)||'—'}</div>
               <ApplicantNoteLine applicant={application.applicants as any} />
+              {extraFields}
               {application.job_postings?.project_task_orders?.title && (
                 <div className="flex items-center gap-2">
                   <Briefcase className="h-3.5 w-3.5 flex-shrink-0" />
@@ -210,12 +224,7 @@ export function MobileApplicationCard({
               )}
               <div className="flex items-center gap-2">
                 <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
-                <span>
-                  {format(
-                    new Date((application as any).submitted_at || application.created_at),
-                    "MMM d, yyyy HH:mm"
-                  )}
-                </span>
+                <span className="min-w-0 overflow-x-auto"><SubmittedTime value={submissionTime(application)}/></span>
               </div>
             </div>
           </div>

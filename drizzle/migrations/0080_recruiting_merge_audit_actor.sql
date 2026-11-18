@@ -1,0 +1,3 @@
+DO $patch$ DECLARE definition text; BEGIN SELECT pg_get_functiondef('public.merge_applicants(uuid,uuid)'::regprocedure) INTO definition; definition := replace(definition,'INSERT INTO public.audit_logs(user_id,action_type','INSERT INTO public.audit_logs(user_id,user_email,action_type'); definition := replace(definition, 'VALUES(auth.uid(),''merge''','VALUES(auth.uid(),coalesce(auth.jwt()->>''email'', (SELECT email FROM public.profiles WHERE id=auth.uid()), ''authenticated staff''),''merge'''); EXECUTE definition; END $patch$;
+REVOKE ALL ON FUNCTION public.merge_applicants(uuid,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.merge_applicants(uuid,uuid) TO authenticated;

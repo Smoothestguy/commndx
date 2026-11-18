@@ -81,7 +81,7 @@ export interface Applicant {
   home_lat: number | null;
   home_lng: number | null;
   photo_url: string | null;
-  status: 'new' | 'approved' | 'rejected' | 'inactive';
+  status: 'new' | 'approved' | 'rejected' | 'inactive' | 'archived';
   geocoded_at: string | null;
   geocode_source: string | null;
   is_geocodable: boolean | null;
@@ -440,6 +440,8 @@ export const useApplications = (filters?: { postingId?: string; status?: string;
   return useQuery({
     queryKey: ["applications", filters],
     queryFn: async () => {
+      const all: Application[] = [];
+      for (let offset=0; ;offset+=500) {
       let query = supabase
         .from("applications")
         .select(`
@@ -453,7 +455,8 @@ export const useApplications = (filters?: { postingId?: string; status?: string;
             )
           )
         `)
-        .order("created_at", { ascending: false });
+        .order("submitted_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false }).order('id').range(offset,offset+499);
 
       if (filters?.postingId) {
         query = query.eq("job_posting_id", filters.postingId);
@@ -465,9 +468,12 @@ export const useApplications = (filters?: { postingId?: string; status?: string;
 
       const { data, error } = await query;
       if (error) throw error;
+      all.push(...(data as Application[]));
+      if(data.length<500)break;
+      }
 
       // Filter by project if needed (must be done client-side due to nested join)
-      let result = data as Application[];
+      let result = all;
       if (filters?.projectId) {
         result = result.filter(
           (app) => app.job_postings?.project_task_orders?.project_id === filters.projectId

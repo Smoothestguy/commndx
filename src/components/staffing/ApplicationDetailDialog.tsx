@@ -1,4 +1,7 @@
 import { SecureAvatar } from "@/components/ui/secure-avatar";
+import { ApplicantDuplicateActions } from './ApplicantMergeDialog';
+import { SubmittedTime } from './RecruitingControls';
+import { submissionTime } from '@/lib/recruiting';
 import { SecureImage } from "@/components/ui/secure-image";
 import { getSignedUrl, getBucketFromUrl } from "@/utils/signedUrlUtils";
 import { IntakeProfileCard } from "@/components/intake/IntakeProfileCard";
@@ -515,6 +518,8 @@ export function ApplicationDetailDialog({
                   Review application from {applicant?.first_name}{" "}
                   {applicant?.last_name}
                 </DialogDescription>
+                <SubmittedTime value={submissionTime(application)}/>
+                {applicant && <ApplicantDuplicateActions applicant={applicant} onMerged={()=>onOpenChange(false)}/>}
               </div>
               {!isEditing && application.status === "submitted" && (
                 <Button variant="outline" size="sm" onClick={handleStartEdit}>

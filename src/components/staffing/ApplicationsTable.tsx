@@ -1,6 +1,11 @@
 import { ApplicantTagBadges, ApplicantNoteLine } from "@/components/staffing/ApplicantMetaInline";
 import { useApplicantCertSummary } from "@/hooks/useApplicantCertSummary";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useApplicantDuplicates } from '@/hooks/useApplicantDuplicates';
+import { useUserRole } from '@/hooks/useUserRole';
+import { ApplicantMergeDialog, type MergeCandidate } from './ApplicantMergeDialog';
+import { SubmittedTime, RecruitingStateFilter } from './RecruitingControls';
+import { recruitingState, submissionTime, canMergeApplicants } from '@/lib/recruiting';
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -74,6 +79,7 @@ interface ApplicationsTableProps {
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
   bulkActions?: (rows: Application[], clear: () => void) => React.ReactNode;
+  extraColumns?: EnhancedColumn<Application>[];
 }
 
 export function ApplicationsTable({
@@ -89,11 +95,16 @@ export function ApplicationsTable({
   selectedIds,
   onSelectionChange,
   bulkActions,
+  extraColumns = [],
 }: ApplicationsTableProps) {
-  const applications = useMemo(
-    () => sortStarredFirst(rawApplications, (a) => a.applicants as any),
-    [rawApplications],
-  );
+  const [stateFilter, setStateFilter] = useState('all');
+  const [mergePair, setMergePair] = useState<MergeCandidate[] | null>(null);
+  const { groupsFor } = useApplicantDuplicates();
+  const { isAdmin, isManager } = useUserRole();
+  const [localSelected, setLocalSelected] = useState<Set<string>>(new Set());
+  const selection = selectedIds ?? localSelected;
+  const setSelection = onSelectionChange ?? setLocalSelected;
+  const applications = useMemo(() => rawApplications.filter(a => a.applicants?.status !== 'archived' && (stateFilter === 'all' || (recruitingState(a.applicants?.state,a.answers)||'unknown') === stateFilter)).slice().sort((a,b)=>submissionTime(b).localeCompare(submissionTime(a))), [rawApplications,stateFilter]);
   const isMobile = useIsMobile();
   const certSummary = useApplicantCertSummary(applications.map((a) => a.applicant_id));
   const resolveLocation = useApplicantLocations(applications.map((app) => app.applicants));
@@ -172,6 +183,8 @@ export function ApplicationsTable({
     },
     {key:"flags",header:"Flags",width:240,sortable:false,getValue:app => [...(app.applicants?.role_tags ?? []), ...(certSummary[app.applicant_id]?.types ?? [])].join(", "),render:app => <ApplicantTagBadges applicant={app.applicants} certs={certSummary[app.applicant_id]} className="flex-nowrap"/>},
     {key:"notes",header:"Notes",width:220,getValue:app => app.applicants?.staff_notes ?? "",render:app => <span className="block truncate text-muted-foreground" title={app.applicants?.staff_notes ?? undefined}>{app.applicants?.staff_notes || "—"}</span>},
+    {key:'state',header:'State',width:100,sortable:true,filterable:true,getValue:app=>recruitingState(app.applicants?.state,app.answers)},
+    {key:'duplicate',header:'Duplicate',width:180,getValue:app=>groupsFor(app.applicant_id).length?'Possible duplicate':'',render:app=>groupsFor(app.applicant_id).length?<Badge variant="outline">Possible duplicate</Badge>:null},
     {
       key: "location",
       header: "Location",
@@ -193,20 +206,15 @@ export function ApplicationsTable({
       render: app => <span className="font-medium">{app.job_postings?.project_task_orders?.title}</span>,
     },
     {key:"project",header:"Project",getValue:app => app.job_postings?.project_task_orders?.projects?.name ?? ""},
+    ...extraColumns,
     {
       key: "submitted",
       header: "Submitted",
       sortable: true,
       filterable: false,
       getValue: (app) => app.submitted_at || app.created_at,
-      render: (app: Application) => {
-        const timestamp = app.submitted_at || app.created_at;
-        return (
-          <span className="text-muted-foreground text-sm">
-            {format(new Date(timestamp), "MMM d, yyyy HH:mm")}
-          </span>
-        );
-      },
+      width: 310,
+      render: (app: Application) => <SubmittedTime value={submissionTime(app)}/>,
     },
     {
       key: "status",
@@ -334,17 +342,11 @@ export function ApplicationsTable({
     );
   }
 
-  if (applications.length === 0) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        No applications found
-      </div>
-    );
-  }
-
   if (isMobile) {
     return (
       <div className="space-y-3">
+        <div className="flex flex-wrap gap-2"><Button variant="secondary" size="sm">Latest</Button><RecruitingStateFilter value={stateFilter} onChange={setStateFilter}/></div>
+        {selection.size>0 && <div role="region" aria-label="Applicant bulk actions" className="flex flex-wrap items-center gap-2"><span>{selection.size} selected</span>{bulkActions?.(applications.filter(a=>selection.has(a.id)),()=>setSelection(new Set()))}{(()=>{const candidates=[...new Map(applications.filter(a=>selection.has(a.id)&&a.applicants).map(a=>[a.applicant_id,a.applicants as MergeCandidate])).values()];return canMergeApplicants(isAdmin||isManager,candidates.map(r=>r.id))?<Button variant="outline" onClick={()=>setMergePair(candidates)}>Merge applicants</Button>:null;})()}<Button variant="ghost" onClick={()=>setSelection(new Set())}>Clear selection</Button></div>}
         {applications.map((app) => {
           const fieldTypeMap = getFieldTypeMap(app);
           return (
@@ -359,26 +361,31 @@ export function ApplicationsTable({
               onToggleContacted={onToggleContacted}
               fieldTypeMap={fieldTypeMap}
               certs={certSummary[app.applicant_id]}
+              possibleDuplicate={groupsFor(app.applicant_id).length > 0}
+              extraFields={extraColumns.length>0?<details><summary>Application answers</summary><dl className="space-y-2">{extraColumns.map(c=><div key={String(c.key)}><dt>{c.header}</dt><dd>{c.render?.(app)}</dd></div>)}</dl></details>:undefined}
+              selected={selection.has(app.id)} onSelect={selectable && (isAdmin||isManager) ? ()=>{const next=new Set(selection);if(next.has(app.id))next.delete(app.id);else next.add(app.id);setSelection(next);} : undefined}
             />
           );
         })}
+        <ApplicantMergeDialog candidates={mergePair} onClose={()=>setMergePair(null)} onMerged={()=>setSelection(new Set())}/>
       </div>
     );
   }
 
   return (
-    <EnhancedDataTable
+    <><EnhancedDataTable
       tableId="applications"
       data={applications}
       columns={columns}
       onRowClick={onViewApplication}
-      pinFirst={(app) => !!(app.applicants as any)?.starred_at}
+      defaultSortKey="submitted" defaultSortDirection="desc" latestSortKey="submitted"
+      toolbar={<RecruitingStateFilter value={stateFilter} onChange={setStateFilter}/>}
       selectable={selectable}
-      selectedIds={selectedIds}
-      onSelectionChange={onSelectionChange}
+      selectedIds={selection}
+      onSelectionChange={setSelection}
       exportName="applicant-pool"
-      bulkActions={bulkActions}
+      bulkActions={(rows,clear)=>{const candidates=[...new Map(rows.filter(r=>r.applicants).map(r=>[r.applicant_id,r.applicants as MergeCandidate])).values()];return <>{bulkActions?.(rows,clear)}{canMergeApplicants(isAdmin||isManager,candidates.map(r=>r.id))&&<Button size="sm" variant="outline" onClick={()=>setMergePair(candidates)}>Merge applicants</Button>}</>;}}
       attention={app => !app.applicants?.phone ? "Missing phone" : null}
-    />
+    /><ApplicantMergeDialog candidates={mergePair} onClose={()=>setMergePair(null)} onMerged={()=>setSelection(new Set())}/></>
   );
 }

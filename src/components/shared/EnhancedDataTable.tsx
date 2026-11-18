@@ -85,6 +85,7 @@ interface EnhancedDataTableProps<T> {
   compact?: boolean;
   defaultSortKey?: string;
   defaultSortDirection?: 'asc' | 'desc';
+  latestSortKey?: string;
   /** Rows returning true stay above others regardless of column sort (stable). */
   pinFirst?: (item: T) => boolean;
   /** Instant search box top-left (default true). */
@@ -205,6 +206,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   onSelectionChange: controlledSelection,
   defaultSortKey,
   defaultSortDirection = 'desc',
+  latestSortKey,
   pinFirst,
   searchable = true,
   searchPlaceholder = "Search all columns…",
@@ -235,6 +237,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   const { preferences, setSort, toggleColumnVisibility, setColumnOrder, setColumnFilter } = useTablePreferences({
     tableId, defaultColumns: defaultColumnKeys, defaultSortKey, defaultSortDirection,
   });
+  useEffect(() => { if (latestSortKey) setSort(latestSortKey, 'desc'); }, [latestSortKey, setSort]);
 
   // Per-screen grid state preserved for the session (workspace tabs).
   const scope = `grid:${tableId}:${typeof window !== "undefined" ? window.location.pathname : ""}`;
@@ -418,6 +421,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
     )}>
       {/* Top bar: quick filter pills, search, filters, columns */}
       <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-border bg-card">
+        {latestSortKey && <Button variant={preferences.sortKey === latestSortKey && preferences.sortDirection === 'desc' ? 'secondary' : 'outline'} size="sm" onClick={() => { setSort(latestSortKey, 'desc'); setPage(0); }}>Latest</Button>}
         {quickFilters && quickFilters.length > 0 && (
           <div role="tablist" aria-label="Quick filters" className="inline-flex items-center gap-1 rounded-full bg-muted p-0.5">
             {quickFilters.map(f => (

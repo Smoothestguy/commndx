@@ -347,3 +347,8 @@
 
 # Grid restyle sweep
 - [x] Separate desktop flags/notes/ownership/overtime/counts in assets, both applicant grids, live hierarchical Time and location roster. Personnel/Projects each use one search/filter toolbar; mobile cards retained. Owner read-only desktop checks loaded all six pages with zero page errors, expanded 30 Time rows and project bulk selection passed; nine sizing/interaction tests pass and preview build OK. No business records or messages changed.
+
+# Recruiting improvements
+- [x] Latest submission ordering/time and hideable US state filters across applicant views; existing structured state retained with display-only answer fallback.
+- [x] Manager-only, audited archive merge with duplicate badges and two-applicant bulk action; original applications/files remain intact and unlinked intake events are not reattributed.
+- [x] Disposable UI merge confirmed two survivor applications, message/certification transfer, capability-conflict evidence and audit; state filtering/hide-reload and phone cards verified, ten tests passed, no page errors and all fixtures removed.

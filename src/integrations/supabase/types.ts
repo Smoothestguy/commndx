@@ -566,6 +566,8 @@ export type Database = {
           id: string
           is_geocodable: boolean | null
           last_name: string
+          merged_at: string | null
+          merged_into_id: string | null
           phone: string | null
           photo_consent_at: string | null
           photo_consent_version: string | null
@@ -606,6 +608,8 @@ export type Database = {
           id?: string
           is_geocodable?: boolean | null
           last_name: string
+          merged_at?: string | null
+          merged_into_id?: string | null
           phone?: string | null
           photo_consent_at?: string | null
           photo_consent_version?: string | null
@@ -646,6 +650,8 @@ export type Database = {
           id?: string
           is_geocodable?: boolean | null
           last_name?: string
+          merged_at?: string | null
+          merged_into_id?: string | null
           phone?: string | null
           photo_consent_at?: string | null
           photo_consent_version?: string | null
@@ -663,6 +669,13 @@ export type Database = {
           vendor_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "applicants_merged_into_id_fkey"
+            columns: ["merged_into_id"]
+            isOneToOne: false
+            referencedRelation: "applicants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "applicants_vendor_id_fkey"
             columns: ["vendor_id"]

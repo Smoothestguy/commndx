@@ -17,7 +17,7 @@ import { format } from "date-fns";
 
 interface DupGroup {
   group_key: string;
-  match_type: "phone" | "name";
+  match_type: "phone" | "name" | "email";
   applicant_ids: string[];
   names: string[];
   emails: (string | null)[];
@@ -93,7 +93,7 @@ export default function Duplicates() {
         <h1 className="text-2xl font-bold">Duplicates</h1>
         <p className="text-muted-foreground text-sm mt-1">
           Applicants that appear to be duplicates. Pick a keeper and merge — applications and personnel
-          links move to the keeper, the duplicate record is deleted, and profile gaps on the keeper are
+          links move to the keeper, the duplicate record is archived, and profile gaps on the keeper are
           filled from the duplicate.
         </p>
       </div>
@@ -120,7 +120,7 @@ export default function Duplicates() {
                   <div className="flex items-center gap-2">
                     <Badge variant={g.match_type === "phone" ? "default" : "secondary"} className="gap-1">
                       {g.match_type === "phone" ? <Phone className="h-3 w-3" /> : <Users className="h-3 w-3" />}
-                      {g.match_type === "phone" ? "Same phone" : "Same name"}
+                      {g.match_type === "phone" ? "Same phone" : g.match_type === "email" ? "Same email" : "Same name"}
                     </Badge>
                     <CardTitle className="text-base">{g.applicant_ids.length} records</CardTitle>
                   </div>
@@ -179,7 +179,7 @@ export default function Duplicates() {
           <AlertDialogHeader>
             <AlertDialogTitle>Merge {confirm ? confirm.applicant_ids.length - 1 : 0} duplicate(s)?</AlertDialogTitle>
             <AlertDialogDescription>
-              Applications and personnel links move to the keeper; the other record(s) are deleted;
+              Applications and personnel links move to the keeper; the other record(s) are archived;
               profile gaps on the keeper are filled from the duplicates. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

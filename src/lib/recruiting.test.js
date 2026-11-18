@@ -1,0 +1,7 @@
+import { expect, test } from 'bun:test';
+import { recruitingState, submissionTime, canMergeApplicants } from './recruiting';
+test('latest uses submitted time rather than original application creation', () => expect(submissionTime({ submitted_at:'2026-11-18T01:00:00Z',created_at:'2026-11-01T00:00:00Z' })).toBe('2026-11-18T01:00:00Z'));
+test('pool latest falls back to profile creation when no application exists', () => expect(submissionTime({last_applied_at:null,created_at:'2026-11-18T01:00:00Z'})).toBe('2026-11-18T01:00:00Z'));
+test('state resolves structured application address without overwriting profile', () => expect(recruitingState(null,{address:{city:'Tampa',state:'fl'}})).toBe('FL'));
+test('state accepts full US names and rejects foreign/unrecognized values',()=>{expect(recruitingState('Florida')).toBe('FL');expect(recruitingState('New York')).toBe('NY');expect(recruitingState('Ontario')).toBe('');});
+test('merge requires manager and exactly two distinct applicants', () => { expect(canMergeApplicants(true,['a','b'])).toBe(true); expect(canMergeApplicants(false,['a','b'])).toBe(false); expect(canMergeApplicants(true,['a','a'])).toBe(false); expect(canMergeApplicants(true,['a'])).toBe(false); expect(canMergeApplicants(true,['a','b','c'])).toBe(false); });

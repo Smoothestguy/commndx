@@ -208,9 +208,6 @@ export function ProjectApplicantsSection({
 
     const sortApplications = (apps: Application[]) => {
       return [...apps].sort((a, b) => {
-        const aStar = !!(a.applicants as any)?.starred_at;
-        const bStar = !!(b.applicants as any)?.starred_at;
-        if (aStar !== bStar) return aStar ? -1 : 1;
         let aVal: string | number = "";
         let bVal: string | number = "";
 
@@ -713,10 +710,6 @@ export function ProjectApplicantsSection({
                   <TabsContent value="pending">
                     {pendingApplications.length === 0 ? (
                       renderEmptyState("pending")
-                    ) : isMobile ? (
-                      <div className="space-y-3">
-                        {pendingApplications.map(renderMobileCard)}
-                      </div>
                     ) : (
                       <ApplicationsTable applications={pendingApplications} isLoading={isLoading} selectable
                         onViewApplication={handleViewApplication} onApprove={handleApproveClick} onReject={handleReject} />
@@ -726,10 +719,6 @@ export function ProjectApplicantsSection({
                   <TabsContent value="approved">
                     {approvedApplications.length === 0 ? (
                       renderEmptyState("approved")
-                    ) : isMobile ? (
-                      <div className="space-y-3">
-                        {approvedApplications.map(renderMobileCard)}
-                      </div>
                     ) : (
                       <ApplicationsTable applications={approvedApplications} isLoading={isLoading} selectable
                         onViewApplication={handleViewApplication} onApprove={handleApproveClick} onReject={handleReject} />
