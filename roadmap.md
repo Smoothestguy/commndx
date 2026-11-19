@@ -1,11 +1,8 @@
-# Phase 2 — intake, onboarding delivery, approval and personnel merge
-- [ ] Add Email/Text delivery choices, nullable email handling, opt-out-aware onboarding/resend and invite delivery.
-- [ ] Replace onboarding verification rules; persist Resend email IDs and monitor unresolved deliveries from the last 72 hours every 30 minutes with the existing key (no webhook/new secret), plus bounce badge/admin notification/fix-resend.
-- [ ] Track first onboarding-token open only; add derived 24-hour unopened warning and deduplicated admin alerts with text/email/fix-contact resend actions. No punch/kiosk lookup changes.
-- [ ] Add atomic manager application approval with existing-person selection and safe vendor linking.
-- [ ] Add return-worker info-check messages and manual/bulk actions without modifying protected operational flows.
-- [ ] Remove personnel Merge from Possible duplicates; retain Open both profiles and Not duplicates. No personnel merge RPC or protected-reference changes; other entity merges unchanged.
-- [ ] Run mocked-send/disposable-fixture checks and the complete regression gate; clean every fixture and report evidence.
+# Onboarding email-on-add and copy — reduced owner scope
+- [x] Default-checked manager email-on-add checkbox, post-save confirmation/link/copy and warning/retry without reinserting personnel. Browser verified one insert, mocked failure then success and clipboard; unchecked behavior unit-tested.
+- [x] Profile Copy link reads only current unused/unrevoked/unexpired onboarding token. Valid-copy browser passed; absent token explains Resend also emails and sends nothing.
+- [x] Removed personnel Merge from Possible duplicates; retained both profile links and Not duplicates. Browser confirmed; other entity merges unchanged.
+- [x] Regression gate: git diff excludes all database/functions/protected operational files; real punch/kiosk loaded at 390px without errors, punch-open log intercepted. Disposable legacy email-default token opened and existing completion RPC saved bank/W9/signatures/document/contact, status completed and token used; UI showed used-link state. Eleven tests and preview build passed. All fixture/person/token/document/contact/notification/audit counts zero. No real email/SMS, migrations or new schema/functions; Phase 1 unchanged. Full eight-step onboarding UI and actual provider delivery not exercised.
 
 # Search focus stability
 - [x] Personnel hook retains previous data; page shows spinner only without data and sends 300ms-debounced search while input/session updates immediately. Projects, Job Postings, Master Applicants, Workforce, Vendors, Customers and shared grids use local search, so no matching server-search unmount fix needed. Read-only 1440/390 delayed-response checks retained raymond/focus, one request per continuous entry, matching results, backspace and clear restoration; debounce test and preview passed, no data modified.

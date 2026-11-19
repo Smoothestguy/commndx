@@ -51,6 +51,7 @@ import { RevokeOnboardingDialog } from "@/components/personnel/RevokeOnboardingD
 import { ReverseApprovalDialog } from "@/components/personnel/ReverseApprovalDialog";
 import { PersonnelRolesDialog } from "@/components/personnel/PersonnelRolesDialog";
 import { toast } from "sonner";
+import { getCurrentPersonnelOnboardingLink } from '@/lib/personnelOnboardingLink';
 import { downloadReceipt, getReceiptFilename } from "@/utils/receiptDownload";
 
 interface ComplianceIssue {
@@ -77,6 +78,7 @@ const PersonnelDetail = () => {
   const revokeOnboardingToken = useRevokeOnboardingToken();
   const reissueOnboarding = useReissueOnboarding();
   const [reissueOpen, setReissueOpen] = useState(false);
+  const [copyingLink, setCopyingLink] = useState(false);
   const updateRating = useUpdatePersonnelRating();
   const updatePersonnel = useUpdatePersonnel();
   const { data: w9Form } = usePersonnelW9Form(id);
@@ -142,6 +144,18 @@ const PersonnelDetail = () => {
       firstName: personnel.first_name,
       lastName: personnel.last_name,
     });
+  };
+
+  const handleCopyOnboardingLink = async () => {
+    if (!personnel || !(isAdmin || isManager) || ['completed', 'revoked'].includes(personnel.onboarding_status ?? '')) return;
+    setCopyingLink(true);
+    try {
+      const link = await getCurrentPersonnelOnboardingLink(personnel.id);
+      if (!link) { toast.warning('No valid onboarding link. Creating one through Resend also sends an email. Use Resend onboarding if you want to send it.'); return; }
+      await navigator.clipboard.writeText(link);
+      toast.success('Link copied');
+    } catch { toast.error('Could not copy the onboarding link. Please retry.'); }
+    finally { setCopyingLink(false); }
   };
 
   if (isLoading) {
@@ -459,7 +473,7 @@ const PersonnelDetail = () => {
                       {reissueOnboarding.isPending ? "Re-issuing..." : "Re-issue onboarding"}
                     </Button>
                   )}
-                  {personnel.onboarding_status !== "completed" && personnel.onboarding_status !== "revoked" && (
+                  {personnel.onboarding_status !== "completed" && personnel.onboarding_status !== "revoked" && (isAdmin || isManager) && (
                     <>
                       <Button
                         variant="outline"
@@ -469,6 +483,9 @@ const PersonnelDetail = () => {
                       >
                         <Send className="mr-2 h-4 w-4" />
                         {resendOnboardingEmail.isPending ? "Sending..." : "Resend Onboarding Email"}
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={handleCopyOnboardingLink} disabled={copyingLink}>
+                        <Link2 className="mr-2 h-4 w-4" />{copyingLink ? 'Copying...' : 'Copy link'}
                       </Button>
                       <Button
                         variant="outline"

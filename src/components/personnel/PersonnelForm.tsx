@@ -1,4 +1,8 @@
 import { useState } from "react";
+import { useUserRole } from '@/hooks/useUserRole';
+import { saveThenSend } from '@/lib/onboardingLinks';
+import { sendPersonnelOnboardingLink } from '@/lib/personnelOnboardingLink';
+import { Checkbox } from '@/components/ui/checkbox';
 import { PossibleMatchDialog } from "@/components/personnel/PossibleMatchDialog";
 import { findContactMatches, logCreateAnyway, type ContactMatch } from "@/lib/contactMatches";
 import { useForm } from "react-hook-form";
@@ -66,6 +70,11 @@ interface PersonnelFormProps {
 export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId, defaultTab, projectId }: PersonnelFormProps) => {
   const [photoUrl, setPhotoUrl] = useState(personnel?.photo_url || "");
   const [activeTab, setActiveTab] = useState(defaultTab || "personal");
+  const { isAdmin, isManager } = useUserRole();
+  const canSend = isAdmin || isManager;
+  const [sendNow, setSendNow] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [added, setAdded] = useState<{ person: { id: string; email: string; first_name: string; last_name: string }; link: string | null; error: string | null } | null>(null);
 
   const addMutation = useAddPersonnel();
   const updateMutation = useUpdatePersonnel();
@@ -127,7 +136,7 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
       try {
         const matches = await findContactMatches(data);
         if (matches.length) { setPendingMatches({ matches, data }); return; }
-      } catch (e) { console.error("Duplicate check failed", e); }
+      } catch (e) { console.error("Duplicate check failed", e); toast.error('Could not check for duplicates. Please retry.'); return; }
     }
     if (projectId && data.vendor_id !== personnel?.vendor_id && !projectVendorAllowed(projectVendors.data, data.vendor_id || '')) { toast.error('Add this vendor to the project first'); return; }
     // Sync hourly_rate with pay_rate so time tracking uses the correct rate
@@ -156,12 +165,33 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
       });
       onSuccess?.();
     } else {
-      const result = await addMutation.mutateAsync(formData as any);
+      setSending(true);
+      let outcome;
+      try {
+        outcome = await saveThenSend(() => addMutation.mutateAsync(formData as any), sendPersonnelOnboardingLink, canSend && sendNow);
+      } finally { setSending(false); }
+      const result = outcome.saved;
       if (override && pendingMatches) await logCreateAnyway("add_personnel", data, pendingMatches.matches, override.reason, result?.id);
       setPendingMatches(null);
-      onSuccess?.(result?.id);
+      if (canSend && sendNow) {
+        setAdded({ person: result, link: outcome.link, error: outcome.deliveryError });
+        if (outcome.deliveryError) toast.warning('Personnel added, but the onboarding email failed. Retry below.');
+        else toast.success(`Added. Onboarding link emailed to ${data.email}`);
+      } else onSuccess?.(result?.id);
     }
   };
+
+  if (added) return <div role="region" aria-label="Personnel added confirmation" className="space-y-4">
+    <p className="font-medium">Added {added.person.first_name} {added.person.last_name}.</p>
+    {added.error ? <><p role="alert" className="text-sm text-destructive">Onboarding email failed. The personnel record is saved. {added.error}</p><Button disabled={sending} onClick={async () => {
+      setSending(true);
+      try { const link = await sendPersonnelOnboardingLink(added.person); setAdded({ ...added, link, error: null }); toast.success(`Added. Onboarding link emailed to ${added.person.email}`); }
+      catch (e) { setAdded({ ...added, error: e instanceof Error ? e.message : 'Email failed' }); toast.warning('Email failed. The personnel record remains saved.'); }
+      finally { setSending(false); }
+    }}>{sending ? 'Sending...' : 'Retry'}</Button></> : <p className="text-sm">Onboarding link emailed to {added.person.email}</p>}
+    {added.link && <div className="flex flex-wrap items-center gap-2"><Input aria-label="Onboarding link" value={added.link} readOnly className="flex-1 min-w-0" /><Button variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(added.link ?? ''); toast.success('Link copied'); } catch { toast.error('Could not copy link. Select the link and copy it.'); } }}>Copy link</Button></div>}
+    <Button onClick={() => onSuccess?.(added.person.id)}>Done</Button>
+  </div>;
 
   return (
     <form onSubmit={handleSubmit((d) => onSubmit(d))} className="space-y-6">
@@ -477,12 +507,13 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
         </TabsContent>
       </Tabs>
 
+      {!personnel && canSend && <div className="flex items-center gap-2"><Checkbox id="send-onboarding-now" checked={sendNow} onCheckedChange={value => setSendNow(value === true)} /><Label htmlFor="send-onboarding-now">Send onboarding link now</Label></div>}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" disabled={addMutation.isPending || updateMutation.isPending}>
-          {addMutation.isPending || updateMutation.isPending
+        <Button type="submit" disabled={sending || addMutation.isPending || updateMutation.isPending}>
+          {sending || addMutation.isPending || updateMutation.isPending
             ? "Saving..."
             : personnel
             ? "Update Personnel"
