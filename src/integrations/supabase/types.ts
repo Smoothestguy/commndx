@@ -2180,6 +2180,111 @@ export type Database = {
           },
         ]
       }
+      contact_review_items: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision: string | null
+          id: string
+          job_posting_id: string | null
+          matched_entity_id: string
+          matched_entity_type: string
+          notes: string | null
+          reason: string
+          source: string
+          status: string
+          submission_entity_id: string | null
+          submission_entity_type: string | null
+          submitted_email: string | null
+          submitted_first_name: string | null
+          submitted_last_name: string | null
+          submitted_phone: string | null
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string | null
+          id?: string
+          job_posting_id?: string | null
+          matched_entity_id: string
+          matched_entity_type: string
+          notes?: string | null
+          reason: string
+          source: string
+          status?: string
+          submission_entity_id?: string | null
+          submission_entity_type?: string | null
+          submitted_email?: string | null
+          submitted_first_name?: string | null
+          submitted_last_name?: string | null
+          submitted_phone?: string | null
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string | null
+          id?: string
+          job_posting_id?: string | null
+          matched_entity_id?: string
+          matched_entity_type?: string
+          notes?: string | null
+          reason?: string
+          source?: string
+          status?: string
+          submission_entity_id?: string | null
+          submission_entity_type?: string | null
+          submitted_email?: string | null
+          submitted_first_name?: string | null
+          submitted_last_name?: string | null
+          submitted_phone?: string | null
+        }
+        Relationships: []
+      }
+      contact_verification_codes: {
+        Row: {
+          attempts: number
+          code_hash: string
+          consumed_at: string | null
+          contact: string
+          contact_type: string
+          created_at: string
+          expires_at: string
+          id: string
+          purpose: string
+          send_status: string
+          verified_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          consumed_at?: string | null
+          contact: string
+          contact_type: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          purpose: string
+          send_status?: string
+          verified_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          consumed_at?: string | null
+          contact?: string
+          contact_type?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          purpose?: string
+          send_status?: string
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       contractor_completion_bill_items: {
         Row: {
           bill_id: string
@@ -3060,6 +3165,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      duplicate_dismissals: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          entity_ids: string[]
+          entity_type: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          entity_ids: string[]
+          entity_type?: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          entity_ids?: string[]
+          entity_type?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: []
       }
       emergency_contacts: {
         Row: {
@@ -6109,6 +6241,8 @@ export type Database = {
           direct_deposit_signature: string | null
           direct_deposit_signed_at: string | null
           email: string
+          email_verified_at: string | null
+          email_verified_source: string | null
           employer_customer_id: string | null
           everify_case_number: string | null
           everify_expiry: string | null
@@ -6143,6 +6277,8 @@ export type Database = {
           pay_rate: number | null
           personnel_number: string
           phone: string | null
+          phone_verified_at: string | null
+          phone_verified_source: string | null
           photo_consent_at: string | null
           photo_consent_version: string | null
           photo_url: string | null
@@ -6196,6 +6332,8 @@ export type Database = {
           direct_deposit_signature?: string | null
           direct_deposit_signed_at?: string | null
           email: string
+          email_verified_at?: string | null
+          email_verified_source?: string | null
           employer_customer_id?: string | null
           everify_case_number?: string | null
           everify_expiry?: string | null
@@ -6230,6 +6368,8 @@ export type Database = {
           pay_rate?: number | null
           personnel_number: string
           phone?: string | null
+          phone_verified_at?: string | null
+          phone_verified_source?: string | null
           photo_consent_at?: string | null
           photo_consent_version?: string | null
           photo_url?: string | null
@@ -6283,6 +6423,8 @@ export type Database = {
           direct_deposit_signature?: string | null
           direct_deposit_signed_at?: string | null
           email?: string
+          email_verified_at?: string | null
+          email_verified_source?: string | null
           employer_customer_id?: string | null
           everify_case_number?: string | null
           everify_expiry?: string | null
@@ -6317,6 +6459,8 @@ export type Database = {
           pay_rate?: number | null
           personnel_number?: string
           phone?: string | null
+          phone_verified_at?: string | null
+          phone_verified_source?: string | null
           photo_consent_at?: string | null
           photo_consent_version?: string | null
           photo_url?: string | null
@@ -7157,6 +7301,7 @@ export type Database = {
           revoke_reason: string | null
           revoked_at: string | null
           revoked_by: string | null
+          sent_via: string
           token: string
           used_at: string | null
         }
@@ -7168,6 +7313,7 @@ export type Database = {
           revoke_reason?: string | null
           revoked_at?: string | null
           revoked_by?: string | null
+          sent_via?: string
           token?: string
           used_at?: string | null
         }
@@ -7179,6 +7325,7 @@ export type Database = {
           revoke_reason?: string | null
           revoked_at?: string | null
           revoked_by?: string | null
+          sent_via?: string
           token?: string
           used_at?: string | null
         }
@@ -7435,6 +7582,7 @@ export type Database = {
           id: string
           invited_by: string
           last_name: string | null
+          sent_via: string
           status: string
           token: string
           updated_at: string | null
@@ -7448,6 +7596,7 @@ export type Database = {
           id?: string
           invited_by: string
           last_name?: string | null
+          sent_via?: string
           status?: string
           token?: string
           updated_at?: string | null
@@ -7461,6 +7610,7 @@ export type Database = {
           id?: string
           invited_by?: string
           last_name?: string | null
+          sent_via?: string
           status?: string
           token?: string
           updated_at?: string | null
@@ -7476,13 +7626,20 @@ export type Database = {
           date_of_birth: string | null
           documents: Json | null
           email: string
+          email_verification_proof: string | null
+          email_verified_at: string | null
+          email_verified_source: string | null
           emergency_contacts: Json | null
           first_name: string
           id: string
           immigration_status: string | null
+          invite_token: string | null
           last_name: string
           personnel_id: string | null
           phone: string | null
+          phone_verification_proof: string | null
+          phone_verified_at: string | null
+          phone_verified_source: string | null
           rejection_reason: string | null
           reverse_reason: string | null
           reversed_at: string | null
@@ -7506,13 +7663,20 @@ export type Database = {
           date_of_birth?: string | null
           documents?: Json | null
           email: string
+          email_verification_proof?: string | null
+          email_verified_at?: string | null
+          email_verified_source?: string | null
           emergency_contacts?: Json | null
           first_name: string
           id?: string
           immigration_status?: string | null
+          invite_token?: string | null
           last_name: string
           personnel_id?: string | null
           phone?: string | null
+          phone_verification_proof?: string | null
+          phone_verified_at?: string | null
+          phone_verified_source?: string | null
           rejection_reason?: string | null
           reverse_reason?: string | null
           reversed_at?: string | null
@@ -7536,13 +7700,20 @@ export type Database = {
           date_of_birth?: string | null
           documents?: Json | null
           email?: string
+          email_verification_proof?: string | null
+          email_verified_at?: string | null
+          email_verified_source?: string | null
           emergency_contacts?: Json | null
           first_name?: string
           id?: string
           immigration_status?: string | null
+          invite_token?: string | null
           last_name?: string
           personnel_id?: string | null
           phone?: string | null
+          phone_verification_proof?: string | null
+          phone_verified_at?: string | null
+          phone_verified_source?: string | null
           rejection_reason?: string | null
           reverse_reason?: string | null
           reversed_at?: string | null
@@ -13420,6 +13591,11 @@ export type Database = {
       }
       _hygiene_applicant_candidates: { Args: never; Returns: string[] }
       _hygiene_personnel_candidates: { Args: never; Returns: string[] }
+      _is_staff_manager: { Args: never; Returns: boolean }
+      _names_similar: {
+        Args: { f1: string; f2: string; l1: string; l2: string }
+        Returns: boolean
+      }
       _punch_core:
         | {
             Args: {
@@ -13628,6 +13804,15 @@ export type Database = {
         Args: { _email?: string; _phone?: string; _token: string }
         Returns: Json
       }
+      consume_contact_proof: {
+        Args: {
+          p_contact: string
+          p_proof: string
+          p_purpose: string
+          p_type: string
+        }
+        Returns: string
+      }
       correct_asset_placement_dates: {
         Args: {
           p_assignment_id: string
@@ -13702,6 +13887,10 @@ export type Database = {
       data_hygiene_run: { Args: never; Returns: Json }
       delete_location_to_draft: { Args: { p_id: string }; Returns: undefined }
       deny_join_request: { Args: { p_request: string }; Returns: Json }
+      dismiss_duplicate_group: {
+        Args: { p_ids: string[]; p_reason?: string }
+        Returns: undefined
+      }
       edit_application_by_token: {
         Args: { p_answers: Json; p_applicant: Json; p_token: string }
         Returns: Json
@@ -13734,6 +13923,24 @@ export type Database = {
         Returns: string
       }
       find_applicant_id_by_email: { Args: { _email: string }; Returns: string }
+      find_contact_matches: {
+        Args: {
+          p_email: string
+          p_first_name: string
+          p_last_name: string
+          p_phone: string
+        }
+        Returns: {
+          created_at: string
+          email: string
+          entity_id: string
+          entity_type: string
+          full_name: string
+          phone: string
+          reasons: string[]
+          ref_number: string
+        }[]
+      }
       find_duplicate_applicant_groups: {
         Args: never
         Returns: {
@@ -14009,6 +14216,18 @@ export type Database = {
         }
         Returns: Json
       }
+      normalize_email: { Args: { p: string }; Returns: string }
+      normalize_person_name: { Args: { p: string }; Returns: string }
+      normalize_phone: { Args: { p: string }; Returns: string }
+      onboarding_link_channel: { Args: { p_token: string }; Returns: string }
+      personnel_duplicate_groups: {
+        Args: never
+        Returns: {
+          match_key: string
+          personnel: Json
+          reason: string
+        }[]
+      }
       project_personnel_directory: {
         Args: { p_search?: string }
         Returns: {
@@ -14071,6 +14290,16 @@ export type Database = {
         Args: { p_application: string; p_intake: Json; p_receipt: string }
         Returns: boolean
       }
+      record_onboarding_contact_verification: {
+        Args: {
+          p_email: string
+          p_email_proof?: string
+          p_phone: string
+          p_phone_proof?: string
+          p_token: string
+        }
+        Returns: Json
+      }
       record_punch_link_open: {
         Args: {
           p_accuracy?: number
@@ -14103,6 +14332,10 @@ export type Database = {
       reset_vendor_bill_sequence_for_new_year: {
         Args: never
         Returns: undefined
+      }
+      resolve_contact_review: {
+        Args: { p_decision: string; p_item: string; p_notes?: string }
+        Returns: Json
       }
       resolve_join_agency: {
         Args: { p_expected_vendor: string; p_person: string; p_request: string }
