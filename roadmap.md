@@ -1,6 +1,7 @@
 # Phase 2 — intake, onboarding delivery, approval and personnel merge
 - [ ] Add Email/Text delivery choices, nullable email handling, opt-out-aware onboarding/resend and invite delivery.
-- [ ] Replace onboarding verification rules; add signature-verified bounce webhook and fix/resend.
+- [ ] Replace onboarding verification rules; persist Resend email IDs and monitor unresolved deliveries from the last 72 hours every 30 minutes with the existing key (no webhook/new secret), plus bounce badge/admin notification/fix-resend.
+- [ ] Track first onboarding-token open only; add derived 24-hour unopened warning and deduplicated admin alerts with text/email/fix-contact resend actions. No punch/kiosk lookup changes.
 - [ ] Add atomic manager application approval with existing-person selection and safe vendor linking.
 - [ ] Add return-worker info-check messages and manual/bulk actions without modifying protected operational flows.
 - [ ] Add transactional admin personnel merge and per-table preview — blocked pending clarification: requested reference updates include explicitly protected time_entries, stays/visits, site_checkin_tokens and signature records.
