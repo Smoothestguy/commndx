@@ -2,14 +2,11 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { createOnlyMode } from "../_shared/onboardingSendMode.ts";
+import { revokeOlderOnboardingTokens } from '../_shared/onboardingTokenCleanup.ts';
+import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { ctaButton, preheader, stripHtmlToText } from "../_shared/applicant-email.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 
 interface OnboardingEmailRequest {
   personnelId: string;
@@ -29,8 +26,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("[Onboarding Email] Received request for personnel:", personnelId);
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseServiceKey) throw new Error('Missing onboarding configuration');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const onlyCreate = createOnlyMode(createOnly);
@@ -43,7 +41,7 @@ const handler = async (req: Request): Promise<Response> => {
       const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', auth.user.id).in('role', ['admin', 'manager']);
       if (!roles?.length) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
     }
-    if (typeof personnelId !== 'string' || !/^[0-9a-f-]{36}$/i.test(personnelId) || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return new Response(JSON.stringify({ error: 'Invalid recipient' }), { status: 400, headers: corsHeaders });
+    if (typeof personnelId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(personnelId) || typeof email !== 'string' || email.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || typeof firstName !== 'string' || firstName.length > 255 || typeof lastName !== 'string' || lastName.length > 255) return new Response(JSON.stringify({ error: 'Invalid recipient' }), { status: 400, headers: corsHeaders });
     const token = crypto.randomUUID();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 21);
@@ -62,6 +60,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (onlyCreate) {
+      await revokeOlderOnboardingTokens(supabase, personnelId, tokenRow.id);
       return new Response(JSON.stringify({ success: true, token, expiresAt: expiresAt.toISOString() }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -122,6 +121,7 @@ This link is valid for 21 days. Reply to this email if you have questions.`;
       console.error("[Onboarding Email] Resend error:", emailResponse.error);
       throw new Error(`Email sending failed: ${emailResponse.error.message}`);
     }
+    await revokeOlderOnboardingTokens(supabase, personnelId, tokenRow.id);
 
     if (emailResponse.data?.id && tokenRow) {
       const { error: trackingError } = await supabase.from('onboarding_email_deliveries').insert({ personnel_id: personnelId, token_id: tokenRow.id, resend_id: emailResponse.data.id });

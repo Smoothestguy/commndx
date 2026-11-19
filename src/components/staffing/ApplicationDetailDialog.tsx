@@ -1138,7 +1138,15 @@ export function ApplicationDetailDialog({
         onClose={() => setEnlargedImage(null)}
         alt="Application image"
       />
-      {deletePersonnelTargets.length > 0 && <PersonnelSafeDeleteDialog people={deletePersonnelTargets} onClose={() => setDeletePersonnelTargets([])} />}
+      {deletePersonnelTargets.length > 0 && <PersonnelSafeDeleteDialog people={deletePersonnelTargets} onClose={() => setDeletePersonnelTargets([])} onAllDeleted={async () => {
+        if (!application) return;
+        await revokeApproval.mutateAsync({ applicationId: application.id });
+        setDeletePersonnelTargets([]); setShowRevokeConfirm(false); onOpenChange(false);
+        toast.success('Entire applicant record deleted. They can now reapply.');
+      }} onDeactivated={person => {
+        setShowRevokeConfirm(false);
+        toast.info(`Applicant kept because ${person.first_name} ${person.last_name} has history — worker deactivated.`);
+      }} />}
 
       <RequestMissingInfoDialog
         open={requestInfoDialogOpen}

@@ -2,6 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { authenticateCronRequest } from '../_shared/cron-auth.ts';
 import { CHECK_WINDOW_MS, retrieveDelivery } from '../_shared/onboardingDelivery.ts';
+import { pendingAlertCandidates } from '../_shared/onboardingAlertCandidates.ts';
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   const denied = authenticateCronRequest(request);
@@ -20,22 +21,19 @@ Deno.serve(async (request) => {
     for (const row of pending) {
       try {
         const status = await retrieveDelivery(row.resend_id, key);
-        if (!status) continue;
-        const { error } = await db.from('onboarding_email_deliveries').update({ last_event: status.event, final_status: status.final, checked_at: new Date().toISOString() }).eq('id', row.id);
-        if (error) throw error; checked++;
+        if (status) {
+          const { error } = await db.from('onboarding_email_deliveries').update({ last_event: status.event, final_status: status.final, checked_at: new Date().toISOString() }).eq('id', row.id);
+          if (error) throw error; checked++;
+        }
       } catch (error) { failures++; console.error(String(error)); }
       // Resend's default request limit is 2/second. This is pacing, not a retry.
       await new Promise(resolve => setTimeout(resolve, 550));
     }
     // Include terminal failures so notification failures can retry independently of retrieval.
-    for (let offset = 0; ; offset += 500) {
-      const { data, error } = await db.from('onboarding_email_deliveries').select('id,final_status,token_id').order('id').range(offset, offset + 499);
-      if (error) throw error;
-      for (const row of data ?? []) {
-        if (row.final_status) { const { error: alertError } = await db.rpc('record_onboarding_delivery_alert', { p_delivery_id: row.id, p_event: row.final_status }); if (alertError) throw alertError; }
-        if (row.token_id) { const { error: alertError } = await db.rpc('record_onboarding_delivery_alert', { p_delivery_id: row.id, p_event: 'not_opened' }); if (alertError) throw alertError; }
-      }
-      if ((data?.length ?? 0) < 500) break;
+    const candidates = await pendingAlertCandidates(db);
+    for (const row of candidates) {
+      const { error: alertError } = await db.rpc('record_onboarding_delivery_alert', { p_delivery_id: row.id, p_event: row.event });
+      if (alertError) throw alertError;
     }
     return Response.json({ checked, failures }, { headers: corsHeaders });
   } catch (error) { console.error(String(error)); return Response.json({ error: String(error) }, { status: 500, headers: corsHeaders }); }

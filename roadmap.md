@@ -1,3 +1,9 @@
+# Four approved audit fixes
+- [x] Live pg_constraint verified all 32 cascading children: 21 protected including financial references, 11 explicitly disposable excluded; each added table has a blocking test. Signature-only/hotel-only live fixtures blocked with evidence preserved.
+- [x] Clean-worker dialog automatically completed applicant/application deletion and closed with existing toast; history worker deactivated, applicant retained with requested toast. Reverse Approval untouched.
+- [x] Actual sender with mocked Resend passed failure retention, success revocation and createOnly no-email/no-tracking; existing Share reused token on desktop/390px without writes.
+- [x] Filtered live anti-joins returned exactly unkeyed terminal/live 25h unopened fixtures, excluding keyed/young/expired/opened/revoked/used. Empty live candidate read ~153ms; actual mocked idle handler ~12ms, zero provider/alert calls. 72h/550ms retained; cron jobs unchanged. 42 tests and protected diff/punch/kiosk/legacy completion gate passed; disposable fixtures removed and cleanup verified. Actual provider sends, hosted scheduled execution and physical devices unverified.
+
 # Personnel duplicate details and safe deletion
 - [x] Batched paginated admin/manager-only history summaries on Possible duplicates; Merge remains removed.
 - [x] Both permanent deletion paths (Personnel list/bulk and linked applicant deletion) share fail-closed preflight and mutation rechecks. Existing profile/mobile Deactivate preserves history; duplicates has no delete action. Assignment-only records also blocked to avoid a false no-assignments confirmation. No migration or protected operational changes; frontend checks are not atomic race prevention.

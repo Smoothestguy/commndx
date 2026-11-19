@@ -1,8 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { emptyPersonnelHistory, personnelOnboardingStatus, type PersonnelHistory } from './personnelHistory';
+import { protectedPersonnelTables } from './personnelCascadeCoverage';
 
-type HistoryTable = 'time_entries' | 'location_attendance' | 'personnel_documents' | 'personnel_w9_forms' | 'personnel_payments' | 'personnel_project_assignments' | 'location_assignments' | 'personnel_onboarding_tokens' | 'personnel';
+type HistoryTable = keyof typeof protectedPersonnelTables | 'time_entries' | 'location_attendance' | 'personnel_documents' | 'personnel_w9_forms' | 'personnel_payments' | 'personnel_project_assignments' | 'location_assignments' | 'personnel_onboarding_tokens' | 'personnel';
 type HistoryRow = { id?: string; personnel_id?: string; entry_date?: string; status?: string; unassigned_at?: string | null; project_id?: string; location_id?: string; onboarding_status?: string | null; onboarding_completed_at?: string | null; used_at?: string | null; revoked_at?: string | null; created_at?: string };
 
 export async function requirePersonnelHistoryManager() {
@@ -32,7 +33,8 @@ export async function readPersonnelHistories(inputIds: string[]): Promise<Record
   await requirePersonnelHistoryManager();
   const ids = [...new Set(inputIds)].sort();
   if (!ids.length) return {};
-  const [people, times, attendance, documents, w9, payments, projects, locations, tokens] = await Promise.all([
+  const relatedTables = Object.keys(protectedPersonnelTables) as (keyof typeof protectedPersonnelTables)[];
+  const [people, times, attendance, documents, w9, payments, projects, locations, tokens, related] = await Promise.all([
     readRows('personnel', 'id,onboarding_status,onboarding_completed_at', ids),
     readRows('time_entries', 'id,personnel_id,entry_date', ids),
     readRows('location_attendance', 'id,personnel_id', ids),
@@ -42,9 +44,11 @@ export async function readPersonnelHistories(inputIds: string[]): Promise<Record
     readRows('personnel_project_assignments', 'id,personnel_id,project_id,status,unassigned_at', ids),
     readRows('location_assignments', 'id,personnel_id,location_id,status,unassigned_at', ids),
     readRows('personnel_onboarding_tokens', 'id,personnel_id,created_at,used_at,revoked_at', ids),
+    Promise.all(relatedTables.map(table => readRows(table, 'id,personnel_id', ids))),
   ]);
   if (people.length !== ids.length) throw new Error('Some personnel records could not be checked. Deletion is unavailable.');
   const result = Object.fromEntries(ids.map(id => [id, emptyPersonnelHistory()]));
+  relatedTables.forEach((table,index) => { for (const row of related[index]) if (row.personnel_id && result[row.personnel_id]) result[row.personnel_id].related[table]++; });
   const counts = [[attendance,'attendance'],[documents,'documents'],[w9,'w9Forms'],[payments,'payments'],[projects,'projectAssignments'],[locations,'locationAssignments']] as const;
   for (const [rows,key] of counts) for (const row of rows) if (row.personnel_id && result[row.personnel_id]) result[row.personnel_id][key]++;
   for (const row of times) {
