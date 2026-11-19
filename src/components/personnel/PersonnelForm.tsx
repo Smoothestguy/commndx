@@ -1,3 +1,4 @@
+import { ShareOnboardingDialog } from "./ShareOnboardingDialog";
 import { useState } from "react";
 import { useUserRole } from '@/hooks/useUserRole';
 import { saveThenSend } from '@/lib/onboardingLinks';
@@ -74,6 +75,7 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
   const canSend = isAdmin || isManager;
   const [sendNow, setSendNow] = useState(true);
   const [sending, setSending] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [added, setAdded] = useState<{ person: { id: string; email: string; first_name: string; last_name: string }; link: string | null; error: string | null } | null>(null);
 
   const addMutation = useAddPersonnel();
@@ -189,7 +191,8 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
       catch (e) { setAdded({ ...added, error: e instanceof Error ? e.message : 'Email failed' }); toast.warning('Email failed. The personnel record remains saved.'); }
       finally { setSending(false); }
     }}>{sending ? 'Sending...' : 'Retry'}</Button></> : <p className="text-sm">Onboarding link emailed to {added.person.email}</p>}
-    {added.link && <div className="flex flex-wrap items-center gap-2"><Input aria-label="Onboarding link" value={added.link} readOnly className="flex-1 min-w-0" /><Button variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(added.link ?? ''); toast.success('Link copied'); } catch { toast.error('Could not copy link. Select the link and copy it.'); } }}>Copy link</Button></div>}
+    <Button variant="outline" onClick={() => setShareOpen(true)}>Share</Button>
+    <ShareOnboardingDialog person={added.person} open={shareOpen} onOpenChange={setShareOpen} />
     <Button onClick={() => onSuccess?.(added.person.id)}>Done</Button>
   </div>;
 

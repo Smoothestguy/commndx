@@ -1,3 +1,8 @@
+# Profile cleanup and Share onboarding
+- [x] Simplified header / More actions and collapsed personnel consents only; duplicate E-Verify Pending moved out of header; existing revoke/approval confirmation logic preserved.
+- [x] Shared editable bilingual Share dialog on profile/post-add; existing token first, admin/manager createOnly fallback without email/tracking and unchanged 21-day expiry/old-token handling. Shared-only 24h alerts intentionally unsupported without DB changes.
+- [x] Eight unit tests; desktop/390px header/share edited Copy/More confirm/consents; live createOnly one token/no delivery and repeat Share reuse; mocked email failure/retry post-add one insert passed. Legacy onboarding saved document/W9/bank/signatures and used-link UI; punch/kiosk loads and protected diff passed. Disposable records cleaned. No migrations, schema/DB functions/onboarding-page/timekeeping changes; physical phones and actual email delivery not exercised.
+
 # Approved onboarding delivery alerts
 - [x] Migration 0084 adds nullable bounce/open fields, private deliveries/alert keys and three new RPCs only; no existing function replacement, constraint change or row backfill. Send tracking deployed; legacy registration service caller preserved; unauthorized sends rejected.
 - [x] Combined managed 30-minute monitor deployed/scheduled (job 11); existing paused jobs untouched. Profile warnings clear on opening/completion/new tracked link; admin bell/page Copy, Resend, Edit actions; registration-only alerts link personnel queue until a profile exists.

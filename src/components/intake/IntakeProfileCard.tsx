@@ -1,20 +1,21 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { ShieldCheck, ShieldAlert, Loader2 } from "lucide-react";
+import { ShieldCheck, ShieldAlert, Loader2, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GenderRadio } from "./GenderRadio";
 import { ProfilePhotoCapture } from "./ProfilePhotoCapture";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 
 type Table = "applicants" | "personnel";
 const MANAGER_VERSION = "manager-recorded";
 
 /** Manager view/editor for photo, gender and intake consent proof. */
-export function IntakeProfileCard({ table, id, canEdit }: { table: Table; id: string; canEdit: boolean }) {
+export function IntakeProfileCard({ table, id, canEdit, collapsible = false }: { table: Table; id: string; canEdit: boolean; collapsible?: boolean }) {
   const qc = useQueryClient();
   const key = ["intake-profile", table, id];
   const { data } = useQuery({
@@ -28,6 +29,7 @@ export function IntakeProfileCard({ table, id, canEdit }: { table: Table; id: st
       return data as Record<string, any> | null;
     },
   });
+  const [expanded, setExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const save = async (patch: Record<string, any>) => {
@@ -59,8 +61,9 @@ export function IntakeProfileCard({ table, id, canEdit }: { table: Table; id: st
   );
 
   return (
-    <Card data-testid="intake-profile-card">
-      <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2">Photo, gender & consents {saving && <Loader2 className="h-4 w-4 animate-spin" />}</CardTitle></CardHeader>
+    <Collapsible open={!collapsible || expanded} onOpenChange={setExpanded}><Card data-testid="intake-profile-card">
+      <CardHeader className="pb-2">{collapsible ? <CollapsibleTrigger asChild><Button variant="ghost" className="h-auto w-full justify-between text-left whitespace-normal"><span><span className="block text-base font-semibold">Photo, gender & consents</span><span className="block text-xs text-muted-foreground">Consents {Number(!!data.sms_consent_at) + Number(!!data.photo_consent_at)}/2 · {data.gender === 'male' ? 'Male' : data.gender === 'female' ? 'Female' : 'Gender not set'} · {data.photo_url ? 'Photo on file' : 'No photo'}</span></span><ChevronDown className={`h-4 w-4 shrink-0 ${expanded ? 'rotate-180' : ''}`} /></Button></CollapsibleTrigger> : <CardTitle className="text-base">Photo, gender & consents</CardTitle>}{saving && <Loader2 className="h-4 w-4 animate-spin" />}</CardHeader>
+      <CollapsibleContent>
       <CardContent className="space-y-4">
         {consent("Text message consent", data.sms_consent_at, data.sms_consent_version, "sms")}
         {consent("Photo / biometric consent", data.photo_consent_at, data.photo_consent_version, "photo")}
@@ -76,7 +79,7 @@ export function IntakeProfileCard({ table, id, canEdit }: { table: Table; id: st
         ) : (
           <div className="text-sm">Gender: {data.gender === "male" ? "Male" : data.gender === "female" ? "Female" : "—"}</div>
         )}
-      </CardContent>
-    </Card>
+      </CardContent></CollapsibleContent>
+    </Card></Collapsible>
   );
 }

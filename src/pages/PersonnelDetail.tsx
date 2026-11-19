@@ -22,7 +22,7 @@ import { SecureAvatar } from "@/components/ui/secure-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star, Receipt, Eye, CheckCircle, XCircle, Banknote, ExternalLink, Download, Ban, Undo2, RotateCcw, UserX, UserCheck, Loader2, Briefcase } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star, Receipt, Eye, CheckCircle, XCircle, Banknote, ExternalLink, Download, Ban, Undo2, RotateCcw, UserX, UserCheck, Loader2, Briefcase, ChevronDown } from "lucide-react";
 import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { DirectDepositView } from "@/components/personnel/DirectDepositView";
 import { AgreementSignatureView } from "@/components/personnel/AgreementSignatureView";
@@ -52,7 +52,8 @@ import { RevokeOnboardingDialog } from "@/components/personnel/RevokeOnboardingD
 import { ReverseApprovalDialog } from "@/components/personnel/ReverseApprovalDialog";
 import { PersonnelRolesDialog } from "@/components/personnel/PersonnelRolesDialog";
 import { toast } from "sonner";
-import { getCurrentPersonnelOnboardingLink } from '@/lib/personnelOnboardingLink';
+import { ShareOnboardingDialog } from '@/components/personnel/ShareOnboardingDialog';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { downloadReceipt, getReceiptFilename } from "@/utils/receiptDownload";
 
 interface ComplianceIssue {
@@ -79,7 +80,7 @@ const PersonnelDetail = () => {
   const revokeOnboardingToken = useRevokeOnboardingToken();
   const reissueOnboarding = useReissueOnboarding();
   const [reissueOpen, setReissueOpen] = useState(false);
-  const [copyingLink, setCopyingLink] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const updateRating = useUpdatePersonnelRating();
   const updatePersonnel = useUpdatePersonnel();
   const { data: w9Form } = usePersonnelW9Form(id);
@@ -145,18 +146,6 @@ const PersonnelDetail = () => {
       firstName: personnel.first_name,
       lastName: personnel.last_name,
     });
-  };
-
-  const handleCopyOnboardingLink = async () => {
-    if (!personnel || !(isAdmin || isManager) || ['completed', 'revoked'].includes(personnel.onboarding_status ?? '')) return;
-    setCopyingLink(true);
-    try {
-      const link = await getCurrentPersonnelOnboardingLink(personnel.id);
-      if (!link) { toast.warning('No valid onboarding link. Creating one through Resend also sends an email. Use Resend onboarding if you want to send it.'); return; }
-      await navigator.clipboard.writeText(link);
-      toast.success('Link copied');
-    } catch { toast.error('Could not copy the onboarding link. Please retry.'); }
-    finally { setCopyingLink(false); }
   };
 
   if (isLoading) {
@@ -376,9 +365,9 @@ const PersonnelDetail = () => {
                 alt={`${personnel.first_name} ${personnel.last_name}`}
               />
 
-              <div className="flex-1 space-y-3">
+              <div className="flex-1 min-w-0 space-y-3">
                 <div>
-                  <h2 className="text-2xl font-bold">
+                  <h2 className="text-2xl font-bold break-words">
                     {personnel.first_name} {personnel.last_name}
                   </h2>
                   <p className="text-muted-foreground">{personnel.personnel_number}</p>
@@ -395,10 +384,8 @@ const PersonnelDetail = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <PersonnelBadgeActions personnelId={personnel.id} />
                   {getStatusBadge()}
                   <OnboardingDeliveryBadges personnelId={personnel.id} />
-                  {getEVerifyBadge()}
                   {personnel.onboarding_status === "pending" && (
                     <Badge variant="outline" className="gap-1">
                       <Clock className="h-3 w-3" />
@@ -406,9 +393,9 @@ const PersonnelDetail = () => {
                     </Badge>
                   )}
                   {personnel.onboarding_status === "completed" && (
-                    <Badge className="bg-green-600 gap-1">
+                    <Badge variant="secondary" className="gap-1">
                       <Check className="h-3 w-3" />
-                      Onboarding Complete
+                      Onboarding complete ✓
                     </Badge>
                   )}
                   {complianceIssues.length > 0 && (
@@ -417,40 +404,11 @@ const PersonnelDetail = () => {
                       Out of Compliance
                     </Badge>
                   )}
-                  {(isAdmin || isManager) && <>
-                    <Select value={personnel.employer_customer_id ? "__none__" : personnel.vendor_id || "__none__"} onValueChange={v => updatePersonnel.mutate({ id: personnel.id, updates: v === "__none__" ? { vendor_id: null } : employerIds(null, v) })} disabled={updatePersonnel.isPending}><SelectTrigger aria-label="Agency / Vendor" className="h-8 w-full sm:w-48"><SelectValue placeholder="Agency / Vendor" /></SelectTrigger><SelectContent><SelectItem value="__none__">No agency / vendor</SelectItem>{agencies.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent></Select>
-                    <Select value={personnel.employer_customer_id || "__none__"} onValueChange={v => updatePersonnel.mutate({ id: personnel.id, updates: v === "__none__" ? { employer_customer_id: null } : employerIds(v, null) })} disabled={updatePersonnel.isPending}><SelectTrigger aria-label="Employer (customer)" className="h-8 w-full sm:w-64"><SelectValue placeholder="Employer (customer)" /></SelectTrigger><SelectContent><SelectItem value="__none__">No customer employer</SelectItem>{customers.map(customer => <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>)}</SelectContent></Select>
-                  </>}
-                  <NonBillableChip value={personnel.non_billable} employer={personnel.employer_customer_id ? (customers.find(c => c.id === personnel.employer_customer_id)?.name ? `${customers.find(c => c.id === personnel.employer_customer_id)?.name} (customer)` : undefined) : agencies.find(v => v.id === personnel.vendor_id)?.name} />
-                  {(isAdmin || isManager) ? <Button size="sm" variant={personnel.on_bench ? "secondary" : "outline"} className="h-8" disabled={updatePersonnel.isPending} onClick={() => updatePersonnel.mutate({ id: personnel.id, updates: personnel.on_bench ? { on_bench: false, bench_rank: null } : { on_bench: true } })}><BenchStar on className={personnel.on_bench ? "" : "fill-none"} />&nbsp;{personnel.on_bench ? "On bench" : "Add to bench"}</Button> : <BenchStar on={personnel.on_bench} />}
-                  {!personnel.employer_customer_id && personnel.vendor_id && (
-                    <Link to={`/vendors/${personnel.vendor_id}`}>
-                      <Badge variant="outline" className="gap-1 cursor-pointer hover:bg-accent">
-                        <Building2 className="h-3 w-3" />
-                        {agencies.find(v => v.id === personnel.vendor_id)?.name || "Agency / Vendor"}
-                      </Badge>
-                    </Link>
-                  )}
-                  {(personnel as any).portal_required === false && (
-                    <Badge variant="secondary" className="gap-1">
-                      <UserX className="h-3 w-3" />
-                      Temporary Worker
-                    </Badge>
-                  )}
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
+                <div className="flex flex-wrap gap-2">                  <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
                     <Edit className="mr-2 h-4 w-4" />
                     Edit
-                  </Button>
-                  <Button size="sm" onClick={() => setBadgeDialogOpen(true)}>
-                    <IdCard className="mr-2 h-4 w-4" />
-                    Generate Badge
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setRolesDialogOpen(true)}>
-                    <Briefcase className="mr-2 h-4 w-4" />
-                    Manage Roles
                   </Button>
                   <Button 
                     variant="outline" 
@@ -469,38 +427,23 @@ const PersonnelDetail = () => {
                     <MessageSquare className="mr-2 h-4 w-4" />
                     {getOrCreateConversation.isPending ? "Opening..." : "Send Message"}
                   </Button>
-                  {personnel.onboarding_status === "revoked" && (isAdmin || isManager) && (
-                    <Button variant="outline" size="sm" onClick={() => setReissueOpen(true)} disabled={reissueOnboarding.isPending}>
-                      <RotateCcw className="mr-2 h-4 w-4" />
-                      {reissueOnboarding.isPending ? "Re-issuing..." : "Re-issue onboarding"}
-                    </Button>
+                  <Button size="sm" onClick={() => setBadgeDialogOpen(true)}>
+                    <IdCard className="mr-2 h-4 w-4" />
+                    Generate Badge
+                  </Button>
+                  {personnel.onboarding_status !== 'completed' && personnel.onboarding_status !== 'revoked' && (isAdmin || isManager) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild><Button variant="outline" size="sm">Onboarding link<ChevronDown className="ml-2 h-4 w-4" /></Button></DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <DropdownMenuItem onSelect={() => setShareOpen(true)}>Share</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={handleResendOnboardingEmail} disabled={resendOnboardingEmail.isPending}>Resend by email</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
-                  {personnel.onboarding_status !== "completed" && personnel.onboarding_status !== "revoked" && (isAdmin || isManager) && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleResendOnboardingEmail}
-                        disabled={resendOnboardingEmail.isPending}
-                      >
-                        <Send className="mr-2 h-4 w-4" />
-                        {resendOnboardingEmail.isPending ? "Sending..." : "Resend Onboarding Email"}
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={handleCopyOnboardingLink} disabled={copyingLink}>
-                        <Link2 className="mr-2 h-4 w-4" />{copyingLink ? 'Copying...' : 'Copy link'}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setRevokeOnboardingOpen(true)}
-                        disabled={revokeOnboardingToken.isPending}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Ban className="mr-2 h-4 w-4" />
-                        Revoke Onboarding
-                      </Button>
-                    </>
-                  )}
+                  <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="outline" size="sm">More<ChevronDown className="ml-2 h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-80 max-w-[calc(100vw-2rem)] max-h-[70vh] overflow-y-auto p-3" onCloseAutoFocus={e => e.preventDefault()}><div className="flex flex-col gap-2">                  <Button variant="outline" size="sm" onClick={() => setRolesDialogOpen(true)}>
+                    <Briefcase className="mr-2 h-4 w-4" />
+                    Manage Roles
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -548,15 +491,41 @@ const PersonnelDetail = () => {
                     <Building2 className="mr-2 h-4 w-4" />
                     Create Additional Record
                   </Button>
-                  {linkedApplication?.status === 'approved' && (
+                  {(isAdmin || isManager) && <>
+                    <Select value={personnel.employer_customer_id ? "__none__" : personnel.vendor_id || "__none__"} onValueChange={v => updatePersonnel.mutate({ id: personnel.id, updates: v === "__none__" ? { vendor_id: null } : employerIds(null, v) })} disabled={updatePersonnel.isPending}><SelectTrigger aria-label="Agency / Vendor" className="h-8 w-full sm:w-48"><SelectValue placeholder="Agency / Vendor" /></SelectTrigger><SelectContent><SelectItem value="__none__">No agency / vendor</SelectItem>{agencies.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent></Select>
+                    <Select value={personnel.employer_customer_id || "__none__"} onValueChange={v => updatePersonnel.mutate({ id: personnel.id, updates: v === "__none__" ? { employer_customer_id: null } : employerIds(v, null) })} disabled={updatePersonnel.isPending}><SelectTrigger aria-label="Employer (customer)" className="h-8 w-full sm:w-64"><SelectValue placeholder="Employer (customer)" /></SelectTrigger><SelectContent><SelectItem value="__none__">No customer employer</SelectItem>{customers.map(customer => <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>)}</SelectContent></Select>
+                  </>}
+                  <NonBillableChip value={personnel.non_billable} employer={personnel.employer_customer_id ? (customers.find(c => c.id === personnel.employer_customer_id)?.name ? `${customers.find(c => c.id === personnel.employer_customer_id)?.name} (customer)` : undefined) : agencies.find(v => v.id === personnel.vendor_id)?.name} />
+                  {(isAdmin || isManager) ? <Button size="sm" variant={personnel.on_bench ? "secondary" : "outline"} className="h-8" disabled={updatePersonnel.isPending} onClick={() => updatePersonnel.mutate({ id: personnel.id, updates: personnel.on_bench ? { on_bench: false, bench_rank: null } : { on_bench: true } })}><BenchStar on className={personnel.on_bench ? "" : "fill-none"} />&nbsp;{personnel.on_bench ? "On bench" : "Add to bench"}</Button> : <BenchStar on={personnel.on_bench} />}
+                  {!personnel.employer_customer_id && personnel.vendor_id && (
+                    <Link to={`/vendors/${personnel.vendor_id}`}>
+                      <Badge variant="outline" className="gap-1 cursor-pointer hover:bg-accent">
+                        <Building2 className="h-3 w-3" />
+                        {agencies.find(v => v.id === personnel.vendor_id)?.name || "Agency / Vendor"}
+                      </Badge>
+                    </Link>
+                  )}
+                  {(personnel as any).portal_required === false && (
+                    <Badge variant="secondary" className="gap-1">
+                      <UserX className="h-3 w-3" />
+                      Temporary Worker
+                    </Badge>
+                  )}
+<PersonnelBadgeActions personnelId={personnel.id} />{getEVerifyBadge()}</div><DropdownMenuSeparator /><div className="flex flex-col gap-2">{personnel.onboarding_status !== 'completed' && personnel.onboarding_status !== 'revoked' && (isAdmin || isManager) && <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setRevokeOnboardingOpen(true)} disabled={revokeOnboardingToken.isPending}><Ban className="mr-2 h-4 w-4" />Revoke Onboarding</Button>}                  {linkedApplication?.status === 'approved' && (
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setReverseApprovalOpen(true)}
-                      className="text-amber-600 hover:text-amber-700"
+                      className="text-destructive hover:text-destructive"
                     >
                       <Undo2 className="mr-2 h-4 w-4" />
                       Reverse Approval
+                    </Button>
+                  )}
+</div></DropdownMenuContent></DropdownMenu>                  {personnel.onboarding_status === "revoked" && (isAdmin || isManager) && (
+                    <Button variant="outline" size="sm" onClick={() => setReissueOpen(true)} disabled={reissueOnboarding.isPending}>
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      {reissueOnboarding.isPending ? "Re-issuing..." : "Re-issue onboarding"}
                     </Button>
                   )}
                 </div>
@@ -564,7 +533,7 @@ const PersonnelDetail = () => {
             </div>
           </CardContent>
         </Card>
-        {(isAdmin || isManager) && <IntakeProfileCard table="personnel" id={personnel.id} canEdit />}
+        {(isAdmin || isManager) && <IntakeProfileCard table="personnel" id={personnel.id} canEdit collapsible />}
 
         {complianceIssues.length > 0 && (
           <Card className="border-destructive/50 bg-destructive/5">
@@ -1113,6 +1082,8 @@ const PersonnelDetail = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      <ShareOnboardingDialog person={personnel} open={shareOpen} onOpenChange={setShareOpen} />
 
       <BadgeGenerator
         open={badgeDialogOpen}

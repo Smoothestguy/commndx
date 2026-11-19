@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createOnlyMode } from "../_shared/onboardingSendMode.ts";
 import { ctaButton, preheader, stripHtmlToText } from "../_shared/applicant-email.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
@@ -15,6 +16,7 @@ interface OnboardingEmailRequest {
   email: string;
   firstName: string;
   lastName: string;
+  createOnly?: boolean;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -23,7 +25,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { personnelId, email, firstName, lastName }: OnboardingEmailRequest = await req.json();
+    const { personnelId, email, firstName, lastName, createOnly }: OnboardingEmailRequest = await req.json();
 
     console.log("[Onboarding Email] Received request for personnel:", personnelId);
 
@@ -31,10 +33,11 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    const onlyCreate = createOnlyMode(createOnly);
     const authHeader = req.headers.get('Authorization');
     const bearer = (authHeader ?? '').replace(/^Bearer /, '');
     // Preserve the existing authenticated registration-approval service call.
-    if (bearer !== supabaseServiceKey) {
+    if (onlyCreate || bearer !== supabaseServiceKey) {
       const { data: auth, error: authError } = await supabase.auth.getUser(bearer);
       if (authError || !auth.user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
       const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', auth.user.id).in('role', ['admin', 'manager']);
@@ -56,6 +59,10 @@ const handler = async (req: Request): Promise<Response> => {
     if (tokenError) {
       console.error("[Onboarding Email] Error creating token:", tokenError);
       throw tokenError;
+    }
+
+    if (onlyCreate) {
+      return new Response(JSON.stringify({ success: true, token, expiresAt: expiresAt.toISOString() }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const siteUrl = (Deno.env.get("SITE_URL") || "https://fairfieldrg.com").trim();
