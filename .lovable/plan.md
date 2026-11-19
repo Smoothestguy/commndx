@@ -6,7 +6,7 @@
    Track personnel_onboarding_tokens.first_opened_at once through onboarding token validation only. Derive the unopened state after 24 hours for live unused links; show the profile warning and deduplicated admin notification with Resend by text, Resend by email and Fix contact & resend. Keep punch/kiosk token lookups untouched.
 3. Move application approval into a manager-authorized transaction with explicit existing-person selection and safe vendor linking.
 4. Add return-worker information checks, logged through the existing inbox, with eligibility and resend safeguards.
-5. Replace personnel merge with an admin-only transaction, conflict preview, evidence-preserving collision handling and per-table audit counts.
+5. HOLD personnel merge: do not implement or run reference changes pending the owner's answer. Items 1–4 proceed now.
 6. Test only with disposable records and mocked sends, clean fixtures, and run the protected-flow regression gate.
 
 ## Scope clarification required

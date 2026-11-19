@@ -4,7 +4,7 @@
 - [ ] Track first onboarding-token open only; add derived 24-hour unopened warning and deduplicated admin alerts with text/email/fix-contact resend actions. No punch/kiosk lookup changes.
 - [ ] Add atomic manager application approval with existing-person selection and safe vendor linking.
 - [ ] Add return-worker info-check messages and manual/bulk actions without modifying protected operational flows.
-- [ ] Add transactional admin personnel merge and per-table preview — blocked pending clarification: requested reference updates include explicitly protected time_entries, stays/visits, site_checkin_tokens and signature records.
+- [ ] HOLD item 5: no personnel merge implementation or protected reference changes until the owner answers; build items 1–4 now.
 - [ ] Run mocked-send/disposable-fixture checks and the complete regression gate; clean every fixture and report evidence.
 
 # Search focus stability
