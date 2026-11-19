@@ -79,7 +79,7 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
 
         {/* Right Section: Session + Actions + User */}
         <div className="flex items-center gap-1">
-          {(!mobile || !isUser) && (isAdmin || isManager || isUser) && <Button asChild size="icon" variant="ghost" className="h-8 w-8 text-header-foreground" title="Field Mode"><Link to="/field" aria-label="Field Mode"><Smartphone className="h-4 w-4"/></Link></Button>}
+          {(!mobile || !isUser) && (isAdmin || isManager || isUser) && <Button asChild size="icon" variant="ghost" className="lg:hidden h-8 w-8 text-header-foreground" title="Field Mode"><Link to="/field" aria-label="Field Mode"><Smartphone className="h-4 w-4"/></Link></Button>}
           {/* Messages Icon - iPhone style */}
           <Link to="/messages">
             <Button
