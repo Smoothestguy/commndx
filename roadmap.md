@@ -1,3 +1,8 @@
+# Move onboarding — awaiting owner SQL approval
+- [x] Prepared functions-only SQL against live columns/FKs/indexes/triggers; isolated compile and move/16 guards/conflict rollback/privacy/login/unique-skip tests pass. No live changes or fixtures; SQL awaits owner approval.
+- [ ] After SQL approval: add admin-only preview/transactional execution and Possible duplicates identity/conflict dialog; keep operational history untouched.
+- [ ] After approval: disposable move/rejection/rollback/privacy checks, desktop/390px and punch/kiosk/legacy onboarding regression gate; clean every fixture and report limitations.
+
 # Four approved audit fixes
 - [x] Live pg_constraint verified all 32 cascading children: 21 protected including financial references, 11 explicitly disposable excluded; each added table has a blocking test. Signature-only/hotel-only live fixtures blocked with evidence preserved.
 - [x] Clean-worker dialog automatically completed applicant/application deletion and closed with existing toast; history worker deactivated, applicant retained with requested toast. Reverse Approval untouched.
