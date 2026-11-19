@@ -1,3 +1,4 @@
+import { PersonnelSafeDeleteDialog } from "./PersonnelSafeDeleteDialog";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useState } from "react";
 import { PersonnelStatusButton } from "@/components/personnel/lifecycle/PersonnelStatusButton";
@@ -42,7 +43,6 @@ import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import {
   useDeletePersonnel,
   useToggleDoNotHire,
-  useHardDeletePersonnel,
   useReactivatePersonnel,
 } from "@/integrations/supabase/hooks/usePersonnel";
 import { useQuickBooksConfig, useSyncPersonnelToQB } from "@/integrations/supabase/hooks/useQuickBooks";
@@ -113,13 +113,11 @@ export function PersonnelTable({
   const { data: qbConfig } = useQuickBooksConfig();
   const deletePersonnel = useDeletePersonnel();
   const toggleDoNotHire = useToggleDoNotHire();
-  const hardDeletePersonnel = useHardDeletePersonnel();
   const syncPersonnelToQB = useSyncPersonnelToQB();
   const reactivatePersonnel = useReactivatePersonnel();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [personToDelete, setPersonToDelete] = useState<Personnel | null>(null);
-  const [hardDeleteDialogOpen, setHardDeleteDialogOpen] = useState(false);
-  const [personToHardDelete, setPersonToHardDelete] = useState<Personnel | null>(null);
+  const [deleteTargets, setDeleteTargets] = useState<Personnel[]>([]);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [rolesDialogPerson, setRolesDialogPerson] = useState<Personnel | null>(null);
 
@@ -200,16 +198,6 @@ export function PersonnelTable({
     }
   };
 
-  const handleHardDelete = async () => {
-    if (!personToHardDelete) return;
-    try {
-      await hardDeletePersonnel.mutateAsync(personToHardDelete.id);
-      setHardDeleteDialogOpen(false);
-      setPersonToHardDelete(null);
-    } catch (error) {
-      // Error handling is in the hook
-    }
-  };
 
   const allSelected =
     personnel.length > 0 && selectedIds.length === personnel.length;
@@ -259,10 +247,7 @@ export function PersonnelTable({
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={() => {
-                    setPersonToDelete(person);
-                    handleDelete();
-                  }}
+                  onClick={async () => { await deletePersonnel.mutateAsync(person.id); }}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
                   Remove
@@ -565,8 +550,7 @@ export function PersonnelTable({
             <DropdownMenuItem
               onClick={(e) => {
                 e.stopPropagation();
-                setPersonToHardDelete(person);
-                setHardDeleteDialogOpen(true);
+                setDeleteTargets([person]);
               }}
               className="text-destructive"
             >
@@ -599,7 +583,7 @@ export function PersonnelTable({
           entityName="personnel"
           primaryBulkActions={()=> <Button variant="outline" size="sm" onClick={()=>setBulkAssignOpen(true)}>Assign</Button>}
           onSetActive={async(people,active)=>{await statusUpdate.mutateAsync({ids:people.map(p=>p.id),patch:{status:active?'active':'inactive'}});}}
-          bulkActions={() => <><Button size="sm" variant="outline" onClick={onPrintBadges}><Printer className="h-3.5 w-3.5 mr-1" />Print badges</Button>{bulkActions}</>}
+          bulkActions={() => <>{(isAdmin || isManager) && selectedIds.length > 0 && <Button size="sm" variant="destructive" onClick={() => setDeleteTargets(personnel.filter(p => selectedIds.includes(p.id)))}>Delete selected</Button>}<Button size="sm" variant="outline" onClick={onPrintBadges}><Printer className="h-3.5 w-3.5 mr-1" />Print badges</Button>{bulkActions}</>}
           attention={person => !person.phone ? "Missing phone" : null}
           selectable={(isAdmin || isManager) && selectionMode}
           selectedIds={new Set(selectedIds)}
@@ -636,47 +620,7 @@ export function PersonnelTable({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Permanent Delete Confirmation Dialog */}
-      <AlertDialog open={hardDeleteDialogOpen} onOpenChange={setHardDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              Permanently Delete Personnel
-            </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div>
-                Are you sure you want to <strong>permanently delete</strong>{" "}
-                <strong>
-                  {personToHardDelete?.first_name} {personToHardDelete?.last_name}
-                </strong>
-                ?
-                <br /><br />
-                This will also delete:
-                <ul className="list-disc list-inside mt-2 text-muted-foreground">
-                  <li>Emergency contacts</li>
-                  <li>Certifications</li>
-                  <li>Languages</li>
-                  <li>Capabilities</li>
-                  <li>Onboarding tokens</li>
-                </ul>
-                <br />
-                <strong className="text-destructive">This action cannot be undone.</strong>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleHardDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={hardDeletePersonnel.isPending}
-            >
-              {hardDeletePersonnel.isPending ? "Deleting..." : "Delete Permanently"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {deleteTargets.length > 0 && <PersonnelSafeDeleteDialog people={deleteTargets} onClose={() => setDeleteTargets([])} onDone={onClearSelection} />}
 
       {/* Manage Roles Dialog */}
       {rolesDialogPerson && (

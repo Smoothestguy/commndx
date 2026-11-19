@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { retryApplicationSubmit } from '@/lib/applicationSubmit';
+import { readPersonnelHistories } from '@/lib/personnelHistoryReader';
+import { personnelDeleteBlocked, personnelHistorySummary } from '@/lib/personnelHistory';
 
 // Types
 export interface TaskOrder {
@@ -1161,10 +1163,18 @@ export const useRevokeApproval = () => {
       const applicantId = application.applicant_id;
 
       // 2. Delete the personnel record linked to this applicant (if exists)
-      await supabase
+      const linked = await supabase.from('personnel').select('id').eq('applicant_id', applicantId);
+      if (linked.error) throw linked.error;
+      const histories = await readPersonnelHistories((linked.data ?? []).map(p => p.id));
+      for (const person of linked.data ?? []) {
+        const history = histories[person.id];
+        if (!history || personnelDeleteBlocked(history)) throw new Error(`Delete blocked: ${history ? personnelHistorySummary(history) : 'history unavailable'}. Deactivate instead.`);
+      }
+      const { error: personnelError } = await supabase
         .from("personnel")
         .delete()
         .eq("applicant_id", applicantId);
+      if (personnelError) throw personnelError;
 
       // 3. Delete the application record
       const { error: appError } = await supabase

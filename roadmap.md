@@ -1,3 +1,8 @@
+# Personnel duplicate details and safe deletion
+- [x] Batched paginated admin/manager-only history summaries on Possible duplicates; Merge remains removed.
+- [x] Both permanent deletion paths (Personnel list/bulk and linked applicant deletion) share fail-closed preflight and mutation rechecks. Existing profile/mobile Deactivate preserves history; duplicates has no delete action. Assignment-only records also blocked to avoid a false no-assignments confirmation. No migration or protected operational changes; frontend checks are not atomic race prevention.
+- [x] Thirteen tests, desktop/390px duplicate counts, desktop blocked-delete and phone mixed-bulk flow passed: clean deleted, protected deactivated, one time entry/document retained. Legacy token completed with W9/document/bank/signatures; punch/kiosk loaded with no page errors or real sends. Disposable cleanup performed and checked; preview clean. Physical devices, fresh field-account denial and concurrent-write races not exercised.
+
 # Profile cleanup and Share onboarding
 - [x] Simplified header / More actions and collapsed personnel consents only; duplicate E-Verify Pending moved out of header; existing revoke/approval confirmation logic preserved.
 - [x] Shared editable bilingual Share dialog on profile/post-add; existing token first, admin/manager createOnly fallback without email/tracking and unchanged 21-day expiry/old-token handling. Shared-only 24h alerts intentionally unsupported without DB changes.

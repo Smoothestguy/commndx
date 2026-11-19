@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { useAuditLog, computeChanges } from "@/hooks/useAuditLog";
+import { readPersonnelHistories } from '@/lib/personnelHistoryReader';
+import { personnelDeleteBlocked, personnelHistorySummary } from '@/lib/personnelHistory';
 
 type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
 type PersonnelInsert = Database["public"]["Tables"]["personnel"]["Insert"];
@@ -586,6 +588,11 @@ export const useHardDeletePersonnel = () => {
   return useMutation({
     mutationFn: async (id: string) => {
       console.log("[Personnel] Starting comprehensive hard delete for:", id);
+      const histories = await readPersonnelHistories([id]);
+      const history = histories[id];
+      if (!history || personnelDeleteBlocked(history)) {
+        throw new Error(`Delete blocked: ${history ? personnelHistorySummary(history) : 'history could not be checked'}. Deactivate instead.`);
+      }
       
       // ============================================
       // 1. DELETE records that should be fully removed

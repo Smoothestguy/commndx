@@ -1,4 +1,5 @@
 import { SecureAvatar } from "@/components/ui/secure-avatar";
+import { PersonnelSafeDeleteDialog } from '@/components/personnel/PersonnelSafeDeleteDialog';
 import { ApplicantDuplicateActions } from './ApplicantMergeDialog';
 import { SubmittedTime } from './RecruitingControls';
 import { submissionTime } from '@/lib/recruiting';
@@ -129,6 +130,7 @@ export function ApplicationDetailDialog({
   const updateApplicant = useUpdateApplicant();
   const updateApplication = useUpdateApplication();
   const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
+  const [deletePersonnelTargets, setDeletePersonnelTargets] = useState<{id:string;first_name:string;last_name:string;personnel_number:string|null}[]>([]);
   const [showRemoveFromPostingConfirm, setShowRemoveFromPostingConfirm] = useState(false);
   const [isAlreadyOnboarded, setIsAlreadyOnboarded] = useState(false);
 
@@ -346,12 +348,15 @@ export function ApplicationDetailDialog({
   const handleRevokeApproval = async () => {
     if (!application) return;
     try {
+      const linked = await supabase.from('personnel').select('id,first_name,last_name,personnel_number').eq('applicant_id', application.applicant_id);
+      if (linked.error) throw linked.error;
+      if (linked.data?.length) { setDeletePersonnelTargets(linked.data); return; }
       await revokeApproval.mutateAsync({ applicationId: application.id });
       toast.success("Entire applicant record deleted. They can now reapply.");
       setShowRevokeConfirm(false);
       onOpenChange(false);
     } catch (error) {
-      toast.error("Failed to delete applicant");
+      toast.error(error instanceof Error ? error.message : "Failed to delete applicant");
     }
   };
 
@@ -1133,6 +1138,7 @@ export function ApplicationDetailDialog({
         onClose={() => setEnlargedImage(null)}
         alt="Application image"
       />
+      {deletePersonnelTargets.length > 0 && <PersonnelSafeDeleteDialog people={deletePersonnelTargets} onClose={() => setDeletePersonnelTargets([])} />}
 
       <RequestMissingInfoDialog
         open={requestInfoDialogOpen}

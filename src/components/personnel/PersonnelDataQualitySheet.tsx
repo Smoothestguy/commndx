@@ -3,16 +3,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { useQuery } from '@tanstack/react-query';
+import { useUserRole } from '@/hooks/useUserRole';
+import { readPersonnelHistories } from '@/lib/personnelHistoryReader';
 import { Link } from "react-router-dom";
 import { useOpenContactReviews, useResolveContactReview, usePersonnelDuplicateGroups, useDismissDuplicateGroup, type DuplicateGroup } from "@/integrations/supabase/hooks/useContactReview";
 
 const REASON: Record<string, string> = { same_email: "Same email", same_phone: "Same phone", similar_name: "Similar name", email_match_phone_differs: "Email matched, phone differs", phone_match_email_differs: "Phone matched, email differs" };
 
 export function PersonnelDataQualitySheet({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
-  const reviews = useOpenContactReviews(open);
+  const { isAdmin, isManager } = useUserRole();
+  const allowed = isAdmin || isManager;
+  const reviews = useOpenContactReviews(open && allowed);
   const resolve = useResolveContactReview();
-  const groups = usePersonnelDuplicateGroups(open);
+  const groups = usePersonnelDuplicateGroups(open && allowed);
   const dismiss = useDismissDuplicateGroup();
+  const ids = [...new Set(groups.data?.flatMap(g => g.personnel.map(p => p.id)) ?? [])].sort();
+  const history = useQuery({ queryKey: ['personnel-duplicate-history', ids], queryFn: () => readPersonnelHistories(ids), enabled: open && allowed && ids.length > 0, retry: false });
 
   const groupRow = (g: DuplicateGroup) => {
     const [oldest, ...rest] = g.personnel;
@@ -34,6 +41,14 @@ export function PersonnelDataQualitySheet({ open, onOpenChange }: { open: boolea
                   <Button size="sm" variant="outline" asChild><Link to={`/personnel/${p.id}`} target="_blank" rel="noopener noreferrer">Open {p.personnel_number ?? "second profile"}</Link></Button>
                 </div>
               )}
+              <div className="w-full flex flex-wrap items-center gap-2 text-xs text-muted-foreground pb-2">
+                {history.data?.[p.id] ? <>
+                  <Badge variant="secondary">{history.data[p.id].onboarding}</Badge>
+                  <span>{history.data[p.id].timeEntries} time entries · Last worked {history.data[p.id].lastWorked ?? '—'}</span>
+                  <span>{history.data[p.id].activeProjects} active projects / {history.data[p.id].activeLocations} active sites</span>
+                  <span>{history.data[p.id].documents} documents · W-9 {history.data[p.id].w9Forms > 0 ? 'Yes' : 'No'}</span>
+                </> : <span>{history.isError ? 'History unavailable — no counts assumed.' : 'Loading history…'}</span>}
+              </div>
             </li>
           ))}
         </ul>
@@ -42,7 +57,7 @@ export function PersonnelDataQualitySheet({ open, onOpenChange }: { open: boolea
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open && allowed} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Contact review & duplicates</SheetTitle>
