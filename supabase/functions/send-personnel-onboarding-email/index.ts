@@ -31,17 +31,27 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    const authHeader = req.headers.get('Authorization');
+    const bearer = (authHeader ?? '').replace(/^Bearer /, '');
+    // Preserve the existing authenticated registration-approval service call.
+    if (bearer !== supabaseServiceKey) {
+      const { data: auth, error: authError } = await supabase.auth.getUser(bearer);
+      if (authError || !auth.user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+      const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', auth.user.id).in('role', ['admin', 'manager']);
+      if (!roles?.length) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
+    }
+    if (typeof personnelId !== 'string' || !/^[0-9a-f-]{36}$/i.test(personnelId) || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return new Response(JSON.stringify({ error: 'Invalid recipient' }), { status: 400, headers: corsHeaders });
     const token = crypto.randomUUID();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 21);
 
-    const { error: tokenError } = await supabase
+    const { data: tokenRow, error: tokenError } = await supabase
       .from("personnel_onboarding_tokens")
       .insert({
         personnel_id: personnelId,
         token: token,
         expires_at: expiresAt.toISOString(),
-      });
+      }).select("id").single();
 
     if (tokenError) {
       console.error("[Onboarding Email] Error creating token:", tokenError);
@@ -93,7 +103,7 @@ Required information:
 This link is valid for 21 days. Reply to this email if you have questions.`;
 
     const emailResponse = await resend.emails.send({
-      from: "Fairfield <admin@fairfieldrg.com>",
+      from: "Fairfield Response Group <admin@fairfieldrg.com>",
       to: [email],
       reply_to: "admin@fairfieldrg.com",
       subject: "Your Fairfield onboarding link — action needed",
@@ -106,7 +116,10 @@ This link is valid for 21 days. Reply to this email if you have questions.`;
       throw new Error(`Email sending failed: ${emailResponse.error.message}`);
     }
 
-    console.log("[Onboarding Email] Email sent, ID:", emailResponse.data?.id);
+    if (emailResponse.data?.id && tokenRow) {
+      const { error: trackingError } = await supabase.from('onboarding_email_deliveries').insert({ personnel_id: personnelId, token_id: tokenRow.id, resend_id: emailResponse.data.id });
+      if (trackingError) console.error('Onboarding delivery tracking failed:', trackingError.message);
+    }
 
     try {
       await fetch(`${supabaseUrl}/functions/v1/create-admin-notification`, {

@@ -113,6 +113,9 @@ export function useOnboardingToken(token: string | undefined) {
         };
       }
 
+      // Independent best-effort stamp: never await or affect validation/completion.
+      try { void supabase.rpc('mark_onboarding_link_opened', { p_token: token }).then(() => {}, () => {}); } catch { /* non-blocking */ }
+
       // Fire-and-forget: notify admins that this token was opened.
       try {
         const personnelPreview = result.personnel;

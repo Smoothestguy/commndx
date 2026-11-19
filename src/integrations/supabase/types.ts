@@ -6214,6 +6214,107 @@ export type Database = {
           },
         ]
       }
+      onboarding_delivery_alert_keys: {
+        Row: {
+          created_at: string
+          delivery_id: string | null
+          event_key: string
+          token_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          delivery_id?: string | null
+          event_key: string
+          token_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          delivery_id?: string | null
+          event_key?: string
+          token_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_delivery_alert_keys_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_email_deliveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_delivery_alert_keys_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_onboarding_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_email_deliveries: {
+        Row: {
+          checked_at: string | null
+          final_status: string | null
+          id: string
+          invite_id: string | null
+          last_event: string | null
+          personnel_id: string | null
+          resend_id: string
+          sent_at: string
+          token_id: string | null
+        }
+        Insert: {
+          checked_at?: string | null
+          final_status?: string | null
+          id?: string
+          invite_id?: string | null
+          last_event?: string | null
+          personnel_id?: string | null
+          resend_id: string
+          sent_at?: string
+          token_id?: string | null
+        }
+        Update: {
+          checked_at?: string | null
+          final_status?: string | null
+          id?: string
+          invite_id?: string | null
+          last_event?: string | null
+          personnel_id?: string | null
+          resend_id?: string
+          sent_at?: string
+          token_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_email_deliveries_invite_id_fkey"
+            columns: ["invite_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_registration_invites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_email_deliveries_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_email_deliveries_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_email_deliveries_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_onboarding_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personnel: {
         Row: {
           address: string | null
@@ -6241,6 +6342,7 @@ export type Database = {
           direct_deposit_signature: string | null
           direct_deposit_signed_at: string | null
           email: string
+          email_bounced_at: string | null
           email_verified_at: string | null
           email_verified_source: string | null
           employer_customer_id: string | null
@@ -6332,6 +6434,7 @@ export type Database = {
           direct_deposit_signature?: string | null
           direct_deposit_signed_at?: string | null
           email: string
+          email_bounced_at?: string | null
           email_verified_at?: string | null
           email_verified_source?: string | null
           employer_customer_id?: string | null
@@ -6423,6 +6526,7 @@ export type Database = {
           direct_deposit_signature?: string | null
           direct_deposit_signed_at?: string | null
           email?: string
+          email_bounced_at?: string | null
           email_verified_at?: string | null
           email_verified_source?: string | null
           employer_customer_id?: string | null
@@ -7296,6 +7400,7 @@ export type Database = {
         Row: {
           created_at: string | null
           expires_at: string
+          first_opened_at: string | null
           id: string
           personnel_id: string
           revoke_reason: string | null
@@ -7308,6 +7413,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           expires_at?: string
+          first_opened_at?: string | null
           id?: string
           personnel_id: string
           revoke_reason?: string | null
@@ -7320,6 +7426,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           expires_at?: string
+          first_opened_at?: string | null
           id?: string
           personnel_id?: string
           revoke_reason?: string | null
@@ -14035,6 +14142,10 @@ export type Database = {
           banking_info_updated_at: string
         }[]
       }
+      get_onboarding_delivery_warning: {
+        Args: { p_personnel_id: string }
+        Returns: Json
+      }
       get_personnel_id_for_user: { Args: { _user_id: string }; Returns: string }
       get_photo_request_info: {
         Args: { _token: string }
@@ -14195,6 +14306,10 @@ export type Database = {
         }
         Returns: string
       }
+      mark_onboarding_link_opened: {
+        Args: { p_token: string }
+        Returns: undefined
+      }
       mark_workforce_invite_opened: {
         Args: { _token: string }
         Returns: undefined
@@ -14299,6 +14414,10 @@ export type Database = {
           p_token: string
         }
         Returns: Json
+      }
+      record_onboarding_delivery_alert: {
+        Args: { p_delivery_id: string; p_event: string }
+        Returns: undefined
       }
       record_punch_link_open: {
         Args: {

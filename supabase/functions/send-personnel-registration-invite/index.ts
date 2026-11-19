@@ -48,9 +48,11 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    const { data: roles } = await supabaseClient.from('user_roles').select('role').eq('user_id', user.id).in('role', ['admin', 'manager']);
+    if (!roles?.length) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
     const { email, firstName, lastName }: InviteRequest = await req.json();
 
-    if (!email) {
+    if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return new Response(
         JSON.stringify({ error: "Email is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -128,7 +130,7 @@ During registration, you'll provide personal information, a profile photo, work 
 This invitation is valid for 7 days.`;
 
     const emailResponse = await resend.emails.send({
-      from: "Fairfield <admin@fairfieldrg.com>",
+      from: "Fairfield Response Group <admin@fairfieldrg.com>",
       to: [email],
       reply_to: "admin@fairfieldrg.com",
       subject: `Complete your ${companyName} registration — action needed`,
@@ -141,7 +143,10 @@ This invitation is valid for 7 days.`;
       throw new Error(`Failed to send email: ${emailResponse.error.message}`);
     }
 
-    console.log("Email sent successfully:", emailResponse);
+    if (emailResponse.data?.id) {
+      const { error: trackingError } = await supabaseClient.from('onboarding_email_deliveries').insert({ invite_id: invite.id, resend_id: emailResponse.data.id });
+      if (trackingError) console.error('Registration delivery tracking failed:', trackingError.message);
+    }
 
     return new Response(
       JSON.stringify({ success: true, invite }),

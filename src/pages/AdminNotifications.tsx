@@ -1,3 +1,4 @@
+import { OnboardingNotificationActions } from "@/components/personnel/OnboardingDeliveryAlerts";
 import { useState } from "react";
 import { Bell, Check, CheckCheck, Trash2, ArrowLeft, Square, CheckSquare, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -105,6 +106,7 @@ function NotificationCard({
             <p className="text-xs text-muted-foreground">
               {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
             </p>
+          {notification.notification_type === 'onboarding_delivery_alert' && <OnboardingNotificationActions personnelId={notification.related_id} />}
           </div>
           {!isSelectionMode && (
             <div className="flex items-center gap-1 flex-shrink-0">

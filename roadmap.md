@@ -1,3 +1,8 @@
+# Approved onboarding delivery alerts
+- [x] Migration 0084 adds nullable bounce/open fields, private deliveries/alert keys and three new RPCs only; no existing function replacement, constraint change or row backfill. Send tracking deployed; legacy registration service caller preserved; unauthorized sends rejected.
+- [x] Combined managed 30-minute monitor deployed/scheduled (job 11); existing paused jobs untouched. Profile warnings clear on opening/completion/new tracked link; admin bell/page Copy, Resend, Edit actions; registration-only alerts link personnel queue until a profile exists.
+- [x] 13 mocked-provider/link tests pass; disposable 25h bounce/unopened generated exactly two keys and 12 notifications for six admins despite duplicate calls; under-24h creates none. Profile/copy/editor and phone first-open passed; legacy completion saved documents/W9/bank/signatures, used-link UI passed. Punch/kiosk load and protected-file diff passed; preview clean. Real provider retrieval and actual scheduled execution not yet observed; no real sends. SQL delivered in Files; fixtures cleaned and verified separately.
+
 # Onboarding email-on-add and copy — reduced owner scope
 - [x] Default-checked manager email-on-add checkbox, post-save confirmation/link/copy and warning/retry without reinserting personnel. Browser verified one insert, mocked failure then success and clipboard; unchecked behavior unit-tested.
 - [x] Profile Copy link reads only current unused/unrevoked/unexpired onboarding token. Valid-copy browser passed; absent token explains Resend also emails and sends nothing.

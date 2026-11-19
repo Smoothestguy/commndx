@@ -1,4 +1,5 @@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { OnboardingDeliveryBadges } from "@/components/personnel/OnboardingDeliveryAlerts";
 import { IntakeProfileCard } from "@/components/intake/IntakeProfileCard";
 import { PersonnelAssetCare } from '@/components/personnel/PersonnelAssetCare';
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
@@ -396,6 +397,7 @@ const PersonnelDetail = () => {
                 <div className="flex flex-wrap gap-2">
                   <PersonnelBadgeActions personnelId={personnel.id} />
                   {getStatusBadge()}
+                  <OnboardingDeliveryBadges personnelId={personnel.id} />
                   {getEVerifyBadge()}
                   {personnel.onboarding_status === "pending" && (
                     <Badge variant="outline" className="gap-1">
