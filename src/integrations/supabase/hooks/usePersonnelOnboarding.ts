@@ -460,3 +460,59 @@ export function useReverseRegistrationApproval() {
     },
   });
 }
+
+// ==================== RE-ISSUE REVOKED ONBOARDING ====================
+
+/**
+ * Re-issue onboarding after a revoke: status -> pending, audit "onboarding_reissued",
+ * then send a brand-new token via send-personnel-onboarding-email.
+ * Revoked tokens are never touched (the send function always inserts a new token).
+ */
+export function useReissueOnboarding() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ personnelId, email, firstName, lastName, personnelNumber }: {
+      personnelId: string; email: string; firstName: string; lastName: string; personnelNumber?: string | null;
+    }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { error: statusError } = await supabase
+        .from("personnel")
+        .update({ onboarding_status: "pending", updated_at: new Date().toISOString() })
+        .eq("id", personnelId)
+        .eq("onboarding_status", "revoked");
+      if (statusError) throw statusError;
+      queryClient.invalidateQueries({ queryKey: ["personnel"] });
+
+      const { error: auditError } = await supabase.from("audit_logs").insert([{
+        user_id: user.id,
+        user_email: user.email ?? "",
+        action_type: "onboarding_reissued",
+        resource_type: "personnel",
+        resource_id: personnelId,
+        resource_number: personnelNumber ?? null,
+        changes_before: { onboarding_status: "revoked" },
+        changes_after: { onboarding_status: "pending" },
+        success: true,
+        metadata: { email },
+      }]);
+      if (auditError) console.error("[Onboarding] Re-issue audit failed:", auditError);
+
+      const { error: sendError } = await supabase.functions.invoke("send-personnel-onboarding-email", {
+        body: { personnelId, email, firstName, lastName },
+      });
+      if (sendError) throw new Error(`Status set to pending, but the email failed: ${sendError.message}. Use Resend Onboarding Email to retry.`);
+      return { success: true };
+    },
+    onSuccess: (_, v) => {
+      queryClient.invalidateQueries({ queryKey: ["personnel", v.personnelId] });
+      queryClient.invalidateQueries({ queryKey: ["personnel"] });
+      toast.success("Onboarding re-issued — new link sent");
+    },
+    onError: (error: Error, v) => {
+      queryClient.invalidateQueries({ queryKey: ["personnel", v.personnelId] });
+      toast.error(error.message);
+    },
+  });
+}

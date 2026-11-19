@@ -1,3 +1,4 @@
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { IntakeProfileCard } from "@/components/intake/IntakeProfileCard";
 import { PersonnelAssetCare } from '@/components/personnel/PersonnelAssetCare';
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
@@ -12,7 +13,7 @@ import { DetailPageLayout } from "@/components/layout/DetailPageLayout";
 import { SEO } from "@/components/SEO";
 import { usePersonnelById, useResendOnboardingEmail, useUpdatePersonnelRating, useUpdatePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
 import { usePersonnelInvitationCheck, usePersonnelReimbursements, useUpdateReimbursementStatus } from "@/integrations/supabase/hooks/usePortal";
-import { useRevokeOnboardingToken } from "@/integrations/supabase/hooks/usePersonnelOnboarding";
+import { useRevokeOnboardingToken, useReissueOnboarding } from "@/integrations/supabase/hooks/usePersonnelOnboarding";
 import { useApplicationByPersonnelId, useReverseApprovalWithReason } from "@/integrations/supabase/hooks/useStaffingApplications";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +21,7 @@ import { SecureAvatar } from "@/components/ui/secure-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star, Receipt, Eye, CheckCircle, XCircle, Banknote, ExternalLink, Download, Ban, Undo2, UserX, UserCheck, Loader2, Briefcase } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star, Receipt, Eye, CheckCircle, XCircle, Banknote, ExternalLink, Download, Ban, Undo2, RotateCcw, UserX, UserCheck, Loader2, Briefcase } from "lucide-react";
 import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { DirectDepositView } from "@/components/personnel/DirectDepositView";
 import { AgreementSignatureView } from "@/components/personnel/AgreementSignatureView";
@@ -74,6 +75,8 @@ const PersonnelDetail = () => {
   const { data: existingInvitation } = usePersonnelInvitationCheck(id);
   const resendOnboardingEmail = useResendOnboardingEmail();
   const revokeOnboardingToken = useRevokeOnboardingToken();
+  const reissueOnboarding = useReissueOnboarding();
+  const [reissueOpen, setReissueOpen] = useState(false);
   const updateRating = useUpdatePersonnelRating();
   const updatePersonnel = useUpdatePersonnel();
   const { data: w9Form } = usePersonnelW9Form(id);
@@ -450,6 +453,12 @@ const PersonnelDetail = () => {
                     <MessageSquare className="mr-2 h-4 w-4" />
                     {getOrCreateConversation.isPending ? "Opening..." : "Send Message"}
                   </Button>
+                  {personnel.onboarding_status === "revoked" && (isAdmin || isManager) && (
+                    <Button variant="outline" size="sm" onClick={() => setReissueOpen(true)} disabled={reissueOnboarding.isPending}>
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      {reissueOnboarding.isPending ? "Re-issuing..." : "Re-issue onboarding"}
+                    </Button>
+                  )}
                   {personnel.onboarding_status !== "completed" && personnel.onboarding_status !== "revoked" && (
                     <>
                       <Button
@@ -1195,6 +1204,22 @@ const PersonnelDetail = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={reissueOpen} onOpenChange={(o) => { if (!reissueOnboarding.isPending) setReissueOpen(o); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Re-issue onboarding for {`${personnel.first_name} ${personnel.last_name}`.trim()}?</AlertDialogTitle>
+            <AlertDialogDescription>A new link will be sent to {personnel.email || "no email on file"}. The old revoked link stays invalid.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={reissueOnboarding.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={reissueOnboarding.isPending || !personnel.email} onClick={(e) => {
+              e.preventDefault();
+              reissueOnboarding.mutate({ personnelId: personnel.id, email: personnel.email, firstName: personnel.first_name, lastName: personnel.last_name, personnelNumber: personnel.personnel_number }, { onSettled: () => setReissueOpen(false) });
+            }}>{reissueOnboarding.isPending ? "Re-issuing..." : "Re-issue"}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Revoke Onboarding Dialog */}
       <RevokeOnboardingDialog
