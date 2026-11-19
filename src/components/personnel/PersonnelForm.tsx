@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { PossibleMatchDialog } from "@/components/personnel/PossibleMatchDialog";
+import { findContactMatches, logCreateAnyway, type ContactMatch } from "@/lib/contactMatches";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -117,7 +119,16 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
     },
   });
 
-  const onSubmit = async (data: PersonnelFormData) => {
+  const [pendingMatches, setPendingMatches] = useState<{ matches: ContactMatch[]; data: PersonnelFormData } | null>(null);
+
+  const onSubmit = async (data: PersonnelFormData, override?: { reason: string | null }) => {
+    // New records run the shared duplicate check before saving.
+    if (!personnel && !override) {
+      try {
+        const matches = await findContactMatches(data);
+        if (matches.length) { setPendingMatches({ matches, data }); return; }
+      } catch (e) { console.error("Duplicate check failed", e); }
+    }
     if (projectId && data.vendor_id !== personnel?.vendor_id && !projectVendorAllowed(projectVendors.data, data.vendor_id || '')) { toast.error('Add this vendor to the project first'); return; }
     // Sync hourly_rate with pay_rate so time tracking uses the correct rate
     const payRate = data.pay_rate || 0;
@@ -146,12 +157,20 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
       onSuccess?.();
     } else {
       const result = await addMutation.mutateAsync(formData as any);
+      if (override && pendingMatches) await logCreateAnyway("add_personnel", data, pendingMatches.matches, override.reason, result?.id);
+      setPendingMatches(null);
       onSuccess?.(result?.id);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit((d) => onSubmit(d))} className="space-y-6">
+      <PossibleMatchDialog
+        matches={pendingMatches?.matches ?? null}
+        onClose={() => setPendingMatches(null)}
+        onUseExisting={(m) => { setPendingMatches(null); onSuccess?.(m.entity_id); }}
+        onCreateAnyway={(reason) => { if (pendingMatches) void onSubmit(pendingMatches.data, { reason }); }}
+      />
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="personal">Personal</TabsTrigger>

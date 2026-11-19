@@ -502,6 +502,11 @@ export interface GeoSubmissionData {
   error: string | null;
 }
 
+/** Thrown when an existing contact matched and the worker must confirm with a code. Carries no identity details. */
+export class VerificationRequiredError extends Error {
+  constructor(public channel: "email" | "sms") { super("VERIFICATION_REQUIRED"); }
+}
+
 export const useSubmitApplication = () => {
   return useMutation({
     mutationFn: async ({
@@ -516,7 +521,9 @@ export const useSubmitApplication = () => {
       smsConsent,
       smsConsentPhone,
       smsConsentTextVersion,
+      verification,
     }: {
+      verification?: { proof_id?: string; skip?: boolean };
       posting_id: string;
       agencyToken?: string;
       postingToken?: string;
@@ -543,9 +550,10 @@ export const useSubmitApplication = () => {
       const { data, error } = await supabase.functions.invoke("public-application", { body: {
         action: "submit", agency_token: agencyToken, posting_token: postingToken,
         posting_id, applicant: { ...applicantData, email: applicantData.email.trim().toLowerCase() }, answers, geo, clientSubmittedAt,
-        userAgent, smsConsent, smsConsentPhone, smsConsentTextVersion,
+        userAgent, smsConsent, smsConsentPhone, smsConsentTextVersion, verification,
       } });
       if (error) throw error;
+      if (data?.status === "verification_required") throw new VerificationRequiredError(data.channel === "sms" ? "sms" : "email");
       if (!data?.id) throw new Error(data?.error || "Application could not be submitted");
       return data;
       });

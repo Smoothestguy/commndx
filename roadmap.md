@@ -367,9 +367,10 @@
 - [x] Disposable UI merge confirmed two survivor applications, message/certification transfer, capability-conflict evidence and audit; state filtering/hide-reload and phone cards verified, ten tests passed, no page errors and all fixtures removed.
 
 ## Phase 1 — duplicate prevention + verification codes
-- [ ] Normalization triggers (email/phone) — must not block punch/kiosk/time updates
-- [ ] find_contact_matches + staff entry points (Add, Quick Add, CSV review, registration approve-link)
-- [ ] Verification codes (link channel auto-verifies; "I can't get the code" never blocks; service down never blocks)
-- [ ] Apply form conflict rules (remove unproven overwrite); new applicants no code
-- [ ] Needs review queue + Possible duplicates on Personnel
-- [ ] Regression gate: git diff shows no punch/kiosk/check-in/time/sheets/alerts/auto-close changes; punch+kiosk dry-run; legacy onboarding link E2E; apply new applicant + Watchdog events
+- [x] Normalization triggers (email/phone) — must not block punch/kiosk/time updates
+- [x] find_contact_matches + staff entry points (Add, Quick Add, CSV review, registration approve-link)
+- [x] Verification codes (link channel auto-verifies; "I can't get the code" never blocks; service down never blocks)
+- [x] Apply form conflict rules (remove unproven overwrite); new applicants no code
+- [x] Needs review queue + Possible duplicates on Personnel
+- [x] Regression gate: git diff shows no punch/kiosk/check-in/time/sheets/alerts/auto-close changes; punch+kiosk dry-run; legacy onboarding link E2E; apply new applicant + Watchdog events
+- [ ] Invite registration page (/register/:token) writes personnel directly — contact verification not wired (needs a server-side path)

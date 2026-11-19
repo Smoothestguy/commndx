@@ -30,6 +30,8 @@ import { PersonnelTable } from "@/components/personnel/PersonnelTable";
 import { PersonnelEmptyState } from "@/components/personnel/PersonnelEmptyState";
 import { PersonnelForm } from "@/components/personnel/PersonnelForm";
 import { PersonnelImportDialog } from "@/components/personnel/PersonnelImportDialog";
+import { PersonnelDataQualitySheet } from "@/components/personnel/PersonnelDataQualitySheet";
+import { useOpenContactReviews } from "@/integrations/supabase/hooks/useContactReview";
 import { InvitePersonnelDialog } from "@/components/personnel/InvitePersonnelDialog";
 import { BulkBadgeGenerator } from "@/components/badges/BulkBadgeGenerator";
 import { PendingRegistrations } from "@/components/personnel/PendingRegistrations";
@@ -67,6 +69,7 @@ const Personnel = () => {
   const [vendorId, setVendorId] = useSessionState("personnel:vendor", "all");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [qualityOpen, setQualityOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [bulkBadgeDialogOpen, setBulkBadgeDialogOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
@@ -85,6 +88,7 @@ const Personnel = () => {
   const { isAdmin, isManager } = useUserRole();
   const { data: pendingCount } = usePendingRegistrationsCount();
   const canManage = isAdmin || isManager;
+  const { data: openReviews = [] } = useOpenContactReviews(isAdmin || isManager);
   // Sidebar "Bench" link deep-links into the bench segment.
   const urlSegment = searchParams.get("segment");
   useEffect(() => { if (urlSegment === "bench") setSeg("bench"); }, [urlSegment]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -254,6 +258,12 @@ const Personnel = () => {
                 <CheckSquare className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                 Select
               </Button>
+              {(isAdmin || isManager) && (
+                <Button variant="outline" onClick={() => setQualityOpen(true)} className="min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm">
+                  Review
+                  {openReviews.length > 0 && <Badge variant="destructive" className="ml-1.5">{openReviews.length}</Badge>}
+                </Button>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -370,6 +380,7 @@ const Personnel = () => {
         </DialogContent>
       </Dialog>
 
+      <PersonnelDataQualitySheet open={qualityOpen} onOpenChange={setQualityOpen} />
       <PersonnelImportDialog
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}

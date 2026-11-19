@@ -50,6 +50,10 @@ import {
   FileText,
   FileSignature,
 } from "lucide-react";
+import { ContactVerificationStep, verificationResolved, type ContactVerificationValue } from "@/components/verification/ContactVerificationStep";
+import { contactsNeedingCode } from "@/lib/contactVerification";
+import { supabase as verificationClient } from "@/integrations/supabase/client";
+import { useQuery as useChannelQuery } from "@tanstack/react-query";
 
 const STEPS = [
   { id: 1, title: "Personal Info", icon: User },
@@ -214,6 +218,16 @@ const PersonnelOnboarding = () => {
   
   const { data: validationResult, isLoading, error } = useOnboardingToken(token);
   const completeOnboarding = useCompleteOnboarding();
+  // Existing links have no recorded channel and count as "email".
+  const { data: linkChannel } = useChannelQuery({
+    queryKey: ["onboarding-link-channel", token],
+    queryFn: async () => {
+      const { data } = await verificationClient.rpc("onboarding_link_channel", { p_token: token! });
+      return (data === "sms" ? "sms" : "email") as "email" | "sms";
+    },
+    enabled: !!token, staleTime: Infinity, retry: 1,
+  });
+  const [contactProofs, setContactProofs] = useState<ContactVerificationValue>({ email: {}, phone: {} });
 
   // Generate a session ID for document uploads
   const sessionId = useMemo(
@@ -293,6 +307,9 @@ const PersonnelOnboarding = () => {
     }
     return createDefaultFormData();
   });
+  // A proof belongs to the exact contact verified; editing a contact clears it.
+  useEffect(() => { setContactProofs((p) => ({ ...p, email: {} })); }, [formData.email]);
+  useEffect(() => { setContactProofs((p) => ({ ...p, phone: {} })); }, [formData.phone]);
 
   // Show toast when progress was restored
   useEffect(() => {
@@ -556,7 +573,22 @@ const PersonnelOnboarding = () => {
       return;
     }
 
+    const need = contactsNeedingCode(linkChannel ?? "email", { email: personnelData.email, phone: personnelData.phone }, { email: formData.email, phone: formData.phone });
+    if (!verificationResolved(need, contactProofs)) {
+      toast.error("Confirm your email/phone with the code, or tap “I can't get the code”. / Confirma tu correo/teléfono o toca “No recibo el código”.");
+      return;
+    }
+
     try {
+      // Records verified contacts only; failures here never block onboarding.
+      try {
+        await verificationClient.rpc("record_onboarding_contact_verification", {
+          p_token: tokenData.token, p_email: formData.email, p_phone: formData.phone || null,
+          p_email_proof: contactProofs.email.proof ?? null, p_phone_proof: contactProofs.phone.proof ?? null,
+        } as never);
+      } catch (verificationError) {
+        console.error("[Onboarding] Contact verification record failed (non-blocking):", verificationError);
+      }
       await completeOnboarding.mutateAsync({
         token: tokenData.token,
         personnelId: personnelData.id,
@@ -1187,6 +1219,20 @@ const PersonnelOnboarding = () => {
             {/* Step 8: Review */}
             {currentStep === 8 && (
               <div className="space-y-6">
+                {token && (validationResult?.personnel || cachedValidation?.personnel) && (() => {
+                  const pd = (validationResult?.personnel || cachedValidation?.personnel)!;
+                  return (
+                    <ContactVerificationStep
+                      key={`${formData.email}|${formData.phone}`}
+                      context={{ kind: "onboarding", token }}
+                      email={formData.email}
+                      phone={formData.phone || ""}
+                      need={contactsNeedingCode(linkChannel ?? "email", { email: pd.email, phone: pd.phone }, { email: formData.email, phone: formData.phone })}
+                      value={contactProofs}
+                      onChange={setContactProofs}
+                    />
+                  );
+                })()}
                 <div className="space-y-4">
                   <h3 className="font-medium">Personal Information</h3>
                   <div className="grid grid-cols-2 gap-2 text-sm">

@@ -45,6 +45,8 @@ import { INTAKE_TEXT, intakeLang, SMS_CONSENT_VERSION, PHOTO_CONSENT_VERSION } f
 import { PublicJobFactsPanel } from "@/components/staffing/PublicJobFactsPanel";
 import { SocialPrefillButtons, SocialProfile } from "@/components/staffing/SocialPrefillButtons";
 import { CertificationsFormSection, saveCertifications, type CertEntry } from "@/components/staffing/CertificationsFormSection";
+import { ContactCodeDialog } from "@/components/verification/ContactCodeDialog";
+import { VerificationRequiredError } from "@/integrations/supabase/hooks/useStaffingApplications";
 import { CONNECTION_SAVED_MESSAGE, isSubmitNetworkError, readApplicationDraft } from '@/lib/applicationSubmit';
 
 
@@ -180,6 +182,9 @@ export default function PublicApplicationForm() {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [customFieldErrors, setCustomFieldErrors] = useState<Record<string, string>>({});
   const [submitFailureMessage, setSubmitFailureMessage] = useState<string | null>(null);
+  // Only set when an existing contact matched; normal new applicants never see a code.
+  const [codeChannel, setCodeChannel] = useState<"email" | "sms" | null>(null);
+  const verificationRef = useRef<{ proof_id?: string; skip?: boolean } | undefined>(undefined);
   const draftKey = `application_draft:${token || ''}`;
   const [savedDraft] = useState(() => readApplicationDraft(draftKey));
 
@@ -983,7 +988,9 @@ export default function PublicApplicationForm() {
         smsConsent: smsConsent,
         smsConsentPhone: smsConsent ? data.phone : undefined,
         smsConsentTextVersion: smsConsent ? SMS_CONSENT_VERSION : undefined,
+        verification: verificationRef.current,
       });
+      verificationRef.current = undefined;
       {
         const r = submitResult as any;
         const appId = r?.application?.id ?? r?.id ?? null;
@@ -1021,6 +1028,12 @@ export default function PublicApplicationForm() {
       setSubmitted(true);
       try { sessionStorage.removeItem(draftKey); } catch { /* unavailable storage */ }
     } catch (err: any) {
+      if (err instanceof VerificationRequiredError) {
+        verificationRef.current = undefined;
+        logEvent("verification_required", { stage: err.channel });
+        setCodeChannel(err.channel);
+        return;
+      }
       console.error("[Form] Application submission error:", err);
 
       let friendly =
@@ -1460,6 +1473,18 @@ export default function PublicApplicationForm() {
 
   return (
     <>
+      {codeChannel && posting && (
+        <ContactCodeDialog
+          open={!!codeChannel}
+          onOpenChange={(o) => { if (!o) setCodeChannel(null); }}
+          context={{ kind: "apply", posting_id: posting.id, posting_token: token, agency_token: searchParams.get("agency") || undefined }}
+          contactType={codeChannel === "sms" ? "phone" : "email"}
+          contact={codeChannel === "sms" ? form.getValues("phone") : form.getValues("email")}
+          intro="This contact is already on file. Enter the code we sent to confirm it's you. / Este contacto ya está registrado. Ingresa el código que enviamos para confirmar que eres tú."
+          onVerified={(proof_id) => { verificationRef.current = { proof_id }; logEvent("verification_passed"); void form.handleSubmit(onSubmit)(); }}
+          onSkip={() => { verificationRef.current = { skip: true }; logEvent("verification_skipped"); void form.handleSubmit(onSubmit)(); }}
+        />
+      )}
       <SEO 
         title={`Apply - ${taskOrder.title}`}
         description={taskOrder.job_description?.slice(0, 160) || "Submit your job application"}

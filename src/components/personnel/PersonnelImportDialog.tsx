@@ -17,6 +17,8 @@ import {
 } from "@/utils/csvPersonnelParser";
 import { useBulkAddPersonnel } from "@/integrations/supabase/hooks/usePersonnel";
 import { supabase } from "@/integrations/supabase/client";
+import { findContactMatches, logCreateAnyway, matchesBlock, REASON_LABEL, type ContactMatch } from "@/lib/contactMatches";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface PersonnelImportDialogProps {
   open: boolean;
@@ -34,6 +36,11 @@ export const PersonnelImportDialog = ({ open, onOpenChange }: PersonnelImportDia
   const [results, setResults] = useState<{ success: number; failed: number } | null>(null);
   const queryClient = useQueryClient();
   const bulkAdd = useBulkAddPersonnel();
+  const { isAdmin } = useUserRole();
+  // Review step: rows with possible matches default to Skip.
+  const [rowMatches, setRowMatches] = useState<Record<number, ContactMatch[]>>({});
+  const [createRows, setCreateRows] = useState<Record<number, boolean>>({});
+  const [checkingMatches, setCheckingMatches] = useState(false);
 
   const handleDownloadTemplate = () => {
     const csv = generateSampleCSV();
@@ -67,6 +74,15 @@ export const PersonnelImportDialog = ({ open, onOpenChange }: PersonnelImportDia
       // Validate rows
       const validationResult = validatePersonnelRows(rows, existingEmails);
       setValidation(validationResult);
+      setCheckingMatches(true);
+      const found: Record<number, ContactMatch[]> = {};
+      const queue = [...validationResult.valid];
+      await Promise.all(Array.from({ length: 5 }, async () => {
+        for (let row = queue.shift(); row; row = queue.shift()) {
+          try { const m = await findContactMatches(row); if (m.length) found[row.rowNumber] = m; } catch (e) { console.error("Duplicate check failed", e); }
+        }
+      }));
+      setRowMatches(found); setCreateRows({}); setCheckingMatches(false);
 
       if (validationResult.invalid.length > 0) {
         toast.warning(`Found ${validationResult.invalid.length} rows with errors`);
@@ -83,6 +99,8 @@ export const PersonnelImportDialog = ({ open, onOpenChange }: PersonnelImportDia
 
   const handleImport = async () => {
     if (!validation?.valid.length) return;
+    const toImport = validation.valid.filter((r) => !rowMatches[r.rowNumber] || createRows[r.rowNumber]);
+    if (!toImport.length) { toast.info("All rows were skipped"); return; }
 
     setStep("importing");
     setImporting(true);
@@ -92,8 +110,8 @@ export const PersonnelImportDialog = ({ open, onOpenChange }: PersonnelImportDia
       const batchSize = 50;
       const batches = [];
       
-      for (let i = 0; i < validation.valid.length; i += batchSize) {
-        batches.push(validation.valid.slice(i, i + batchSize));
+      for (let i = 0; i < toImport.length; i += batchSize) {
+        batches.push(toImport.slice(i, i + batchSize));
       }
 
       let successCount = 0;
@@ -106,6 +124,7 @@ export const PersonnelImportDialog = ({ open, onOpenChange }: PersonnelImportDia
         try {
           await bulkAdd.mutateAsync(cleanBatch as any);
           successCount += batch.length;
+          for (const r of batch) if (rowMatches[r.rowNumber]) await logCreateAnyway("csv_import", r, rowMatches[r.rowNumber], `CSV row ${r.rowNumber} created anyway`);
         } catch (error) {
           console.error("Batch import error:", error);
           failedCount += batch.length;
@@ -242,16 +261,38 @@ export const PersonnelImportDialog = ({ open, onOpenChange }: PersonnelImportDia
               </div>
             )}
 
+            {checkingMatches && <p className="text-sm text-muted-foreground">Checking for existing people…</p>}
+            {Object.keys(rowMatches).length > 0 && (
+              <div className="space-y-2" aria-label="Rows with possible matches">
+                <h4 className="font-semibold">Possible matches ({Object.keys(rowMatches).length}) — skipped unless you choose Create</h4>
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {validation.valid.filter((r) => rowMatches[r.rowNumber]).map((r) => {
+                    const m = rowMatches[r.rowNumber]; const blocked = matchesBlock(m);
+                    return (
+                      <div key={r.rowNumber} className="flex flex-wrap items-center gap-2 rounded-md border border-border p-2 text-sm">
+                        <span className="min-w-0 flex-1">
+                          <span className="font-medium">Row {r.rowNumber}: {r.first_name} {r.last_name}</span>
+                          <span className="text-muted-foreground"> — {m.slice(0, 2).map((x) => `${x.full_name}${x.ref_number ? ` ${x.ref_number}` : ""} · ${x.reasons.map((y) => REASON_LABEL[y]).join(" · ")}`).join("; ")}</span>
+                        </span>
+                        <Button size="sm" variant={createRows[r.rowNumber] ? "outline" : "secondary"} onClick={() => setCreateRows((c) => ({ ...c, [r.rowNumber]: false }))}>Skip</Button>
+                        <Button size="sm" variant={createRows[r.rowNumber] ? "secondary" : "outline"} disabled={blocked && !isAdmin} title={blocked && !isAdmin ? "Same email — admin only" : undefined} onClick={() => setCreateRows((c) => ({ ...c, [r.rowNumber]: true }))}>Create anyway</Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <Button variant="outline" onClick={handleReset} className="flex-1">
                 Cancel
               </Button>
               <Button 
                 onClick={handleImport} 
-                disabled={validation.valid.length === 0}
+                disabled={checkingMatches || validation.valid.length === 0}
                 className="flex-1"
               >
-                Import {validation.valid.length} Record(s)
+                Import {validation.valid.filter((r) => !rowMatches[r.rowNumber] || createRows[r.rowNumber]).length} Record(s)
               </Button>
             </div>
           </div>

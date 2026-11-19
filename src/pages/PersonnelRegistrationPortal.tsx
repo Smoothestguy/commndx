@@ -1,4 +1,7 @@
 import { useState, useMemo } from "react";
+import { toast } from "sonner";
+import { ContactVerificationStep, verificationResolved, type ContactVerificationValue } from "@/components/verification/ContactVerificationStep";
+import { contactsNeedingCode } from "@/lib/contactVerification";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +78,7 @@ const IMMIGRATION_LABELS: Record<string, string> = {
 const PersonnelRegistrationPortal = () => {
   const navigate = useNavigate();
   const submitRegistration = useSubmitRegistration();
+  const [contactProofs, setContactProofs] = useState<ContactVerificationValue>({ email: {}, phone: {} });
 
   // Generate a session ID for document uploads
   const sessionId = useMemo(
@@ -202,8 +206,13 @@ const PersonnelRegistrationPortal = () => {
 
   const handleSubmit = async () => {
     if (!canProceed()) return;
+    const need = contactsNeedingCode(null, {}, { email: formData.email, phone: formData.phone });
+    if (!verificationResolved(need, contactProofs)) {
+      toast.error("Confirm your email/phone with the code, or tap “I can't get the code”. / Confirma tu correo/teléfono o toca “No recibo el código”.");
+      return;
+    }
 
-    await submitRegistration.mutateAsync(formData);
+    await submitRegistration.mutateAsync({ ...formData, email_verification_proof: contactProofs.email.proof ?? null, phone_verification_proof: contactProofs.phone.proof ?? null });
     setSubmitted(true);
   };
 
@@ -674,6 +683,15 @@ const PersonnelRegistrationPortal = () => {
             {/* Step 5: Review */}
             {currentStep === 5 && (
               <div className="space-y-6">
+                <ContactVerificationStep
+                  key={`${formData.email}|${formData.phone}`}
+                  context={{ kind: "registration" }}
+                  email={formData.email}
+                  phone={formData.phone || ""}
+                  need={contactsNeedingCode(null, {}, { email: formData.email, phone: formData.phone })}
+                  value={contactProofs}
+                  onChange={setContactProofs}
+                />
                 {/* Personal Info Review */}
                 <div className="space-y-2">
                   <h4 className="font-medium">Personal Information</h4>

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { PossibleMatchDialog } from "@/components/personnel/PossibleMatchDialog";
+import { findContactMatches, logCreateAnyway, type ContactMatch } from "@/lib/contactMatches";
 import { Link } from "react-router-dom";
 import {
   Dialog,
@@ -97,11 +99,25 @@ export const RegistrationReviewDialog = ({
   const [showTypeSelectionDialog, setShowTypeSelectionDialog] = useState(false);
   const [showReverseDialog, setShowReverseDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [approveMatches, setApproveMatches] = useState<ContactMatch[] | null>(null);
+  const [matchesCleared, setMatchesCleared] = useState(false);
 
   if (!registration) return null;
 
-  const handleApproveClick = () => {
+  const handleApproveClick = async () => {
+    if (!matchesCleared) {
+      try {
+        const found = await findContactMatches(registration);
+        if (found.length) { setApproveMatches(found); return; }
+      } catch (e) { console.error("Duplicate check failed", e); }
+    }
     setShowTypeSelectionDialog(true);
+  };
+
+  const handleLinkExisting = async (m: ContactMatch) => {
+    setApproveMatches(null);
+    await approveRegistration.mutateAsync({ registrationId: registration.id, recordType: "personnel", linkPersonnelId: m.entity_id });
+    onOpenChange(false);
   };
 
   const handleApproveWithType = async (recordType: RecordType) => {
@@ -236,13 +252,13 @@ export const RegistrationReviewDialog = ({
                     </div>
                     <div>
                       <p className="text-muted-foreground">Email</p>
-                      <p className="font-medium">{registration.email}</p>
+                      <p className="font-medium">{registration.email} <span className="text-xs text-muted-foreground">{(registration as any).email_verified_at ? "· Email verified ✓" : "· Email not verified"}</span></p>
                     </div>
                   </div>
                   {registration.phone && (
                     <div>
                       <p className="text-muted-foreground">Phone</p>
-                      <p className="font-medium">{registration.phone}</p>
+                      <p className="font-medium">{registration.phone} <span className="text-xs text-muted-foreground">{(registration as any).phone_verified_at ? "· Phone verified ✓" : "· Phone not verified"}</span></p>
                     </div>
                   )}
                   {registration.date_of_birth && (
@@ -449,6 +465,12 @@ export const RegistrationReviewDialog = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <PossibleMatchDialog
+        matches={approveMatches}
+        onClose={() => setApproveMatches(null)}
+        onUseExisting={(m) => void handleLinkExisting(m)}
+        onCreateAnyway={(reason) => { const m = approveMatches ?? []; setApproveMatches(null); setMatchesCleared(true); void logCreateAnyway("registration_approval", registration, m, reason); setShowTypeSelectionDialog(true); }}
+      />
 
       {/* Rejection Dialog */}
       <AlertDialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>

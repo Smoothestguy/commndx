@@ -627,12 +627,14 @@ const PersonnelDetail = () => {
                   <div className="flex items-center gap-3">
                     <Mail className="h-4 w-4 text-muted-foreground" />
                     <span>{personnel.email}</span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{(personnel as any).email_verified_at ? "Email verified ✓" : "Email not verified"}</span>
                   </div>
                 )}
                 {personnel.phone && (
                   <div className="flex items-center gap-3">
                     <Phone className="h-4 w-4 text-muted-foreground" />
                     <span>{personnel.phone}</span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{(personnel as any).phone_verified_at ? "Phone verified ✓" : "Phone not verified"}</span>
                   </div>
                 )}
                 {personnel.address && (

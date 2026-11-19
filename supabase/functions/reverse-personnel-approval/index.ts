@@ -101,7 +101,13 @@ Deno.serve(async (req) => {
     }
 
     // If personnel was created, revoke onboarding tokens and set to inactive
-    if (registration.personnel_id) {
+    // A registration linked to an already-existing person must never deactivate that person.
+    const { data: linkAudit } = registration.personnel_id
+      ? await serviceClient.from("audit_logs").select("id").eq("action_type", "registration_linked_existing").eq("resource_id", registration.personnel_id).contains("metadata", { registration_id: registration.id }).limit(1)
+      : { data: [] as { id: string }[] };
+    const linkedExisting = (linkAudit?.length ?? 0) > 0;
+
+    if (registration.personnel_id && !linkedExisting) {
       console.log("[ReverseApproval] Revoking onboarding tokens for personnel:", registration.personnel_id);
       
       // Revoke any active onboarding tokens

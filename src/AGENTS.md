@@ -12,3 +12,4 @@
 - Shared grids own the top toolbar (quick-filter pills driven by page state, all-column search, Filters, Columns show/reorder persisted per table in localStorage); cells hold one value, so badges/flags get their own columns.
 - Row selection uses transient screen-scoped state with legacy-key cleanup; filter/session preferences remain separate so navigation never carries bulk-action targets into another screen.
 - Server-backed grid search keeps immediate input state separate from its debounced query value and retains previous query data; only initial no-data loading may replace the grid, preventing focus loss.
+- Contact dedupe: DB triggers normalize email/phone only when those columns change; staff create paths call `find_contact_matches` first; worker verified stamps come only from server-consumed one-time code proofs or the invite link's own channel, and code delivery failures never block intake or onboarding.

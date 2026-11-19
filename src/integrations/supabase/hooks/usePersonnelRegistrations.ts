@@ -118,7 +118,7 @@ export function usePendingRegistrationsCount() {
 
 export function useSubmitRegistration() {
   return useMutation({
-    mutationFn: async (data: RegistrationFormData) => {
+    mutationFn: async (data: RegistrationFormData & { email_verification_proof?: string | null; phone_verification_proof?: string | null }) => {
       const { data: result, error } = await supabase
         .from("personnel_registrations")
         .insert([
@@ -141,6 +141,9 @@ export function useSubmitRegistration() {
             emergency_contacts: JSON.parse(JSON.stringify(data.emergency_contacts)),
             documents: JSON.parse(JSON.stringify(data.documents)),
             status: "pending",
+            // Server trigger turns valid proofs into verified stamps; client cannot set them directly.
+            email_verification_proof: data.email_verification_proof ?? null,
+            phone_verification_proof: data.phone_verification_proof ?? null,
           },
         ])
         .select()
@@ -189,15 +192,17 @@ export function useApproveRegistration() {
   return useMutation({
     mutationFn: async ({ 
       registrationId, 
-      recordType = 'personnel' 
+      recordType = 'personnel',
+      linkPersonnelId,
     }: { 
       registrationId: string; 
       recordType?: RecordType;
+      linkPersonnelId?: string;
     }) => {
       const { data, error } = await supabase.functions.invoke(
         "approve-personnel-registration",
         {
-          body: { registrationId, action: "approve", recordType },
+          body: { registrationId, action: "approve", recordType, linkPersonnelId },
         }
       );
 
