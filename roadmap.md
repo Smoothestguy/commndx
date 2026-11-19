@@ -1,3 +1,11 @@
+# Phase 2 — intake, onboarding delivery, approval and personnel merge
+- [ ] Add Email/Text delivery choices, nullable email handling, opt-out-aware onboarding/resend and invite delivery.
+- [ ] Replace onboarding verification rules; add signature-verified bounce webhook and fix/resend.
+- [ ] Add atomic manager application approval with existing-person selection and safe vendor linking.
+- [ ] Add return-worker info-check messages and manual/bulk actions without modifying protected operational flows.
+- [ ] Add transactional admin personnel merge and per-table preview — blocked pending clarification: requested reference updates include explicitly protected time_entries, stays/visits, site_checkin_tokens and signature records.
+- [ ] Run mocked-send/disposable-fixture checks and the complete regression gate; clean every fixture and report evidence.
+
 # Search focus stability
 - [x] Personnel hook retains previous data; page shows spinner only without data and sends 300ms-debounced search while input/session updates immediately. Projects, Job Postings, Master Applicants, Workforce, Vendors, Customers and shared grids use local search, so no matching server-search unmount fix needed. Read-only 1440/390 delayed-response checks retained raymond/focus, one request per continuous entry, matching results, backspace and clear restoration; debounce test and preview passed, no data modified.
 
