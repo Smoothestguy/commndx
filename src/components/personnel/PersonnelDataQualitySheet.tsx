@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useUserRole } from '@/hooks/useUserRole';
 import { readPersonnelHistories } from '@/lib/personnelHistoryReader';
 import { Link } from "react-router-dom";
+import { MoveOnboardingPair } from './MoveOnboardingDialog';
 import { useOpenContactReviews, useResolveContactReview, usePersonnelDuplicateGroups, useDismissDuplicateGroup, type DuplicateGroup } from "@/integrations/supabase/hooks/useContactReview";
 
 const REASON: Record<string, string> = { same_email: "Same email", same_phone: "Same phone", similar_name: "Similar name", email_match_phone_differs: "Email matched, phone differs", phone_match_email_differs: "Phone matched, email differs" };
@@ -49,6 +50,7 @@ export function PersonnelDataQualitySheet({ open, onOpenChange }: { open: boolea
                   <span>{history.data[p.id].documents} documents · W-9 {history.data[p.id].w9Forms > 0 ? 'Yes' : 'No'}</span>
                 </> : <span>{history.isError ? 'History unavailable — no counts assumed.' : 'Loading history…'}</span>}
               </div>
+              {isAdmin && <div className="w-full flex flex-wrap gap-2">{g.personnel.filter(other=>other.id!==p.id).map(other=><MoveOnboardingPair key={other.id} source={p.id} target={other.id}/>)}</div>}
             </li>
           ))}
         </ul>

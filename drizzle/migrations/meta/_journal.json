@@ -596,6 +596,20 @@
       "when": 1795103090310,
       "tag": "0084_onboarding_delivery_alerts_additive",
       "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1795107797294,
+      "tag": "0085_move_onboarding_admin_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1795108157931,
+      "tag": "0086_repair_move_onboarding_preview_banking",
+      "breakpoints": true
     }
   ]
 }

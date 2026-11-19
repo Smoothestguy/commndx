@@ -14331,6 +14331,10 @@ export type Database = {
         }
         Returns: Json
       }
+      move_onboarding_to_personnel: {
+        Args: { p_choices: Json; p_source: string; p_target: string }
+        Returns: Json
+      }
       normalize_email: { Args: { p: string }; Returns: string }
       normalize_person_name: { Args: { p: string }; Returns: string }
       normalize_phone: { Args: { p: string }; Returns: string }
@@ -14342,6 +14346,10 @@ export type Database = {
           personnel: Json
           reason: string
         }[]
+      }
+      preview_move_onboarding: {
+        Args: { p_source: string; p_target: string }
+        Returns: Json
       }
       project_personnel_directory: {
         Args: { p_search?: string }

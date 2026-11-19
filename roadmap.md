@@ -1,7 +1,8 @@
-# Move onboarding — awaiting owner SQL approval
+# Move onboarding — owner approved with six corrections
 - [x] Prepared functions-only SQL against live columns/FKs/indexes/triggers; isolated compile and move/16 guards/conflict rollback/privacy/login/unique-skip tests pass. No live changes or fixtures; SQL awaits owner approval.
-- [ ] After SQL approval: add admin-only preview/transactional execution and Possible duplicates identity/conflict dialog; keep operational history untouched.
-- [ ] After approval: disposable move/rejection/rollback/privacy checks, desktop/390px and punch/kiosk/legacy onboarding regression gate; clean every fixture and report limitations.
+- [x] Applied 0085 with all six corrections; built admin-only eligible pair action and identity/conflict dialog; 30 tests and preview pass. No operational locks/writes, existing function changes or schema changes beyond new functions.
+- [x] Owner-approved 0086 repairs only the new preview without the broken banking reader; existing banking function untouched. Desktop/390px actual admin preview/dialog/execute pass; profile defaults source/contact target, city override retained; missing-choice and reversed ineligible calls rejected. Target time-entry/assignment/check-in-token/link-open rows byte-identical; evidence moved, source inactive/stamped, target completed with gender/consent/address coordinates.
+- [x] 30 tests plus isolated final SQL move/16 blockers/rollback/privacy/internal non-admin/portal/five collision checks pass; anonymous live denial verified. Punch/kiosk and legacy onboarding completion/used-link UI pass; protected diff clean. Every live fixture removed and zero checks passed; build OK. Live both-login/both-completed rejection, fresh non-admin session, ciphertext-only banking, concurrency and physical devices unverified; non-FK link-open race not eliminated.
 
 # Four approved audit fixes
 - [x] Live pg_constraint verified all 32 cascading children: 21 protected including financial references, 11 explicitly disposable excluded; each added table has a blocking test. Signature-only/hotel-only live fixtures blocked with evidence preserved.

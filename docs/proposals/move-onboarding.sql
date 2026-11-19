@@ -1,4 +1,4 @@
--- REVIEW ONLY: not applied. One proposed migration, adding exactly two functions.
+-- Owner-approved corrected SQL: one migration adding exactly two functions.
 -- No existing function, trigger, policy, table, column, cron or storage change.
 -- Collision skips retain the source evidence row; no evidence is deleted.
 -- Existing personnel_status_log accepts 'unavailable', NOT 'inactive'.
@@ -25,6 +25,12 @@ BEGIN
   IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(), 'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Admin access required' USING ERRCODE = '42501';
   END IF;
+  -- Fail closed on schema drift: every referenced personnel field must exist.
+  FOREACH f IN ARRAY ARRAY['first_name','last_name','email','phone','date_of_birth','address','city','state','zip','photo_url','ssn_last_four','ssn_full','itin','citizenship_status','immigration_status','work_authorization_status','work_authorization_type','work_auth_expiry','id_document_url','i9_completed_at','everify_status','everify_case_number','everify_verified_at','everify_expiry','bank_name','bank_account_type','bank_routing_number','bank_account_number','direct_deposit_signed_at','direct_deposit_signature','tax_classification','tax_ein','tax_business_name','w9_signed_at','w9_signature','w9_certification','ica_signed_at','ica_signature','gender','sms_consent_at','sms_consent_version','photo_consent_at','photo_consent_version','background_consent_at','background_consent_version','email_verified_at','email_verified_source','phone_verified_at','phone_verified_source','hourly_rate','pay_rate','bill_rate','rating','vendor_id','linked_vendor_id','employer_customer_id','status','portal_required','non_billable','notes','onboarding_status','onboarding_completed_at','home_lat','home_lng','geocoded_at','geocode_source','is_geocodable','banking_info_updated_at','banking_info_updated_by','bank_account_number_encrypted','bank_routing_number_encrypted','bank_account_last4','merged_at','merged_by','merge_reason','user_id','id','personnel_number','deleted_at','merged_into_id']::text[] LOOP
+    IF NOT EXISTS(SELECT 1 FROM pg_catalog.pg_attribute WHERE attrelid='public.personnel'::regclass AND attname=f AND attnum>0 AND NOT attisdropped) THEN
+      RAISE EXCEPTION 'Required personnel column missing: %',f;
+    END IF;
+  END LOOP;
   SELECT * INTO s FROM public.personnel WHERE id=p_source;
   IF NOT FOUND THEN reasons:=reasons || jsonb_build_array('Source not found'); END IF;
   SELECT * INTO t FROM public.personnel WHERE id=p_target;
@@ -86,7 +92,7 @@ BEGIN
     counts:=counts || jsonb_build_object(tab,jsonb_build_object('source',n,'move',n-skips,'skip',skips));
   END LOOP;
   sj:=to_jsonb(s); tj:=to_jsonb(t);
-  FOREACH f IN ARRAY ARRAY['first_name','last_name','email','phone','date_of_birth','address','city','state','zip','photo_url','ssn_last_four','ssn_full','itin','citizenship_status','immigration_status','work_authorization_status','work_authorization_type','work_auth_expiry','id_document_url','i9_completed_at','everify_status','everify_case_number','everify_verified_at','everify_expiry','bank_name','bank_account_type','bank_routing_number','bank_account_number','direct_deposit_signed_at','direct_deposit_signature','tax_classification','tax_ein','tax_business_name','w9_signed_at','w9_signature','w9_certification','ica_signed_at','ica_signature','onboarding_status','onboarding_completed_at','email_verified_at','email_verified_source','phone_verified_at','phone_verified_source','hourly_rate','pay_rate','bill_rate','rating','vendor_id','linked_vendor_id','employer_customer_id','status','portal_required','non_billable','notes']::text[] LOOP
+  FOREACH f IN ARRAY ARRAY['first_name','last_name','email','phone','date_of_birth','address','city','state','zip','photo_url','ssn_last_four','ssn_full','itin','citizenship_status','immigration_status','work_authorization_status','work_authorization_type','work_auth_expiry','id_document_url','i9_completed_at','everify_status','everify_case_number','everify_verified_at','everify_expiry','bank_name','bank_account_type','bank_routing_number','bank_account_number','direct_deposit_signed_at','direct_deposit_signature','tax_classification','tax_ein','tax_business_name','w9_signed_at','w9_signature','w9_certification','ica_signed_at','ica_signature','gender','sms_consent_at','sms_consent_version','photo_consent_at','photo_consent_version','background_consent_at','background_consent_version','email_verified_at','email_verified_source','phone_verified_at','phone_verified_source','hourly_rate','pay_rate','bill_rate','rating','vendor_id','linked_vendor_id','employer_customer_id','status','portal_required','non_billable','notes']::text[] LOOP
     mode:=CASE WHEN f=ANY(ARRAY['first_name','last_name','email','phone']::text[]) THEN 'contact' WHEN f=ANY(ARRAY['hourly_rate','pay_rate','bill_rate','rating','vendor_id','linked_vendor_id','employer_customer_id','status','portal_required','non_billable','notes']::text[]) THEN 'employment' ELSE 'profile' END;
     sv:=sj->f; tv:=tj->f; note:=NULL;
     -- Treat encrypted and plaintext bank representations as one logical field.
@@ -153,12 +159,17 @@ BEGIN
   IF p_choices IS NULL OR jsonb_typeof(p_choices)<>'object' THEN
     RAISE EXCEPTION 'Choices must be an object';
   END IF;
-  -- Live schema: all listed children have personnel FKs except punch_link_events.
-  -- FOR UPDATE parent locks stop concurrent FK inserts/repoints to the source;
-  -- the only table-wide lock covers the non-FK link-open log, NOT punches.
-  -- This briefly delays link-open logging; after 3s contention fails safely.
-  LOCK TABLE public.punch_link_events IN SHARE ROW EXCLUSIVE MODE;
+  -- Only the two personnel rows are locked; operational tables are read-only.
+  -- No lock is taken on the non-FK punch_link_events log; its concurrent-write
+  -- race cannot be eliminated without changing the owner-approved scope.
+
   PERFORM id FROM public.personnel WHERE id IN(p_source,p_target) ORDER BY id FOR UPDATE;
+  -- Fail closed on schema drift: every referenced personnel field must exist.
+  FOREACH f IN ARRAY ARRAY['first_name','last_name','email','phone','date_of_birth','address','city','state','zip','photo_url','ssn_last_four','ssn_full','itin','citizenship_status','immigration_status','work_authorization_status','work_authorization_type','work_auth_expiry','id_document_url','i9_completed_at','everify_status','everify_case_number','everify_verified_at','everify_expiry','bank_name','bank_account_type','bank_routing_number','bank_account_number','direct_deposit_signed_at','direct_deposit_signature','tax_classification','tax_ein','tax_business_name','w9_signed_at','w9_signature','w9_certification','ica_signed_at','ica_signature','gender','sms_consent_at','sms_consent_version','photo_consent_at','photo_consent_version','background_consent_at','background_consent_version','email_verified_at','email_verified_source','phone_verified_at','phone_verified_source','hourly_rate','pay_rate','bill_rate','rating','vendor_id','linked_vendor_id','employer_customer_id','status','portal_required','non_billable','notes','onboarding_status','onboarding_completed_at','home_lat','home_lng','geocoded_at','geocode_source','is_geocodable','banking_info_updated_at','banking_info_updated_by','bank_account_number_encrypted','bank_routing_number_encrypted','bank_account_last4','merged_at','merged_by','merge_reason','user_id','id','personnel_number','deleted_at','merged_into_id']::text[] LOOP
+    IF NOT EXISTS(SELECT 1 FROM pg_catalog.pg_attribute WHERE attrelid='public.personnel'::regclass AND attname=f AND attnum>0 AND NOT attisdropped) THEN
+      RAISE EXCEPTION 'Required personnel column missing: %',f;
+    END IF;
+  END LOOP;
   SELECT * INTO s FROM public.personnel WHERE id=p_source;
   SELECT * INTO t FROM public.personnel WHERE id=p_target;
   preview:=public.preview_move_onboarding(p_source,p_target);
@@ -167,7 +178,7 @@ BEGIN
   END IF;
   sj:=to_jsonb(s);
   FOR f,choice IN SELECT key,value FROM jsonb_each_text(p_choices) LOOP
-    IF NOT f=ANY(ARRAY['first_name','last_name','email','phone','date_of_birth','address','city','state','zip','photo_url','ssn_last_four','ssn_full','itin','citizenship_status','immigration_status','work_authorization_status','work_authorization_type','work_auth_expiry','id_document_url','i9_completed_at','everify_status','everify_case_number','everify_verified_at','everify_expiry','bank_name','bank_account_type','bank_routing_number','bank_account_number','direct_deposit_signed_at','direct_deposit_signature','tax_classification','tax_ein','tax_business_name','w9_signed_at','w9_signature','w9_certification','ica_signed_at','ica_signature','onboarding_status','onboarding_completed_at','email_verified_at','email_verified_source','phone_verified_at','phone_verified_source','hourly_rate','pay_rate','bill_rate','rating','vendor_id','linked_vendor_id','employer_customer_id','status','portal_required','non_billable','notes']::text[]) OR choice IS NULL OR choice NOT IN('source','target') OR jsonb_typeof(p_choices->f)<>'string' THEN
+    IF NOT f=ANY(ARRAY['first_name','last_name','email','phone','date_of_birth','address','city','state','zip','photo_url','ssn_last_four','ssn_full','itin','citizenship_status','immigration_status','work_authorization_status','work_authorization_type','work_auth_expiry','id_document_url','i9_completed_at','everify_status','everify_case_number','everify_verified_at','everify_expiry','bank_name','bank_account_type','bank_routing_number','bank_account_number','direct_deposit_signed_at','direct_deposit_signature','tax_classification','tax_ein','tax_business_name','w9_signed_at','w9_signature','w9_certification','ica_signed_at','ica_signature','gender','sms_consent_at','sms_consent_version','photo_consent_at','photo_consent_version','background_consent_at','background_consent_version','email_verified_at','email_verified_source','phone_verified_at','phone_verified_source','hourly_rate','pay_rate','bill_rate','rating','vendor_id','linked_vendor_id','employer_customer_id','status','portal_required','non_billable','notes']::text[]) OR choice IS NULL OR choice NOT IN('source','target') OR jsonb_typeof(p_choices->f)<>'string' THEN
       RAISE EXCEPTION 'Invalid field choice: %',f;
     END IF;
     IF f=ANY(ARRAY['hourly_rate','pay_rate','bill_rate','rating','vendor_id','linked_vendor_id','employer_customer_id','status','portal_required','non_billable','notes']::text[]) AND choice='source' THEN
@@ -213,6 +224,14 @@ BEGIN
   ELSIF patch ? 'ssn_last_four' AND nullif(t.ssn_full,'') IS NOT NULL AND patch->>'ssn_last_four'<>right(t.ssn_full,4) THEN
     RAISE EXCEPTION 'Choose matching SSN fields';
   END IF;
+  -- Completion comes from the eligible source, never a conflict choice.
+  patch:=patch || jsonb_build_object('onboarding_status',s.onboarding_status,'onboarding_completed_at',s.onboarding_completed_at);
+  IF patch ? 'address' THEN
+    patch:=patch || jsonb_build_object('home_lat',s.home_lat,'home_lng',s.home_lng,'geocoded_at',s.geocoded_at,'geocode_source',s.geocode_source,'is_geocodable',s.is_geocodable);
+  END IF;
+  IF patch ? 'bank_name' OR patch ? 'bank_account_type' OR patch ? 'bank_routing_number' OR patch ? 'bank_account_number' THEN
+    patch:=patch || jsonb_build_object('banking_info_updated_at',s.banking_info_updated_at,'banking_info_updated_by',s.banking_info_updated_by);
+  END IF;
   -- Move portal association only after clearing its unique source value.
   IF s.user_id IS NOT NULL AND t.user_id IS NULL THEN
     UPDATE public.personnel SET user_id=NULL WHERE id=s.id;
@@ -228,7 +247,7 @@ BEGIN
   END IF;
   FOREACH tab IN ARRAY ARRAY['personnel_documents','personnel_w9_forms','document_signatures','emergency_contacts','personnel_certifications','personnel_badges','personnel_languages','personnel_capabilities','personnel_engagement_notes','personnel_onboarding_tokens','personnel_registrations','onboarding_email_deliveries']::text[] LOOP
     moved:=0; skipped:=0;
-    FOR child IN EXECUTE format('SELECT id FROM public.%I WHERE personnel_id=$1 ORDER BY id FOR UPDATE',tab) USING s.id LOOP
+    FOR child IN EXECUTE format('SELECT id FROM public.%I WHERE personnel_id=$1 ORDER BY id',tab) USING s.id LOOP
       BEGIN
         EXECUTE format('UPDATE public.%I SET personnel_id=$1 WHERE id=$2 AND personnel_id=$3',tab) USING t.id,child.id,s.id;
         moved:=moved+1;
@@ -246,7 +265,7 @@ BEGIN
     END LOOP;
     results:=results || jsonb_build_object(tab,jsonb_build_object('moved',moved,'skipped',skipped));
   END LOOP;
-  UPDATE public.personnel SET status='inactive',merged_into_id=t.id WHERE id=s.id;
+  UPDATE public.personnel SET status='inactive',merged_into_id=t.id,merged_at=now(),merged_by=auth.uid(),merge_reason='Onboarding moved to '||t.personnel_number WHERE id=s.id;
   -- Include derived encryption/last-four/verification FIELD NAMES, never values.
   SELECT coalesce(jsonb_agg(key ORDER BY key),'[]'::jsonb) INTO chosen
     FROM jsonb_object_keys(patch) key WHERE NOT filled ? key;
