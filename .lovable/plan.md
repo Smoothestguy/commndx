@@ -6,11 +6,11 @@
    Track personnel_onboarding_tokens.first_opened_at once through onboarding token validation only. Derive the unopened state after 24 hours for live unused links; show the profile warning and deduplicated admin notification with Resend by text, Resend by email and Fix contact & resend. Keep punch/kiosk token lookups untouched.
 3. Move application approval into a manager-authorized transaction with explicit existing-person selection and safe vendor linking.
 4. Add return-worker information checks, logged through the existing inbox, with eligibility and resend safeguards.
-5. HOLD personnel merge: do not implement or run reference changes pending the owner's answer. Items 1–4 proceed now.
+5. Keep duplicate checks and the review list; remove personnel Merge while retaining Open both profiles and Not duplicates. Other entity merges remain untouched.
 6. Test only with disposable records and mocked sends, clean fixtures, and run the protected-flow regression gate.
 
-## Scope clarification required
-The hard prohibition on changes to time entries, stays/visits, check-in tokens and timesheet signatures conflicts with item 5's requirement to repoint these same records during a personnel merge. Confirm whether an explicit admin merge may update only their personnel references, preserving times, signatures, token values, paths and operational functions. Until clarified, do not implement or execute those reference changes.
+## Excluded
+Personnel merging is not included. Do not implement a personnel merge RPC or change protected-table references.
 
 ## Technical safeguards
 - No punch/kiosk routes, operational triggers/functions, existing schedules or clock-in behavior changes. Only the new email-monitor schedule is in scope.

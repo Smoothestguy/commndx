@@ -1,15 +1,10 @@
-import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { EntityMergeDialog } from "@/components/merge/EntityMergeDialog";
 import { useOpenContactReviews, useResolveContactReview, usePersonnelDuplicateGroups, useDismissDuplicateGroup, type DuplicateGroup } from "@/integrations/supabase/hooks/useContactReview";
-import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 
 const REASON: Record<string, string> = { same_email: "Same email", same_phone: "Same phone", similar_name: "Similar name", email_match_phone_differs: "Email matched, phone differs", phone_match_email_differs: "Phone matched, email differs" };
 
@@ -18,14 +13,6 @@ export function PersonnelDataQualitySheet({ open, onOpenChange }: { open: boolea
   const resolve = useResolveContactReview();
   const groups = usePersonnelDuplicateGroups(open);
   const dismiss = useDismissDuplicateGroup();
-  const qc = useQueryClient();
-  const [merge, setMerge] = useState<{ source: Record<string, any>; target: Record<string, any> } | null>(null);
-
-  const openMerge = async (targetId: string, sourceId: string) => {
-    const { data, error } = await supabase.from("personnel").select("*").in("id", [targetId, sourceId]);
-    if (error || !data || data.length < 2) { toast.error("Could not load both records"); return; }
-    setMerge({ target: data.find((r) => r.id === targetId)!, source: data.find((r) => r.id === sourceId)! });
-  };
 
   const groupRow = (g: DuplicateGroup) => {
     const [oldest, ...rest] = g.personnel;
@@ -42,7 +29,10 @@ export function PersonnelDataQualitySheet({ open, onOpenChange }: { open: boolea
               <Link to={`/personnel/${p.id}`} className="font-medium hover:underline">{p.name}</Link>
               <span className="text-muted-foreground">{p.personnel_number} · {p.status} · added {format(new Date(p.created_at), "MMM d, yyyy")}</span>
               {p.id !== oldest.id && rest.length > 0 && (
-                <Button size="sm" variant="outline" className="ml-auto" onClick={() => void openMerge(oldest.id, p.id)}>Merge into {oldest.personnel_number ?? "oldest"}</Button>
+                <div className="ml-auto flex gap-2" aria-label="Open both profiles">
+                  <Button size="sm" variant="outline" asChild><Link to={`/personnel/${oldest.id}`} target="_blank" rel="noopener noreferrer">Open {oldest.personnel_number ?? "first profile"}</Link></Button>
+                  <Button size="sm" variant="outline" asChild><Link to={`/personnel/${p.id}`} target="_blank" rel="noopener noreferrer">Open {p.personnel_number ?? "second profile"}</Link></Button>
+                </div>
               )}
             </li>
           ))}
@@ -90,10 +80,6 @@ export function PersonnelDataQualitySheet({ open, onOpenChange }: { open: boolea
             {groups.isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : !groups.data?.length ? <p className="text-sm text-muted-foreground">No possible duplicates.</p> : <ul className="space-y-3">{groups.data.map(groupRow)}</ul>}
           </TabsContent>
         </Tabs>
-        {merge && (
-          <EntityMergeDialog open={!!merge} onOpenChange={(o) => !o && setMerge(null)} entityType="personnel" sourceEntity={merge.source} targetEntity={merge.target}
-            onMergeComplete={() => { setMerge(null); qc.invalidateQueries({ queryKey: ["personnel-duplicate-groups"] }); qc.invalidateQueries({ queryKey: ["personnel"] }); }} />
-        )}
       </SheetContent>
     </Sheet>
   );
