@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -91,41 +90,6 @@ serve(async (req) => {
 
     const emailResult = await emailResponse.json();
     console.log("[Onboarding Confirmation] Email sent successfully:", emailResult);
-
-    // Create admin notification
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Fetch admin and manager user IDs
-    const { data: adminUsers, error: usersError } = await supabase
-      .from("user_roles")
-      .select("user_id")
-      .in("role", ["admin", "manager"]);
-
-    if (usersError) {
-      console.error("[Onboarding Confirmation] Failed to fetch admin users:", usersError);
-    } else if (adminUsers && adminUsers.length > 0) {
-      // Create notifications for each admin/manager
-      const notifications = adminUsers.map((user) => ({
-        user_id: user.user_id,
-        title: "Onboarding Completed",
-        message: `${personnelName} has completed their onboarding process.`,
-        notification_type: "onboarding_complete",
-        related_id: personnelId,
-        link_url: `/personnel/${personnelId}`,
-      }));
-
-      const { error: notifError } = await supabase
-        .from("admin_notifications")
-        .insert(notifications);
-
-      if (notifError) {
-        console.error("[Onboarding Confirmation] Failed to create admin notifications:", notifError);
-      } else {
-        console.log("[Onboarding Confirmation] Created", notifications.length, "admin notifications");
-      }
-    }
 
     return new Response(
       JSON.stringify({ success: true, message: "Confirmation email sent" }),
