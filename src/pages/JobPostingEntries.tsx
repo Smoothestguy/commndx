@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Download, FileText, FileSpreadsheet, File, Code, Send } from "lucide-react";
 import { InvitePastWorkersDialog } from "@/components/staffing/InvitePastWorkersDialog";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ import {
 export default function JobPostingEntries() {
   const { postingId } = useParams<{ postingId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [statusFilter, setStatusFilter] = useState<string>("active");
   const [positionFilter, setPositionFilter] = useState<string>("all");
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
@@ -149,7 +150,12 @@ export default function JobPostingEntries() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate("/staffing/applications")}
+            onClick={() => {
+              const from = (location.state as { from?: string } | null)?.from;
+              if (from) navigate(from);
+              else if (window.history.length > 1) navigate(-1);
+              else navigate("/staffing/applications");
+            }}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>

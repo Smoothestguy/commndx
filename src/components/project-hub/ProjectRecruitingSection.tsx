@@ -15,6 +15,7 @@ import {
   Loader2,
   UserPlus,
   Users,
+  ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -94,6 +95,9 @@ function TaskOrderCard({
 
   // approved-per-position tallies
   const approved = applications.filter((a) => a.status === "approved");
+  const pendingCount = applications.filter(
+    (a) => a.status === "submitted" || a.status === "reviewing",
+  ).length;
   const positionCounts = useMemo(() => {
     const map = new Map<string, number>();
     let unassigned = 0;
@@ -187,6 +191,11 @@ function TaskOrderCard({
                   {totalApproved} / {totalHeadcount} hired
                 </Badge>
               )}
+              {pendingCount > 0 && (
+                <Badge variant="outline" className="text-xs">
+                  {pendingCount} pending review
+                </Badge>
+              )}
             </CardTitle>
             <TaskOrderFacts className="mt-2" taskOrder={taskOrder} />
           </div>
@@ -240,6 +249,17 @@ function TaskOrderCard({
                   <Button size="sm" variant="outline" onClick={() => setInvitePastOpen(true)}>
                     <UserPlus className="h-4 w-4 mr-1" />
                     Invite Past Workers
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      navigate(`/staffing/applications/posting/${posting.id}`, {
+                        state: { from: `/projects/${taskOrder.project_id}#recruiting` },
+                      })
+                    }
+                  >
+                    <ClipboardList className="h-4 w-4 mr-1" />
+                    View applicants ({applications.length})
                   </Button>
                   <Button
                     size="sm"
