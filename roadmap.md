@@ -410,3 +410,14 @@
 - [x] Needs review queue + Possible duplicates on Personnel
 - [x] Regression gate: git diff shows no punch/kiosk/check-in/time/sheets/alerts/auto-close changes; punch+kiosk dry-run; legacy onboarding link E2E; apply new applicant + Watchdog events
 - [ ] Invite registration page (/register/:token) writes personnel directly — contact verification not wired (needs a server-side path)
+
+## Customer Ops (Taylor Olvey, Patriot)
+- [x] Customer-scoped role, link table, blocked direct access, dollar-free functions
+- [x] Workspace page, signature request dry-run, sheet download
+- [ ] Verify as disposable Patriot customer user (390 + desktop, dollar grep)
+- [ ] Link + invite tolvey@patriotrg.com
+
+## Personnel fixes (owner-approved)
+- [ ] 1. Tokenized personnel search (any order, phone digits, safe chars) + name whitespace trigger + one-time cleanup
+- [ ] 2. Profile "Resend onboarding"; email-change confirm resend; clear bounce + alerts
+- [ ] 3. Insert-only duplicate trigger + admin override RPC + UI match/attach in Add/Quick/CSV; AGENTS rule
