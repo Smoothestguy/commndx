@@ -1,3 +1,4 @@
+import { MobeSection } from '@/components/signin/MobeSection';
 import { EnhancedDataTable, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
 import { useSessionState } from '@/hooks/useSessionState';
 import { useTransientSelection } from '@/hooks/useTransientSelection';
@@ -161,6 +162,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
         <Button variant="outline" size="sm" onClick={() => { setDay(today); setSel(new Set()); }}>Today</Button>
       </div></div>
       <div className="flex flex-wrap items-center gap-2 pb-2"><p className="text-sm text-muted-foreground">{present}/{rows.length} signed in · {total.toFixed(2)} h closed</p><MissingSignatures compact locationId={locationId} day={day} zone={tz} rows={q.data?.sigRows ?? []} /></div>
+      <div className="w-full pb-2"><MobeSection locationId={locationId} day={day} onsite={present} /></div>
       {canWrite && <Button className="ml-auto" size="sm" variant="outline" disabled={!sel.size} onClick={() => setBulk({ date: day, inTime: '', outTime: '', note: '' })}><Clock className="h-4 w-4 mr-1" />Set times for {sel.size || ''} selected</Button>}
       {canWrite && <Button size="sm" onClick={() => setAddPerson(true)}><Plus className="h-4 w-4 mr-1" />Add person to this day</Button>}
     </div>
