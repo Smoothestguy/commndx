@@ -1,43 +1,32 @@
-# Move onboarding — SQL approval required
+# Customer Ops account for Taylor Olvey (Patriot Response Group)
 
-## Review the exact SQL
+## Finding
+There is no customer account type today. The `manager` role is used by about 250 database access rules that apply to everything: all customers, all locations, pay and bill rates, invoices, payroll. Giving Taylor `manager` would break the zero-dollar rule, so I have **not** created the account yet. Sending the invite first would give her a working login with nothing safe to show.
 
-[Download the proposed SQL](sandbox:/mnt/documents/move-onboarding.sql)
-
-The SQL is also committed as `docs/proposals/move-onboarding.sql`. It has **not been applied**. Approving this plan authorizes applying that exact SQL as one migration and implementing the dialog below.
-
-## Scope
-
-- Add exactly two admin-only functions: `preview_move_onboarding` and `move_onboarding_to_personnel`.
-- No tables, columns, existing functions, triggers, policies, schedules or storage files change.
-- General personnel Merge remains forbidden. Only the approved onboarding evidence tables and allow-listed profile fields can move.
-- Keep the source record, inactive and linked to the target; leave all target work, attendance, assignments, check-in links and payments unchanged.
-
-## Safety and choices
-
-- Enforce every source-empty check and onboarding/login eligibility rule again during execution.
-- Preserve target names/contact unless explicitly choosing source; fill empty profile values, require a choice for conflicts, preserve employment values and target P-number.
-- Mask SSN/ITIN/account numbers to last four; hide routing numbers, signature contents and private image paths. Audit field names/counts, never sensitive values.
-- Unique collisions retain target rows and leave skipped source evidence in place, reporting each skip.
-- Contact-verification evidence follows the matching selected email/phone; never attach a source verification stamp to a different retained target contact.
-
-## Live-schema adaptations for approval
-
-1. The existing status-log constraint does **not** accept `inactive`. Set the source personnel status to inactive, but write the requested note using the existing log status **unavailable**; no constraint change.
-2. Require the target to have at least one time-entry, attendance or stay row, consistent with “target has the work history.” Deleted records are ineligible.
-3. Bank account/routing choices copy their paired existing encrypted representation too, keeping masked account details consistent. Existing bank-read authorization remains unchanged.
-4. All listed personnel children have foreign keys except `punch_link_events`. Lock both personnel rows in UUID order; briefly lock only that link-open log to close its concurrent-write gap. Contention fails safely after three seconds. No punch logic or punch record changes.
-5. Existing triggers remain enabled and fire normally. Their ordinary updated timestamps may change on moved profile/evidence rows; operational rows are never updated.
-
-## Possible duplicates dialog after approval
-
-- Admin-only actions for eligible pairs in either direction, labeled “Move onboarding to {P#}.”
-- Show both identities, phones, last-four checks, moving/skipped counts and fill/keep fields.
-- Radio choices for conflicts default to target; warn “Only use if both records are the same person.”
-- Show untouched target hours/projects/check-in-link presence without exposing the bearer link; execute once, toast and refresh groups.
+## Proposed approach (needs your OK because it changes live access rules)
+1. **New role `customer_ops`** added to the existing role list. It is never inferred from profile data.
+2. **New link table `customer_user_links`** (user, customer). Only admins can write to it. Taylor is linked to Patriot (da445690-...).
+3. **Scoped read functions** (security-definer, admin-checked or link-checked, no anonymous access) return only fields with no dollars:
+   - Patriot locations across projects (5049-FCOCO, 5052-FL-WPB-Garner, ...)
+   - Roster for those locations: name, position, phone, status. No rates, no bench notes, no employer pay data.
+   - Attendance and stays, local day lists, missing-signature list (includes demobilized people)
+   - Sign-in sheet and timesheet download through the existing private signed-PDF path, limited to her locations
+4. **Scoped write functions**:
+   - Assign or unassign a person on a Patriot location, chosen only from that project's roster. Uses the existing dated-assignment rules and is audited.
+   - Signature request: calls the existing request flow with `requested_by = Taylor`, limited to her locations' worked stays. Supports dry-run.
+5. **No table access granted.** She gets no direct read access to personnel, time_entries, projects, invoices or similar tables. Everything goes through the functions above, so a dollar column cannot leak.
+6. **Separate customer workspace** (`/customer-ops`): Locations, Roster, Attendance, Missing signatures, Sheets. Desktop plus phone layout. Staff navigation, Sales and Financials are hidden, and staff pages redirect.
+7. **Invite**: after the above is live, send the existing `send-invitation` email from admin@fairfieldrg.com to tolvey@patriotrg.com. She sets her own password; no password appears anywhere.
 
 ## Verification
+- Mint her session; check at 390px and 1280px: only Patriot locations, attendance opens, missing-signature list loads, signature request runs as dry-run (no text sent).
+- Grep every rendered page and API response in her session for rate, bill, pay, amount, total_cost, invoice and per_diem: expect zero hits.
+- Negative checks: direct table reads and another customer's location IDs are refused.
+- No data changes other than the account, the role and the link row.
 
-**PASS now, isolated only:** PostgreSQL compilation; eligible move; all 16 source-history blockers; missing-choice rollback; masking; both-completed and both-login preview rejection; internal non-admin denial; unchanged target time-entry/assignment/token rows; evidence/portal move; five unique collision rules.
+## Questions
+- Should "assign" also allow adding someone who is not yet on the project roster? (The proposal says no: project roster only.)
+- Should she see worker phone numbers?
 
-**Pending approval:** live disposable fixtures and server-role tests, current-schema encrypted banking checks, concurrent-write checks, desktop/390px dialog, punch/kiosk loads and legacy onboarding submission. Mock all sends and remove verification fixtures in the same run. No production rows or app screens have changed during this review.
+## Technical
+One additive migration: role enum value, link table with RLS (admin ALL with WITH CHECK, self select), and about 8 SECURITY DEFINER functions with REVOKE ALL from PUBLIC/anon and GRANT to authenticated only. I will show you the SQL before applying it.
