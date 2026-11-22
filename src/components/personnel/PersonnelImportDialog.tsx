@@ -15,9 +15,8 @@ import {
   type ParsedPersonnelRow,
   type ValidationResult,
 } from "@/utils/csvPersonnelParser";
-import { useBulkAddPersonnel } from "@/integrations/supabase/hooks/usePersonnel";
 import { supabase } from "@/integrations/supabase/client";
-import { findContactMatches, logCreateAnyway, matchesBlock, REASON_LABEL, type ContactMatch } from "@/lib/contactMatches";
+import { createPersonnelOverride, findContactMatches, logCreateAnyway, matchesBlock, parseDuplicateError, REASON_LABEL, type ContactMatch } from "@/lib/contactMatches";
 import { useUserRole } from "@/hooks/useUserRole";
 
 interface PersonnelImportDialogProps {
@@ -33,9 +32,8 @@ export const PersonnelImportDialog = ({ open, onOpenChange }: PersonnelImportDia
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [results, setResults] = useState<{ success: number; failed: number } | null>(null);
+  const [results, setResults] = useState<{ success: number; failed: number; attached: number; rows: { rowNumber: number; name: string; outcome: string; ok: boolean }[] } | null>(null);
   const queryClient = useQueryClient();
-  const bulkAdd = useBulkAddPersonnel();
   const { isAdmin } = useUserRole();
   // Review step: rows with possible matches default to Skip.
   const [rowMatches, setRowMatches] = useState<Record<number, ContactMatch[]>>({});
@@ -100,40 +98,41 @@ export const PersonnelImportDialog = ({ open, onOpenChange }: PersonnelImportDia
   const handleImport = async () => {
     if (!validation?.valid.length) return;
     const toImport = validation.valid.filter((r) => !rowMatches[r.rowNumber] || createRows[r.rowNumber]);
-    if (!toImport.length) { toast.info("All rows were skipped"); return; }
 
     setStep("importing");
     setImporting(true);
     setProgress(0);
 
     try {
-      const batchSize = 50;
-      const batches = [];
-      
-      for (let i = 0; i < toImport.length; i += batchSize) {
-        batches.push(toImport.slice(i, i + batchSize));
-      }
-
-      let successCount = 0;
-      let failedCount = 0;
-
-      for (let i = 0; i < batches.length; i++) {
-        const batch = batches[i];
-        const cleanBatch = batch.map(({ rowNumber, errors, ...rest }) => rest);
-
+      // One row at a time so a duplicate-guard refusal is reported per row and never fails the batch.
+      let successCount = 0, failedCount = 0;
+      const report: { rowNumber: number; name: string; outcome: string; ok: boolean }[] = [];
+      const attached = validation.valid.filter((r) => rowMatches[r.rowNumber] && !createRows[r.rowNumber]);
+      for (const r of attached) { const m = rowMatches[r.rowNumber][0]; report.push({ rowNumber: r.rowNumber, name: `${r.first_name} ${r.last_name}`, outcome: `Kept existing ${m.ref_number ?? m.full_name}`, ok: true }); }
+      for (let i = 0; i < toImport.length; i++) {
+        const r = toImport[i];
+        const { rowNumber, errors, ...rest } = r;
+        const name = `${r.first_name} ${r.last_name}`;
+        const forced = !!createRows[rowNumber] && matchesBlock(rowMatches[rowNumber] ?? []);
         try {
-          await bulkAdd.mutateAsync(cleanBatch as any);
-          successCount += batch.length;
-          for (const r of batch) if (rowMatches[r.rowNumber]) await logCreateAnyway("csv_import", r, rowMatches[r.rowNumber], `CSV row ${r.rowNumber} created anyway`);
+          let newId: string | undefined;
+          if (forced) newId = await createPersonnelOverride(rest as Record<string, unknown>, `CSV row ${rowNumber} created anyway`);
+          else {
+            const { data, error } = await supabase.from("personnel").insert(rest as any).select("id").single();
+            if (error) throw error;
+            newId = data.id;
+            if (rowMatches[rowNumber]) await logCreateAnyway("csv_import", r, rowMatches[rowNumber], `CSV row ${rowNumber} created anyway`, newId);
+          }
+          successCount++; report.push({ rowNumber, name, outcome: "Created", ok: true });
         } catch (error) {
-          console.error("Batch import error:", error);
-          failedCount += batch.length;
+          failedCount++;
+          const m = parseDuplicateError(error);
+          report.push({ rowNumber, name, ok: false, outcome: m ? `Not created — matches ${m.ref_number ?? ""} ${m.full_name}`.trim() : (error as Error)?.message ?? "Failed" });
         }
-
-        setProgress(((i + 1) / batches.length) * 100);
+        setProgress(((i + 1) / toImport.length) * 100);
       }
-
-      setResults({ success: successCount, failed: failedCount });
+      report.sort((a, b) => a.rowNumber - b.rowNumber);
+      setResults({ success: successCount, failed: failedCount, attached: attached.length, rows: report });
       setStep("results");
 
       queryClient.invalidateQueries({ queryKey: ["personnel"] });
@@ -264,18 +263,19 @@ export const PersonnelImportDialog = ({ open, onOpenChange }: PersonnelImportDia
             {checkingMatches && <p className="text-sm text-muted-foreground">Checking for existing people…</p>}
             {Object.keys(rowMatches).length > 0 && (
               <div className="space-y-2" aria-label="Rows with possible matches">
-                <h4 className="font-semibold">Possible matches ({Object.keys(rowMatches).length}) — skipped unless you choose Create</h4>
+                <h4 className="font-semibold">Possible matches ({Object.keys(rowMatches).length}) — each keeps the existing person unless you choose Create</h4>
                 <div className="max-h-64 overflow-y-auto space-y-2">
                   {validation.valid.filter((r) => rowMatches[r.rowNumber]).map((r) => {
                     const m = rowMatches[r.rowNumber]; const blocked = matchesBlock(m);
                     return (
                       <div key={r.rowNumber} className="flex flex-wrap items-center gap-2 rounded-md border border-border p-2 text-sm">
                         <span className="min-w-0 flex-1">
-                          <span className="font-medium">Row {r.rowNumber}: {r.first_name} {r.last_name}</span>
+                          <span className="font-medium">Row {r.rowNumber}: {r.first_name} {r.last_name}</span>{" "}
+                          <span className="font-medium">{createRows[r.rowNumber] ? "· New" : `· Will attach to existing ${m[0]?.ref_number ?? m[0]?.full_name ?? ""}`}</span>
                           <span className="text-muted-foreground"> — {m.slice(0, 2).map((x) => `${x.full_name}${x.ref_number ? ` ${x.ref_number}` : ""} · ${x.reasons.map((y) => REASON_LABEL[y]).join(" · ")}`).join("; ")}</span>
                         </span>
-                        <Button size="sm" variant={createRows[r.rowNumber] ? "outline" : "secondary"} onClick={() => setCreateRows((c) => ({ ...c, [r.rowNumber]: false }))}>Skip</Button>
-                        <Button size="sm" variant={createRows[r.rowNumber] ? "secondary" : "outline"} disabled={blocked && !isAdmin} title={blocked && !isAdmin ? "Same email — admin only" : undefined} onClick={() => setCreateRows((c) => ({ ...c, [r.rowNumber]: true }))}>Create anyway</Button>
+                        <Button size="sm" variant={createRows[r.rowNumber] ? "outline" : "secondary"} onClick={() => setCreateRows((c) => ({ ...c, [r.rowNumber]: false }))}>Use existing</Button>
+                        <Button size="sm" variant={createRows[r.rowNumber] ? "secondary" : "outline"} disabled={blocked && !isAdmin} title={blocked && !isAdmin ? "Same phone or email — admin only" : undefined} onClick={() => setCreateRows((c) => ({ ...c, [r.rowNumber]: true }))}>Create anyway</Button>
                       </div>
                     );
                   })}
@@ -332,6 +332,11 @@ export const PersonnelImportDialog = ({ open, onOpenChange }: PersonnelImportDia
               )}
             </div>
 
+            {results.rows.length > 0 && (
+              <ul className="max-h-64 overflow-y-auto space-y-1 text-sm" aria-label="Import results by row">
+                {results.rows.map((x) => <li key={x.rowNumber} className={x.ok ? "" : "text-destructive"}>Row {x.rowNumber}: {x.name} — {x.outcome}</li>)}
+              </ul>
+            )}
             <Button onClick={handleClose} className="w-full">
               Done
             </Button>

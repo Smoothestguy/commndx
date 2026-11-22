@@ -23,9 +23,9 @@ export function PossibleMatchDialog({ matches, onClose, onUseExisting, onCreateA
     <AlertDialog open={!!matches && matches.length > 0} onOpenChange={(o) => { if (!o) { setReason(""); onClose(); } }}>
       <AlertDialogContent className="max-w-lg">
         <AlertDialogHeader>
-          <AlertDialogTitle>{blocked ? "This email is already on file" : "Possible match"}</AlertDialogTitle>
+          <AlertDialogTitle>{blocked ? "This person is already on file" : "Possible match"}</AlertDialogTitle>
           <AlertDialogDescription>
-            {blocked ? "Same email means it is very likely the same person. Use the existing record." : "Check before creating a new record. Families and crews sometimes share a phone."}
+            {blocked ? "Same phone or email, or same name with no contact details, means it is very likely the same person. Use the existing record." : "Check before creating a new record. Families and crews sometimes share a phone."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <ul className="space-y-2 max-h-72 overflow-y-auto" aria-label="Possible matches">
@@ -34,7 +34,7 @@ export function PossibleMatchDialog({ matches, onClose, onUseExisting, onCreateA
               <span className="min-w-0 flex-1">
                 <span className="font-medium">Possible match: {m.full_name}</span>{" "}
                 {m.ref_number && <span className="text-muted-foreground">{m.ref_number}</span>}
-                <span className="text-muted-foreground"> · {m.reasons.map((r) => REASON_LABEL[r]).join(" · ")} · {m.entity_type === "applicant" ? "applicant" : "added"} {m.created_at ? format(new Date(m.created_at), "MMM d, yyyy") : ""}</span>
+                <span className="text-muted-foreground"> · {m.reasons.map((r) => REASON_LABEL[r]).join(" · ")} {m.created_at ? ` · ${m.entity_type === "applicant" ? "applicant" : "added"} ${format(new Date(m.created_at), "MMM d, yyyy")}` : ""}</span>
               </span>
               {onUseExisting && m.entity_type === "personnel" && (
                 <Button size="sm" variant="secondary" onClick={() => { setReason(""); onUseExisting(m); }}>Use existing</Button>

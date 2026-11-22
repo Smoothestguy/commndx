@@ -5,7 +5,7 @@ import { saveThenSend } from '@/lib/onboardingLinks';
 import { sendPersonnelOnboardingLink } from '@/lib/personnelOnboardingLink';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PossibleMatchDialog } from "@/components/personnel/PossibleMatchDialog";
-import { findContactMatches, logCreateAnyway, type ContactMatch } from "@/lib/contactMatches";
+import { findContactMatches, logCreateAnyway, parseDuplicateError, type ContactMatch } from "@/lib/contactMatches";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -22,6 +22,8 @@ import { ProjectVendorPicker } from '@/components/project-hub/ProjectVendorPicke
 import { useProjectVendors } from '@/integrations/supabase/hooks/useProjectVendors';
 import { projectVendorAllowed } from '@/lib/projectVendors';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { employerIds } from '@/lib/personnelEmployer';
 import { PhotoUpload } from "./PhotoUpload";
@@ -130,6 +132,31 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
     },
   });
 
+  // Email change on a not-yet-onboarded person: optional resend to the new address (saved once; retries only resend).
+  const [emailPrompt, setEmailPrompt] = useState<{ formData: Record<string, unknown>; sendNew: boolean; saved: boolean; error: string | null } | null>(null);
+  const confirmEmailChange = async () => {
+    if (!personnel || !emailPrompt) return;
+    setSending(true);
+    try {
+      if (!emailPrompt.saved) {
+        await updateMutation.mutateAsync({ id: personnel.id, updates: emailPrompt.formData as any });
+        const { error } = await supabase.rpc("acknowledge_onboarding_email_change", { p_personnel_id: personnel.id });
+        if (error) console.error("Bounce reset failed", error);
+      }
+      if (!emailPrompt.sendNew) { setEmailPrompt(null); onSuccess?.(); return; }
+      const email = String(emailPrompt.formData.email ?? "");
+      try {
+        await sendPersonnelOnboardingLink({ id: personnel.id, email, first_name: String(emailPrompt.formData.first_name ?? personnel.first_name), last_name: String(emailPrompt.formData.last_name ?? personnel.last_name) });
+        toast.success(`Onboarding sent to ${email}`);
+        setEmailPrompt(null); onSuccess?.();
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Email failed";
+        setEmailPrompt({ ...emailPrompt, saved: true, error: msg });
+        toast.warning("Email saved, but the onboarding email failed. Retry below.");
+      }
+    } finally { setSending(false); }
+  };
+
   const [pendingMatches, setPendingMatches] = useState<{ matches: ContactMatch[]; data: PersonnelFormData } | null>(null);
 
   const onSubmit = async (data: PersonnelFormData, override?: { reason: string | null }) => {
@@ -161,19 +188,25 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
     };
 
     if (personnel) {
-      await updateMutation.mutateAsync({
-        id: personnel.id,
-        updates: formData,
-      });
+      const emailChanged = (data.email ?? "").trim().toLowerCase() !== (personnel.email ?? "").trim().toLowerCase();
+      const onboardingOpen = personnel.onboarding_status !== "completed" && personnel.onboarding_status !== "revoked";
+      if (emailChanged && onboardingOpen && !emailPrompt) { setEmailPrompt({ formData, sendNew: true, saved: false, error: null }); return; }
+      await updateMutation.mutateAsync({ id: personnel.id, updates: formData });
+      if (emailChanged) await supabase.rpc("acknowledge_onboarding_email_change", { p_personnel_id: personnel.id }).then(({ error }) => { if (error) console.error("Bounce reset failed", error); });
       onSuccess?.();
     } else {
       setSending(true);
       let outcome;
       try {
-        outcome = await saveThenSend(() => addMutation.mutateAsync(formData as any), sendPersonnelOnboardingLink, canSend && sendNow);
+        outcome = await saveThenSend(() => addMutation.mutateAsync({ ...formData, ...(override?.reason ? { overrideReason: override.reason } : {}) } as any), sendPersonnelOnboardingLink, canSend && sendNow);
+      } catch (err) {
+        // Database duplicate guard: show the matched person (Use existing / admin Create anyway).
+        const m = parseDuplicateError(err);
+        if (m) { setPendingMatches({ matches: [m], data }); return; }
+        throw err;
       } finally { setSending(false); }
       const result = outcome.saved;
-      if (override && pendingMatches) await logCreateAnyway("add_personnel", data, pendingMatches.matches, override.reason, result?.id);
+      if (override && !override.reason && pendingMatches) await logCreateAnyway("add_personnel", data, pendingMatches.matches, override.reason, result?.id);
       setPendingMatches(null);
       if (canSend && sendNow) {
         setAdded({ person: result, link: outcome.link, error: outcome.deliveryError });
@@ -198,11 +231,32 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
 
   return (
     <form onSubmit={handleSubmit((d) => onSubmit(d))} className="space-y-6">
+      <AlertDialog open={!!emailPrompt} onOpenChange={(o) => { if (!o && !sending) { if (emailPrompt?.saved) onSuccess?.(); setEmailPrompt(null); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{emailPrompt?.saved ? "Email saved" : "Send onboarding to the new email?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              New email: {String(emailPrompt?.formData.email ?? "")}. Warnings about the old address will be cleared.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {!emailPrompt?.saved && (
+            <div className="flex items-center gap-2">
+              <Checkbox id="send-new-onboarding" checked={!!emailPrompt?.sendNew} onCheckedChange={(v) => emailPrompt && setEmailPrompt({ ...emailPrompt, sendNew: v === true })} />
+              <Label htmlFor="send-new-onboarding">Send a new onboarding link to this email (old link stops working)</Label>
+            </div>
+          )}
+          {emailPrompt?.error && <p role="alert" className="text-sm text-destructive">Onboarding email failed: {emailPrompt.error}</p>}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={sending}>{emailPrompt?.saved ? "Close" : "Cancel"}</AlertDialogCancel>
+            <Button type="button" disabled={sending} onClick={() => void confirmEmailChange()}>{sending ? "Saving…" : emailPrompt?.saved ? "Retry" : "Save"}</Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <PossibleMatchDialog
         matches={pendingMatches?.matches ?? null}
         onClose={() => setPendingMatches(null)}
         onUseExisting={(m) => { setPendingMatches(null); onSuccess?.(m.entity_id); }}
-        onCreateAnyway={(reason) => { if (pendingMatches) void onSubmit(pendingMatches.data, { reason }); }}
+        onCreateAnyway={(reason) => { if (pendingMatches) { const d = pendingMatches.data; setPendingMatches(null); void onSubmit(d, { reason }); } }}
       />
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">

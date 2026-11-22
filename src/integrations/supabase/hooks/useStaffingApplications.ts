@@ -1,5 +1,7 @@
+import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { parseDuplicateError } from "@/lib/contactMatches";
 import { retryApplicationSubmit } from '@/lib/applicationSubmit';
 import { readPersonnelHistories } from '@/lib/personnelHistoryReader';
 import { personnelDeleteBlocked, personnelHistorySummary } from '@/lib/personnelHistory';
@@ -673,6 +675,12 @@ export const useApproveApplicationWithType = () => {
             .select()
             .single();
 
+          const dupMatch = parseDuplicateError(personnelError);
+          if (dupMatch) {
+            await supabase.from("personnel").update({ applicant_id: applicant.id } as any).eq("id", dupMatch.entity_id).is("applicant_id", null);
+            createdPersonnel = { id: dupMatch.entity_id, _linkedExisting: true } as any;
+            toast.info(`Linked to existing ${dupMatch.ref_number ?? ""} ${dupMatch.full_name}`.trim());
+          } else {
           if (personnelError) throw personnelError;
           createdPersonnel = personnel;
 
@@ -688,6 +696,7 @@ export const useApproveApplicationWithType = () => {
             });
           } catch (emailErr) {
             console.error("[Approve] Error sending onboarding email:", emailErr);
+          }
           }
         }
       }
@@ -931,6 +940,12 @@ export const useApproveApplication = () => {
         .select()
         .single();
 
+      const dupMatch = parseDuplicateError(personnelError);
+      if (dupMatch) {
+        // Database duplicate guard matched an existing person: attach instead of creating.
+        await supabase.from("personnel").update({ applicant_id: applicant.id } as any).eq("id", dupMatch.entity_id).is("applicant_id", null);
+        return { id: dupMatch.entity_id, _linkedExisting: true } as any;
+      }
       if (personnelError) throw personnelError;
 
       // Send onboarding email

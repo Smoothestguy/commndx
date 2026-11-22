@@ -1,3 +1,5 @@
+import { personnelSearchGroups } from "@/lib/personnelSearch";
+import { createPersonnelOverride, parseDuplicateError } from "@/lib/contactMatches";
 import { keepPreviousData, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -29,25 +31,7 @@ export const usePersonnel = (filters?: {
         query = query.eq("status", filters.status as any);
       }
 
-      if (filters?.search) {
-        // Strip non-digits from search for phone matching
-        const phoneSearch = filters.search.replace(/\D/g, '');
-        
-        // Build search conditions - use normalized phone if it has digits
-        const searchConditions = [
-          `first_name.ilike.%${filters.search}%`,
-          `last_name.ilike.%${filters.search}%`,
-          `email.ilike.%${filters.search}%`,
-          `personnel_number.ilike.%${filters.search}%`,
-        ];
-        
-        // Add phone search with normalized digits if there are any
-        if (phoneSearch.length > 0) {
-          searchConditions.push(`phone.ilike.%${phoneSearch}%`);
-        }
-        
-        query = query.or(searchConditions.join(','));
-      }
+      for (const group of personnelSearchGroups(filters?.search)) query = query.or(group);
 
       if (filters?.everifyStatus && filters.everifyStatus !== "all") {
         query = query.eq("everify_status", filters.everifyStatus as any);
@@ -143,25 +127,7 @@ export const usePersonnelWithRelations = (filters?: {
         query = query.eq("status", filters.status as any);
       }
 
-      if (filters?.search) {
-        // Strip non-digits from search for phone matching
-        const phoneSearch = filters.search.replace(/\D/g, '');
-        
-        // Build search conditions - use normalized phone if it has digits
-        const searchConditions = [
-          `first_name.ilike.%${filters.search}%`,
-          `last_name.ilike.%${filters.search}%`,
-          `email.ilike.%${filters.search}%`,
-          `personnel_number.ilike.%${filters.search}%`,
-        ];
-        
-        // Add phone search with normalized digits if there are any
-        if (phoneSearch.length > 0) {
-          searchConditions.push(`phone.ilike.%${phoneSearch}%`);
-        }
-        
-        query = query.or(searchConditions.join(','));
-      }
+      for (const group of personnelSearchGroups(filters?.search)) query = query.or(group);
 
       const { data, error } = await query;
 
@@ -203,12 +169,15 @@ export const useAddPersonnel = () => {
   const { logAction } = useAuditLog();
 
   return useMutation({
-    mutationFn: async (personnel: PersonnelInsert) => {
-      const { data, error } = await supabase
-        .from("personnel")
-        .insert(personnel)
-        .select()
-        .single();
+    mutationFn: async (input: PersonnelInsert & { overrideReason?: string }) => {
+      const { overrideReason, ...personnel } = input;
+      let data: any; let error: any;
+      if (overrideReason) {
+        const id = await createPersonnelOverride(personnel as Record<string, unknown>, overrideReason);
+        ({ data, error } = await supabase.from("personnel").select().eq("id", id).single());
+      } else {
+        ({ data, error } = await supabase.from("personnel").insert(personnel).select().single());
+      }
 
       if (error) throw error;
 
@@ -233,6 +202,8 @@ export const useAddPersonnel = () => {
       toast.success("Personnel added successfully");
     },
     onError: (error: Error) => {
+      // Duplicate guard errors are shown by the caller's match dialog.
+      if (parseDuplicateError(error)) return;
       toast.error(`Failed to add personnel: ${error.message}`);
     },
   });

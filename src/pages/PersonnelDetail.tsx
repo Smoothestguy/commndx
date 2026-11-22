@@ -436,7 +436,7 @@ const PersonnelDetail = () => {
                       <DropdownMenuTrigger asChild><Button variant="outline" size="sm">Onboarding link<ChevronDown className="ml-2 h-4 w-4" /></Button></DropdownMenuTrigger>
                       <DropdownMenuContent align="start">
                         <DropdownMenuItem onSelect={() => setShareOpen(true)}>Share</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={handleResendOnboardingEmail} disabled={resendOnboardingEmail.isPending}>Resend by email</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={handleResendOnboardingEmail} disabled={resendOnboardingEmail.isPending}>Resend onboarding</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}

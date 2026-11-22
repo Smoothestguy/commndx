@@ -15,6 +15,8 @@ interface RequestBody {
   recordType?: RecordType;
   /** Link the registration to an existing person instead of creating a new personnel row. */
   linkPersonnelId?: string;
+  /** Admin-only "Create anyway" reason when the database duplicate guard matched an existing person. */
+  overrideReason?: string;
 }
 
 Deno.serve(async (req) => {
@@ -215,9 +217,7 @@ Deno.serve(async (req) => {
       }
 
       if (!linkPersonnelId && (recordType === 'personnel' || recordType === 'personnel_vendor')) {
-        const { data: personnel, error: personnelError } = await serviceClient
-          .from("personnel")
-          .insert({
+        const insertPayload = {
             first_name: registration.first_name,
             last_name: registration.last_name,
             email: registration.email,
@@ -240,11 +240,23 @@ Deno.serve(async (req) => {
             email_verified_source: registration.email_verified_source ?? null,
             phone_verified_at: registration.phone_verified_at ?? null,
             phone_verified_source: registration.phone_verified_source ?? null,
-          })
-          .select()
-          .single();
-
-        if (personnelError) {
+        };
+        const overrideReason = (body as { overrideReason?: string }).overrideReason?.trim();
+        let personnel: { id: string } | null = null;
+        let personnelError: { code?: string; message?: string; details?: string } | null = null;
+        if (overrideReason) {
+          // Admin role is enforced inside the RPC with the caller's own session.
+          const { data: newId, error } = await userClient.rpc("create_personnel_override", { p_payload: insertPayload, p_reason: overrideReason });
+          personnel = newId ? { id: newId as string } : null; personnelError = error;
+        } else {
+          const { data, error } = await serviceClient.from("personnel").insert(insertPayload).select("id").single();
+          personnel = data; personnelError = error;
+        }
+        if (personnelError?.code === "DP001") {
+          let match: unknown = null; try { match = JSON.parse(personnelError.details ?? "null"); } catch { /* keep null */ }
+          return new Response(JSON.stringify({ error: personnelError.message, code: "DP001", match }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        if (personnelError || !personnel) {
           console.error("Personnel creation error:", personnelError);
           return new Response(
             JSON.stringify({ error: "Failed to create personnel record" }),

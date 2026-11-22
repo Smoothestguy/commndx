@@ -418,6 +418,6 @@
 - [ ] Invite email: owner clicks Resend in Users (blocked: no admin session for the agent); link + invitation row ready
 
 ## Personnel fixes (owner-approved)
-- [ ] 1. Tokenized personnel search (any order, phone digits, safe chars) + name whitespace trigger + one-time cleanup
-- [ ] 2. Profile "Resend onboarding"; email-change confirm resend; clear bounce + alerts
-- [ ] 3. Insert-only duplicate trigger + admin override RPC + UI match/attach in Add/Quick/CSV; AGENTS rule
+- [x] 1. Tokenized personnel search (any order, phone digits, safe chars) + name whitespace trigger + one-time cleanup
+- [x] 2. Profile "Resend onboarding"; email-change confirm resend; clear bounce + alerts
+- [x] 3. Insert-only duplicate trigger + admin override RPC + UI match/attach in Add/Quick/CSV; AGENTS rule

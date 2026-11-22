@@ -572,7 +572,7 @@ export function PersonnelTable({
         <EnhancedDataTable
           fillViewport
           tableId="personnel"
-          searchValue={searchValue} onSearchChange={onSearchChange} searchable={searchable}
+          searchValue={searchValue} onSearchChange={onSearchChange} localSearch={!onSearchChange} searchable={searchable}
           quickFilters={quickFilters} quickFilter={quickFilter} onQuickFilterChange={onQuickFilterChange} filterContent={filterContent}
           data={personnel}
           columns={columns.filter(c => c.key !== "rate" || isAdmin || isManager)}

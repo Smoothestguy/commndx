@@ -631,6 +631,34 @@
       "when": 1795369414710,
       "tag": "0089_customer_ops_attendance_names",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1795369639963,
+      "tag": "0090_personnel_duplicate_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1795369681143,
+      "tag": "0091_personnel_duplicate_match_fix",
+      "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1795369742743,
+      "tag": "0092_fix_audit_resource_ids",
+      "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1795369966097,
+      "tag": "0093_onboarding_email_change_ack",
+      "breakpoints": true
     }
   ]
 }

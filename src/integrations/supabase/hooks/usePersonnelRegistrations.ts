@@ -194,19 +194,29 @@ export function useApproveRegistration() {
       registrationId, 
       recordType = 'personnel',
       linkPersonnelId,
+      overrideReason,
     }: { 
       registrationId: string; 
       recordType?: RecordType;
       linkPersonnelId?: string;
+      overrideReason?: string;
     }) => {
       const { data, error } = await supabase.functions.invoke(
         "approve-personnel-registration",
         {
-          body: { registrationId, action: "approve", recordType, linkPersonnelId },
+          body: { registrationId, action: "approve", recordType, linkPersonnelId, overrideReason },
         }
       );
 
-      if (error) throw error;
+      if (error) {
+        // Surface the database duplicate guard (409) with its matched person.
+        const ctx = (error as { context?: Response }).context;
+        if (ctx && typeof ctx.json === "function") {
+          const body = await ctx.clone().json().catch(() => null);
+          if (body?.code === "DP001") throw Object.assign(new Error(body.error), { code: "DP001", match: body.match });
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: (data) => {
@@ -218,6 +228,7 @@ export function useApproveRegistration() {
       toast.success("Registration approved successfully!");
     },
     onError: (error: Error) => {
+      if ((error as { code?: string }).code === "DP001") return; // shown in the match dialog
       toast.error(`Failed to approve registration: ${error.message}`);
     },
   });

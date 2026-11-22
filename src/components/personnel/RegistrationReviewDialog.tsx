@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { PossibleMatchDialog } from "@/components/personnel/PossibleMatchDialog";
-import { findContactMatches, logCreateAnyway, type ContactMatch } from "@/lib/contactMatches";
+import { findContactMatches, logCreateAnyway, parseDuplicateError, type ContactMatch } from "@/lib/contactMatches";
 import { Link } from "react-router-dom";
 import {
   Dialog,
@@ -101,6 +101,7 @@ export const RegistrationReviewDialog = ({
   const [rejectionReason, setRejectionReason] = useState("");
   const [approveMatches, setApproveMatches] = useState<ContactMatch[] | null>(null);
   const [matchesCleared, setMatchesCleared] = useState(false);
+  const [overrideReason, setOverrideReason] = useState<string | null>(null);
 
   if (!registration) return null;
 
@@ -121,10 +122,13 @@ export const RegistrationReviewDialog = ({
   };
 
   const handleApproveWithType = async (recordType: RecordType) => {
-    await approveRegistration.mutateAsync({
-      registrationId: registration.id,
-      recordType,
-    });
+    try {
+      await approveRegistration.mutateAsync({ registrationId: registration.id, recordType, ...(overrideReason ? { overrideReason } : {}) });
+    } catch (err) {
+      const m = parseDuplicateError(err);
+      if (m) { setShowTypeSelectionDialog(false); setApproveMatches([m]); return; }
+      throw err;
+    }
     setShowTypeSelectionDialog(false);
     onOpenChange(false);
   };
@@ -469,7 +473,7 @@ export const RegistrationReviewDialog = ({
         matches={approveMatches}
         onClose={() => setApproveMatches(null)}
         onUseExisting={(m) => void handleLinkExisting(m)}
-        onCreateAnyway={(reason) => { const m = approveMatches ?? []; setApproveMatches(null); setMatchesCleared(true); void logCreateAnyway("registration_approval", registration, m, reason); setShowTypeSelectionDialog(true); }}
+        onCreateAnyway={(reason) => { const m = approveMatches ?? []; setApproveMatches(null); setMatchesCleared(true); if (reason) setOverrideReason(reason); else void logCreateAnyway("registration_approval", registration, m, reason); setShowTypeSelectionDialog(true); }}
       />
 
       {/* Rejection Dialog */}

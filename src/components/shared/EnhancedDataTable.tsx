@@ -96,6 +96,8 @@ interface EnhancedDataTableProps<T> {
   toolbar?: React.ReactNode;
   filterContent?: React.ReactNode;
   searchValue?: string;
+  /** false when rows are already server-searched; skips the local text re-filter. */
+  localSearch?: boolean;
   onSearchChange?: (value: string) => void;
   /** Bulk actions bar content shown while rows are selected. */
   bulkActions?: (selected: T[], clear: () => void) => React.ReactNode;
@@ -211,7 +213,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   pinFirst,
   searchable = true,
   searchPlaceholder = "Search all columns…",
-  toolbar, filterContent, searchValue, onSearchChange,
+  toolbar, filterContent, searchValue, onSearchChange, localSearch = true,
   bulkActions,
   primaryBulkActions,
   attention,
@@ -304,7 +306,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   const processedData = useMemo(() => {
     let result = [...data];
     const q = search.trim().toLowerCase();
-    if (q) {
+    if (q && localSearch) {
       const terms = q.split(/\s+/);
       result = result.filter(item => {
         const hay = columns.map(c => cellText(item, c)).join(" ").toLowerCase();
@@ -334,7 +336,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
       });
     }
     return result;
-  }, [data, search, preferences.columnFilters, preferences.sortKey, preferences.sortDirection, columns, pinFirst]);
+  }, [data, localSearch, search, preferences.columnFilters, preferences.sortKey, preferences.sortDirection, columns, pinFirst]);
 
   const total = processedData.length;
   const effectiveSize = pageSize > 0 ? pageSize : Math.max(total, 1);

@@ -10,12 +10,32 @@ export interface ContactMatch {
   phone: string | null;
   created_at: string;
   reasons: MatchReason[];
+  /** Set when the database guard refused the insert; only an admin override can proceed. */
+  blocked?: boolean;
 }
 
 export const REASON_LABEL: Record<MatchReason, string> = { same_email: "same email", same_phone: "same phone", similar_name: "similar name" };
 
-/** Same email blocks (admin override with reason); same phone / similar name only warn. */
-export const matchesBlock = (m: ContactMatch[]) => m.some((x) => x.reasons.includes("same_email"));
+/** Mirrors the database insert guard: an existing person's same real email or same phone blocks (admin override with reason). */
+export const matchesBlock = (m: ContactMatch[]) => m.some((x) => x.blocked || x.entity_type === "personnel" && (x.reasons.includes("same_phone") || (x.reasons.includes("same_email") && !(x.email ?? "").endsWith(".invalid"))));
+
+/** Recognizes the database duplicate guard (SQLSTATE DP001) and returns the matched existing person. */
+export function parseDuplicateError(err: unknown): ContactMatch | null {
+  const e = err as { code?: string; details?: string; message?: string; match?: Record<string, string> } | null;
+  if (!e || (e.code !== "DP001" && !String(e.message ?? "").startsWith("Duplicate: matches"))) return null;
+  let d: Record<string, string> | null = e.match ?? null;
+  if (!d) { try { d = JSON.parse(e.details ?? "null"); } catch { d = null; } }
+  if (!d?.personnel_id) return null;
+  const reason = (d.reason === "same_name" ? "similar_name" : d.reason) as MatchReason;
+  return { entity_type: "personnel", entity_id: d.personnel_id, full_name: d.full_name ?? "", ref_number: d.personnel_number ?? null, email: null, phone: null, created_at: "", reasons: [reason], blocked: true };
+}
+
+/** Admin-only insert past the duplicate guard; the server requires a reason and writes the audit entry. */
+export async function createPersonnelOverride(payload: Record<string, unknown>, reason: string): Promise<string> {
+  const { data, error } = await supabase.rpc("create_personnel_override", { p_payload: payload as never, p_reason: reason });
+  if (error) throw error;
+  return data as string;
+}
 
 export async function findContactMatches(input: { first_name?: string | null; last_name?: string | null; email?: string | null; phone?: string | null }): Promise<ContactMatch[]> {
   const { data, error } = await supabase.rpc("find_contact_matches", {

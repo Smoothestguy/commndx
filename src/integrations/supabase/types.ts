@@ -13781,6 +13781,10 @@ export type Database = {
         Args: { _invitation_id: string; _user_id: string }
         Returns: Json
       }
+      acknowledge_onboarding_email_change: {
+        Args: { p_personnel_id: string }
+        Returns: undefined
+      }
       admin_get_personnel_banking: {
         Args: { _personnel_id: string }
         Returns: {
@@ -13996,6 +14000,10 @@ export type Database = {
           _sms_consent_text_version?: string
           _user_agent?: string
         }
+        Returns: string
+      }
+      create_personnel_override: {
+        Args: { p_payload: Json; p_reason: string }
         Returns: string
       }
       create_personnel_vendor: {
@@ -14441,6 +14449,20 @@ export type Database = {
         Returns: {
           match_key: string
           personnel: Json
+          reason: string
+        }[]
+      }
+      personnel_duplicate_match: {
+        Args: {
+          p_email: string
+          p_first: string
+          p_last: string
+          p_phone: string
+        }
+        Returns: {
+          full_name: string
+          personnel_id: string
+          personnel_number: string
           reason: string
         }[]
       }
