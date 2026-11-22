@@ -666,6 +666,13 @@
       "when": 1795373583350,
       "tag": "0094_get_invitation_by_token",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1795374295749,
+      "tag": "0095_sms_media_policies",
+      "breakpoints": true
     }
   ]
 }

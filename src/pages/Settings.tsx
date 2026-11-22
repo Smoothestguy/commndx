@@ -40,6 +40,7 @@ import { useSessionAccess } from "@/hooks/useSessionAccess";
 import { CheckForUpdatesButton } from "@/components/electron/UpdateNotification";
 import { DeleteAccountSection } from "@/components/settings/DeleteAccountSection";
 import { ApplicationWatchdogCard } from "@/components/settings/ApplicationWatchdogCard";
+import { RecoverSmsPhotosCard } from "@/components/settings/RecoverSmsPhotosCard";
 import { DataHygieneCard } from "@/components/settings/DataHygieneCard";
 import { InvitationDefaultsCard } from "@/components/settings/InvitationDefaultsCard";
 import { SigninProvidersCard } from "@/components/settings/SigninProvidersCard";
@@ -165,6 +166,7 @@ export default function Settings() {
         <div className="space-y-6">
           {role==='admin'&&<ModulesCard/>}
           {(role === "admin" || role === "manager") && <ApplicationWatchdogCard />}
+          {role === "admin" && <RecoverSmsPhotosCard />}
           {(role === "admin" || role === "manager") && <DataHygieneCard />}
 
           {(role === "admin" || role === "manager") && <InvitationDefaultsCard />}

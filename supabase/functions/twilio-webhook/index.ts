@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildMetadata, previewFor, storeMedia, type MediaItem } from "../_shared/smsMedia.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,11 +31,19 @@ Deno.serve(async (req: Request) => {
     // Parse Twilio webhook payload (form-encoded)
     const formData = await req.formData();
     const from = formData.get("From") as string;
-    const body = formData.get("Body") as string;
+    const body = ((formData.get("Body") as string) || "").trim();
+    const messageSid = (formData.get("MessageSid") as string) || (formData.get("SmsMessageSid") as string) || "";
+    const numMedia = Math.min(parseInt((formData.get("NumMedia") as string) || "0", 10) || 0, 10);
+    const mediaItems: MediaItem[] = [];
+    for (let i = 0; i < numMedia; i++) {
+      const url = formData.get(`MediaUrl${i}`) as string;
+      if (url) mediaItems.push({ url, contentType: (formData.get(`MediaContentType${i}`) as string) || "" });
+    }
+    const preview = previewFor(body, mediaItems);
 
-    console.log(`Incoming SMS from ${from}: ${body}`);
+    console.log(`Incoming SMS ${messageSid} from ${from}: ${body.length} chars, ${mediaItems.length} media`);
 
-    if (!from || !body) {
+    if (!from || (!body && numMedia === 0)) {
       console.error("Missing required fields: From or Body");
       return new Response(
         '<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
@@ -203,7 +212,7 @@ Deno.serve(async (req: Request) => {
           participant_2_type: senderType,
           participant_2_id: senderId,
           last_message_at: new Date().toISOString(),
-          last_message_preview: body.substring(0, 100),
+          last_message_preview: preview,
         })
         .select()
         .single();
@@ -236,6 +245,11 @@ Deno.serve(async (req: Request) => {
       ]);
     }
 
+    const stored = mediaItems.length
+      ? await storeMedia(supabase, conversationId!, messageSid, mediaItems)
+      : { media: [], media_errors: [] };
+    if (stored.media_errors.length) console.error("Media download failures:", JSON.stringify(stored.media_errors));
+
     // Insert the message into conversation_messages
     const { error: msgError } = await supabase
       .from("conversation_messages")
@@ -243,8 +257,9 @@ Deno.serve(async (req: Request) => {
         conversation_id: conversationId,
         sender_type: senderType,
         sender_id: senderId,
-        content: body,
+        content: body || "",
         message_type: "sms",
+        metadata: buildMetadata(messageSid, stored),
       });
 
     if (msgError) {
@@ -258,7 +273,7 @@ Deno.serve(async (req: Request) => {
       .from("conversations")
       .update({
         last_message_at: new Date().toISOString(),
-        last_message_preview: body.substring(0, 100),
+        last_message_preview: preview,
       })
       .eq("id", conversationId);
 

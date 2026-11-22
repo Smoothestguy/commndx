@@ -23,6 +23,7 @@ import {
 import { FailedMessageIndicator } from "./FailedMessageIndicator";
 import { TranslateButton } from "./TranslateButton";
 import { useMessageTranslation, LanguageCode } from "@/hooks/useMessageTranslation";
+import { MessageMedia, type MessageMediaItem } from "./MessageMedia";
 
 type MessageStatus = "sending" | "sent" | "delivered" | "read" | "failed";
 
@@ -48,6 +49,7 @@ interface MessageBubbleProps {
   // Blast (broadcast) props
   isBlast?: boolean;
   blastRecipientCount?: number;
+  media?: MessageMediaItem[];
 }
 
 export function MessageBubble({
@@ -69,13 +71,16 @@ export function MessageBubble({
   defaultTranslationLanguage = "en",
   isBlast = false,
   blastRecipientCount,
+  media,
 }: MessageBubbleProps) {
+  const hasMedia = !!media && media.length > 0;
+  const hasText = !!content?.trim();
   const [translatedText, setTranslatedText] = useState<string | null>(null);
   const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null);
   const { translateMessage, isTranslating } = useMessageTranslation();
 
   const canDelete = isOwnMessage && messageId && onDelete;
-  const canTranslate = !isOwnMessage; // Only translate incoming messages
+  const canTranslate = !isOwnMessage && !!content?.trim(); // Only translate incoming messages
   const isFailed = status === "failed";
   const isSending = status === "sending";
 
@@ -191,6 +196,9 @@ export function MessageBubble({
           </AlertDialog>
         )}
 
+        <div className={cn("flex flex-col gap-1.5", isOwnMessage ? "items-end" : "items-start")}>
+        {hasMedia && <MessageMedia media={media!} alignEnd={isOwnMessage} />}
+        {(hasText || !hasMedia) && (
         <div
           className={cn(
             "rounded-2xl px-4 py-2 break-words",
@@ -212,6 +220,8 @@ export function MessageBubble({
               Translated from {detectedLanguage}
             </p>
           )}
+        </div>
+        )}
         </div>
       </div>
 

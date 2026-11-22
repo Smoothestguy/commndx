@@ -228,6 +228,7 @@ export function ConversationThread({ conversation, onBack, recipientPhone, onTog
                       isDeleting={deleteMessage.isPending}
                       isBlast={!!message.metadata?.is_blast}
                       blastRecipientCount={message.metadata?.recipient_count}
+                      media={Array.isArray(message.metadata?.media) ? message.metadata.media : undefined}
                     />
                   ))}
                 </div>

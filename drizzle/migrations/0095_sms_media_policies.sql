@@ -1,0 +1,2 @@
+CREATE POLICY "Admins and managers read sms media" ON storage.objects FOR SELECT TO authenticated
+USING (bucket_id = 'sms-media' AND (public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'manager')));
