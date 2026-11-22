@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -259,11 +260,10 @@ export default function AcceptInvitation() {
       });
       return;
     }
-
-    if (password.length < 6) {
+    if (password.length < 8) {
       toast({
         title: "Password too short",
-        description: "Password must be at least 6 characters long.",
+        description: "Password must be at least 8 characters long.",
         variant: "destructive",
       });
       return;
@@ -272,58 +272,34 @@ export default function AcceptInvitation() {
     setIsSubmitting(true);
 
     try {
-      // Sign up the user
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: invitation.email,
-        password: password,
-        options: {
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-          },
-          emailRedirectTo: `${window.location.origin}/accept-invitation?token=${encodeURIComponent(token ?? "")}`,
-        },
+      // Public sign-ups are disabled; the account is created server-side for this invitation only.
+      const { data: result, error: fnError } = await supabase.functions.invoke("accept-invitation-signup", {
+        body: { token, password, first_name: firstName, last_name: lastName },
       });
-
-      if (signUpError) {
-        if (signUpError.message?.includes("already") || signUpError.message?.includes("registered")) {
-          toast({
-            title: "Account already exists",
-            description: "Please use the 'Existing Account' tab to log in.",
-            variant: "destructive",
-          });
-          setIsSubmitting(false);
+      if (fnError) {
+        let message = fnError.message;
+        let code: string | undefined;
+        if (fnError instanceof FunctionsHttpError) {
+          try {
+            const body = await fnError.context.json();
+            message = body?.error || message;
+            code = body?.code;
+          } catch { /* keep default message */ }
+        }
+        if (code === "user_exists") {
+          toast({ title: "Account already exists", description: "Please use the 'Existing Account' tab to log in.", variant: "destructive" });
           return;
         }
-        throw signUpError;
+        throw new Error(message);
       }
+      if (!result?.success) throw new Error("Failed to create your account");
 
-      if (!authData.user) {
-        throw new Error("Failed to create user");
-      }
-
-      // Role assignment happens server-side (accept_invitation verifies the invite email).
-      // Without a session yet (email confirmation required), the user confirms, signs in and returns to this link.
-      if (!authData.session) {
-        toast({ title: "Check your email", description: "Confirm your email, then open this invitation link again to finish." });
-        setIsSubmitting(false);
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email: invitation.email, password });
+      if (signInError) {
+        toast({ title: "Account created", description: "Please sign in with your new password." });
+        navigate("/auth");
         return;
       }
-      const { error: acceptError } = await supabase.rpc("accept_invitation", { _invitation_id: invitation.id, _user_id: authData.user.id });
-      if (acceptError) throw acceptError;
-
-      // Log accepted event to activity log
-      await supabase.from('invitation_activity_log').insert({
-        invitation_id: invitation.id,
-        action: 'accepted',
-        performed_by: authData.user.id,
-        performed_by_email: `${firstName} ${lastName}`,
-        target_email: invitation.email,
-        target_role: invitation.role,
-        metadata: {
-          accepted_at: new Date().toISOString(),
-        },
-      });
 
       // Notify the admin who sent the invitation
       try {
