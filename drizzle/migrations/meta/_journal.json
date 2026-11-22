@@ -659,6 +659,13 @@
       "when": 1795369966097,
       "tag": "0093_onboarding_email_change_ack",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1795373583350,
+      "tag": "0094_get_invitation_by_token",
+      "breakpoints": true
     }
   ]
 }

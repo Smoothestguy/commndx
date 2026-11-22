@@ -14235,6 +14235,16 @@ export type Database = {
         Returns: string
       }
       generate_vendor_bill_number: { Args: never; Returns: string }
+      get_invitation_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          email: string
+          expires_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          status: string
+        }[]
+      }
       get_join_info: { Args: { p_token: string }; Returns: Json }
       get_kiosk_info: { Args: { p_kiosk: string }; Returns: Json }
       get_my_banking_info: {

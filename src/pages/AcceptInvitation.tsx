@@ -59,13 +59,17 @@ export default function AcceptInvitation() {
     if (!token) return;
 
     try {
-      const { data, error } = await supabase
-        .from("invitations")
-        .select("id, email, role, status, expires_at")
-        .eq("token", token)
-        .single();
-
-      if (error) throw error;
+      const { data: rows, error } = await supabase.rpc("get_invitation_by_token", { p_token: token });
+      if (error) {
+        toast({
+          title: "Invitation unavailable",
+          description: "This invitation link is invalid, already used or expired. Please contact an administrator.",
+          variant: "destructive",
+        });
+        navigate("/auth");
+        return;
+      }
+      const data = (rows as Invitation[] | null)?.[0];
 
       if (!data) {
         toast({
@@ -157,7 +161,7 @@ export default function AcceptInvitation() {
         description: `Your role has been updated to ${invitation.role}.`,
       });
 
-      navigate("/");
+      navigate(invitation.role === "customer_ops" ? "/customer-ops" : "/");
     } catch (error: any) {
       console.error("Error accepting invitation:", error);
       toast({
@@ -229,7 +233,7 @@ export default function AcceptInvitation() {
         description: `Welcome back! Your role has been updated to ${invitation.role}.`,
       });
 
-      navigate("/");
+      navigate(invitation.role === "customer_ops" ? "/customer-ops" : "/");
     } catch (error: any) {
       console.error("Error logging in:", error);
       toast({
@@ -277,7 +281,7 @@ export default function AcceptInvitation() {
             first_name: firstName,
             last_name: lastName,
           },
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: `${window.location.origin}/accept-invitation?token=${encodeURIComponent(token ?? "")}`,
         },
       });
 
@@ -342,7 +346,7 @@ export default function AcceptInvitation() {
       });
 
       // Sign in will happen automatically via the auth state listener
-      navigate("/");
+      navigate(invitation.role === "customer_ops" ? "/customer-ops" : "/");
     } catch (error: any) {
       console.error("Error accepting invitation:", error);
       toast({
