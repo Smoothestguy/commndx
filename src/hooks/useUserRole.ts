@@ -134,6 +134,7 @@ export function useUserRole() {
     isManager: role === "manager",
     isUser: role === "user",
     isAccounting: role === "accounting",
+    isCustomerOps: role === "customer_ops",
     isPersonnel,
     isVendor,
   };

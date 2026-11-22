@@ -9,7 +9,7 @@ import { Loader2 } from "lucide-react";
 export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const mobile=useIsMobile(),location=useLocation();
   const { user, loading: authLoading } = useAuth();
-  const { isPersonnel, isVendor, isAdmin, isManager, isUser, role, loading: roleLoading, hasError } = useUserRole();
+  const { isPersonnel, isVendor, isAdmin, isManager, isUser, isCustomerOps, role, loading: roleLoading, hasError } = useUserRole();
 
   if (authLoading || roleLoading) {
     return (
@@ -21,6 +21,14 @@ export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
 
   if (!user) {
     return <Navigate to="/auth" replace />;
+  }
+
+  // Customer Ops accounts live only in their customer-scoped workspace.
+  if (isCustomerOps) {
+    return location.pathname === "/customer-ops" ? <>{children}</> : <Navigate to="/customer-ops" replace />;
+  }
+  if (location.pathname === "/customer-ops" && !hasError) {
+    return <Navigate to="/" replace />;
   }
 
   // Allow admins and managers to access main dashboard even if linked to personnel/vendor

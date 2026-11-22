@@ -298,22 +298,15 @@ export default function AcceptInvitation() {
         throw new Error("Failed to create user");
       }
 
-      // Assign the role from invitation (delete default "user" role and insert invited role)
-      await supabase.from("user_roles").delete().eq("user_id", authData.user.id);
-      
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert({ user_id: authData.user.id, role: invitation.role });
-
-      if (roleError) throw roleError;
-
-      // Mark invitation as accepted
-      const { error: updateError } = await supabase
-        .from("invitations")
-        .update({ status: "accepted", used_at: new Date().toISOString() })
-        .eq("id", invitation.id);
-
-      if (updateError) throw updateError;
+      // Role assignment happens server-side (accept_invitation verifies the invite email).
+      // Without a session yet (email confirmation required), the user confirms, signs in and returns to this link.
+      if (!authData.session) {
+        toast({ title: "Check your email", description: "Confirm your email, then open this invitation link again to finish." });
+        setIsSubmitting(false);
+        return;
+      }
+      const { error: acceptError } = await supabase.rpc("accept_invitation", { _invitation_id: invitation.id, _user_id: authData.user.id });
+      if (acceptError) throw acceptError;
 
       // Log accepted event to activity log
       await supabase.from('invitation_activity_log').insert({

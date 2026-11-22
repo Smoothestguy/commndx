@@ -2850,6 +2850,41 @@ export type Database = {
           },
         ]
       }
+      customer_user_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          email: string
+          id: string
+          revoked_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          email: string
+          id?: string
+          revoked_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          email?: string
+          id?: string
+          revoked_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_user_links_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -13967,6 +14002,67 @@ export type Database = {
         Args: { p_personnel_id: string }
         Returns: string
       }
+      customer_ops_attendance: {
+        Args: { _from: string; _location: string; _to: string }
+        Returns: {
+          first_name: string
+          hours: number
+          in_at: string
+          last_name: string
+          local_day: string
+          out_at: string
+          personnel_id: string
+          signed: boolean
+          visit_personnel_id: string
+        }[]
+      }
+      customer_ops_customer_ids: { Args: never; Returns: string[] }
+      customer_ops_location_ok: {
+        Args: { _location: string }
+        Returns: boolean
+      }
+      customer_ops_locations: {
+        Args: never
+        Returns: {
+          active_count: number
+          city: string
+          location_id: string
+          location_name: string
+          project_id: string
+          project_name: string
+          state: string
+          status: string
+          timezone: string
+        }[]
+      }
+      customer_ops_roster: {
+        Args: { _location: string }
+        Returns: {
+          assigned_at: string
+          first_name: string
+          last_name: string
+          on_location: boolean
+          personnel_id: string
+          phone: string
+          role_label: string
+          unassigned_at: string
+        }[]
+      }
+      customer_ops_set_assignment: {
+        Args: { _assign: boolean; _location: string; _personnel: string }
+        Returns: Json
+      }
+      customer_ops_sheets: {
+        Args: { _location: string }
+        Returns: {
+          countersign_name: string
+          countersigned_at: string
+          has_pdf: boolean
+          sheet_date: string
+          sheet_day_id: string
+          status: string
+        }[]
+      }
       customer_portal_messages: { Args: { p_token: string }; Returns: Json }
       customer_portal_overview: {
         Args: { p_date?: string; p_token: string }
@@ -14218,6 +14314,7 @@ export type Database = {
         Args: { conv_id: string; uid: string }
         Returns: boolean
       }
+      is_customer_ops: { Args: { _uid: string }; Returns: boolean }
       is_field_member_of_location: {
         Args: { _location: string }
         Returns: boolean
@@ -14612,6 +14709,7 @@ export type Database = {
         | "personnel"
         | "vendor"
         | "accounting"
+        | "customer_ops"
       applicant_status:
         | "new"
         | "approved"
@@ -14885,6 +14983,7 @@ export const Constants = {
         "personnel",
         "vendor",
         "accounting",
+        "customer_ops",
       ],
       applicant_status: ["new", "approved", "rejected", "inactive", "archived"],
       application_status: [

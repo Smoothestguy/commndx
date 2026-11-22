@@ -10,7 +10,7 @@ const corsHeaders = {
 
 interface InvitationRequest {
   email: string;
-  role: "admin" | "manager" | "user";
+  role: string;
   invitationId: string;
   token: string;
 }
@@ -87,7 +87,8 @@ Deno.serve(async (req: Request) => {
 
     const { email, role, invitationId, token }: InvitationRequest = await req.json();
 
-    console.log("Sending invitation to:", email, "with role:", role);
+    console.log("Sending invitation with role:", role);
+    const roleLabel = role === "customer_ops" ? "Customer Operations" : role;
 
     // Get the site URL from environment or derive from Supabase URL
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -98,7 +99,7 @@ Deno.serve(async (req: Request) => {
     const emailResponse = await resend.emails.send({
       from: "Fairfield <admin@fairfieldrg.com>",
       to: [email],
-      subject: `You've been invited to join Fairfield as ${role}`,
+      subject: `You've been invited to join Fairfield as ${roleLabel}`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -119,13 +120,13 @@ Deno.serve(async (req: Request) => {
               </div>
               <div class="content">
                 <p>Hello!</p>
-                <p>You've been invited to join <strong>Fairfield</strong> as a <strong>${role}</strong>.</p>
-                <p>Fairfield is a business management platform for managing products, customers, estimates, job orders, and invoices.</p>
+                <p>You've been invited to join <strong>Fairfield</strong> as <strong>${roleLabel}</strong>.</p>
+                <p>${role === "customer_ops" ? "You'll be able to view your locations' rosters and attendance, download timesheets and request missing signatures." : "Fairfield is a business management platform for managing products, customers, estimates, job orders, and invoices."}</p>
                 <p>Click the button below to accept your invitation and create your account:</p>
                 <a href="${invitationUrl}" class="button">Accept Invitation</a>
                 <p style="font-size: 14px; color: #6b7280;">Or copy and paste this link into your browser:</p>
                 <p style="font-size: 12px; word-break: break-all; color: #6b7280;">${invitationUrl}</p>
-                <p style="margin-top: 30px;"><strong>Your role: ${role.charAt(0).toUpperCase() + role.slice(1)}</strong></p>
+                <p style="margin-top: 30px;"><strong>Your role: ${roleLabel.charAt(0).toUpperCase() + roleLabel.slice(1)}</strong></p>
                 <p style="font-size: 14px; color: #6b7280;">This invitation will expire in 7 days.</p>
                 <div class="footer">
                   <p>If you didn't expect this invitation, you can safely ignore this email.</p>

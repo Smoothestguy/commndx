@@ -12,8 +12,8 @@ const hm = (iso: string | null, zone: string) => iso ? new Intl.DateTimeFormat('
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('missing'), location_id: z.string().uuid(), personnel_ids: z.array(z.string().uuid()).min(1).max(200) }),
-  z.object({ action: z.literal('request'), location_id: z.string().uuid(), sheet_date: date.optional(), personnel_ids: z.array(z.string().uuid()).min(1).max(100) }),
-  z.object({ action: z.literal('resend'), location_id: z.string().uuid(), personnel_id: z.string().uuid() }),
+  z.object({ action: z.literal('request'), location_id: z.string().uuid(), sheet_date: date.optional(), personnel_ids: z.array(z.string().uuid()).min(1).max(100), dry_run: z.boolean().optional() }),
+  z.object({ action: z.literal('resend'), location_id: z.string().uuid(), personnel_id: z.string().uuid(), dry_run: z.boolean().optional() }),
   z.object({ action: z.literal('info'), token: z.string().uuid() }),
   z.object({ action: z.literal('sign'), token: z.string().uuid(), date: date.optional(), signature_png_base64: z.string().max(280000) }),
 ]);
@@ -43,8 +43,16 @@ Deno.serve(async req => {
     if (v.action === 'missing' || v.action === 'request' || v.action === 'resend') {
       const { data: u } = await db.auth.getUser((req.headers.get('Authorization') ?? '').replace(/^Bearer /, ''));
       if (!u?.user) return json({ error: 'Unauthorized' }, 401);
-      const { data: roles } = await db.from('user_roles').select('role').eq('user_id', u.user.id).in('role', ['admin', 'manager']);
-      if (!roles?.length) return json({ error: 'Managers only' }, 403);
+      const { data: roles } = await db.from('user_roles').select('role').eq('user_id', u.user.id).in('role', ['admin', 'manager', 'customer_ops']);
+      const staff = roles?.some((r: any) => r.role === 'admin' || r.role === 'manager');
+      if (!staff) {
+        // Customer Ops accounts: only locations of their linked customer (checked server-side with their own session).
+        if (!roles?.some((r: any) => r.role === 'customer_ops')) return json({ error: 'Managers only' }, 403);
+        const asUser = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_ANON_KEY') ?? '', { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } });
+        const { data: ok } = await asUser.rpc('customer_ops_location_ok', { _location: v.location_id });
+        if (ok !== true) return json({ error: 'Not authorized for this location' }, 403);
+      }
+      const dryRun = (v.action === 'request' || v.action === 'resend') && v.dry_run === true;
       const { data: loc, error: le } = await db.from('project_locations').select('name,timezone').eq('id', v.location_id).single(); if (le) throw le;
       const zone = loc.timezone || 'America/Chicago';
       const nowIso = new Date().toISOString();
@@ -92,6 +100,7 @@ Deno.serve(async req => {
         }
         if (!dates.length) { results.push({ personnel_id: pid, status: 'skipped', reason: 'Nothing to sign' }); continue; }
         const to = tenDigits(p.phone); if (!to) { results.push({ personnel_id: pid, status: 'no_phone' }); continue; }
+        if (dryRun) { results.push({ personnel_id: pid, status: 'dry_run', dates }); continue; }
         const pend = await pendingFor(pid);
         const live = pend.find(r => Date.parse(r.expires_at) > Date.now() && datesOf(r).some(d => dates.includes(d)));
 

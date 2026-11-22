@@ -80,6 +80,7 @@ const ProjectAssignments = lazy(() => import("./pages/ProjectAssignments"));
 const Settings = lazy(() => import("./pages/Settings"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const AcceptInvitation = lazy(() => import("./pages/AcceptInvitation"));
+const CustomerOps = lazy(() => import("./pages/customer-ops/CustomerOps"));
 const ApproveEstimate = lazy(() => import("./pages/ApproveEstimate"));
 const Personnel = lazy(() => import("./pages/Personnel"));
 const PersonnelDetail = lazy(() => import("./pages/PersonnelDetail"));
@@ -233,6 +234,7 @@ const App = () => {
                       element={<DesktopCallback />}
                     />
                     <Route path="/unauthorized" element={<Unauthorized />} />
+                    <Route path="/customer-ops" element={<ProtectedRoute><CustomerOps /></ProtectedRoute>} />
                     <Route
                       path="/accept-invitation"
                       element={<AcceptInvitation />}

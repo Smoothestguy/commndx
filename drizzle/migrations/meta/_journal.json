@@ -610,6 +610,20 @@
       "when": 1795108157931,
       "tag": "0086_repair_move_onboarding_preview_banking",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1795367488470,
+      "tag": "0087_customer_ops_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1795367589314,
+      "tag": "0088_customer_ops_access",
+      "breakpoints": true
     }
   ]
 }
