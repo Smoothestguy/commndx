@@ -1,5 +1,6 @@
 import type { SignField } from './documentStamp';
 import { fitSignatureInCell, stripWhiteBackground } from './signatureInk';
+import { cleanSigninTemplateGrid } from './signinTemplateGrid';
 export const localDay = (iso: string, zone: string) => {
   const p = new Intl.DateTimeFormat('en-US', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(iso));
   return `${p.find(x => x.type === 'year')?.value}-${p.find(x => x.type === 'month')?.value}-${p.find(x => x.type === 'day')?.value}`;
@@ -45,7 +46,7 @@ export async function generateSigninSheet(original: ArrayBuffer, fields: SignFie
   const { PDFDocument, StandardFonts, pushGraphicsState, popGraphicsState, concatTransformationMatrix } = await import('pdf-lib');
   if (!Number.isInteger(config.rowsPerPage) || config.rowsPerPage < 1 || config.rowsPerPage > 100 || config.rowHeight <= 0 || config.rowHeight > 1) throw new Error('Invalid row band settings');
   if (!fields.some(f => f.scope === 'row')) throw new Error('Place row fields before generating sheets');
-  const source = await PDFDocument.load(original), output = await PDFDocument.create();
+  const source = await PDFDocument.load(await cleanSigninTemplateGrid(original)), output = await PDFDocument.create();
   const font = await output.embedFont(StandardFonts.Helvetica);
   const clean = (text: string) => Array.from(text).map(c => { try { font.encodeText(c); return c; } catch { return '?'; } }).join('');
   const images = new Map<string, Awaited<ReturnType<typeof output.embedPng>>>();

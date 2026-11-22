@@ -1,3 +1,6 @@
+# Sign-in template grid cleanup
+- [x] Removed the recognized legacy spreadsheet grid drawing from shared generated copies and unsigned-template previews/placement; seven-column strokes, logo and text preserved. Visually checked blank Garner PDF and real desktop Generate sheets download; 10 tests and preview build passed. No saved originals, locked PDFs, database or timekeeping changes.
+
 # Move onboarding — owner approved with six corrections
 - [x] Prepared functions-only SQL against live columns/FKs/indexes/triggers; isolated compile and move/16 guards/conflict rollback/privacy/login/unique-skip tests pass. No live changes or fixtures; SQL awaits owner approval.
 - [x] Applied 0085 with all six corrections; built admin-only eligible pair action and identity/conflict dialog; 30 tests and preview pass. No operational locks/writes, existing function changes or schema changes beyond new functions.

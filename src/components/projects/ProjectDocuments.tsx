@@ -20,6 +20,7 @@ import { useProjectDocuments, useUploadProjectDocument, useDeleteProjectDocument
 import { FileText, Upload, Trash2, Download, Loader2, Eye } from "lucide-react";
 import { format } from "date-fns";
 import type { ProjectDocument } from "@/integrations/supabase/hooks/useProjectDocuments";
+import { cleanSigninTemplateGrid } from '@/lib/signinTemplateGrid';
 
 interface ProjectDocumentsProps {
   projectId: string;
@@ -60,6 +61,7 @@ export const ProjectDocuments = ({ projectId, projectName = "Project", locationS
   const [previewDoc, setPreviewDoc] = useState<ProjectDocument | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  useEffect(() => () => { if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
   const isImage = (fileType: string) => fileType?.startsWith("image/");
   const isPdf = (fileType: string) => fileType === "application/pdf" || fileType?.includes("pdf");
@@ -118,10 +120,18 @@ export const ProjectDocuments = ({ projectId, projectName = "Project", locationS
 
   const handlePreview = async (doc: ProjectDocument) => {
     setPreviewDoc(doc);
+    setPreviewUrl(null);
     setPreviewLoading(true);
     try {
       const url = await getDocumentUrl(doc.file_path);
-      setPreviewUrl(url);
+      if (url && doc.is_signin_template && !doc.requires_signature && isPdf(doc.file_type)) {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Template unavailable');
+        const bytes = await cleanSigninTemplateGrid(await response.arrayBuffer());
+        setPreviewUrl(URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' })));
+      } else setPreviewUrl(url);
+    } catch {
+      toast.error('Unable to preview template');
     } finally {
       setPreviewLoading(false);
     }

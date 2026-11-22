@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQueryClient } from '@tanstack/react-query';
+import { cleanSigninTemplateGrid } from '@/lib/signinTemplateGrid';
 
 function PlacementPage({ page, fields, kind, disabled, onAdd, onMove, onDelete, onResize, selected, onSelect, ghostCount, rowHeight }: { onResize: (id: string, w: number, h: number) => void; selected: string | null; onSelect: (id: string) => void; ghostCount: number; rowHeight: number; page: PDFPageProxy; fields: SignField[]; kind: SignFieldKind; disabled: boolean; onAdd: (f: SignField) => void; onMove: (id: string, x: number, y: number) => void; onDelete: (id: string) => void }) {
   const canvas = useRef<HTMLCanvasElement>(null), container = useRef<HTMLDivElement>(null);
@@ -80,7 +81,8 @@ export function DocumentFieldPlacement({ doc, onClose }: { doc: ProjectDocument;
       const [pdfjs, saved, file] = await Promise.all([import('pdfjs-dist'), loadDocumentFields(doc.id), supabase.storage.from('project-documents').download(doc.file_path)]);
       if (file.error || !file.data) throw file.error || new Error('PDF unavailable');
       pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-      pdf = await pdfjs.getDocument({ data: await file.data.arrayBuffer(), isEvalSupported: false }).promise;
+      const original = await file.data.arrayBuffer();
+      pdf = await pdfjs.getDocument({ data: doc.is_signin_template && !doc.requires_signature ? await cleanSigninTemplateGrid(original) : original, isEvalSupported: false }).promise;
       const loaded = await Promise.all(Array.from({ length: pdf.numPages }, (_, i) => pdf?.getPage(i + 1)));
       if (active) { setPages(loaded.filter((p): p is PDFPageProxy => !!p)); setFields(saved); }
       else await pdf.destroy();
