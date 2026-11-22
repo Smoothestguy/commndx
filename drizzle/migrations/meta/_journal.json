@@ -624,6 +624,13 @@
       "when": 1795367589314,
       "tag": "0088_customer_ops_access",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1795369414710,
+      "tag": "0089_customer_ops_attendance_names",
+      "breakpoints": true
     }
   ]
 }

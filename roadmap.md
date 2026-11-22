@@ -414,8 +414,8 @@
 ## Customer Ops (Taylor Olvey, Patriot)
 - [x] Customer-scoped role, link table, blocked direct access, dollar-free functions
 - [x] Workspace page, signature request dry-run, sheet download
-- [ ] Verify as disposable Patriot customer user (390 + desktop, dollar grep)
-- [ ] Link + invite tolvey@patriotrg.com
+- [x] Verify as disposable Patriot customer user (390 + desktop, dollar grep)
+- [ ] Invite email: owner clicks Resend in Users (blocked: no admin session for the agent); link + invitation row ready
 
 ## Personnel fixes (owner-approved)
 - [ ] 1. Tokenized personnel search (any order, phone digits, safe chars) + name whitespace trigger + one-time cleanup

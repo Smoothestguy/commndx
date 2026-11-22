@@ -41,3 +41,4 @@
 - gridSizing preserves resized widths and flexes the last unsized data column; useViewportGrid fills desktop lists (1180px+), retaining mobile/cards scrolling and project Details state. Lists use shared `EnhancedDataTable` with frozen identity columns and explicit export projections; keyed `useSessionState` restores filters, selection and scroll across workspace tabs without changing authorization.
 - Sidebar/drawer share navConfig; role gating is UI-only.
 
+- Customer Ops accounts (`customer_ops` role + admin-only email→customer links) have no direct table, view or storage access because restrictive policies block them; they read and write only through allow-listed, dollar-free `customer_ops_*` functions and scoped edge actions. Any new definer view must exclude them.
