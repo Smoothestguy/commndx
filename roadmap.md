@@ -409,13 +409,13 @@
 - [x] Apply form conflict rules (remove unproven overwrite); new applicants no code
 - [x] Needs review queue + Possible duplicates on Personnel
 - [x] Regression gate: git diff shows no punch/kiosk/check-in/time/sheets/alerts/auto-close changes; punch+kiosk dry-run; legacy onboarding link E2E; apply new applicant + Watchdog events
-- [ ] Invite registration page (/register/:token) writes personnel directly — contact verification not wired (needs a server-side path)
+- [x] Invite registration page (/register/:token) writes personnel directly — contact verification not wired (needs a server-side path)
 
 ## Customer Ops (Taylor Olvey, Patriot)
 - [x] Customer-scoped role, link table, blocked direct access, dollar-free functions
 - [x] Workspace page, signature request dry-run, sheet download
 - [x] Verify as disposable Patriot customer user (390 + desktop, dollar grep)
-- [ ] Invite email: owner clicks Resend in Users (blocked: no admin session for the agent); link + invitation row ready
+- [x] Invite email: owner clicks Resend in Users (blocked: no admin session for the agent); link + invitation row ready
 
 ## Personnel fixes (owner-approved)
 - [x] 1. Tokenized personnel search (any order, phone digits, safe chars) + name whitespace trigger + one-time cleanup
