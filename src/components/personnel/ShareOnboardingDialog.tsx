@@ -17,7 +17,7 @@ export function ShareOnboardingDialog({ person, open, onOpenChange }: { person: 
     resolveShareToken(() => getCurrentPersonnelOnboardingToken(person.id), () => createPersonnelOnboardingToken(person)).then(token => {
       if (!live) return;
       const days = remainingOnboardingDays(token.expires_at); const link = onboardingLink(token.token, window.location.origin);
-      setMessage(`Fairfield Response Group: Hi ${person.first_name}, please complete your onboarding here: ${link} (expires in ${days} ${days === 1 ? 'day' : 'days'}). / Hola ${person.first_name}, por favor complete su registro aquí: ${link} (vence en ${days} ${days === 1 ? 'día' : 'días'}).`);
+      setMessage(`Fairfield Response Group\nHi ${person.first_name}, please complete your onboarding here. / Hola ${person.first_name}, por favor complete su registro aquí.\n${link}\nExpires in ${days} ${days === 1 ? 'day' : 'days'} / Vence en ${days} ${days === 1 ? 'día' : 'días'}`);
     }).catch(() => { if (live) setError(true); }).finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, [open, person.id, retry]);
