@@ -161,7 +161,16 @@ Deno.serve(async req => {
     }
 
     const { data: r, error: re } = await db.from('timesheet_signature_requests').select('id,personnel_id,location_id,sheet_date,dates,status,expires_at,show_times').eq('token', v.token).maybeSingle(); if (re) throw re;
-    if (!r || r.status === 'cancelled' || Date.parse(r.expires_at) <= Date.now()) return json({ error: 'Inactive link' }, 403);
+    if (r && (r.status === 'cancelled' || Date.parse(r.expires_at) <= Date.now())) {
+      // Replaced/expired link: hand the same person their newest live link for this location (prefer overlapping dates).
+      const { data: live } = await db.from('timesheet_signature_requests').select('token,dates,sheet_date').eq('personnel_id', r.personnel_id).eq('location_id', r.location_id).eq('status', 'pending').gt('expires_at', new Date().toISOString()).order('requested_at', { ascending: false });
+      const mine = new Set(datesOf(r));
+      const next = (live ?? []).find((x: any) => datesOf(x).some(d => mine.has(d))) ?? (live ?? [])[0];
+      console.log('timesheet-signature inactive link', { request_id: r.id, status: r.status, action: v.action, replaced: !!next });
+      if (next) return json({ replaced: true, error: 'Link replaced', next_token: next.token });
+      return json({ error: 'Inactive link' }, 403);
+    }
+    if (!r) return json({ error: 'Inactive link' }, 403);
     const [{ data: loc }, { data: p }] = await Promise.all([
       db.from('project_locations').select('name,timezone,worker_brand_name').eq('id', r.location_id).single(),
       db.from('personnel').select('first_name,last_name').eq('id', r.personnel_id).single(),
@@ -200,6 +209,7 @@ Deno.serve(async req => {
       const { error: pe } = await db.from('timesheet_presence_signatures').insert({ request_id: r.id, personnel_id: r.personnel_id, location_id: r.location_id, sign_date: day.date, signature_path: ppath });
       if (pe && pe.code !== '23505') throw pe;
       await markIfDone(day.date);
+      console.log('timesheet-signature signed', { request_id: r.id, date: day.date, mode: 'presence' });
       return json({ ok: true, date: day.date });
     }
     const path = `field-signatures/${r.personnel_id}/${first.visit_personnel_id}.png`;
@@ -209,6 +219,7 @@ Deno.serve(async req => {
     const { error: we } = await db.from('visit_personnel').update({ signature_url: path, signed_at: now }).eq('id', first.visit_personnel_id).is('signature_url', null); if (we) throw we;
     if (list.length === 1) await db.from('timesheet_signature_requests').update({ visit_personnel_id: first.visit_personnel_id }).eq('id', r.id);
     await markIfDone(day.date);
+    console.log('timesheet-signature signed', { request_id: r.id, date: day.date, mode: 'timed' });
     return json({ ok: true, date: day.date });
   } catch (e) { console.error('timesheet-signature failed', e instanceof Error ? e.message : e); return json({ error: 'Signature service unavailable' }, 500); }
 });

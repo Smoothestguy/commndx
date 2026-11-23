@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { SignaturePad } from '@/components/documents/SignaturePad';
 import { Button } from '@/components/ui/button';
@@ -17,13 +17,20 @@ export default function TimesheetSign() {
   const { token } = useParams();
   const [info, setInfo] = useState<Info | null>(null), [err, setErr] = useState(''), [saving, setSaving] = useState<string | null>(null);
   const [ink, setInk] = useState<string | null>(null);
-  const load = useCallback(() => supabase.functions.invoke('timesheet-signature', { body: { action: 'info', token } }).then(({ data, error }) => error || data?.error ? setErr('This link is no longer active. / Este enlace ya no está activo.') : setInfo(data)), [token]);
+  const navigate = useNavigate();
+  const replaced = !!(useLocation().state as { replaced?: boolean } | null)?.replaced;
+  const load = useCallback(() => { setErr(''); setInfo(null); return supabase.functions.invoke('timesheet-signature', { body: { action: 'info', token } }).then(({ data, error }) => {
+    // An older, replaced link forwards to this person's current link instead of dead-ending.
+    if (data?.next_token) { navigate(`/timesheet-sign/${data.next_token}`, { replace: true, state: { replaced: true } }); return; }
+    if (error || data?.error) setErr('This link was replaced or is no longer active. Please use the newest text we sent you. / Este enlace fue reemplazado o ya no está activo. Use el mensaje más reciente.'); else setInfo(data);
+  }); }, [token, navigate]);
   useEffect(() => { void load(); }, [load]);
   const sign = async (date: string) => {
     if (!ink) return;
     setSaving(date); setErr('');
     const { data, error } = await supabase.functions.invoke('timesheet-signature', { body: { action: 'sign', token, date, signature_png_base64: ink } });
     setSaving(null);
+    if (data?.next_token) { navigate(`/timesheet-sign/${data.next_token}`, { replace: true, state: { replaced: true } }); return; }
     if (error || data?.error) setErr('Could not save your signature. Try again. / No se pudo guardar.');
     else setInfo(i => i && { ...i, days: i.days.map(d => d.date === date ? { ...d, signed: true } : d) });
   };
@@ -34,6 +41,7 @@ export default function TimesheetSign() {
   return <main className="min-h-dvh bg-background p-4 flex justify-center"><div className="w-full max-w-md landscape:max-w-none space-y-4">
     {info?.brand && <p className="text-sm font-semibold text-primary">{info.brand}</p>}
     <h1 className="text-xl font-semibold">Timesheet signature / Firma de hoja de horas</h1>
+    {replaced && <p className="rounded-md border p-2 text-sm text-muted-foreground">That link was replaced — this is your current link. / Ese enlace fue reemplazado; este es su enlace actual.</p>}
     {err && <p role="alert" className="text-destructive">{err}</p>}
     {!info ? (!err && <Loader2 className="animate-spin" />) : <>
       <div className="rounded-md border p-3 text-sm"><p className="font-medium">{info.name}</p><p>{info.location}</p>
