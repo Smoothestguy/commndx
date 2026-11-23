@@ -42,4 +42,4 @@
 
 - Never INSERT into personnel directly (SQL, scripts, edge functions, AI sessions). Always match with find_contact_matches first and attach to the existing person; the DB trigger will reject duplicates (SQLSTATE DP001; admin override only via create_personnel_override with a reason).
 
-- Location detail tabs are Task orders, Crew (one day grid: active roster + anyone who worked, inline military times through the existing stay editor/manual saver), Lodging, Assets, Documents (sign-in sheets, uploads, read-only service logs only when data exists); legacy ?tab values redirect so old links keep working.
+- Location tabs: Task orders, Crew (one day grid, inline times via existing savers), Lodging, Assets, Documents (sheets, uploads, service logs if any); legacy ?tab redirects.
