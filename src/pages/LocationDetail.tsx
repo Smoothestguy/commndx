@@ -12,7 +12,7 @@ import { Pencil, MapPin, Phone, Loader2, Clock, Inbox, Lock, LockOpen } from 'lu
 import { LocationCloseoutDialog } from '@/components/project-hub/LocationCloseoutDialog';
 import { MoveLocationProjectDialog } from '@/components/project-hub/MoveLocationProjectDialog';
 import { supabase } from '@/integrations/supabase/client';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { FieldRequestsDialog } from '@/components/project-hub/FieldRequestsDialog';
 import { LogTimeDialog } from '@/components/personnel/lifecycle/LogTimeDialog';
@@ -41,9 +41,11 @@ import { formatLocalDate } from '@/lib/dateUtils';
 import { localDay } from '@/lib/signinSheets';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
-const tabs = ['staffing','attendance','taskorders','service','sheets','lodging','assets','documents'] as const;
+const tabs = ['taskorders','crew','lodging','assets','documents'] as const;
+const legacyTab: Record<string,string> = { staffing:'crew', attendance:'crew', sheets:'documents', service:'documents' };
+function useHasServiceLog(locationId?: string){ return useQuery({ queryKey:['service-log-exists',locationId], enabled:!!locationId, queryFn: async()=>{ const {count,error}=await (supabase as any).from('location_service_log').select('id',{count:'exact',head:true}).eq('location_id',locationId); if(error) return false; return (count??0)>0; } }); }
 const attViews = ['day','detail'] as const;
-const labels = { taskorders:'Task orders',service:'Services',staffing:'Staffing',attendance:'Attendance',sheets:'Sign-in sheets',lodging:'Lodging',assets:'Assets',documents:'Documents' };
+const labels = { taskorders:'Task orders',crew:'Crew',lodging:'Lodging',assets:'Assets',documents:'Documents' };
 export default function LocationDetail() {
   const mobile = useIsMobile();
   const [expanded,setExpanded] = useState<string[]>([]);
@@ -56,7 +58,8 @@ export default function LocationDetail() {
   const { isAdmin, isManager } = useUserRole(), canWrite = isAdmin || isManager;
   const { data: staffing } = useLocationStaffingSummary(locationId ? [locationId] : []);
   const scoped = useMemo(() => location ? [location] : [], [location]);
-  const [tab,setTab] = useNavigationValue('tab','staffing',tabs);
+  const [tab,setTab] = useNavigationValue('tab','taskorders',tabs);
+  const { data: hasServiceLog } = useHasServiceLog(locationId);
   const [week,setWeek] = useNavigationValue<string>('week',currentWeekStart());
   const [attView,setAttView] = useNavigationValue('view','day',attViews);
   const [params,setParams] = useSearchParams();
@@ -68,10 +71,11 @@ export default function LocationDetail() {
   const qc = useQueryClient();
   const [sheet,setSheet] = useState<{location:string;day:string}>();
   useEffect(() => { window.scrollTo(0,0); }, [locationId]);
+  useEffect(() => { const raw=params.get('tab'); if(raw&&legacyTab[raw]) setParams(prev=>{const next=new URLSearchParams(prev);next.set('tab',legacyTab[raw]);return next;},{replace:true}); }, [params,setParams]);
   useEffect(()=>{
     if(!mobile)return;
-    if(['taskorders','service','sheets','lodging','assets','documents'].includes(tab))setExpanded(prev=>prev.includes(tab)?prev:[...prev,tab]);
-    if(params.get('day')||params.get('action')==='daily')setExpanded(prev=>prev.includes('sheets')?prev:[...prev,'sheets']);
+    if(['taskorders','lodging','assets','documents'].includes(tab))setExpanded(prev=>prev.includes(tab)?prev:[...prev,tab]);
+    if(params.get('day')||params.get('action')==='daily')setExpanded(prev=>prev.includes('documents')?prev:[...prev,'documents']);
     if(params.get('action')==='kiosk')setExpanded(prev=>prev.includes('settings')?prev:[...prev,'settings']);
   },[mobile,tab,params]);
   useEffect(() => {
@@ -87,6 +91,16 @@ export default function LocationDetail() {
   const address = [location.address,location.city,location.state,location.zip].filter(Boolean).join(', ');
   const summary = staffing?.[location.id];
   const shifts=resolveShifts(location,project);
+  const paperwork=(onSelect:(id:string,day:string)=>void)=><div className="space-y-6">
+    <section aria-label="Sign-in sheets" className="space-y-3"><h3 className="font-semibold">Sign-in sheets</h3><DailyTimesheetPanel projectId={projectId} projectName={project.name} locationId={location.id} initialSheet={sheet}/><SigninStatusBoard projectId={projectId} locations={scoped} onSelect={onSelect}/></section>
+    <section aria-label="Uploaded documents" className="space-y-3"><h3 className="font-semibold">Documents</h3><ProjectDocuments projectId={projectId} projectName={project.name} locationScopeId={location.id} unframed/></section>
+    {hasServiceLog&&<details className="border rounded-md p-3"><summary className="cursor-pointer font-semibold min-h-11 flex items-center">Service logs (read-only)</summary><div className="pointer-events-none mt-3"><ServiceGrid locations={scoped}/></div></details>}
+  </div>;
+  const crew=<div className="space-y-4">
+    <p className="text-sm font-medium">Today · Staffed {summary?.assigned ?? 0}/{summary?.needed ?? 0}</p>
+    <section aria-label="Attendance"><LocationDayAttendance todayFirst={mobile} projectId={projectId} locationId={location.id} timezone={location.timezone} canWrite={canWrite}/></section>
+    <section aria-label="Roster"><h3 className="font-semibold mb-2">Roster</h3><LocationStaffing locationId={location.id} locationName={location.name} projectId={projectId} timezone={location.timezone} summary={summary} canWrite={canWrite}/></section>
+  </div>;
   return <PageLayout title={location.name} actions={canWrite&&<><Button variant="outline" size="sm" onClick={()=>setEdit(true)}><Pencil className="h-4 w-4 mr-1"/>Edit</Button><Button variant="outline" size="sm" onClick={()=>setLogOpen(true)}><Clock className="h-4 w-4 mr-1"/>Log time</Button><Button variant="outline" size="sm" onClick={()=>setReqOpen(true)}><Inbox className="h-4 w-4 mr-1"/>Field requests</Button>{!mobile&&(location.status!=='closed' ? <Button variant="outline" size="sm" onClick={()=>setCloseOpen(true)}><Lock className="h-4 w-4 mr-1"/>Close out location</Button> : isAdmin && <Button variant="outline" size="sm" onClick={async()=>{if(!window.confirm('Reopen this location? The close-out task order stays in history; assignments are not restored.'))return;const {error}=await supabase.from('project_locations').update({status:'active'}).eq('id',location.id);if(error){toast.error(error.message);return;}toast.success('Location reopened');qc.invalidateQueries({queryKey:['project-locations']});}}><LockOpen className="h-4 w-4 mr-1"/>Reopen</Button>)}</>}>
     <SEO title={`${location.name} | Command X`} description={`Location operations for ${project.name}`}/>
     {canWrite && !mobile && <div className="flex justify-end mb-3"><Button variant="outline" size="sm" onClick={() => setMoveOpen(true)}>Move to another project</Button></div>}
@@ -108,33 +122,27 @@ export default function LocationDetail() {
     {canWrite && <LogTimeDialog open={logOpen} onOpenChange={setLogOpen} projectId={projectId} locationId={location.id} />}
     {edit && <ProjectLocationsTab projectId={projectId} deploymentMode={!!project.deployment_mode} editTargetId={location.id} onEditClosed={()=>setEdit(false)}/>}
     {mobile ? <div className="space-y-6 py-4">
-      <section aria-label="Today's attendance"><h2 className="font-semibold mb-3">Today's attendance</h2><LocationDayAttendance todayFirst projectId={projectId} locationId={location.id} timezone={location.timezone} canWrite={canWrite}/></section>
-      <section aria-label="Staffing roster"><h2 className="font-semibold mb-3">Staffing roster</h2><LocationStaffing locationId={location.id} locationName={location.name} projectId={projectId} timezone={location.timezone} summary={summary} canWrite={canWrite}/></section>
+      <section aria-label="Task orders"><h2 className="font-semibold mb-3">Task orders</h2><LocationTaskOrders inline projectId={projectId} locationId={location.id} locationName={location.name} timezone={location.timezone}/></section>
+      <section aria-label="Crew"><h2 className="font-semibold mb-3">Crew</h2>{crew}</section>
       <section aria-label="Authorization and demobilization"><h2 className="font-semibold mb-3">Authorization & demobe</h2><LocationAuthorizationPanel projectId={projectId} locationId={location.id} locationName={location.name} timezone={location.timezone}/>{location.demobe_date&&<p className="text-sm mt-2">Demobe {formatLocalDate(location.demobe_date)}</p>}</section>
       <Accordion type="multiple" value={expanded} onValueChange={setExpanded}>
-        {(['taskorders','service','sheets','lodging','assets','documents'] as const).map(t=><AccordionItem key={t} value={t}><AccordionTrigger>{labels[t]}</AccordionTrigger><AccordionContent>{expanded.includes(t)&&<>
-          {t==='taskorders'&&<LocationTaskOrders inline projectId={projectId} locationId={location.id} locationName={location.name} timezone={location.timezone}/>}
-          {t==='service'&&<ServiceGrid locations={scoped}/>}
+        {(['lodging','assets','documents'] as const).map(t=><AccordionItem key={t} value={t}><AccordionTrigger>{labels[t]}</AccordionTrigger><AccordionContent>{expanded.includes(t)&&<>
           {t==='assets'&&<LocationAssets projectId={projectId} locationId={location.id} locationName={location.name} canWrite={canWrite} locationNames={Object.fromEntries(locations.map(l=>[l.id,l.name]))}/>}
-          {t==='sheets'&&<><DailyTimesheetPanel projectId={projectId} projectName={project.name} locationId={location.id} initialSheet={sheet}/><SigninStatusBoard projectId={projectId} locations={scoped} onSelect={(id,day)=>setSheet({location:id,day})}/></>}
           {t==='lodging'&&<LocationLodging projectId={projectId} locationId={location.id} housingBy={location.housing_provided_by} canWrite={canWrite}/>}
-          {t==='documents'&&<ProjectDocuments projectId={projectId} projectName={project.name} locationScopeId={location.id} unframed/>}
+          {t==='documents'&&paperwork((id,day)=>setSheet({location:id,day}))}
         </>}</AccordionContent></AccordionItem>)}
         <AccordionItem value="settings"><AccordionTrigger>Location details & links</AccordionTrigger><AccordionContent>{expanded.includes('settings')&&<div className="space-y-3"><p className="text-sm break-words">{address}</p><p>{location.poc_name} <a href={`tel:${location.poc_phone}`}>{location.poc_phone}</a></p><p className="text-sm">Shifts {shifts.day}–{shifts.dayEnd} / {shifts.night}–{shifts.nightEnd}</p><p className="text-sm">Timezone: {location.timezone||'America/Chicago (fallback)'}</p>{canWrite&&<><LocationKioskActions location={location}/><ProjectJoinLinks projectId={projectId} locationId={location.id}/><Button variant="outline" onClick={()=>setMoveOpen(true)}>Move to another project</Button>{location.status!=='closed'&&<Button variant="outline" onClick={()=>setCloseOpen(true)}>Close out location</Button>}</>}</div>}</AccordionContent></AccordionItem>
       </Accordion>
     </div> : <><Tabs value={tab} onValueChange={v=>{setParams(prev=>{const next=new URLSearchParams(prev);next.set('tab',v);next.delete('sub');next.delete('view');next.delete('action');return next;});}} className="mt-4"><TabsList className="h-auto flex flex-wrap justify-start gap-1">{tabs.map(t=><TabsTrigger value={t} key={t}>{labels[t]}</TabsTrigger>)}</TabsList></Tabs>
     <section className="py-4" aria-label={labels[tab]}>
-      {tab==='attendance' && <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2"><div role="tablist" aria-label="Attendance view" className="inline-flex rounded-md border p-0.5">{attViews.map(v=><Button key={v} role="tab" aria-selected={attView===v} size="sm" variant={attView===v?'secondary':'ghost'} onClick={()=>setAttView(v)}>{v==='day'?'Day':'Trail & weekly timesheet'}</Button>)}</div>{canWrite&&<BulkLogTimesDialog projectId={projectId} location={location}/>}</div>
-        {attView==='day' ? <LocationDayAttendance projectId={projectId} locationId={location.id} timezone={location.timezone} canWrite={canWrite}/> : <><div className="flex items-center gap-2"><label htmlFor="location-week" className="text-sm">Week of</label><Input id="location-week" type="date" className="w-44" value={week} onChange={e=>{if(e.target.value)setWeek(e.target.value);}}/></div><VisitsCard projectId={projectId} locations={scoped} crews={[]} from={week} to={addDays(week,6)} canEdit={canWrite} defaultView="timesheet" locationScopeId={location.id} unframed/></>}
-      </div>}
       {tab==='taskorders' && <LocationTaskOrders inline projectId={projectId} locationId={location.id} locationName={location.name} timezone={location.timezone}/>}
-      {tab==='service' && <ServiceGrid locations={scoped}/>}
-      {tab==='staffing' && <LocationStaffing locationId={location.id} locationName={location.name} projectId={projectId} timezone={location.timezone} summary={summary} canWrite={canWrite}/>}
-      {tab==='sheets' && <SigninStatusBoard projectId={projectId} locations={scoped} onSelect={(id,day)=>{setSheet({location:id,day});setParams(prev=>{const next=new URLSearchParams(prev);next.set('day',day);return next;});}}/>}
+      {tab==='crew' && <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2"><div role="tablist" aria-label="Crew view" className="inline-flex rounded-md border p-0.5">{attViews.map(v=><Button key={v} role="tab" aria-selected={attView===v} size="sm" variant={attView===v?'secondary':'ghost'} onClick={()=>setAttView(v)}>{v==='day'?'Day & roster':'Trail & weekly timesheet'}</Button>)}</div>{canWrite&&<BulkLogTimesDialog projectId={projectId} location={location}/>}</div>
+        {attView==='day' ? crew : <><div className="flex items-center gap-2"><label htmlFor="location-week" className="text-sm">Week of</label><Input id="location-week" type="date" className="w-44" value={week} onChange={e=>{if(e.target.value)setWeek(e.target.value);}}/></div><VisitsCard projectId={projectId} locations={scoped} crews={[]} from={week} to={addDays(week,6)} canEdit={canWrite} defaultView="timesheet" locationScopeId={location.id} unframed/></>}
+      </div>}
       {tab==='lodging' && <LocationLodging projectId={projectId} locationId={location.id} housingBy={location.housing_provided_by} canWrite={canWrite}/>}
       {tab==='assets' && <LocationAssets projectId={projectId} locationId={location.id} locationName={location.name} canWrite={canWrite} locationNames={Object.fromEntries(locations.map(l=>[l.id,l.name]))}/>}
-      {tab==='documents' && <ProjectDocuments projectId={projectId} projectName={project.name} locationScopeId={location.id} unframed/>}
+      {tab==='documents' && paperwork((id,day)=>{setSheet({location:id,day});setParams(prev=>{const next=new URLSearchParams(prev);next.set('day',day);return next;});})}
     </section></>}
   </PageLayout>;
 }

@@ -41,3 +41,5 @@
 - Sidebar/drawer share navConfig; role gating is UI-only.
 
 - Never INSERT into personnel directly (SQL, scripts, edge functions, AI sessions). Always match with find_contact_matches first and attach to the existing person; the DB trigger will reject duplicates (SQLSTATE DP001; admin override only via create_personnel_override with a reason).
+
+- Location detail tabs are Task orders, Crew (day attendance + roster), Lodging, Assets, Documents (sign-in sheets, uploads, read-only service logs only when data exists); legacy ?tab values redirect so old links keep working.
