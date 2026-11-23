@@ -1,4 +1,5 @@
 import { LocationRoster } from "./LocationRoster";
+import { LocationDayAttendance } from "./LocationDayAttendance";
 import { useLocationAuthorization } from '@/hooks/useLocationAuthorization';
 import { toast } from 'sonner';
 import { JoinRequests } from './JoinRequests';
@@ -193,8 +194,8 @@ export function AssignDialog({ locationId, open, onOpenChange, assignedIds, role
   );
 }
 
-export function LocationStaffing({ locationId, summary, canWrite, projectId, locationName, timezone }: {
-  locationId: string; summary?: LocationStaffingSummary; canWrite: boolean; projectId?: string; locationName?: string; timezone?: string | null;
+export function LocationStaffing({ locationId, summary, canWrite, projectId, locationName, timezone, crewMode=false }: {
+  crewMode?: boolean; locationId: string; summary?: LocationStaffingSummary; canWrite: boolean; projectId?: string; locationName?: string; timezone?: string | null;
 }) {
   const authorization = useLocationAuthorization([{id:locationId,timezone}]);
   const [params, setParams] = useSearchParams();
@@ -225,9 +226,10 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
     setParams(prev => { const next = new URLSearchParams(prev); next.delete('action'); return next; }, { replace: true });
   }, [params, canWrite, assignments, setParams]);
   const removePerson = (a: (typeof assignments)[number]) => unassign.mutate({ id:a.id,location_id:locationId }, {onSuccess:async()=>{const result=await authorization.refetch();if(result.data?.[locationId]?.under)toast.success('Under authorized staffing',{action:{label:'Find replacement',onClick:()=>{setReplacementRole(a.role_label||undefined);setAsgOpen(true);}}});}});
+  const tools = <>{projectId && <JoinRequests projectId={projectId} locationId={locationId} />}{canWrite && <><Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => setReqOpen(true)}><ListChecks className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Requirements</span></Button><Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => setAsgOpen(true)}><UserPlus className="h-4 w-4 mr-1" />Assign</Button></>}</>;
   return (
-    <div className="pt-2 border-t space-y-2">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className={crewMode ? "space-y-2" : "pt-2 border-t space-y-2"}>
+      {crewMode ? <LocationDayAttendance projectId={projectId || ''} locationId={locationId} timezone={timezone} canWrite={canWrite} crew={{ agencies, phones, assignments, onText: setTextIds, header: tools }} /> : <><div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-medium whitespace-nowrap">Staffed {assigned}/{needed}{assignments.some(a=>a.demobilized)&&<span className="ml-1 text-xs font-normal text-muted-foreground">· {assignments.filter(a=>a.demobilized).length} demobilized not counted</span>}</span>
         {projectId && <JoinRequests projectId={projectId} locationId={locationId} />}
         {canWrite && (
@@ -238,7 +240,7 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
         )}
       </div>
       <LocationRoster locationId={locationId} projectId={projectId} timezone={timezone} canWrite={canWrite} assignments={assignments} reqRoles={reqRoles}
-        byRole={summary?.byRole ?? {}} agencies={agencies} phones={phones} texted={texted} onText={setTextIds} onLog={setLogFor} onExpense={setExpenseFor} onUnassign={removePerson} />
+        byRole={summary?.byRole ?? {}} agencies={agencies} phones={phones} texted={texted} onText={setTextIds} onLog={setLogFor} onExpense={setExpenseFor} onUnassign={removePerson} /></>}
       {canWrite && <RequirementsDialog locationId={locationId} open={reqOpen} onOpenChange={setReqOpen} />}
       {canWrite && (
         <AssignDialog locationId={locationId} open={asgOpen} onOpenChange={v=>{setAsgOpen(v);if(!v)setReplacementRole(undefined);}} assignedIds={assignedIds} defaultRole={replacementRole}

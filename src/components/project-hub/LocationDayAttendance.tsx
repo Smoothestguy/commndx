@@ -29,13 +29,44 @@ import { punchTimeDetail } from '@/lib/punchTimes';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { MessageSquare, MoreHorizontal } from 'lucide-react';
+import { useMobeRows } from '@/components/signin/MobeSection';
+import { PersonnelBulkActions } from '@/components/personnel/PersonnelBulkActions';
+import { useSetStatus } from '@/integrations/supabase/hooks/usePersonnelStatus';
+import { useEndAssignment, type LocationAssignment } from '@/integrations/supabase/hooks/useLocationStaffing';
+import { crewSummary } from '@/lib/crewSummary';
+
+export type CrewOptions = {
+  agencies: { agencyName: (id: string) => string | null | undefined; employerName: (id: string) => string | null | undefined; nonBillableByPerson: Record<string, boolean | undefined> };
+  phones: Record<string, string | null>; assignments: LocationAssignment[]; onText: (ids: string[]) => void; header?: React.ReactNode;
+};
+
+/** Inline military time cell: blank = not here; commits on blur/Enter. */
+function TimeCell({ value, disabled, label, onCommit }: { value: string; disabled?: boolean; label: string; onCommit: (v: string) => Promise<void> | void }) {
+  const [draft, setDraft] = useState(value.replace(':', ''));
+  const [busy, setBusy] = useState(false);
+  useEffect(() => setDraft(value.replace(':', '')), [value]);
+  const commit = async () => {
+    const v = draft.trim();
+    if (v === value.replace(':', '')) return;
+    if (!v) { setDraft(value.replace(':', '')); return; }
+    const d = v.replace(':', '').padStart(4, '0');
+    const hhmm = `${d.slice(0, 2)}:${d.slice(2)}`;
+    if (!/^\d{4}$/.test(d) || !isHHmm(hhmm)) { toast.error('Use military time 0000–2359'); setDraft(value.replace(':', '')); return; }
+    setBusy(true); try { await onCommit(hhmm); } catch (e) { toast.error(e instanceof Error ? e.message : 'Save failed'); setDraft(value.replace(':', '')); } finally { setBusy(false); }
+  };
+  if (disabled) return <span className="tabular-nums">{value.replace(':', '') || '—'}</span>;
+  return <Input aria-label={label} inputMode="numeric" maxLength={5} placeholder="—" value={draft} disabled={busy} onChange={e => setDraft(e.target.value.replace(/[^0-9:]/g, ''))} onBlur={() => void commit()} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') { setDraft(value.replace(':', '')); } }} onClick={e => e.stopPropagation()} className="h-8 w-16 px-1.5 text-center tabular-nums" />;
+}
 
 type Stay = { id: string; personnel_id: string; name: string; in_at: string; out_at: string | null; actual_in_at?: string | null; actual_out_at?: string | null;auto_closed_at?:string|null;reported_out_at?:string|null; hours: number | null; late_minutes: number | null; late_reason: string | null; late_ack_reason: string | null; in_geofence: boolean | null; offsite_reason: string | null; synced_late: boolean | null;demobe?:boolean };
 const hm = (iso: string | null, tz: string) => iso ? localTime(iso, tz) : '—';
 const dayLabel = (iso: string, tz: string) => new Date(iso).toLocaleDateString('en-US', { timeZone: tz, month: '2-digit', day: '2-digit' });
 
 /** Day-first attendance for one location: every roster person with in/out, late, geo, totals and manager inline/bulk edits. */
-export function LocationDayAttendance({ projectId, locationId, timezone, canWrite, todayFirst=false }: { projectId: string; locationId: string; timezone?: string | null; canWrite: boolean; todayFirst?:boolean }) {
+export function LocationDayAttendance({ projectId, locationId, timezone, canWrite, todayFirst=false, crew }: { projectId: string; locationId: string; timezone?: string | null; canWrite: boolean; todayFirst?:boolean; crew?: CrewOptions }) {
   const mobile=useIsMobile();
   const tz = timezone || 'America/Chicago';
   const [day, setDay] = useSessionState(`attendance:${locationId}:day`, localDay(new Date().toISOString(), tz));
@@ -49,6 +80,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   const [ack, setAck] = useState<{ stay: Stay; preset: string; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [addPerson, setAddPerson] = useState(false);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
   const editTimes = useEditStayTimes(projectId);
   const logTime = useLogManualTime(projectId);
   const {data:roster=[]}=useAttendanceRoster(projectId,locationId,day,tz);
@@ -78,8 +110,8 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
     const people = new Map<string, { id: string; name: string; role: string | null; stays: Stay[]; offRoster?: boolean; demobilized?:boolean }>();
     for (const a of roster) people.set(a.personnel_id, { id: a.personnel_id, name: [a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(' '), role: a.role_label, stays: [],offRoster:!a.assignedOnDay,demobilized:a.demobilized });
     for (const s of stays) { const p = people.get(s.personnel_id) ?? { id: s.personnel_id, name: s.name, role: null, stays: [], offRoster: true }; p.stays.push(s); people.set(s.personnel_id, p); }
-    return [...people.values()].map(p => ({ ...p, stays: p.stays.sort((a, b) => a.in_at.localeCompare(b.in_at)) })).sort((a, b) => (a.stays[0]?.in_at ?? 'z').localeCompare(b.stays[0]?.in_at ?? 'z') || a.name.localeCompare(b.name));
-  }, [roster, q.data]);
+    return [...people.values()].filter(p => !crew || p.stays.length || (!p.demobilized && crew.assignments.some(a => a.personnel_id === p.id))).map(p => ({ ...p, stays: p.stays.sort((a, b) => a.in_at.localeCompare(b.in_at)) })).sort((a, b) => (a.stays[0]?.in_at ?? 'z').localeCompare(b.stays[0]?.in_at ?? 'z') || a.name.localeCompare(b.name));
+  }, [roster, q.data, crew]);
   const today = localDay(new Date().toISOString(), tz);
   const openedPeople=useQuery({queryKey:['punch-open-names',locationId,day,(linkEvents.data||[]).map(e=>e.personnel_id).join(',')],enabled:canWrite&&!!linkEvents.data?.length,queryFn:async()=>{const ids=[...new Set((linkEvents.data||[]).map(e=>e.personnel_id))];const result=await supabase.from('personnel_directory').select('id,first_name,last_name').in('id',ids);if(result.error)throw result.error;return result.data;}});
   const stale = (q.data?.openStays ?? []).filter(s => localDay(s.in_at, tz) < today);
@@ -153,31 +185,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
     ...(canWrite ? [{ key: 'actions', header: 'Actions', noExport: true, sortable: false, filterable: false, render: (r: AttendanceRow) => <Button size="sm" variant="ghost" aria-label={r.stays.length ? `Add entry for ${r.name}` : `Set arrival for ${r.name}`} onClick={() => setLog({ id: r.id, name: r.name })}><Plus className="h-3.5 w-3.5 mr-1" />{r.stays.length ? 'Add entry' : 'Arrival'}</Button> }] : []),
   ];
 
-  return <div className="space-y-4">
-    <div className="flex flex-wrap items-end gap-3">
-      <div><label htmlFor="att-day" className="text-sm block">Date</label><div className="flex items-center gap-1">
-        <Button variant="outline" size="icon" aria-label="Previous day" title="Previous day" onClick={() => { const d = new Date(`${day}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - 1); setDay(d.toISOString().slice(0,10)); setSel(new Set()); }}><ChevronLeft className="h-4 w-4" /></Button>
-        <Input id="att-day" type="date" className="w-44" value={day} onChange={e => { if (e.target.value) { setDay(e.target.value); setSel(new Set()); } }} />
-        <Button variant="outline" size="icon" aria-label="Next day" title="Next day" onClick={() => { setDay(nextDay(day)); setSel(new Set()); }}><ChevronRight className="h-4 w-4" /></Button>
-        <Button variant="outline" size="sm" onClick={() => { setDay(today); setSel(new Set()); }}>Today</Button>
-      </div></div>
-      <div className="flex flex-wrap items-center gap-2 pb-2"><p className="text-sm text-muted-foreground">{present}/{rows.length} signed in · {total.toFixed(2)} h closed</p><MissingSignatures compact locationId={locationId} day={day} zone={tz} rows={q.data?.sigRows ?? []} /></div>
-      <div className="w-full pb-2"><MobeSection locationId={locationId} day={day} onsite={present} /></div>
-      {canWrite && <Button className="ml-auto" size="sm" variant="outline" disabled={!sel.size} onClick={() => setBulk({ date: day, inTime: '', outTime: '', note: '' })}><Clock className="h-4 w-4 mr-1" />Set times for {sel.size || ''} selected</Button>}
-      {canWrite && <Button size="sm" onClick={() => setAddPerson(true)}><Plus className="h-4 w-4 mr-1" />Add person to this day</Button>}
-    </div>
-    {stale.length > 0 && <div className="rounded-md border border-warning/50 bg-warning/5 p-3 space-y-2" role="region" aria-label="Open punches">
-      <p className="text-sm font-medium"><AlertTriangle className="inline h-4 w-4 mr-1 text-warning" />{stale.length} open punch{stale.length === 1 ? '' : 'es'} from earlier days — not counted in hours until closed</p>
-      <ul className="divide-y">{stale.map(s => <li key={s.id} className="flex items-center justify-between gap-2 py-1.5 text-sm"><span>{s.name} · in {dayLabel(s.in_at, tz)} {hm(s.in_at, tz)}</span>{canWrite && <Button size="sm" variant="outline" onClick={() => setEdit({ ids: [s.id], name: s.name })}>Close / fix</Button>}</li>)}</ul>
-    </div>}
-    {canWrite&&<details className="border-b pb-3"><summary className="cursor-pointer text-sm font-medium">Link opened · {linkEvents.data?.length??0}</summary>{linkEvents.error?<p role="alert">Link-open records could not be loaded.</p>:<ul className="divide-y">{linkEvents.data?.map(e=>{const p=openedPeople.data?.find(p=>p.id===e.personnel_id);return <li key={e.id} className="py-2 text-sm">{p?[p.first_name,p.last_name].filter(Boolean).join(' '):'Worker'} · {hm(e.opened_at,tz).replace(':','')} · {e.gps_status==='captured'?`${e.lat?.toFixed(6)}, ${e.lng?.toFixed(6)}`:'GPS unavailable'}{!rows.find(r=>r.id===e.personnel_id)?.stays.length&&' · No punch recorded'}</li>;})}</ul>}</details>}
-    {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : q.error ? <p role="alert" className="text-sm text-destructive">Attendance could not be loaded.</p> :
-      <EnhancedDataTable tableId={`attendance:${locationId}`} data={rows} columns={columns}
-        selectable={canWrite} selectedIds={sel} onSelectionChange={setSel} exportName={`attendance-${day}`}
-        attention={r => r.stays.some(st => !st.out_at) ? 'Open punch' : r.stays.some(st => (st.late_minutes ?? 0) > 0 && !st.late_ack_reason) ? 'Late approval needed' : null}
-        emptyText="No one assigned or signed in on this day."
-        bulkActions={() => <Button size="sm" variant="outline" onClick={() => setBulk({ date: day, inTime: '', outTime: '', note: '' })}><Clock className="h-3.5 w-3.5 mr-1" />Set times</Button>}
-      />}
+  const dialogs = <>
     {edit && <EditStayTimesDialog projectId={projectId} ids={edit.ids} personName={edit.name} day={edit.day} onClose={() => { setEdit(null); void q.refetch(); }} />}
     {log && <LogTimeDialog open onOpenChange={o => { if (!o) { setLog(null); void q.refetch(); } }} projectId={projectId} personnelId={log.id} personName={log.name} locationId={locationId} defaultDate={day} />}
     {addPerson && <LogTimeDialog open addToDay onOpenChange={o => { if (!o) { setAddPerson(false); void q.refetch(); } }} projectId={projectId} locationId={locationId} defaultDate={day} />}
@@ -206,5 +214,110 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
       </div>}
       <DialogFooter><Button variant="outline" disabled={busy} onClick={() => setAck(null)}>Cancel</Button><Button disabled={busy || !ack || !lateAckText(ack.preset, ack.text)} onClick={saveAck}>Approve</Button></DialogFooter>
     </DialogContent></Dialog>
+  </>;
+  const mobe = useMobeRows(locationId, day, !!crew);
+  const setStatus = useSetStatus();
+  const endAssignment = useEndAssignment();
+  const pad = (iso: string | null | undefined) => iso ? hm(iso, tz) : '';
+  const saveIn = async (r: AttendanceRow, v: string) => {
+    const st = r.stays[0];
+    const inAt = locationTimeIso(day, v, tz);
+    if (st) { if (st.out_at && Date.parse(st.out_at) <= Date.parse(inAt)) throw new Error('Time in must be before time out'); await editTimes.mutateAsync([{ id: st.id, inAt, outAt: st.out_at, remove: false, note: 'Crew grid inline edit' }]); }
+    else { setDrafts(d => ({ ...d, [r.id]: v })); toast.info(`Now enter ${r.name}'s time out to add them to this day`); return; }
+    void q.refetch();
+  };
+  const saveOut = async (r: AttendanceRow, v: string) => {
+    const st = r.stays.at(-1);
+    const baseIn = st?.in_at ?? (drafts[r.id] ? locationTimeIso(day, drafts[r.id], tz) : null);
+    if (!baseIn) throw new Error('Enter time in first');
+    let outAt = locationTimeIso(day, v, tz);
+    if (Date.parse(outAt) <= Date.parse(baseIn)) outAt = locationTimeIso(nextDay(day), v, tz);
+    if (st) await editTimes.mutateAsync([{ id: st.id, inAt: st.in_at, outAt, remove: false, note: 'Crew grid inline edit' }]);
+    else { await logTime.mutateAsync({ personnel_id: r.id, location_id: locationId, day, in_at: baseIn, out_at: outAt, note: 'Crew grid inline entry' }); setDrafts(d => { const n = { ...d }; delete n[r.id]; return n; }); }
+    toast.success('Saved'); void q.refetch();
+  };
+  const demob = async (r: AttendanceRow) => {
+    const a = crew?.assignments.find(x => x.personnel_id === r.id);
+    if (!a || !window.confirm(`Demobilize ${r.name} with ${day} as their last day here? Worked days stay editable.`)) return;
+    await setStatus.mutateAsync({ personnelIds: [r.id], status: 'demobilized', project_id: projectId, note: `Demobilized from crew grid · last day ${day}` });
+    await endAssignment.mutateAsync({ id: a.id, location_id: locationId, endAt: new Date(midnight(nextDay(day), tz)).toISOString() });
+  };
+  const sigFor = (id: string) => { const rs = (q.data?.sigRows ?? []).filter(x => x.personnelId === id); return rs.length ? rs.some(x => x.signature) : null; };
+  const crewColumns: EnhancedColumn<AttendanceRow>[] = crew ? [
+    { key: 'name', header: 'Name', width: 220, getValue: r => r.name, render: r => <span className="block truncate" title={r.name}>{r.name || 'Unnamed'}</span> },
+    { key: 'role', header: 'Role', width: 170, getValue: r => r.role ?? '' },
+    { key: 'employer', header: 'Employer', width: 170, getValue: r => crew.agencies.employerName(r.id) || crew.agencies.agencyName(r.id) || 'FRG', render: r => { const n = crew.agencies.employerName(r.id) || crew.agencies.agencyName(r.id) || 'FRG'; const nb = crew.agencies.nonBillableByPerson[r.id]; return <span className="inline-flex max-w-full items-center gap-1.5"><Badge variant="outline" className="max-w-[10rem] truncate font-normal" title={n}>{n.replace(/ \(customer\)$/, '')}</Badge>{nb && <span className="h-2 w-2 shrink-0 rounded-full bg-warning" title="Non-billable" aria-label="Non-billable" />}</span>; } },
+    { key: 'in', header: 'In', width: 90, getValue: r => pad(r.stays[0]?.in_at), render: r => <span title={punchTimeDetail(r.stays[0]?.actual_in_at, r.stays[0]?.in_at, tz)}><TimeCell label={`Time in for ${r.name}`} disabled={!canWrite} value={pad(r.stays[0]?.in_at) || drafts[r.id] || ''} onCommit={v => saveIn(r, v)} /></span> },
+    { key: 'out', header: 'Out', width: 90, getValue: r => pad(r.stays.at(-1)?.out_at), render: r => <span title={punchTimeDetail(r.stays.at(-1)?.actual_out_at, r.stays.at(-1)?.out_at, tz)}><TimeCell label={`Time out for ${r.name}`} disabled={!canWrite} value={pad(r.stays.at(-1)?.out_at)} onCommit={v => saveOut(r, v)} /></span> },
+    { key: 'hours', header: 'Hours', width: 70, getValue: r => r.stays.reduce((n, st) => n + (st.out_at ? Number(st.hours) || 0 : 0), 0), render: r => { const h = r.stays.reduce((n, st) => n + (st.out_at ? Number(st.hours) || 0 : 0), 0); return r.stays.length ? h.toFixed(2) : ''; } },
+    { key: 'sig', header: 'Signature', width: 90, getValue: r => { const s = sigFor(r.id); return s == null ? '' : s ? 'Signed' : 'Missing'; }, render: r => { const s = sigFor(r.id); return s == null ? null : s ? <CheckCircle2 className="h-4 w-4 text-success" aria-label="Signed" /> : <span className="text-destructive text-xs font-medium">missing</span>; } },
+    { key: 'tag', header: 'Day', width: 130, getValue: r => [mobe.data?.find(m => m.personnelId === r.id) ? (mobe.data.find(m => m.personnelId === r.id)?.kind === 'demobe' ? 'DEMOBE' : 'MOBE') : '', r.stays.some(st => st.demobe) ? 'DEMOBE' : '', r.stays.some(st => (st.late_minutes ?? 0) > 0) ? 'Late' : '', r.stays.some(st => st.auto_closed_at) ? 'Auto-closed' : ''].filter(Boolean).join(' · '),
+      render: r => { const m = mobe.data?.find(x => x.personnelId === r.id); const late = r.stays.find(st => (st.late_minutes ?? 0) > 0); return <span className="flex flex-wrap gap-1">
+        {m && <Badge variant="outline" className="text-info">{m.kind === 'demobe' ? 'DEMOBE' : 'MOBE'}</Badge>}
+        {r.stays.some(st => st.demobe) && <Badge variant="outline">DEMOBE</Badge>}
+        {late && <button type="button" disabled={!canWrite} onClick={() => setAck({ stay: late, preset: '', text: '' })}><Badge variant="outline" className={late.late_ack_reason ? 'text-warning' : 'text-destructive'} title={[late.late_reason, late.late_ack_reason].filter(Boolean).join(' · ') || 'Approve late'}>Late {late.late_minutes}m</Badge></button>}
+        {r.stays.some(st => st.auto_closed_at) && <Badge variant="outline" className="text-warning" title="Forgot to clock out · auto-closed">Auto-closed</Badge>}
+      </span>; } },
+    { key: 'actions', header: '', width: 56, noExport: true, sortable: false, filterable: false, render: r => <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${r.name}`}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
+      <DropdownMenuItem onClick={() => crew.onText([r.id])}><MessageSquare className="h-4 w-4 mr-2" />Text punch link</DropdownMenuItem>
+      {canWrite && r.stays.length > 0 && <DropdownMenuItem onClick={() => setEdit({ ids: r.stays.map(st => st.id), name: r.name, day })}>Edit times…</DropdownMenuItem>}
+      {canWrite && <DropdownMenuItem onClick={() => setLog({ id: r.id, name: r.name })}>{r.stays.length ? 'Add another stay…' : 'Set arrival…'}</DropdownMenuItem>}
+      {canWrite && !r.demobilized && crew.assignments.some(x => x.personnel_id === r.id) && <DropdownMenuItem onClick={() => void demob(r).catch(e => toast.error(e instanceof Error ? e.message : 'Demobilize failed'))}>Demobilize (last day {day.slice(5).replace('-', '/')})…</DropdownMenuItem>}
+      <DropdownMenuSeparator /><DropdownMenuItem asChild><Link to={`/personnel/${r.id}`}>Open profile</Link></DropdownMenuItem>
+    </DropdownMenuContent></DropdownMenu> },
+  ] : [];
+  const shiftDay = (n: number) => { const d = new Date(`${day}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); setDay(d.toISOString().slice(0, 10)); setSel(new Set()); };
+  if (crew) {
+    const summaryText = crewSummary(day, rows.map(r => ({ present: r.stays.length > 0, role: r.role, onRoster: !r.demobilized && crew.assignments.some(a => a.personnel_id === r.id) })));
+    const selectedPeople = rows.filter(r => sel.has(r.id)).map(r => { const [first, ...rest] = r.name.split(' '); return { id: r.id, first_name: first ?? '', last_name: rest.join(' '), phone: crew.phones[r.id] ?? null }; });
+    return <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1">
+          <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Previous day" onClick={() => shiftDay(-1)}><ChevronLeft className="h-4 w-4" /></Button>
+          <Input aria-label="Day" type="date" className="h-8 w-40" value={day} onChange={e => { if (e.target.value) { setDay(e.target.value); setSel(new Set()); } }} />
+          <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Next day" onClick={() => shiftDay(1)}><ChevronRight className="h-4 w-4" /></Button>
+          {day !== today && <Button variant="ghost" size="sm" className="h-8" onClick={() => { setDay(today); setSel(new Set()); }}>Today</Button>}
+        </div>
+        <p className="text-sm font-medium" aria-label="Crew summary">{summaryText}</p>
+        {(mobe.data?.length ?? 0) > 0 && <span className="text-xs text-muted-foreground">+{mobe.data?.length} MOBE</span>}
+        <MissingSignatures compact locationId={locationId} day={day} zone={tz} rows={q.data?.sigRows ?? []} />
+        <div className="ml-auto flex items-center gap-1">{crew.header}{canWrite && <Button size="sm" variant="outline" className="h-8" onClick={() => setAddPerson(true)}><Plus className="h-4 w-4 mr-1" />Add to day</Button>}</div>
+      </div>
+      {stale.length > 0 && <p className="text-sm text-warning"><AlertTriangle className="inline h-4 w-4 mr-1" />{stale.length} open punch{stale.length === 1 ? '' : 'es'} from earlier days: {stale.map(s => <Button key={s.id} variant="link" size="sm" className="h-auto p-0 px-1" disabled={!canWrite} onClick={() => setEdit({ ids: [s.id], name: s.name })}>{s.name} ({dayLabel(s.in_at, tz)})</Button>)}</p>}
+      {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : q.error ? <p role="alert" className="text-sm text-destructive">Attendance could not be loaded.</p> :
+        <EnhancedDataTable tableId={`crew:${locationId}`} data={rows} columns={crewColumns} selectable={canWrite} selectedIds={sel} onSelectionChange={setSel} exportName={`crew-${day}`} searchPlaceholder="Search crew…"
+          attention={r => r.stays.some(st => !st.out_at) && localDay(r.stays[0].in_at, tz) < today ? 'Open punch' : null}
+          emptyText="No one on the roster or signed in on this day."
+          bulkActions={(_, clear) => <><Button size="sm" variant="outline" onClick={() => setBulk({ date: day, inTime: '', outTime: '', note: '' })}><Clock className="h-3.5 w-3.5 mr-1" />Set times</Button><Button size="sm" variant="outline" onClick={() => crew.onText([...sel])}><MessageSquare className="h-3.5 w-3.5 mr-1" />Text this site</Button><PersonnelBulkActions people={selectedPeople} worksFor={p => crew.agencies.employerName(p.id) || crew.agencies.agencyName(p.id) || 'FRG'} onDone={clear} locationId={locationId} /></>} />}
+      {dialogs}
+    </div>;
+  }
+
+  return <div className="space-y-4">
+    <div className="flex flex-wrap items-end gap-3">
+      <div><label htmlFor="att-day" className="text-sm block">Date</label><div className="flex items-center gap-1">
+        <Button variant="outline" size="icon" aria-label="Previous day" title="Previous day" onClick={() => { const d = new Date(`${day}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - 1); setDay(d.toISOString().slice(0,10)); setSel(new Set()); }}><ChevronLeft className="h-4 w-4" /></Button>
+        <Input id="att-day" type="date" className="w-44" value={day} onChange={e => { if (e.target.value) { setDay(e.target.value); setSel(new Set()); } }} />
+        <Button variant="outline" size="icon" aria-label="Next day" title="Next day" onClick={() => { setDay(nextDay(day)); setSel(new Set()); }}><ChevronRight className="h-4 w-4" /></Button>
+        <Button variant="outline" size="sm" onClick={() => { setDay(today); setSel(new Set()); }}>Today</Button>
+      </div></div>
+      <div className="flex flex-wrap items-center gap-2 pb-2"><p className="text-sm text-muted-foreground">{present}/{rows.length} signed in · {total.toFixed(2)} h closed</p><MissingSignatures compact locationId={locationId} day={day} zone={tz} rows={q.data?.sigRows ?? []} /></div>
+      <div className="w-full pb-2"><MobeSection locationId={locationId} day={day} onsite={present} /></div>
+      {canWrite && <Button className="ml-auto" size="sm" variant="outline" disabled={!sel.size} onClick={() => setBulk({ date: day, inTime: '', outTime: '', note: '' })}><Clock className="h-4 w-4 mr-1" />Set times for {sel.size || ''} selected</Button>}
+      {canWrite && <Button size="sm" onClick={() => setAddPerson(true)}><Plus className="h-4 w-4 mr-1" />Add person to this day</Button>}
+    </div>
+    {stale.length > 0 && <div className="rounded-md border border-warning/50 bg-warning/5 p-3 space-y-2" role="region" aria-label="Open punches">
+      <p className="text-sm font-medium"><AlertTriangle className="inline h-4 w-4 mr-1 text-warning" />{stale.length} open punch{stale.length === 1 ? '' : 'es'} from earlier days — not counted in hours until closed</p>
+      <ul className="divide-y">{stale.map(s => <li key={s.id} className="flex items-center justify-between gap-2 py-1.5 text-sm"><span>{s.name} · in {dayLabel(s.in_at, tz)} {hm(s.in_at, tz)}</span>{canWrite && <Button size="sm" variant="outline" onClick={() => setEdit({ ids: [s.id], name: s.name })}>Close / fix</Button>}</li>)}</ul>
+    </div>}
+    {canWrite&&<details className="border-b pb-3"><summary className="cursor-pointer text-sm font-medium">Link opened · {linkEvents.data?.length??0}</summary>{linkEvents.error?<p role="alert">Link-open records could not be loaded.</p>:<ul className="divide-y">{linkEvents.data?.map(e=>{const p=openedPeople.data?.find(p=>p.id===e.personnel_id);return <li key={e.id} className="py-2 text-sm">{p?[p.first_name,p.last_name].filter(Boolean).join(' '):'Worker'} · {hm(e.opened_at,tz).replace(':','')} · {e.gps_status==='captured'?`${e.lat?.toFixed(6)}, ${e.lng?.toFixed(6)}`:'GPS unavailable'}{!rows.find(r=>r.id===e.personnel_id)?.stays.length&&' · No punch recorded'}</li>;})}</ul>}</details>}
+    {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : q.error ? <p role="alert" className="text-sm text-destructive">Attendance could not be loaded.</p> :
+      <EnhancedDataTable tableId={`attendance:${locationId}`} data={rows} columns={columns}
+        selectable={canWrite} selectedIds={sel} onSelectionChange={setSel} exportName={`attendance-${day}`}
+        attention={r => r.stays.some(st => !st.out_at) ? 'Open punch' : r.stays.some(st => (st.late_minutes ?? 0) > 0 && !st.late_ack_reason) ? 'Late approval needed' : null}
+        emptyText="No one assigned or signed in on this day."
+        bulkActions={() => <Button size="sm" variant="outline" onClick={() => setBulk({ date: day, inTime: '', outTime: '', note: '' })}><Clock className="h-3.5 w-3.5 mr-1" />Set times</Button>}
+      />}
+    {dialogs}
   </div>;
 }
