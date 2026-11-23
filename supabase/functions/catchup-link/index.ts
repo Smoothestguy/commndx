@@ -65,7 +65,7 @@ Deno.serve(async req => {
     const audit = (pid: string, action: string, extra: Record<string, unknown>) => db.from('audit_logs').insert({ user_email: 'catchup-link', action_type: action, resource_type: 'personnel', resource_id: pid, metadata: { signed_via: 'catchup_link', link_id: link.id, location_id: link.location_id, ...extra }, success: true });
 
     if (v.action === 'search') {
-      const { data: rows, error } = await db.from('location_assignments').select('personnel_id,status,personnel:personnel_id(first_name,last_name)').eq('location_id', link.location_id); if (error) throw error;
+      const { data: rows, error } = await db.from('location_assignments').select('personnel_id,status,personnel:personnel_id(first_name,last_name,phone)').eq('location_id', link.location_id); if (error) throw error;
       const words = norm(v.q).split(/\s+/).filter(Boolean);
       const seen = new Set<string>(), out: any[] = [];
       for (const r of (rows ?? []) as any[]) {
@@ -74,7 +74,7 @@ Deno.serve(async req => {
         if (!words.every(w => norm(name).includes(w))) continue;
         seen.add(r.personnel_id);
         if (r.status !== 'active' && !(rows as any[]).some(x => x.personnel_id === r.personnel_id && x.status === 'active') && !unsignedDates(await stays(r.personnel_id), zone).length) continue;
-        out.push({ id: r.personnel_id, name }); if (out.length >= 8) break;
+        out.push({ id: r.personnel_id, name, needs_phone: !ten(r.personnel.phone) }); if (out.length >= 8) break;
       }
       return json({ location: loc.name, people: out });
     }

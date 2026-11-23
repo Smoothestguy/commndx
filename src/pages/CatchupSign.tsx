@@ -15,7 +15,7 @@ const toB64 = (b: Blob) => new Promise<string>((ok, no) => { const r = new FileR
 /** Public catch-up page: pick your name from this location, sign your open days, confirm your phone. */
 export default function CatchupSign() {
   const { token } = useParams();
-  const [q, setQ] = useState(''), [people, setPeople] = useState<{ id: string; name: string }[]>([]), [loc, setLoc] = useState('');
+  const [q, setQ] = useState(''), [people, setPeople] = useState<{ id: string; name: string; needs_phone?: boolean }[]>([]), [loc, setLoc] = useState('');
   const [pid, setPid] = useState<string | null>(null), [items, setItems] = useState<Items | null>(null), [signed, setSigned] = useState<string[]>([]);
   const [ink, setInk] = useState<string | null>(null), [busy, setBusy] = useState(false), [err, setErr] = useState(''), [dead, setDead] = useState(false);
   const [phoneMode, setPhoneMode] = useState<'ask' | 'edit' | 'done'>('ask'), [phone, setPhone] = useState('');
@@ -30,7 +30,7 @@ export default function CatchupSign() {
     {err && <p role="alert" className="text-destructive text-sm">{err}</p>}
     {!items ? <>
       <Input autoFocus aria-label="Search your name" placeholder="Type your name / Escriba su nombre" value={q} onChange={e => setQ(e.target.value)} />
-      <ul className="divide-y rounded-md border">{people.map(p => <li key={p.id}><button disabled={busy} className="w-full text-left p-3 min-h-11" onClick={() => void pick(p.id)}>{p.name}</button></li>)}
+      <ul className="divide-y rounded-md border">{people.map(p => <li key={p.id}><button disabled={busy} className="w-full text-left p-3 min-h-11" onClick={() => void pick(p.id)}><span>{p.name}</span>{p.needs_phone && <span className="ml-2 rounded-full border border-destructive/40 px-2 py-0.5 text-xs text-destructive">No phone / Sin teléfono</span>}</button></li>)}
         {q.trim().length >= 2 && !people.length && <li className="p-3 text-sm text-muted-foreground">No match / Sin resultados</li>}</ul>
     </> : <>
       <div className="flex items-center justify-between rounded-md border p-3"><p className="font-medium">{items.name}</p><Button size="sm" variant="ghost" onClick={() => { setItems(null); setPid(null); setInk(null); setQ(''); }}>Not me / No soy yo</Button></div>
@@ -38,7 +38,7 @@ export default function CatchupSign() {
         {phoneMode === 'done' ? <p className="text-sm flex items-center gap-1 text-primary"><CheckCircle2 className="h-4 w-4" />Phone confirmed / Confirmado</p>
           : phoneMode === 'ask' && items.phone_last4 ? <div className="space-y-2"><p className="text-sm">Is this your number? / ¿Es su número? <span className="font-mono">(***) ***-{items.phone_last4}</span></p>
             <div className="flex gap-2"><Button size="sm" disabled={busy} onClick={() => void savePhone(true)}>Yes, that's mine / Sí</Button><Button size="sm" variant="outline" onClick={() => setPhoneMode('edit')}>No, change / Cambiar</Button></div></div>
-          : <div className="flex gap-2"><Input inputMode="tel" aria-label="Your phone number" placeholder="10-digit number / Número" value={phone} onChange={e => setPhone(e.target.value)} /><Button disabled={busy || phone.replace(/\D/g, '').length < 10} onClick={() => void savePhone(false)}>Save / Guardar</Button></div>}
+          : <div className="space-y-2">{!items.phone_last4 && <p className="text-sm">No phone number on file — add yours / No hay teléfono registrado — agregue el suyo</p>}<div className="flex gap-2"><Input inputMode="tel" aria-label="Your phone number" placeholder="10-digit number / Número" value={phone} onChange={e => setPhone(e.target.value)} /><Button disabled={busy || phone.replace(/\D/g, '').length < 10} onClick={() => void savePhone(false)}>Save / Guardar</Button></div></div>}
       </section>
       {items.onboarding_pending && <p className="rounded-md border p-3 text-sm">Your onboarding is not finished. Check your texts for the link or ask your supervisor. / Su registro no está completo; revise sus mensajes o pregunte a su supervisor.</p>}
       <section className="space-y-2"><h2 className="font-medium">Timesheets to sign / Hojas por firmar</h2>
