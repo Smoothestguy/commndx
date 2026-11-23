@@ -26,8 +26,9 @@ export function resendWaitMs(lastSentAt: string | null, now = Date.now()) {
 /** "11/04, 11/05, 11/07" */
 export const shortDates = (dates: string[]) => dates.map(d => `${d.slice(5, 7)}/${d.slice(8, 10)}`).join(', ');
 
-export function requestMessage(location: string, dates: string[], link: string) {
-  return dates.length === 1
+export function requestMessage(location: string, dates: string[], link: string, brand?: string | null) {
+  const body = dates.length === 1
     ? `Please sign your timesheet for ${location} on ${shortDates(dates)}/${dates[0].slice(0, 4)}: ${link}`
     : `Please sign your timesheets for ${shortDates(dates)} at ${location} (${dates.length} days): ${link}`;
+  return brand ? `${brand}: ${body}` : body;
 }

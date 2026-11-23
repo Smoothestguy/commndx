@@ -12,7 +12,7 @@ const hm = (iso: string | null, zone: string) => iso ? new Intl.DateTimeFormat('
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('missing'), location_id: z.string().uuid(), personnel_ids: z.array(z.string().uuid()).min(1).max(200) }),
-  z.object({ action: z.literal('request'), location_id: z.string().uuid(), sheet_date: date.optional(), personnel_ids: z.array(z.string().uuid()).min(1).max(100), dry_run: z.boolean().optional() }),
+  z.object({ action: z.literal('request'), location_id: z.string().uuid(), sheet_date: date.optional(), personnel_ids: z.array(z.string().uuid()).min(1).max(100), dry_run: z.boolean().optional(), date_from: date.optional(), date_to: date.optional(), show_times: z.boolean().optional() }),
   z.object({ action: z.literal('resend'), location_id: z.string().uuid(), personnel_id: z.string().uuid(), dry_run: z.boolean().optional() }),
   z.object({ action: z.literal('info'), token: z.string().uuid() }),
   z.object({ action: z.literal('sign'), token: z.string().uuid(), date: date.optional(), signature_png_base64: z.string().max(280000) }),
@@ -53,7 +53,8 @@ Deno.serve(async req => {
         if (ok !== true) return json({ error: 'Not authorized for this location' }, 403);
       }
       const dryRun = (v.action === 'request' || v.action === 'resend') && v.dry_run === true;
-      const { data: loc, error: le } = await db.from('project_locations').select('name,timezone').eq('id', v.location_id).single(); if (le) throw le;
+      const { data: loc, error: le } = await db.from('project_locations').select('name,timezone,worker_brand_name').eq('id', v.location_id).single(); if (le) throw le;
+      const brand = (loc.worker_brand_name ?? '').trim() || null;
       const zone = loc.timezone || 'America/Chicago';
       const nowIso = new Date().toISOString();
       const pendingFor = async (pid: string) => {
@@ -72,7 +73,9 @@ Deno.serve(async req => {
       }
 
       const sid = Deno.env.get('TWILIO_ACCOUNT_SID'), secret = Deno.env.get('TWILIO_AUTH_TOKEN'), from = Deno.env.get('TWILIO_PHONE_NUMBER');
+      // All app domains redirect to the primary domain, so links always use it.
       const site = (Deno.env.get('SITE_URL') || 'https://fairfieldrg.com').replace(/\/$/, '');
+      const showTimes = v.action === 'request' ? v.show_times !== false : true;
       const sendSms = async (to: string, body: string) => {
         if (!sid || !secret || !from) return { sms: 'failed', err: 'Text service not configured', ext: null };
         try {
@@ -98,9 +101,10 @@ Deno.serve(async req => {
           const day = await staysFor(db, pid, v.location_id, v.sheet_date, zone);
           if (day.length && !day.some(s => s.signature_url)) dates = [...dates, v.sheet_date].sort();
         }
+        if (v.action === 'request' && (v.date_from || v.date_to)) dates = dates.filter(d => (!v.date_from || d >= v.date_from) && (!v.date_to || d <= v.date_to));
         if (!dates.length) { results.push({ personnel_id: pid, status: 'skipped', reason: 'Nothing to sign' }); continue; }
         const to = tenDigits(p.phone); if (!to) { results.push({ personnel_id: pid, status: 'no_phone' }); continue; }
-        if (dryRun) { results.push({ personnel_id: pid, status: 'dry_run', dates }); continue; }
+        if (dryRun) { results.push({ personnel_id: pid, status: 'dry_run', dates, body: requestMessage(loc.name, dates, `${site}/timesheet-sign/<token>`, brand) }); continue; }
         const pend = await pendingFor(pid);
         const live = pend.find(r => Date.parse(r.expires_at) > Date.now() && datesOf(r).some(d => dates.includes(d)));
 
@@ -121,7 +125,7 @@ Deno.serve(async req => {
             if (others.length) await db.from('timesheet_signature_requests').update({ status: 'cancelled' }).in('id', others);
             const { data: row, error: ue } = await db.from('timesheet_signature_requests').update(patch).eq('id', prior.id).eq('status', 'pending').select('id,token,send_count').single();
             if (ue || !row) { results.push({ personnel_id: pid, status: 'failed', reason: 'Request changed; refresh' }); continue; }
-            const s = await sendSms(to, requestMessage(loc.name, todo, `${site}/timesheet-sign/${row.token}`));
+            const s = await sendSms(to, requestMessage(loc.name, todo, `${site}/timesheet-sign/${row.token}`, brand));
             await db.from('timesheet_signature_requests').update({ sms_status: s.sms, sms_error: s.err }).eq('id', row.id);
             await audit(p, to, row.id, todo, 'resend', s, row.send_count);
             results.push({ personnel_id: pid, status: s.sms === 'failed' ? 'failed' : 'resent', send_count: row.send_count, requested_at: nowIso, dates, reason: s.err });
@@ -131,9 +135,9 @@ Deno.serve(async req => {
         // New bundled request: cancel any older pending rows touching these dates, then one row + one text.
         const stale = pend.filter(r => datesOf(r).some(d => dates.includes(d))).map(r => r.id);
         if (stale.length) await db.from('timesheet_signature_requests').update({ status: 'cancelled' }).in('id', stale);
-        const { data: row, error: ie } = await db.from('timesheet_signature_requests').insert({ personnel_id: pid, location_id: v.location_id, sheet_date: dates[0], dates, requested_by: u.user.id, last_sent_at: nowIso, last_sent_by: u.user.id }).select('id,token,requested_at').single();
+        const { data: row, error: ie } = await db.from('timesheet_signature_requests').insert({ personnel_id: pid, location_id: v.location_id, sheet_date: dates[0], dates, show_times: showTimes, requested_by: u.user.id, last_sent_at: nowIso, last_sent_by: u.user.id }).select('id,token,requested_at').single();
         if (ie) { results.push({ personnel_id: pid, status: ie.code === '23505' ? 'already_requested' : 'failed' }); continue; }
-        const s = await sendSms(to, requestMessage(loc.name, dates, `${site}/timesheet-sign/${row.token}`));
+        const s = await sendSms(to, requestMessage(loc.name, dates, `${site}/timesheet-sign/${row.token}`, brand));
         await db.from('timesheet_signature_requests').update({ sms_status: s.sms, sms_error: s.err }).eq('id', row.id);
         await audit(p, to, row.id, dates, 'request', s, 1);
         results.push({ personnel_id: pid, status: s.sms === 'failed' ? 'failed' : 'requested', requested_at: row.requested_at, send_count: 1, dates, reason: s.err });
@@ -141,10 +145,10 @@ Deno.serve(async req => {
       return json({ results });
     }
 
-    const { data: r, error: re } = await db.from('timesheet_signature_requests').select('id,personnel_id,location_id,sheet_date,dates,status,expires_at').eq('token', v.token).maybeSingle(); if (re) throw re;
+    const { data: r, error: re } = await db.from('timesheet_signature_requests').select('id,personnel_id,location_id,sheet_date,dates,status,expires_at,show_times').eq('token', v.token).maybeSingle(); if (re) throw re;
     if (!r || r.status === 'cancelled' || Date.parse(r.expires_at) <= Date.now()) return json({ error: 'Inactive link' }, 403);
     const [{ data: loc }, { data: p }] = await Promise.all([
-      db.from('project_locations').select('name,timezone').eq('id', r.location_id).single(),
+      db.from('project_locations').select('name,timezone,worker_brand_name').eq('id', r.location_id).single(),
       db.from('personnel').select('first_name,last_name').eq('id', r.personnel_id).single(),
     ]);
     const zone = loc?.timezone || 'America/Chicago';
@@ -155,7 +159,11 @@ Deno.serve(async req => {
     };
     if (v.action === 'info') {
       await markIfDone();
-      return json({ name: `${p?.first_name ?? ''} ${p?.last_name ?? ''}`.trim(), location: loc?.name, date: list[0], signed: days.every(d => d.signed), days: days.map(d => ({ date: d.date, signed: d.signed, stays: d.stays.map(s => ({ in: hm(s.in_at, zone), out: hm(s.out_at, zone) })) })), stays: days[0]?.stays.map(s => ({ in: hm(s.in_at, zone), out: hm(s.out_at, zone) })) ?? [] });
+      const timed = r.show_times !== false;
+      const brand = (loc?.worker_brand_name ?? '').trim() || null;
+      // Day-only requests never return in/out times to the page.
+      const st = (d: any) => timed ? d.stays.map((s: any) => ({ in: hm(s.in_at, zone), out: hm(s.out_at, zone) })) : [];
+      return json({ name: `${p?.first_name ?? ''} ${p?.last_name ?? ''}`.trim(), location: loc?.name, brand, show_times: timed, date: list[0], signed: days.every(d => d.signed), days: days.map(d => ({ date: d.date, signed: d.signed, stays: st(d) })), stays: days[0] ? st(days[0]) : [] });
     }
 
     const target = v.date ?? days.find(d => !d.signed)?.date;

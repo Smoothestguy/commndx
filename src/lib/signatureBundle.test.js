@@ -23,3 +23,11 @@ test('resend is blocked for one minute after the latest send', () => {
 test('multi-day text lists all dates in one message', () => {
   expect(requestMessage('5049-FCOCO', ['2026-11-04', '2026-11-05', '2026-11-07'], 'L')).toBe('Please sign your timesheets for 11/04, 11/05, 11/07 at 5049-FCOCO (3 days): L');
 });
+test('branded location texts lead with the location company name and never the default one', () => {
+  const m = requestMessage('5052-FL-WPB-Garner', ['2026-11-18', '2026-11-19'], 'https://commndx.com/timesheet-sign/t', 'Patriot Response Group LLC');
+  expect(m.startsWith('Patriot Response Group LLC: ')).toBe(true);
+  expect(m).not.toMatch(/fairfield/i);
+});
+test('unbranded texts are unchanged', () => {
+  expect(requestMessage('X', ['2026-11-18'], 'L')).toBe('Please sign your timesheet for X on 11/18/2026: L');
+});

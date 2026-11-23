@@ -9065,6 +9065,7 @@ export type Database = {
           status: string
           timezone: string | null
           updated_at: string
+          worker_brand_name: string | null
           zip: string | null
         }
         Insert: {
@@ -9105,6 +9106,7 @@ export type Database = {
           status?: string
           timezone?: string | null
           updated_at?: string
+          worker_brand_name?: string | null
           zip?: string | null
         }
         Update: {
@@ -9145,6 +9147,7 @@ export type Database = {
           status?: string
           timezone?: string | null
           updated_at?: string
+          worker_brand_name?: string | null
           zip?: string | null
         }
         Relationships: [
@@ -11786,6 +11789,7 @@ export type Database = {
           requested_by: string
           send_count: number
           sheet_date: string
+          show_times: boolean
           signed_at: string | null
           sms_error: string | null
           sms_status: string
@@ -11805,6 +11809,7 @@ export type Database = {
           requested_by: string
           send_count?: number
           sheet_date: string
+          show_times?: boolean
           signed_at?: string | null
           sms_error?: string | null
           sms_status?: string
@@ -11824,6 +11829,7 @@ export type Database = {
           requested_by?: string
           send_count?: number
           sheet_date?: string
+          show_times?: boolean
           signed_at?: string | null
           sms_error?: string | null
           sms_status?: string

@@ -7,7 +7,8 @@ import { CheckCircle2, Loader2, PenLine } from 'lucide-react';
 
 type Stay = { in: string | null; out: string | null };
 type Day = { date: string; signed: boolean; stays: Stay[] };
-type Info = { name: string; location: string; signed: boolean; days: Day[] };
+type Info = { name: string; location: string; signed: boolean; days: Day[]; brand?: string | null; show_times?: boolean };
+const monDay = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 const blobToBase64 = (b: Blob) => new Promise<string>((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = no; r.readAsDataURL(b); });
 const mdy = (d: string) => `${d.slice(5, 7)}/${d.slice(8, 10)}/${d.slice(0, 4)}`;
 
@@ -28,18 +29,22 @@ export default function TimesheetSign() {
   };
   const left = info?.days.filter(d => !d.signed) ?? [];
   const allDone = !!info && left.length === 0;
+  const timed = info?.show_times !== false;
+  useEffect(() => { if (info?.brand) document.title = `${info.brand} — Timesheet signature`; }, [info?.brand]);
   return <main className="min-h-dvh bg-background p-4 flex justify-center"><div className="w-full max-w-md landscape:max-w-none space-y-4">
+    {info?.brand && <p className="text-sm font-semibold text-primary">{info.brand}</p>}
     <h1 className="text-xl font-semibold">Timesheet signature / Firma de hoja de horas</h1>
     {err && <p role="alert" className="text-destructive">{err}</p>}
     {!info ? (!err && <Loader2 className="animate-spin" />) : <>
       <div className="rounded-md border p-3 text-sm"><p className="font-medium">{info.name}</p><p>{info.location}</p>
+        {!timed && <p className="text-muted-foreground">Days / Días: {info.days.map(d => monDay(d.date)).join(', ')}</p>}
         {info.days.length > 1 && <p className="text-muted-foreground">{info.days.length - left.length} of {info.days.length} days signed / días firmados</p>}</div>
-      {allDone ? <p className="flex items-center gap-2 text-primary"><CheckCircle2 className="h-5 w-5" />Signed. Thank you! / ¡Firmado, gracias!</p> : <>
-        {!ink ? <SignaturePad compact name={info.name} onSave={async b => setInk(await blobToBase64(b))} onSkip={() => {}} saving={false} required description={left.length > 1 ? 'Sign once, then confirm each day below. / Firme una vez y confirme cada día.' : 'Sign to confirm your hours for this day. / Firme para confirmar sus horas.'} />
+      {allDone ? <p className="flex items-center gap-2 text-primary"><CheckCircle2 className="h-5 w-5" />Signed. Thank you! / ¡Firmado, gracias!{info.brand ? ` — ${info.brand}` : ''}</p> : <>
+        {!ink ? <SignaturePad compact name={info.name} onSave={async b => setInk(await blobToBase64(b))} onSkip={() => {}} saving={false} required description={!timed ? 'Sign to confirm you worked on the days listed. / Firme para confirmar que trabajó los días indicados.' : left.length > 1 ? 'Sign once, then confirm each day below. / Firme una vez y confirme cada día.' : 'Sign to confirm your hours for this day. / Firme para confirmar sus horas.'} />
           : <div className="flex items-center justify-between gap-2 rounded-md border p-2"><img src={ink} alt="Your signature" className="h-12 max-w-[60%] object-contain" /><Button size="sm" variant="ghost" disabled={!!saving} onClick={() => setInk(null)}><PenLine className="h-4 w-4 mr-1" />Redraw / Rehacer</Button></div>}
       </>}
       <ul className="space-y-2" aria-label="Days to sign">{info.days.map(d => <li key={d.date} className="rounded-md border p-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="text-sm"><p className="font-medium tabular-nums">{mdy(d.date)}</p>{d.stays.map((s, i) => <p key={i} className="tabular-nums text-muted-foreground">{s.in} – {s.out ?? '…'}</p>)}</div>
+        <div className="text-sm"><p className="font-medium tabular-nums">{timed ? mdy(d.date) : monDay(d.date)}</p>{timed && d.stays.map((s, i) => <p key={i} className="tabular-nums text-muted-foreground">{s.in} – {s.out ?? '…'}</p>)}</div>
         {d.signed ? <span className="flex items-center gap-1 text-sm text-primary"><CheckCircle2 className="h-4 w-4" />Signed / Firmado</span>
           : <Button size="sm" disabled={!ink || !!saving} aria-label={`Confirm and sign ${mdy(d.date)}`} onClick={() => void sign(d.date)}>{saving === d.date ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Confirm {mdy(d.date).slice(0, 5)} / Confirmar</>}</Button>}
       </li>)}</ul>

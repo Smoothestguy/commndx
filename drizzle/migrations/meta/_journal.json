@@ -680,6 +680,13 @@
       "when": 1795440780697,
       "tag": "0096_catchup_links",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1795447451940,
+      "tag": "0097_worker_brand_and_day_only_signatures",
+      "breakpoints": true
     }
   ]
 }
