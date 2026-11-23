@@ -19,6 +19,7 @@ import logo from "@/assets/logo.png";
 import logoDark from "@/assets/logo-dark.png";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
 import { AppleIcon } from "@/components/icons/AppleIcon";
+import { LovableMark } from "@lovable.dev/cloud-auth-js/react";
 import { PortalSwitcherModal } from "@/components/PortalSwitcherModal";
 import { usePortalSwitcher } from "@/hooks/usePortalSwitcher";
 import { NetworkErrorBanner } from "@/components/auth/NetworkErrorBanner";
@@ -29,7 +30,7 @@ import { usePublicSigninProviders } from "@/hooks/useSigninProviders";
 const Auth = () => {
   const navigate = useNavigate();
   const { theme, resolvedTheme } = useTheme();
-  const { user, signIn, signInWithGoogle, signInWithApple, loading: authLoading } = useAuth();
+  const { user, signIn, signInWithGoogle, signInWithApple, signInWithLovable, loading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
   const [showNetworkError, setShowNetworkError] = useState(false);
@@ -115,6 +116,24 @@ const Auth = () => {
     
     try {
       const { error } = await signInWithApple();
+      if (error) {
+        if (isNetworkError(error) || error.message.includes("Can't reach")) {
+          setShowNetworkError(true);
+        }
+        toast.error(error.message);
+        setIsOAuthLoading(false);
+      }
+    } catch {
+      setIsOAuthLoading(false);
+    }
+  };
+
+  const handleLovableLogin = async () => {
+    setIsOAuthLoading(true);
+    setShowNetworkError(false);
+
+    try {
+      const { error } = await signInWithLovable();
       if (error) {
         if (isNetworkError(error) || error.message.includes("Can't reach")) {
           setShowNetworkError(true);
@@ -232,6 +251,20 @@ const Auth = () => {
                 <AppleIcon className="mr-2 h-5 w-5" />
               )}
               Continue with Apple
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full bg-secondary/50 border-border hover:bg-secondary"
+              onClick={handleLovableLogin}
+              disabled={isOAuthLoading}
+            >
+              {isOAuthLoading ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <LovableMark className="mr-2 h-5 w-5" />
+              )}
+              Continue with Lovable
             </Button>
             {providers?.staff_facebook_enabled && (
               <Button

@@ -84,6 +84,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signInWithApple: () => Promise<{ error: Error | null }>;
   signInWithMicrosoft: () => Promise<{ error: Error | null }>;
+  signInWithLovable: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -431,6 +432,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  const signInWithLovable = useCallback(async () => {
+    try {
+      // For Electron: open OAuth in external browser
+      if (isElectron()) {
+        // Use fairfieldrg.com as the OAuth host (Lovable's configured domain)
+        const oauthHost =
+          import.meta.env.VITE_OAUTH_HOST || "https://fairfieldrg.com";
+        const redirectUri = `${oauthHost}/auth/desktop-callback`;
+
+        // Build the OAuth URL and open in external browser
+        const params = new URLSearchParams({
+          provider: "lovable",
+          redirect_uri: redirectUri,
+          state: crypto.randomUUID(),
+        });
+        const oauthUrl = `/~oauth/initiate?${params.toString()}`;
+
+        // Open in external browser - the callback page will redirect to commandx://
+        await window.electronAPI?.openExternal(`${oauthHost}${oauthUrl}`);
+        return { error: null };
+      }
+
+      // For web: use normal Lovable OAuth flow
+      const { error } = await lovable.auth.signInWithOAuth("lovable", {
+        redirect_uri: window.location.origin,
+      });
+
+      if (error) {
+        return { error };
+      }
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -442,6 +479,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         signInWithGoogle,
         signInWithApple,
         signInWithMicrosoft,
+        signInWithLovable,
         signOut,
       }}
     >
