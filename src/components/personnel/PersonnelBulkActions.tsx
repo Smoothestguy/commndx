@@ -6,6 +6,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { SendSiteTextDialog } from '@/components/project-hub/SendSiteTextDialog';
 import { TagInput } from './PersonnelTags';
 import { BulkAssignLocationDialog } from './BulkAssignLocationDialog';
+import { BulkSetEmployerDialog } from './BulkSetEmployerDialog';
+import { useUserRole } from '@/hooks/useUserRole';
+import { Building2 } from 'lucide-react';
 import { useAddTags, useBulkPersonnelUpdate } from '@/hooks/usePersonnelTags';
 import { toast } from 'sonner';
 
@@ -14,12 +17,14 @@ export interface BulkPerson { id: string; first_name: string; last_name: string;
 function csvCell(v: unknown) { const s = String(v ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }
 
 /** Shared bulk actions for selected personnel: text punch links, bench, tag, status, export (no rates). */
-export function PersonnelBulkActions({ people, worksFor, tagsByPerson, onDone }: {
-  people: BulkPerson[]; worksFor: (p: BulkPerson) => string; tagsByPerson?: Record<string, string[]>; onDone?: () => void;
+export function PersonnelBulkActions({ people, worksFor, tagsByPerson, onDone, locationId }: {
+  locationId?: string; people: BulkPerson[]; worksFor: (p: BulkPerson) => string; tagsByPerson?: Record<string, string[]>; onDone?: () => void;
 }) {
   const [textOpen, setTextOpen] = useState(false);
   const [tagOpen, setTagOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [empOpen, setEmpOpen] = useState(false);
+  const { isAdmin, isManager } = useUserRole();
   const upd = useBulkPersonnelUpdate();
   const addTags = useAddTags();
   const ids = people.map(p => p.id);
@@ -55,8 +60,10 @@ export function PersonnelBulkActions({ people, worksFor, tagsByPerson, onDone }:
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+      {(isAdmin || isManager) && <Button size="sm" variant="outline" onClick={() => setEmpOpen(true)}><Building2 className="h-4 w-4 mr-1" />Set employer</Button>}
       <Button size="sm" variant="outline" onClick={exportCsv}><Download className="h-4 w-4 mr-1" />Export</Button>
       <BulkAssignLocationDialog open={assignOpen} onOpenChange={setAssignOpen} personnelIds={ids} onDone={onDone} />
+      <BulkSetEmployerDialog open={empOpen} onOpenChange={setEmpOpen} personnelIds={ids} locationId={locationId} onDone={onDone} />
       <SendSiteTextDialog open={textOpen} onOpenChange={setTextOpen} personnelIds={ids} />
     </>
   );
