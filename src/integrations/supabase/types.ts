@@ -5509,6 +5509,53 @@ export type Database = {
           },
         ]
       }
+      location_day_expected: {
+        Row: {
+          created_at: string
+          day: string
+          id: string
+          location_id: string
+          operators: number
+          source: string | null
+          supervisors: number
+          technicians: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          day: string
+          id?: string
+          location_id: string
+          operators?: number
+          source?: string | null
+          supervisors?: number
+          technicians?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          day?: string
+          id?: string
+          location_id?: string
+          operators?: number
+          source?: string | null
+          supervisors?: number
+          technicians?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_day_expected_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       location_requests: {
         Row: {
           acted_at: string | null

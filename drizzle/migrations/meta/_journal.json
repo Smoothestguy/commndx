@@ -694,6 +694,13 @@
       "when": 1795450421654,
       "tag": "0098_presence_signatures",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1795452003568,
+      "tag": "0099_location_day_expected",
+      "breakpoints": true
     }
   ]
 }

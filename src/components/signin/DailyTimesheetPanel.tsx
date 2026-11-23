@@ -24,6 +24,8 @@ import { MobeSection } from './MobeSection';
 import { appendMobePage, loadMobeRows } from '@/lib/mobeRows';
 import { dailyPeople } from '@/lib/dailyTimesheet';
 import { loadPresenceRows, appendPresencePage } from '@/lib/presenceRows';
+import { headcountLine, presenceOnlyCount } from '@/lib/crewSummary';
+import { loadExpectedDay, expectedTotal } from '@/lib/locationExpected';
 import { useCustomers } from '@/integrations/supabase/hooks/useCustomers';
 import { useProject } from '@/integrations/supabase/hooks/useProjects';
 import { locationCustomer } from '@/lib/projectEvent';
@@ -49,7 +51,7 @@ export function DailyTimesheetPanel({ projectId, projectName, locationId, initia
         const template = docs.find(d => d.is_signin_template && (d.location_id === location.id || d.location_ids?.includes(location.id)));
         const zone = location.timezone || 'America/Chicago', rows = rowsForDay(stays, location.id, day, zone);
         const sheet = saved.find(s => s.location_id === location.id && s.sheet_date === day);
-        const generate = async () => {const levels=await loadLocationAuthorization(location.id,day);const approval=sheet?.status==='locked'&&sheet.countersign_url?{name:sheet.countersign_name,signature:sheet.countersign_url,at:sheet.countersigned_at}:undefined;const base=await generateDailyTimesheet(rows, { day, zone, projectNumber: location.project_number || '', mission: projectName, location: location.name, authorized: levels===null?undefined:authorizedTotal(levels,'position'), approval }, loadSheetSignature);const withMobe=await appendMobePage(base,await loadMobeRows(location.id,day),{day,location:location.name,onsite:dailyPeople(rows).length});return appendPresencePage(withMobe,await loadPresenceRows(location.id,day),{day,location:location.name},loadSheetSignature);};
+        const generate = async () => {const levels=await loadLocationAuthorization(location.id,day);const approval=sheet?.status==='locked'&&sheet.countersign_url?{name:sheet.countersign_name,signature:sheet.countersign_url,at:sheet.countersigned_at}:undefined;const presence=await loadPresenceRows(location.id,day);const people=dailyPeople(rows);const exp=await loadExpectedDay(location.id,day);const headcount=headcountLine(people.length,presenceOnlyCount(people.map(p=>p.personnelId),presence.map(p=>p.personnelId)),expectedTotal(exp));const base=await generateDailyTimesheet(rows, { day, zone, projectNumber: location.project_number || '', mission: projectName, location: location.name, authorized: levels===null?undefined:authorizedTotal(levels,'position'), headcount, approval }, loadSheetSignature);const withMobe=await appendMobePage(base,await loadMobeRows(location.id,day),{day,location:location.name,onsite:dailyPeople(rows).length});return appendPresencePage(withMobe,presence,{day,location:location.name},loadSheetSignature);};
         return <section key={location.id} className="border-b pb-3 space-y-2"><h3 className="font-medium">{location.name} · {day}</h3><MissingSignatures locationId={location.id} day={day} zone={zone} rows={rows} /><MobeSection locationId={location.id} day={day} onsite={dailyPeople(rows).length} />{template&&<SigninSheetsPanel doc={template} projectName={projectName}/>}<div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={busy || !day} onClick={async () => { setBusy(true); try {
           const name = `FRG-${sheetFileName(location.name, day)}`;
           if (!template && sheet?.status === 'locked' && sheet.pdf_url) await downloadStoredSheet(sheet.pdf_url, name);

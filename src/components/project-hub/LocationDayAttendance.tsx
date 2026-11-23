@@ -36,7 +36,10 @@ import { useMobeRows } from '@/components/signin/MobeSection';
 import { PersonnelBulkActions } from '@/components/personnel/PersonnelBulkActions';
 import { useSetStatus } from '@/integrations/supabase/hooks/usePersonnelStatus';
 import { useEndAssignment, type LocationAssignment } from '@/integrations/supabase/hooks/useLocationStaffing';
-import { crewSummary } from '@/lib/crewSummary';
+import { crewDaySummary, headcountLine, presenceOnlyCount } from '@/lib/crewSummary';
+import { loadExpectedDay, expectedTotal } from '@/lib/locationExpected';
+import { ExpectedHeadcountEdit } from './ExpectedHeadcountEdit';
+import { useUserRole } from '@/hooks/useUserRole';
 
 export type CrewOptions = {
   agencies: { agencyName: (id: string) => string | null | undefined; employerName: (id: string) => string | null | undefined; nonBillableByPerson: Record<string, boolean | undefined> };
@@ -83,6 +86,8 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const editTimes = useEditStayTimes(projectId);
   const logTime = useLogManualTime(projectId);
+  const { isAdmin } = useUserRole();
+  const expected = useQuery({ queryKey: ['location-day-expected', locationId, day], queryFn: () => loadExpectedDay(locationId, day) });
   const {data:roster=[]}=useAttendanceRoster(projectId,locationId,day,tz);
   const linkEvents=useQuery({queryKey:['punch-link-events',locationId,day],enabled:canWrite,refetchInterval:60000,queryFn:async()=>{const result=await supabase.from('punch_link_events').select('id,personnel_id,opened_at,lat,lng,gps_status').eq('location_id',locationId).eq('local_date',day).order('opened_at').limit(500);if(result.error)throw result.error;return result.data;}});
   const q = useQuery({
@@ -272,7 +277,9 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   ] : [];
   const shiftDay = (n: number) => { const d = new Date(`${day}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); setDay(d.toISOString().slice(0, 10)); setSel(new Set()); };
   if (crew) {
-    const summaryText = crewSummary(day, rows.map(r => ({ present: r.stays.length > 0, role: r.role, onRoster: !r.demobilized && crew.assignments.some(a => a.personnel_id === r.id) })));
+    const timedIds = rows.filter(r => r.stays.length > 0).map(r => r.id);
+    const presenceCount = presenceOnlyCount(timedIds, (q.data?.presence ?? []).map(x => x.personnelId));
+    const summaryText = crewDaySummary(day, rows.map(r => ({ present: r.stays.length > 0, role: r.role, onRoster: !r.demobilized && crew.assignments.some(a => a.personnel_id === r.id) })), headcountLine(timedIds.length, presenceCount, expectedTotal(expected.data)));
     const selectedPeople = rows.filter(r => sel.has(r.id)).map(r => { const [first, ...rest] = r.name.split(' '); return { id: r.id, first_name: first ?? '', last_name: rest.join(' '), phone: crew.phones[r.id] ?? null }; });
     return <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -283,6 +290,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
           {day !== today && <Button variant="ghost" size="sm" className="h-8" onClick={() => { setDay(today); setSel(new Set()); }}>Today</Button>}
         </div>
         <p className="text-sm font-medium" aria-label="Crew summary">{summaryText}</p>
+        {isAdmin && <ExpectedHeadcountEdit locationId={locationId} day={day} value={expected.data ?? null} onSaved={() => expected.refetch()} />}
         {(mobe.data?.length ?? 0) > 0 && <span className="text-xs text-muted-foreground">+{mobe.data?.length} MOBE</span>}
         <MissingSignatures compact locationId={locationId} day={day} zone={tz} rows={q.data?.sigRows ?? []} />
         <div className="ml-auto flex items-center gap-1">{crew.header}{canWrite && <Button size="sm" variant="outline" className="h-8" onClick={() => setAddPerson(true)}><Plus className="h-4 w-4 mr-1" />Add to day</Button>}</div>
