@@ -12143,6 +12143,21 @@ export type Database = {
           },
         ]
       }
+      tmp_sig_xfer: {
+        Row: {
+          b64: string | null
+          path: string
+        }
+        Insert: {
+          b64?: string | null
+          path: string
+        }
+        Update: {
+          b64?: string | null
+          path?: string
+        }
+        Relationships: []
+      }
       typing_indicators: {
         Row: {
           conversation_id: string
