@@ -12,7 +12,7 @@ const hm = (iso: string | null, zone: string) => iso ? new Intl.DateTimeFormat('
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('missing'), location_id: z.string().uuid(), personnel_ids: z.array(z.string().uuid()).min(1).max(200) }),
-  z.object({ action: z.literal('request'), location_id: z.string().uuid(), sheet_date: date.optional(), personnel_ids: z.array(z.string().uuid()).min(1).max(100), dry_run: z.boolean().optional(), date_from: date.optional(), date_to: date.optional(), show_times: z.boolean().optional() }),
+  z.object({ action: z.literal('request'), location_id: z.string().uuid(), sheet_date: date.optional(), personnel_ids: z.array(z.string().uuid()).min(1).max(100), dry_run: z.boolean().optional(), date_from: date.optional(), date_to: date.optional(), show_times: z.boolean().optional(), presence_dates: z.array(date).min(1).max(31).optional() }),
   z.object({ action: z.literal('resend'), location_id: z.string().uuid(), personnel_id: z.string().uuid(), dry_run: z.boolean().optional() }),
   z.object({ action: z.literal('info'), token: z.string().uuid() }),
   z.object({ action: z.literal('sign'), token: z.string().uuid(), date: date.optional(), signature_png_base64: z.string().max(280000) }),
@@ -95,20 +95,35 @@ Deno.serve(async req => {
       const results: any[] = [];
       for (const pid of ids) {
         const p = people?.find((x: any) => x.id === pid); if (!p) { results.push({ personnel_id: pid, status: 'skipped', reason: 'Not found' }); continue; }
-        let dates = unsignedDates(await recent(db, pid, v.location_id), zone);
-        if (v.action === 'request' && v.sheet_date && !dates.includes(v.sheet_date)) {
+        const presenceMode = v.action === 'request' && !!v.presence_dates;
+        if (presenceMode && showTimes) { results.push({ personnel_id: pid, status: 'skipped', reason: 'Presence dates require show_times=false' }); continue; }
+        let covered: string[] = [];
+        let dates = presenceMode ? [] as string[] : unsignedDates(await recent(db, pid, v.location_id), zone);
+        if (presenceMode) {
+          // Explicit dates-only attestation list: drop dates already signed (stay or presence) or on a live pending link.
+          const want = [...new Set(v.presence_dates!)].sort();
+          const { data: pres } = await db.from('timesheet_presence_signatures').select('sign_date').eq('personnel_id', pid).eq('location_id', v.location_id).in('sign_date', want);
+          const presSigned = new Set((pres ?? []).map((r: any) => r.sign_date));
+          const livePend = (await pendingFor(pid)).filter(r => Date.parse(r.expires_at) > Date.now());
+          const onLink = new Set(livePend.flatMap(datesOf));
+          for (const d of want) {
+            const stays = await staysFor(db, pid, v.location_id, d, zone);
+            if (presSigned.has(d) || stays.some(s => s.signature_url) || onLink.has(d)) covered.push(d); else dates.push(d);
+          }
+        }
+        if (v.action === 'request' && !presenceMode && v.sheet_date && !dates.includes(v.sheet_date)) {
           // Older than the lookback window: still allow the explicitly chosen day.
           const day = await staysFor(db, pid, v.location_id, v.sheet_date, zone);
           if (day.length && !day.some(s => s.signature_url)) dates = [...dates, v.sheet_date].sort();
         }
-        if (v.action === 'request' && (v.date_from || v.date_to)) dates = dates.filter(d => (!v.date_from || d >= v.date_from) && (!v.date_to || d <= v.date_to));
-        if (!dates.length) { results.push({ personnel_id: pid, status: 'skipped', reason: 'Nothing to sign' }); continue; }
+        if (v.action === 'request' && !presenceMode && (v.date_from || v.date_to)) dates = dates.filter(d => (!v.date_from || d >= v.date_from) && (!v.date_to || d <= v.date_to));
+        if (!dates.length) { results.push({ personnel_id: pid, status: 'skipped', reason: 'Nothing to sign', covered }); continue; }
         const to = tenDigits(p.phone); if (!to) { results.push({ personnel_id: pid, status: 'no_phone' }); continue; }
-        if (dryRun) { results.push({ personnel_id: pid, status: 'dry_run', dates, body: requestMessage(loc.name, dates, `${site}/timesheet-sign/<token>`, brand) }); continue; }
+        if (dryRun) { results.push({ personnel_id: pid, status: 'dry_run', dates, covered, body: requestMessage(loc.name, dates, `${site}/timesheet-sign/<token>`, brand) }); continue; }
         const pend = await pendingFor(pid);
         const live = pend.find(r => Date.parse(r.expires_at) > Date.now() && datesOf(r).some(d => dates.includes(d)));
 
-        if (v.action === 'request' && live) { results.push({ personnel_id: pid, status: 'already_requested', requested_at: live.last_sent_at ?? live.requested_at, send_count: live.send_count }); continue; }
+        if (v.action === 'request' && live && !presenceMode) { results.push({ personnel_id: pid, status: 'already_requested', requested_at: live.last_sent_at ?? live.requested_at, send_count: live.send_count }); continue; }
         if (v.action === 'resend') {
           const prior = live ?? pend.find(r => datesOf(r).some(d => dates.includes(d)));
           if (prior) {
@@ -133,14 +148,14 @@ Deno.serve(async req => {
           }
         }
         // New bundled request: cancel any older pending rows touching these dates, then one row + one text.
-        const stale = pend.filter(r => datesOf(r).some(d => dates.includes(d))).map(r => r.id);
+        const stale = presenceMode ? [] : pend.filter(r => datesOf(r).some(d => dates.includes(d))).map(r => r.id);
         if (stale.length) await db.from('timesheet_signature_requests').update({ status: 'cancelled' }).in('id', stale);
         const { data: row, error: ie } = await db.from('timesheet_signature_requests').insert({ personnel_id: pid, location_id: v.location_id, sheet_date: dates[0], dates, show_times: showTimes, requested_by: u.user.id, last_sent_at: nowIso, last_sent_by: u.user.id }).select('id,token,requested_at').single();
         if (ie) { results.push({ personnel_id: pid, status: ie.code === '23505' ? 'already_requested' : 'failed' }); continue; }
         const s = await sendSms(to, requestMessage(loc.name, dates, `${site}/timesheet-sign/${row.token}`, brand));
         await db.from('timesheet_signature_requests').update({ sms_status: s.sms, sms_error: s.err }).eq('id', row.id);
         await audit(p, to, row.id, dates, 'request', s, 1);
-        results.push({ personnel_id: pid, status: s.sms === 'failed' ? 'failed' : 'requested', requested_at: row.requested_at, send_count: 1, dates, reason: s.err });
+        results.push({ personnel_id: pid, status: s.sms === 'failed' ? 'failed' : 'requested', requested_at: row.requested_at, send_count: 1, dates, covered, reason: s.err });
       }
       return json({ results });
     }
@@ -153,7 +168,9 @@ Deno.serve(async req => {
     ]);
     const zone = loc?.timezone || 'America/Chicago';
     const list = datesOf(r);
-    const days = await Promise.all(list.map(async d => { const stays = await staysFor(db, r.personnel_id, r.location_id, d, zone); return { date: d, stays, signed: stays.some(s => s.signature_url) }; }));
+    const { data: presRows } = await db.from('timesheet_presence_signatures').select('sign_date').eq('personnel_id', r.personnel_id).eq('location_id', r.location_id).in('sign_date', list);
+    const presSet = new Set((presRows ?? []).map((x: any) => x.sign_date));
+    const days = await Promise.all(list.map(async d => { const stays = await staysFor(db, r.personnel_id, r.location_id, d, zone); return { date: d, stays, signed: stays.some(s => s.signature_url) || presSet.has(d) }; }));
     const markIfDone = async (extra?: string) => {
       if (days.every(d => d.signed || d.date === extra)) await db.from('timesheet_signature_requests').update({ status: 'signed', signed_at: new Date().toISOString() }).eq('id', r.id).eq('status', 'pending');
     };
@@ -169,11 +186,22 @@ Deno.serve(async req => {
     const target = v.date ?? days.find(d => !d.signed)?.date;
     const day = days.find(d => d.date === target); if (!day) return json({ error: 'Date not on this link' }, 400);
     if (day.signed) { await markIfDone(); return json({ ok: true, date: day.date }); }
-    const first = day.stays[0]; if (!first) return json({ error: 'No entry for that day' }, 409);
+    const first = day.stays[0];
+    if (!first && r.show_times !== false) return json({ error: 'No entry for that day' }, 409);
     const b64 = v.signature_png_base64.replace(/^data:image\/png;base64,/, '');
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(b64)) return json({ error: 'Signature required' }, 400);
     let bytes: Uint8Array; try { bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0)); } catch { return json({ error: 'Invalid signature' }, 400); }
     if (!validSignaturePng(bytes)) return json({ error: 'Invalid PNG' }, 400);
+    if (!first) {
+      // Presence-only attestation: signature lives on its own row; never creates attendance or times.
+      const ppath = `field-signatures/${r.personnel_id}/presence-${r.location_id}-${day.date}.png`;
+      const { error: pue } = await db.storage.from('project-documents').upload(ppath, bytes, { contentType: 'image/png', upsert: false });
+      if (pue) { const { data: ex } = await db.storage.from('project-documents').download(ppath); if (!ex) return json({ error: 'Could not save signature' }, 409); }
+      const { error: pe } = await db.from('timesheet_presence_signatures').insert({ request_id: r.id, personnel_id: r.personnel_id, location_id: r.location_id, sign_date: day.date, signature_path: ppath });
+      if (pe && pe.code !== '23505') throw pe;
+      await markIfDone(day.date);
+      return json({ ok: true, date: day.date });
+    }
     const path = `field-signatures/${r.personnel_id}/${first.visit_personnel_id}.png`;
     const { error: ue } = await db.storage.from('project-documents').upload(path, bytes, { contentType: 'image/png', upsert: false });
     if (ue) { const { data: ex } = await db.storage.from('project-documents').download(path); if (!ex) return json({ error: 'Could not save signature' }, 409); }

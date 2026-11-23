@@ -11776,6 +11776,71 @@ export type Database = {
           },
         ]
       }
+      timesheet_presence_signatures: {
+        Row: {
+          created_at: string
+          id: string
+          location_id: string
+          personnel_id: string
+          request_id: string
+          sign_date: string
+          signature_path: string
+          signed_at: string
+          signed_via: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_id: string
+          personnel_id: string
+          request_id: string
+          sign_date: string
+          signature_path: string
+          signed_at?: string
+          signed_via?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_id?: string
+          personnel_id?: string
+          request_id?: string
+          sign_date?: string
+          signature_path?: string
+          signed_at?: string
+          signed_via?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timesheet_presence_signatures_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timesheet_presence_signatures_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timesheet_presence_signatures_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timesheet_presence_signatures_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "timesheet_signature_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       timesheet_signature_requests: {
         Row: {
           dates: string[] | null

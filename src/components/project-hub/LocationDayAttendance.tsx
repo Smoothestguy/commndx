@@ -89,9 +89,10 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
     queryKey: ['visits-window', 'location-day', locationId, day], refetchInterval: 60000,
     queryFn: async () => {
       const base = new Date(`${day}T12:00:00Z`).getTime();
-      const [win, open] = await Promise.all([
+      const [win, open, pres] = await Promise.all([
         supabase.from('personnel_location_trail').select('visit_personnel_id,personnel_id,first_name,last_name,in_at,out_at,hours,signature_url').eq('project_id',projectId).eq('location_id', locationId).gte('in_at', new Date(base - 864e5).toISOString()).lte('in_at', new Date(base + 864e5).toISOString()),
         supabase.from('personnel_location_trail').select('visit_personnel_id,personnel_id,first_name,last_name,in_at,out_at,hours').eq('project_id',projectId).eq('location_id', locationId).is('out_at', null).order('in_at').limit(200),
+        supabase.from('timesheet_presence_signatures').select('personnel_id,signed_at,personnel:personnel_id(first_name,last_name)').eq('location_id', locationId).eq('sign_date', day),
       ]);
       if (win.error) throw win.error; if (open.error) throw open.error;
       const rows = [...(win.data ?? []).filter(r => r.in_at && localDay(r.in_at, tz) === day), ...(open.data ?? [])];
@@ -102,7 +103,9 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
       const dayStays = (win.data ?? []).filter(r => r.visit_personnel_id && r.in_at && localDay(r.in_at, tz) === day).map(toStay);
       const openStays = (open.data ?? []).filter(r => r.visit_personnel_id && r.in_at).map(toStay);
       const sigRows = (win.data ?? []).filter(r => r.personnel_id && r.in_at && localDay(r.in_at, tz) === day).map(r => ({ personnelId: r.personnel_id ?? '', name: [r.first_name, r.last_name].filter(Boolean).join(' '), signature: r.signature_url }));
-      return { dayStays, openStays, sigRows };
+      // Presence-only attestations (dates-only links): no times, never treated as signed time entries.
+      const presence = (pres.data ?? []).map((x: any) => ({ personnelId: x.personnel_id as string, name: [x.personnel?.first_name, x.personnel?.last_name].filter(Boolean).join(' ') }));
+      return { dayStays, openStays, sigRows, presence };
     },
   });
   const rows = useMemo(() => {
@@ -242,6 +245,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
     await setStatus.mutateAsync({ personnelIds: [r.id], status: 'demobilized', project_id: projectId, note: `Demobilized from crew grid · last day ${day}` });
     await endAssignment.mutateAsync({ id: a.id, location_id: locationId, endAt: new Date(midnight(nextDay(day), tz)).toISOString() });
   };
+  const presenceFor = (id: string) => !!q.data?.presence?.some(x => x.personnelId === id);
   const sigFor = (id: string) => { const rs = (q.data?.sigRows ?? []).filter(x => x.personnelId === id); return rs.length ? rs.some(x => x.signature) : null; };
   const crewColumns: EnhancedColumn<AttendanceRow>[] = crew ? [
     { key: 'name', header: 'Name', width: 220, getValue: r => r.name, render: r => <span className="block truncate" title={r.name}>{r.name || 'Unnamed'}</span> },
@@ -250,7 +254,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
     { key: 'in', header: 'In', width: 90, getValue: r => pad(r.stays[0]?.in_at), render: r => <span title={punchTimeDetail(r.stays[0]?.actual_in_at, r.stays[0]?.in_at, tz)}><TimeCell label={`Time in for ${r.name}`} disabled={!canWrite} value={pad(r.stays[0]?.in_at) || drafts[r.id] || ''} onCommit={v => saveIn(r, v)} /></span> },
     { key: 'out', header: 'Out', width: 90, getValue: r => pad(r.stays.at(-1)?.out_at), render: r => <span title={punchTimeDetail(r.stays.at(-1)?.actual_out_at, r.stays.at(-1)?.out_at, tz)}><TimeCell label={`Time out for ${r.name}`} disabled={!canWrite} value={pad(r.stays.at(-1)?.out_at)} onCommit={v => saveOut(r, v)} /></span> },
     { key: 'hours', header: 'Hours', width: 70, getValue: r => r.stays.reduce((n, st) => n + (st.out_at ? Number(st.hours) || 0 : 0), 0), render: r => { const h = r.stays.reduce((n, st) => n + (st.out_at ? Number(st.hours) || 0 : 0), 0); return r.stays.length ? h.toFixed(2) : ''; } },
-    { key: 'sig', header: 'Signature', width: 90, getValue: r => { const s = sigFor(r.id); return s == null ? '' : s ? 'Signed' : 'Missing'; }, render: r => { const s = sigFor(r.id); return s == null ? null : s ? <CheckCircle2 className="h-4 w-4 text-success" aria-label="Signed" /> : <span className="text-destructive text-xs font-medium">missing</span>; } },
+    { key: 'sig', header: 'Signature', width: 90, getValue: r => { const s = sigFor(r.id); return s ? 'Signed' : presenceFor(r.id) ? 'Presence only' : s == null ? '' : 'Missing'; }, render: r => { const s = sigFor(r.id); if (!s && presenceFor(r.id)) return <Badge variant="outline" className="text-info font-normal" title="Signed — presence only, no times">Presence only</Badge>; return s == null ? null : s ? <CheckCircle2 className="h-4 w-4 text-success" aria-label="Signed" /> : <span className="text-destructive text-xs font-medium">missing</span>; } },
     { key: 'tag', header: 'Day', width: 130, getValue: r => [mobe.data?.find(m => m.personnelId === r.id) ? (mobe.data.find(m => m.personnelId === r.id)?.kind === 'demobe' ? 'DEMOBE' : 'MOBE') : '', r.stays.some(st => st.demobe) ? 'DEMOBE' : '', r.stays.some(st => (st.late_minutes ?? 0) > 0) ? 'Late' : '', r.stays.some(st => st.auto_closed_at) ? 'Auto-closed' : ''].filter(Boolean).join(' · '),
       render: r => { const m = mobe.data?.find(x => x.personnelId === r.id); const late = r.stays.find(st => (st.late_minutes ?? 0) > 0); return <span className="flex flex-wrap gap-1">
         {m && <Badge variant="outline" className="text-info">{m.kind === 'demobe' ? 'DEMOBE' : 'MOBE'}</Badge>}
@@ -283,6 +287,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
         <MissingSignatures compact locationId={locationId} day={day} zone={tz} rows={q.data?.sigRows ?? []} />
         <div className="ml-auto flex items-center gap-1">{crew.header}{canWrite && <Button size="sm" variant="outline" className="h-8" onClick={() => setAddPerson(true)}><Plus className="h-4 w-4 mr-1" />Add to day</Button>}</div>
       </div>
+      {(q.data?.presence?.length ?? 0) > 0 && <p className="text-xs text-muted-foreground">Signed — presence only, no times ({q.data!.presence.length}): {q.data!.presence.map(x => x.name).join(', ')}</p>}
       {stale.length > 0 && <p className="text-sm text-warning"><AlertTriangle className="inline h-4 w-4 mr-1" />{stale.length} open punch{stale.length === 1 ? '' : 'es'} from earlier days: {stale.map(s => <Button key={s.id} variant="link" size="sm" className="h-auto p-0 px-1" disabled={!canWrite} onClick={() => setEdit({ ids: [s.id], name: s.name })}>{s.name} ({dayLabel(s.in_at, tz)})</Button>)}</p>}
       {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : q.error ? <p role="alert" className="text-sm text-destructive">Attendance could not be loaded.</p> :
         <EnhancedDataTable tableId={`crew:${locationId}`} data={rows} columns={crewColumns} selectable={canWrite} selectedIds={sel} onSelectionChange={setSel} exportName={`crew-${day}`} searchPlaceholder="Search crew…"

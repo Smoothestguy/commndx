@@ -687,6 +687,13 @@
       "when": 1795447451940,
       "tag": "0097_worker_brand_and_day_only_signatures",
       "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1795450421654,
+      "tag": "0098_presence_signatures",
+      "breakpoints": true
     }
   ]
 }
