@@ -1686,6 +1686,44 @@ export type Database = {
         }
         Relationships: []
       }
+      catchup_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          location_id: string
+          revoked_at: string | null
+          revoked_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          location_id: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          location_id?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catchup_links_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       change_order_approval_log: {
         Row: {
           action: string
@@ -6414,6 +6452,7 @@ export type Database = {
           pay_rate: number | null
           personnel_number: string
           phone: string | null
+          phone_confirmed_at: string | null
           phone_verified_at: string | null
           phone_verified_source: string | null
           photo_consent_at: string | null
@@ -6506,6 +6545,7 @@ export type Database = {
           pay_rate?: number | null
           personnel_number: string
           phone?: string | null
+          phone_confirmed_at?: string | null
           phone_verified_at?: string | null
           phone_verified_source?: string | null
           photo_consent_at?: string | null
@@ -6598,6 +6638,7 @@ export type Database = {
           pay_rate?: number | null
           personnel_number?: string
           phone?: string | null
+          phone_confirmed_at?: string | null
           phone_verified_at?: string | null
           phone_verified_source?: string | null
           photo_consent_at?: string | null

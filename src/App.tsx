@@ -163,6 +163,7 @@ const Kiosk = lazy(() => import("./pages/Kiosk"));
 import { SheetReopenDialog } from '@/components/signin/SheetReopenDialog';
 const DocumentSign = lazy(() => import("./pages/DocumentSign"));
 const TimesheetSign = lazy(() => import("./pages/TimesheetSign"));
+const CatchupSign = lazy(() => import("./pages/CatchupSign"));
 const QuickApply = lazy(() => import("./pages/QuickApply"));
 const MasterApplicants = lazy(() => import("./pages/MasterApplicants"));
 const Workforce = lazy(() => import("./pages/Workforce"));
@@ -281,6 +282,7 @@ const App = () => {
                     <Route path="/kiosk/:token" element={<Kiosk />} />
                     <Route path="/sign/:token" element={<DocumentSign />} />
                     <Route path="/timesheet-sign/:token" element={<TimesheetSign />} />
+                    <Route path="/catchup/:token" element={<CatchupSign />} />
                     <Route path="/quick-apply/:token" element={<QuickApply />} />
                     {/* Onboarding Routes */}
                     <Route
