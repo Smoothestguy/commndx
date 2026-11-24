@@ -127,7 +127,7 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
       notes: personnel?.notes || "",
       vendor_id: personnel?.employer_customer_id ? "" : personnel?.vendor_id || defaultVendorId || "",
       employer_customer_id: personnel?.employer_customer_id || "",
-      portal_required: (personnel as any)?.portal_required ?? true,
+      portal_required: personnel ? ((personnel as any).portal_required ?? true) : false,
       non_billable: personnel?.non_billable ?? false,
     },
   });
@@ -183,6 +183,7 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
       // Ensure pay_rate and bill_rate are included
       pay_rate: payRate,
       bill_rate: data.bill_rate || 0,
+      portal_required: data.portal_required ?? false,
       // Keep hourly_rate in sync with pay_rate for time tracking calculations
       hourly_rate: payRate,
     };
@@ -466,7 +467,7 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
                 <input
                   type="checkbox"
                   id="portal_required"
-                  checked={watch("portal_required") ?? true}
+                  checked={!!watch("portal_required")}
                   onChange={(e) => setValue("portal_required", e.target.checked)}
                   className="h-5 w-5 rounded border-gray-300"
                 />
