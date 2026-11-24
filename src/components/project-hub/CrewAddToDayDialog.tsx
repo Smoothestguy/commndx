@@ -11,6 +11,7 @@ import { useLogManualTime } from '@/integrations/supabase/hooks/useFieldMode';
 import { useProject } from '@/integrations/supabase/hooks/useProjects';
 import { useProjectLocations } from '@/integrations/supabase/hooks/useProjectLocations';
 import type { LocationAssignment } from '@/integrations/supabase/hooks/useLocationStaffing';
+import { OverlapBypassControls } from './OverlapBypassControls';
 import { manualTimeRange, scheduledShift } from '@/lib/manualTime';
 
 /** Location-scoped backfill: only this location's crew (never the project-wide roster). */
@@ -50,6 +51,7 @@ export function CrewAddToDayDialog({ projectId, locationId, timezone, day, assig
     <div className="flex items-center gap-2"><Input placeholder="Search crew" aria-label="Search crew" value={search} onChange={e => setSearch(e.target.value)} className="h-8" /><Button size="sm" variant="ghost" disabled={busy || !visible.length} onClick={() => setSelected(s => allVisible ? s.filter(id => completed.includes(id) || !visible.some(p => p.id === id)) : [...new Set([...s, ...visible.map(p => p.id)])])}>{allVisible ? 'Select none' : 'Select all'}</Button></div>
     {!people.length ? <p className="text-sm text-muted-foreground">Everyone on this location's crew is already on this day.</p> : <div className="divide-y max-h-64 overflow-y-auto">{visible.map(p => <label key={p.id} className="flex gap-3 items-center py-3 text-sm"><Checkbox checked={selected.includes(p.id)} disabled={busy || completed.includes(p.id)} onCheckedChange={v => setSelected(s => v ? [...s, p.id] : s.filter(id => id !== p.id))} /><span>{p.name}</span>{p.role && <span className="text-muted-foreground">{p.role}</span>}{completed.includes(p.id) && <span className="ml-auto text-success">Saved</span>}</label>)}</div>}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+    <OverlapBypassControls error={error} timezone={timezone} disabled={busy} onActivated={() => void run()} />
     <DialogFooter><Button variant="outline" disabled={busy} onClick={() => onClose(completed.length)}>Cancel</Button><Button disabled={busy || !range || !selected.some(id => !completed.includes(id))} onClick={() => void run()}>{busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Add {selected.filter(id => !completed.includes(id)).length} to day</Button></DialogFooter>
   </DialogContent></Dialog>;
 }

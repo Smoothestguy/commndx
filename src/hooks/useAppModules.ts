@@ -14,8 +14,9 @@ export function useAppModules() {
   const update=useMutation({mutationFn:async({module,enabled}:{module:ModuleKey;enabled:boolean})=>{
     if(!isAdmin)throw new Error('Admin access required');
     const {data:row,error:readError}=await supabase.from('integration_settings').select('id,setting_value').eq('setting_key','app_modules').maybeSingle();if(readError)throw readError;
-    const flags:ModuleFlags={...parseModuleFlags(row?.setting_value),[module]:enabled};
-    const result=row?await supabase.from('integration_settings').update({setting_value:flags}).eq('id',row.id):await supabase.from('integration_settings').insert({setting_key:'app_modules',setting_value:flags});
+    const raw=row?.setting_value&&typeof row.setting_value==='object'&&!Array.isArray(row.setting_value)?row.setting_value as Record<string,unknown>:{};
+    const flags:ModuleFlags={...parseModuleFlags(raw),[module]:enabled};
+    const result=row?await supabase.from('integration_settings').update({setting_value:{...raw,...flags}}).eq('id',row.id):await supabase.from('integration_settings').insert({setting_key:'app_modules',setting_value:flags});
     if(result.error)throw result.error;return flags;
   },onSuccess:flags=>{qc.setQueryData(key,flags);},onError:e=>toast.error(e.message)});
   return {flags:query.data||{},visible:(path:string)=>moduleVisible(path,query.data||{}),update,isLoading:query.isLoading,error:query.error};

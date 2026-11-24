@@ -1,3 +1,4 @@
+import { activeOverlapBypassUntil } from "@/hooks/useOverlapBypass";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -520,7 +521,10 @@ export function useLogManualTime(projectId: string | undefined) {
       // Managers may add extra stays the same day; only overlapping stays (double-counted hours) are refused.
       const {data:overlap,error:overlapError}=await supabase.from('personnel_location_trail').select('visit_personnel_id,location_id,in_at,out_at').eq('personnel_id',i.personnel_id).lt('in_at',i.out_at).gt('in_at',new Date(Date.parse(i.in_at)-2*864e5).toISOString()).limit(50);
       if(overlapError)throw overlapError;
-      if((overlap??[]).some(r=>r.out_at?Date.parse(r.out_at)>Date.parse(i.in_at):r.in_at && Date.parse(r.in_at)>Date.parse(i.in_at)-16*3600e3 && !(i.confirmOtherOpen && r.location_id!==i.location_id)))throw new Error('This overlaps another stay for this person, possibly an unfinished check-out at another location. Close or correct that stay before adding these hours.');
+      const blocking=(overlap??[]).filter(r=>r.out_at?Date.parse(r.out_at)>Date.parse(i.in_at):r.in_at && Date.parse(r.in_at)>Date.parse(i.in_at)-16*3600e3 && !(i.confirmOtherOpen && r.location_id!==i.location_id));
+      // Admin/manager 48h global bypass only skips this throw; all other guards still apply.
+      const overlapBypassed=blocking.length>0 && !!(await activeOverlapBypassUntil());
+      if(blocking.length && !overlapBypassed)throw new Error('This overlaps another stay for this person, possibly an unfinished check-out at another location. Close or correct that stay before adding these hours.');
       await guardStayWeeks(projectId,[{id:crypto.randomUUID(),oldIn:i.in_at,oldOut:i.out_at,inAt:i.in_at,outAt:i.out_at,zone:location.timezone||'America/Chicago'}]);
       await guardVisitDates(i.location_id, i.in_at, i.out_at);
       const { data: { user } } = await supabase.auth.getUser();
@@ -563,7 +567,7 @@ export function useLogManualTime(projectId: string | undefined) {
         await db.from('location_visits').delete().eq('id',v.id);
         throw new Error(pErr.message || 'Unable to save manual stay');
       }
-      const audit=await supabase.from('audit_logs').insert({user_id:user.id,user_email:user.email||'unknown',action_type:i.demobeTaskOrderId?'demobe_time_add':'stay_manual_add',resource_type:'visit_personnel',resource_id:savedStay.id,changes_after:{in_at:i.in_at,out_at:i.out_at,note:i.note??null},metadata:{project_id:projectId,location_id:i.location_id,demobe_task_order_id:i.demobeTaskOrderId??null,assignment_role:i.assignRole??null,confirmed_other_open_stays:i.confirmOtherOpen?(overlap??[]).filter(r=>!r.out_at).map(r=>r.visit_personnel_id):[]},success:true});
+      const audit=await supabase.from('audit_logs').insert({user_id:user.id,user_email:user.email||'unknown',action_type:i.demobeTaskOrderId?'demobe_time_add':'stay_manual_add',resource_type:'visit_personnel',resource_id:savedStay.id,changes_after:{in_at:i.in_at,out_at:i.out_at,note:i.note??null},metadata:{project_id:projectId,location_id:i.location_id,demobe_task_order_id:i.demobeTaskOrderId??null,assignment_role:i.assignRole??null,confirmed_other_open_stays:i.confirmOtherOpen?(overlap??[]).filter(r=>!r.out_at).map(r=>r.visit_personnel_id):[],...(overlapBypassed?{overlap_bypassed:true,overlapped_visit_personnel_ids:blocking.map(r=>r.visit_personnel_id)}:{})},success:true});
       if(audit.error)throw new Error('Time saved, but audit recording failed. Do not add it again; refresh and contact your administrator.');
       await recomputeAttendanceFromVisits(i.location_id, await visitAttendanceDates(v.id));
     },
