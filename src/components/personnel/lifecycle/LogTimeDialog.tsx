@@ -1,4 +1,5 @@
-import { Time24Input } from '@/components/ui/time24-input';
+import { ShiftSegmentsEditor } from '@/components/project-hub/ShiftSegmentsEditor';
+import { blankSegment, segmentRanges, shiftSegments, type ShiftMode, type ShiftSegment } from '@/lib/shiftSegments';
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { useProjectLocations } from "@/integrations/supabase/hooks/useProjectLoc
 import { useCurrentStatuses } from "@/integrations/supabase/hooks/usePersonnelStatus";
 import { useLogManualTime } from "@/integrations/supabase/hooks/useFieldMode";
 import { useAttendanceRoster } from '@/hooks/useAttendanceRoster';
-import { locationRosterPeople, manualTimeRange, scheduledShift } from "@/lib/manualTime";
+import { locationRosterPeople } from "@/lib/manualTime";
 import { useProject } from '@/integrations/supabase/hooks/useProjects';
 import { localDay } from "@/lib/signinSheets";
 import { useProjectDayPeople } from '@/hooks/useProjectDayPeople';
@@ -35,10 +36,9 @@ export function LogTimeDialog({ open, onOpenChange, projectId, personnelId, pers
   const [pid, setPid] = useState("");
   const [loc, setLoc] = useState("");
   const [day, setDay] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [tin, setTin] = useState("");
-  const [tout, setTout] = useState("");
-  const [outDay, setOutDay] = useState(day);
-  const [shift, setShift] = useState<'day'|'night'>('day');
+  const [segments, setSegments] = useState<ShiftSegment[]>([blankSegment(day)]);
+  const [savedSegs, setSavedSegs] = useState(0);
+  const [shift, setShift] = useState<ShiftMode>('day');
   const [note, setNote] = useState("");
   const [saveError,setSaveError]=useState('');
   const [confirmOtherOpen,setConfirmOtherOpen]=useState(false);
@@ -50,20 +50,27 @@ export function LogTimeDialog({ open, onOpenChange, projectId, personnelId, pers
   const [lastOpen, setLastOpen] = useState(false);
   if (open !== lastOpen) {
     setLastOpen(open);
-    if (open) { const date = defaultDate ?? localDay(new Date().toISOString(), locations.find(l => l.id === locationId)?.timezone || 'America/Chicago'); setPid(personnelId ?? ""); setLoc(locationId ?? ""); setDay(date); setOutDay(date); setTin(""); setTout(""); setNote(""); }
+    if (open) { const date = defaultDate ?? localDay(new Date().toISOString(), locations.find(l => l.id === locationId)?.timezone || 'America/Chicago'); setPid(personnelId ?? ""); setLoc(locationId ?? ""); setDay(date); setSegments([blankSegment(date)]); setSavedSegs(0); setSaveError(""); setNote(""); }
   }
 
   const zone = locations.find(l => l.id === loc)?.timezone || (project as { timezone?: string | null } | undefined)?.timezone || 'America/Chicago';
   const { data: roster = [], isLoading: rosterLoading } = useAttendanceRoster(projectId,locationId,day,zone,open);
-  const range = manualTimeRange(day, tin, tout, zone, outDay);
+  const seg = segmentRanges(day, segments, zone);
+  const touched = segments.some(s => s.tin || s.tout);
   const rosterPeople = roster.map(p => ({ personnel_id: p.personnel_id, first_name: p.personnel?.first_name ?? null, last_name: p.personnel?.last_name ?? null }));
   const currentPeople=(projectRoster.data??[]).map(p=>({personnel_id:p.id,first_name:p.first_name,last_name:p.last_name}));
   const scopedPeople = addToDay ? [...new Map([...currentPeople, ...rosterPeople].map(p => [p.personnel_id, p])).values()] : locationRosterPeople(locationId ? rosterPeople : currentPeople, locationId, roster);
-  const valid = !!pid && !!loc && !!day && !!range && (addToDay ? scopedPeople.some(p => p.personnel_id === pid) && (!assign || !!role.trim()) : !locationId || roster.some(p => p.personnel_id === pid));
+  const valid = !!pid && !!loc && !!day && seg.ok && (addToDay ? scopedPeople.some(p => p.personnel_id === pid) && (!assign || !!role.trim()) : !locationId || roster.some(p => p.personnel_id === pid));
   const sortedPeople = [...scopedPeople].filter(p => nm(p).toLowerCase().includes(search.toLowerCase())).sort((a, b) => nm(a).localeCompare(nm(b)));
-  useEffect(() => { if (open && !defaultDate && !tin && !tout && locations.length) { const date=localDay(new Date().toISOString(),zone);setDay(date);setOutDay(date); } },[open,zone,locations.length,defaultDate,tin,tout]);
+  useEffect(() => { if (open && !defaultDate && !touched && locations.length) { const date=localDay(new Date().toISOString(),zone);setDay(date);setSegments([blankSegment(date)]); } },[open,zone,locations.length,defaultDate,touched]);
 
-  const submit = async () => { if (!valid || !range) return; setSaveError(''); try { await save.mutateAsync({ personnel_id: pid, location_id: loc, day, in_at: range.inAt, out_at: range.outAt, note, assignRole: addToDay && assign ? role.trim() : undefined, confirmOtherOpen }); onOpenChange(false); } catch(e) { setSaveError(e instanceof Error ? e.message : 'Time could not be saved'); } };
+  const submit = async () => {
+    if (!valid) return; setSaveError(''); let done = savedSegs;
+    try {
+      for (const r of seg.ranges.slice(done)) { await save.mutateAsync({ personnel_id: pid, location_id: loc, day, in_at: r.inAt, out_at: r.outAt, note, assignRole: done === 0 && addToDay && assign ? role.trim() : undefined, confirmOtherOpen }); done++; setSavedSegs(done); }
+      onOpenChange(false);
+    } catch(e) { setSaveError(`${done ? `${done} of ${seg.ranges.length} shifts saved. ` : ''}${e instanceof Error ? e.message : 'Time could not be saved'}`); }
+  };
   return (
     <Dialog open={open} onOpenChange={o => { if (!save.isPending) onOpenChange(o); }}>
       <DialogContent className="max-w-sm max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -86,18 +93,13 @@ export function LogTimeDialog({ open, onOpenChange, projectId, personnelId, pers
               <SelectContent>{locations.map((l: any) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div><Label htmlFor="manual-date">Date</Label><Input id="manual-date" type="date" className="h-11" value={day} onChange={(e) => { setDay(e.target.value); setOutDay(e.target.value); }} /></div>
-          <div className="flex gap-2"><Select value={shift} onValueChange={v=>setShift(v==='night'?'night':'day')}><SelectTrigger aria-label="Scheduled shift"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="day">Day shift</SelectItem><SelectItem value="night">Night shift</SelectItem></SelectContent></Select><Button type="button" variant="outline" disabled={!loc || !day} onClick={()=>{const s=scheduledShift(day,shift,locations.find(l=>l.id===loc),project);setTin(s.timeIn);setTout(s.timeOut);setOutDay(s.outDay);}}>Use shift times</Button></div>
-          <div className="grid grid-cols-2 gap-2">
-            <div><Label htmlFor="manual-in">Time in</Label><Time24Input id="manual-in"  step={60} className="h-11" value={tin} onChange={(e) => setTin(e.target.value)} /></div>
-            <div><Label htmlFor="manual-out">Time out</Label><Time24Input id="manual-out"  step={60} className="h-11" value={tout} onChange={(e) => setTout(e.target.value)} /></div>
-          </div>
-          <div><Label htmlFor="manual-out-date">Time out date</Label><Input id="manual-out-date" type="date" value={outDay} min={day} onChange={e=>setOutDay(e.target.value)}/></div>
-          {range && <p className="text-xs text-muted-foreground">{range.hours.toFixed(2)} hours · {zone}</p>}
+          <div><Label htmlFor="manual-date">Date</Label><Input id="manual-date" type="date" className="h-11" value={day} disabled={savedSegs > 0} onChange={(e) => { setDay(e.target.value); setSegments(ss => ss.map(x => ({ ...x, outDay: e.target.value }))); }} /></div>
+          <ShiftSegmentsEditor idPrefix="manual" day={day} mode={shift} onModeChange={setShift} segments={segments} onChange={setSegments} disabled={savedSegs > 0 || save.isPending} useShiftDisabled={!loc || !day} onUseShift={() => setSegments(shiftSegments(day, shift, locations.find(l => l.id === loc), project))} />
+          {seg.ranges.length > 0 && <p className="text-xs text-muted-foreground">{seg.hours.toFixed(2)} hours total{seg.ranges.length > 1 ? ` · ${seg.ranges.length} shifts` : ''} · {zone}</p>}
           {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
           <OverlapBypassControls error={saveError} timezone={zone} disabled={save.isPending} onActivated={() => void submit()} />
           {saveError.includes('unfinished check-out') && <label className="flex gap-2 items-start text-sm"><Checkbox checked={confirmOtherOpen} onCheckedChange={v=>setConfirmOtherOpen(v===true)}/>Confirm these location hours are correct; keep the other site's unfinished punch for supervisor review.</label>}
-          {tin && tout && !range && <p className="text-xs text-destructive">Enter valid times with time out after time in.</p>}
+          {seg.invalid && <p className="text-xs text-destructive">Each shift needs both times, with time out after time in.</p>}
           <div><Label>Note (optional)</Label><Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></div>
         </div>
         <DialogFooter>
