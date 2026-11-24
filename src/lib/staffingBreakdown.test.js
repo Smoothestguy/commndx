@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test';
 import { staffingBreakdown, fmtDiff } from './staffingBreakdown';
 describe('staffingBreakdown', () => {
   it('present minus required, case-insensitive, distinct people, unmatched separate', () => {
