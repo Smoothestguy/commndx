@@ -40,6 +40,7 @@ import { crewDaySummary, headcountLine, presenceOnlyCount } from '@/lib/crewSumm
 import { loadExpectedDay, expectedTotal } from '@/lib/locationExpected';
 import { ExpectedHeadcountEdit } from './ExpectedHeadcountEdit';
 import { useUserRole } from '@/hooks/useUserRole';
+import { CrewAddToDayDialog } from './CrewAddToDayDialog';
 
 export type CrewOptions = {
   agencies: { agencyName: (id: string) => string | null | undefined; employerName: (id: string) => string | null | undefined; nonBillableByPerson: Record<string, boolean | undefined> };
@@ -86,6 +87,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const editTimes = useEditStayTimes(projectId);
   const logTime = useLogManualTime(projectId);
+  const [addCrew, setAddCrew] = useState(false);
   const { isAdmin } = useUserRole();
   const expected = useQuery({ queryKey: ['location-day-expected', locationId, day], queryFn: () => loadExpectedDay(locationId, day) });
   const {data:roster=[]}=useAttendanceRoster(projectId,locationId,day,tz);
@@ -196,6 +198,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   const dialogs = <>
     {edit && <EditStayTimesDialog projectId={projectId} ids={edit.ids} personName={edit.name} day={edit.day} onClose={() => { setEdit(null); void q.refetch(); }} />}
     {log && <LogTimeDialog open onOpenChange={o => { if (!o) { setLog(null); void q.refetch(); } }} projectId={projectId} personnelId={log.id} personName={log.name} locationId={locationId} defaultDate={day} />}
+    {addCrew && crew && <CrewAddToDayDialog projectId={projectId} locationId={locationId} timezone={tz} day={day} assignments={crew.assignments} excludeIds={new Set(rows.filter(r => r.stays.length || !r.offRoster).map(r => r.id))} onClose={n => { setAddCrew(false); void q.refetch(); if (n) toast.success(`Added ${n} ${n === 1 ? 'person' : 'people'} to ${day}`); }} />}
     {addPerson && <LogTimeDialog open addToDay onOpenChange={o => { if (!o) { setAddPerson(false); void q.refetch(); } }} projectId={projectId} locationId={locationId} defaultDate={day} />}
 
     <Dialog open={!!bulk} onOpenChange={o => !o && !busy && setBulk(null)}><DialogContent className="max-w-sm max-h-[90dvh] overflow-y-auto">
@@ -293,7 +296,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
         {isAdmin && <ExpectedHeadcountEdit locationId={locationId} day={day} value={expected.data ?? null} onSaved={() => expected.refetch()} />}
         {(mobe.data?.length ?? 0) > 0 && <span className="text-xs text-muted-foreground">+{mobe.data?.length} MOBE</span>}
         <MissingSignatures compact locationId={locationId} day={day} zone={tz} rows={q.data?.sigRows ?? []} />
-        <div className="ml-auto flex items-center gap-1">{crew.header}{canWrite && <Button size="sm" variant="outline" className="h-8" onClick={() => setAddPerson(true)}><Plus className="h-4 w-4 mr-1" />Add to day</Button>}</div>
+        <div className="ml-auto flex items-center gap-1">{crew.header}{canWrite && <Button size="sm" variant="outline" className="h-8" onClick={() => setAddCrew(true)}><Plus className="h-4 w-4 mr-1" />Add crew</Button>}{canWrite && <Button size="sm" variant="outline" className="h-8" onClick={() => setAddPerson(true)}><Plus className="h-4 w-4 mr-1" />Add to day</Button>}</div>
       </div>
       {(q.data?.presence?.length ?? 0) > 0 && <p className="text-xs text-muted-foreground">Signed — presence only, no times ({q.data!.presence.length}): {q.data!.presence.map(x => x.name).join(', ')}</p>}
       {stale.length > 0 && <p className="text-sm text-warning"><AlertTriangle className="inline h-4 w-4 mr-1" />{stale.length} open punch{stale.length === 1 ? '' : 'es'} from earlier days: {stale.map(s => <Button key={s.id} variant="link" size="sm" className="h-auto p-0 px-1" disabled={!canWrite} onClick={() => setEdit({ ids: [s.id], name: s.name })}>{s.name} ({dayLabel(s.in_at, tz)})</Button>)}</p>}
