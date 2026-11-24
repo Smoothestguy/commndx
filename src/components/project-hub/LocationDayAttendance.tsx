@@ -1,3 +1,4 @@
+import { DayStaffingBreakdown } from '@/components/project-hub/DayStaffingBreakdown';
 import { MobeSection } from '@/components/signin/MobeSection';
 import { EnhancedDataTable, type EnhancedColumn } from '@/components/shared/EnhancedDataTable';
 import { useSessionState } from '@/hooks/useSessionState';
@@ -300,6 +301,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
       </div>
       {(q.data?.presence?.length ?? 0) > 0 && <p className="text-xs text-muted-foreground">Signed — presence only, no times ({q.data!.presence.length}): {q.data!.presence.map(x => x.name).join(', ')}</p>}
       {stale.length > 0 && <p className="text-sm text-warning"><AlertTriangle className="inline h-4 w-4 mr-1" />{stale.length} open punch{stale.length === 1 ? '' : 'es'} from earlier days: {stale.map(s => <Button key={s.id} variant="link" size="sm" className="h-auto p-0 px-1" disabled={!canWrite} onClick={() => setEdit({ ids: [s.id], name: s.name })}>{s.name} ({dayLabel(s.in_at, tz)})</Button>)}</p>}
+      <DayStaffingBreakdown locationId={locationId} day={day} zone={tz} rows={rows} mobeCount={mobe.data?.filter(m=>m.kind!=='demobe').length ?? 0} demobeCount={(mobe.data?.filter(m=>m.kind==='demobe').length ?? 0) + rows.filter(r=>r.stays.some((st:any)=>st.demobe)).length} />
       {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : q.error ? <p role="alert" className="text-sm text-destructive">Attendance could not be loaded.</p> :
         <EnhancedDataTable tableId={`crew:${locationId}`} data={rows} columns={crewColumns} selectable={canWrite} selectedIds={sel} onSelectionChange={setSel} exportName={`crew-${day}`} searchPlaceholder="Search crew…"
           attention={r => r.stays.some(st => !st.out_at) && localDay(r.stays[0].in_at, tz) < today ? 'Open punch' : null}
