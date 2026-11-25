@@ -11,6 +11,7 @@ import { JoinRequests } from './JoinRequests';
 import { CustomerProjectAlerts } from './CustomerProjectAlerts';
 import { useProjectAgencies } from "@/hooks/useProjectAgencies";
 import { useDeploymentHours } from '@/hooks/useDeploymentHours';
+import { dedupeWeekEntries, weekKpis, billableEstimate, normName } from '@/lib/eventOverview';
 import { routeMiles } from '@/lib/deploymentFlow';
 import { localDay } from '@/lib/signinSheets';
 import { attendanceSaveMode, manualTimeRange } from '@/lib/manualTime';
@@ -36,7 +37,7 @@ import { ProjectRosterCard } from "@/components/personnel/lifecycle/ProjectRoste
 import { LogTimeDialog } from "@/components/personnel/lifecycle/LogTimeDialog";
 import { EditStayTimesDialog } from '@/components/personnel/lifecycle/EditStayTimesDialog';
 import { useEditedStayIds } from '@/hooks/useEditStayTimes';
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { addDays, format } from "date-fns";
 import { Link } from "react-router-dom";
 import { useNavigationValue } from '@/hooks/useNavigationValue';
@@ -808,14 +809,14 @@ function useRoleLabels(locationIds: string[], crews: Crew[]) {
     queryKey: ["deployment-role-labels", ids, crewIds],
     enabled: ids.length > 0,
     queryFn: async () => {
-      // bill rates per location+role
+      // bill rates per location+role (role matched case/space-insensitively)
       const { data: reqs, error: rErr } = await db.from("location_requirements")
         .select("location_id, role_label, bill_rate").in("location_id", ids);
       if (rErr) throw rErr;
       const rates: Record<string, number> = {};
-      for (const r of reqs ?? []) if (r.bill_rate != null) rates[`${r.location_id}|${r.role_label}`] = Number(r.bill_rate);
-      // role label per person: crew membership first, then location assignment
-      const roleByPerson: Record<string, string> = {};
+      for (const r of reqs ?? []) if (r.bill_rate != null) rates[`${r.location_id}|${normName(r.role_label || "")}`] = Number(r.bill_rate);
+      // role per person: crew membership first, then that location's assignment (active preferred, else latest), so demobilized hours still find a rate
+      const roleByPerson: Record<string, string> = {}, roleByPersonLoc: Record<string, string> = {};
       if (crewIds.length) {
         const { data: cms, error: cErr } = await db.from("crew_members")
           .select("personnel_id, role_label").in("crew_id", crewIds).is("left_on", null);
@@ -823,13 +824,23 @@ function useRoleLabels(locationIds: string[], crews: Crew[]) {
         for (const m of cms ?? []) if (m.role_label && !roleByPerson[m.personnel_id]) roleByPerson[m.personnel_id] = m.role_label;
       }
       const { data: las, error: lErr } = await db.from("location_assignments")
-        .select("personnel_id, role_label").in("location_id", ids).eq("status", "active");
+        .select("personnel_id, location_id, role_label, status, assigned_at").in("location_id", ids);
       if (lErr) throw lErr;
-      for (const a of las ?? []) if (a.role_label && !roleByPerson[a.personnel_id]) roleByPerson[a.personnel_id] = a.role_label;
-      return { rates, roleByPerson };
+      const sorted = [...(las ?? [])].sort((x: { status: string; assigned_at: string | null }, y: { status: string; assigned_at: string | null }) => (Number(y.status === "active") - Number(x.status === "active")) || String(y.assigned_at || "").localeCompare(String(x.assigned_at || "")));
+      for (const a of sorted) if (a.role_label) { const k = `${a.location_id}|${a.personnel_id}`; if (!roleByPersonLoc[k]) roleByPersonLoc[k] = a.role_label; }
+      return { rates, roleByPerson, roleByPersonLoc };
     },
   });
 }
+
+const KPI_HELP: Record<string, string> = {
+  "Person-days": "Distinct person + date pairs with counted hours this week (Mon–Sun). Stays under 5 minutes and voided entries are excluded.",
+  "Hours": "Sum of time-entry hours this week, same rules as the Crew view: no voided entries, no stays under 5 minutes, and a person's overlapping stays at two sites count once.",
+  "Miles": "Crew mileage logged for this week's dates.",
+  "Receipts today": "Total of expense receipts dated today at this event's locations.",
+  "Est. billable": "Billable hours × the location's bill rate for the person's role (Site requirements), plus miles × the event mileage rate. Non-billable people/entries excluded. Hours with no matching rate are listed, not counted.",
+  "Equipment": "Accrued day-rate billing for billable equipment placed at this event's locations.",
+};
 
 export function SummaryStrip({ locations, crews, from, to, mileageRate, canEdit, warningsOnly = false }: {
   locations: ProjectLocation[]; crews: Crew[]; from: string; to: string; mileageRate: number | null; canEdit: boolean; warningsOnly?: boolean;
@@ -843,38 +854,36 @@ export function SummaryStrip({ locations, crews, from, to, mileageRate, canEdit,
   const equipment = useProjectAssetBilling(locations[0]?.project_id);
 
   const s = useMemo(() => {
-    const personDays = new Set<string>();
-    let hours = 0, missingRate = 0, laborBill = 0;
-    for (const a of entries) {
-      if (Number(a.hours)>0) personDays.add(`${a.personnel_id}|${a.entry_date}`);
-      const h = Number(a.hours) || 0;
-      hours += h;
-      if (h > 0 && a.billable !== false && a.personnel_id && billingPeople.nonBillableByPerson[a.personnel_id] === false) {
-        const role = a.personnel_id ? rl?.roleByPerson[a.personnel_id] : undefined;
-        const rate = role ? rl?.rates[`${a.location_id}|${role}`] : undefined;
-        if (rate != null) laborBill += h * rate; else missingRate++;
-      }
-    }
+    const d = dedupeWeekEntries(entries);
+    const k = weekKpis(d.rows);
+    const rateFor = (e: { location_id: string | null; personnel_id: string | null }) => {
+      const role = (e.location_id && e.personnel_id && rl?.roleByPersonLoc[`${e.location_id}|${e.personnel_id}`]) || (e.personnel_id ? rl?.roleByPerson[e.personnel_id] : undefined);
+      return role ? rl?.rates[`${e.location_id}|${normName(role)}`] : undefined;
+    };
+    const bill = billableEstimate(d.rows, rateFor, (pid) => billingPeople.nonBillableByPerson[pid]);
     const totalMiles = miles.reduce((sum, m) => sum + (Number(m.miles) || 0), 0);
     const mileBill = mileageRate != null ? totalMiles * mileageRate : 0;
-    return { personDays: personDays.size, hours, totalMiles, missingRate, billable: laborBill + mileBill };
+    return { ...k, overlapHours: d.overlapHours, overlapPeople: d.overlapPeople.length, totalMiles, missingRate: bill.missingRows, missingHours: bill.missingHours, billable: bill.total + mileBill };
   }, [entries, miles, rl, mileageRate, billingPeople.data]);
+  const moneyReady = !!billingPeople.data && !!rl;
 
-  const Item = ({ label, value }: { label: string; value: string }) => (
-    <div className="flex-1 min-w-[7rem] px-3 py-2">
-      <div className="text-[10px] uppercase text-muted-foreground">{label}</div>
+  const Item = ({ label, value, sub }: { label: string; value: string; sub?: ReactNode }) => (
+    <div className="flex-1 min-w-[7rem] px-3 py-2" title={KPI_HELP[label]}>
+      <div className="text-[10px] uppercase text-muted-foreground underline decoration-dotted cursor-help" aria-label={`${label}: ${KPI_HELP[label] || ''}`}>{label}</div>
       <div className="text-lg font-semibold leading-tight">{value}</div>
+      {sub && <div className="text-[11px] leading-tight">{sub}</div>}
     </div>
   );
+  const projectId = locations[0]?.project_id;
 
   return (
     <div className="space-y-1" aria-label={warningsOnly ? 'Billing warnings' : 'Event rollups'}>
       {!warningsOnly && <div className="flex flex-wrap gap-2 border-y divide-x">
         <Item label="Person-days" value={String(s.personDays)} />
-        <Item label="Hours" value={s.hours.toLocaleString()} />
+        <Item label="Hours" value={s.hours.toLocaleString(undefined, { maximumFractionDigits: 2 })} sub={s.overlapHours > 0 ? <span className="text-warning">⚠ {s.overlapHours.toLocaleString()} overlapping hours excluded ({s.overlapPeople} {s.overlapPeople === 1 ? 'person' : 'people'})</span> : undefined} />
         <Item label="Miles" value={s.totalMiles.toLocaleString()} />
         {canEdit && <Item label="Receipts today" value={`$${receiptsToday.toLocaleString(undefined, { maximumFractionDigits: 2 })}`} />}
-        {canEdit && <Item label="Est. billable" value={`$${s.billable.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />}
+        {canEdit && <Item label="Est. billable" value={moneyReady ? `$${s.billable.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '…'} sub={moneyReady && s.missingHours > 0 ? <a className="text-warning underline" href={projectId ? `/projects/${projectId}?tab=locations` : undefined}>{s.missingHours.toLocaleString(undefined, { maximumFractionDigits: 2 })} hours without a rate — set rates</a> : undefined} />}
         <Item label="Equipment" value={canEdit ? `$${equipment.equipmentTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : String(equipment.rows.length)} />
       </div>}
       {warningsOnly && canEdit && equipment.missingRate > 0 && <p className="text-[11px] text-warning">{equipment.missingRate} billable asset{equipment.missingRate === 1 ? "" : "s"} with no day rate.</p>}
