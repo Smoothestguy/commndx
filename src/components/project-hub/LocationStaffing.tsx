@@ -226,10 +226,10 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
     setParams(prev => { const next = new URLSearchParams(prev); next.delete('action'); return next; }, { replace: true });
   }, [params, canWrite, assignments, setParams]);
   const removePerson = (a: (typeof assignments)[number]) => unassign.mutate({ id:a.id,location_id:locationId }, {onSuccess:async()=>{const result=await authorization.refetch();if(result.data?.[locationId]?.under)toast.success('Under authorized staffing',{action:{label:'Find replacement',onClick:()=>{setReplacementRole(a.role_label||undefined);setAsgOpen(true);}}});}});
-  const tools = <>{projectId && <JoinRequests projectId={projectId} locationId={locationId} />}{canWrite && <><Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => setReqOpen(true)}><ListChecks className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Requirements</span></Button><Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => setAsgOpen(true)}><UserPlus className="h-4 w-4 mr-1" />Assign</Button></>}</>;
+  const tools = <>{projectId && <JoinRequests projectId={projectId} locationId={locationId} />}</>;
   return (
     <div className={crewMode ? "space-y-2" : "pt-2 border-t space-y-2"}>
-      {crewMode ? <LocationDayAttendance projectId={projectId || ''} locationId={locationId} timezone={timezone} canWrite={canWrite} crew={{ agencies, phones, assignments, onText: setTextIds, header: tools }} /> : <><div className="flex flex-wrap items-center justify-between gap-2">
+      {crewMode ? <LocationDayAttendance projectId={projectId || ''} locationId={locationId} timezone={timezone} canWrite={canWrite} crew={{ agencies, phones, assignments, onText: setTextIds, header: tools, onAssign: () => setAsgOpen(true), onRequirements: () => setReqOpen(true) }} /> : <><div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-medium whitespace-nowrap">Staffed {assigned}/{needed}{assignments.some(a=>a.demobilized)&&<span className="ml-1 text-xs font-normal text-muted-foreground">· {assignments.filter(a=>a.demobilized).length} demobilized not counted</span>}</span>
         {projectId && <JoinRequests projectId={projectId} locationId={locationId} />}
         {canWrite && (

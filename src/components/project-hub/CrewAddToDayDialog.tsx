@@ -14,7 +14,7 @@ import { ShiftSegmentsEditor } from './ShiftSegmentsEditor';
 import { blankSegment, segmentRanges, shiftSegments, type ShiftMode, type ShiftSegment } from '@/lib/shiftSegments';
 
 /** Location-scoped backfill: only this location's crew (never the project-wide roster). */
-export function CrewAddToDayDialog({ projectId, locationId, timezone, day, assignments, excludeIds, onClose }: { projectId: string; locationId: string; timezone: string; day: string; assignments: LocationAssignment[]; excludeIds: Set<string>; onClose: (added: number) => void }) {
+export function CrewAddToDayDialog({ projectId, locationId, timezone, day, assignments, excludeIds, onClose, onChooseProjectPerson }: { projectId: string; locationId: string; timezone: string; day: string; assignments: Pick<LocationAssignment, 'personnel_id' | 'personnel' | 'role_label' | 'demobilized'>[]; excludeIds: Set<string>; onClose: (added: number) => void; onChooseProjectPerson?: () => void }) {
   const { data: project } = useProject(projectId);
   const { data: locations } = useProjectLocations(projectId);
   const location = locations?.find(l => l.id === locationId);
@@ -51,6 +51,7 @@ export function CrewAddToDayDialog({ projectId, locationId, timezone, day, assig
     {seg.invalid && <p className="text-xs text-destructive">Each shift needs both times, with time out after time in.</p>}
     <div className="flex items-center gap-2"><Input placeholder="Search crew" aria-label="Search crew" value={search} onChange={e => setSearch(e.target.value)} className="h-8" /><Button size="sm" variant="ghost" disabled={busy || !visible.length} onClick={() => setSelected(s => allVisible ? s.filter(id => completed.includes(id) || !visible.some(p => p.id === id)) : [...new Set([...s, ...visible.map(p => p.id)])])}>{allVisible ? 'Select none' : 'Select all'}</Button></div>
     {!people.length ? <p className="text-sm text-muted-foreground">Everyone on this location's crew is already on this day.</p> : <div className="divide-y max-h-64 overflow-y-auto">{visible.map(p => <label key={p.id} className="flex gap-3 items-center py-3 text-sm"><Checkbox checked={selected.includes(p.id)} disabled={busy || completed.includes(p.id)} onCheckedChange={v => setSelected(s => v ? [...s, p.id] : s.filter(id => id !== p.id))} /><span>{p.name}</span>{p.role && <span className="text-muted-foreground">{p.role}</span>}{completed.includes(p.id) && <span className="ml-auto text-success">Saved</span>}</label>)}</div>}
+    {onChooseProjectPerson && !savedKeys.length && <Button variant="link" size="sm" className="min-h-11 px-0" disabled={busy} onClick={onChooseProjectPerson}>Choose another project person</Button>}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     <OverlapBypassControls error={error} timezone={timezone} disabled={busy} onActivated={() => void run()} />
     <DialogFooter><Button variant="outline" disabled={busy} onClick={() => onClose(completed.length)}>Cancel</Button><Button disabled={busy || !seg.ok || !selected.some(id => !completed.includes(id))} onClick={() => void run()}>{busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Add {selected.filter(id => !completed.includes(id)).length} to day</Button></DialogFooter>

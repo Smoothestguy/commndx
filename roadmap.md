@@ -1,4 +1,9 @@
 # Sign-in template grid cleanup
+## Location Crew cleanup — iPhone
+- [x] Fix daily staffing source fallback and cover role mapping with tests.
+- [x] Merge Crew add actions, label remaining controls, and collapse task-order allocation without removing features.
+- [x] Verify populated phone/desktop views, both Add dialogs, expected/site editors and source precedence; 519 local tests and automatic typecheck/build passed. No production writes, messages, permission changes or publishing; physical iPhone and saving unchanged dialogs not exercised.
+
 - [x] Removed the recognized legacy spreadsheet grid drawing from shared generated copies and unsigned-template previews/placement; seven-column strokes, logo and text preserved. Visually checked blank Garner PDF and real desktop Generate sheets download; 10 tests and preview build passed. No saved originals, locked PDFs, database or timekeeping changes.
 
 # Move onboarding — owner approved with six corrections

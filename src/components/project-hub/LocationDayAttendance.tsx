@@ -50,7 +50,7 @@ import { useProjectLocations } from '@/integrations/supabase/hooks/useProjectLoc
 
 export type CrewOptions = {
   agencies: { agencyName: (id: string) => string | null | undefined; employerName: (id: string) => string | null | undefined; nonBillableByPerson: Record<string, boolean | undefined> };
-  phones: Record<string, string | null>; assignments: LocationAssignment[]; onText: (ids: string[]) => void; header?: React.ReactNode;
+  phones: Record<string, string | null>; assignments: LocationAssignment[]; onText: (ids: string[]) => void; header?: React.ReactNode; onAssign?: () => void; onRequirements?: () => void;
 };
 
 /** Inline military time cell: blank = not here; commits on blur/Enter. */
@@ -204,7 +204,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   const dialogs = <>
     {edit && <EditStayTimesDialog projectId={projectId} ids={edit.ids} personName={edit.name} day={edit.day} onClose={() => { setEdit(null); void q.refetch(); }} />}
     {log && <LogTimeDialog open onOpenChange={o => { if (!o) { setLog(null); void q.refetch(); } }} projectId={projectId} personnelId={log.id} personName={log.name} locationId={locationId} defaultDate={day} />}
-    {addCrew && crew && <CrewAddToDayDialog projectId={projectId} locationId={locationId} timezone={tz} day={day} assignments={crew.assignments} excludeIds={new Set(rows.filter(r => r.stays.length || !r.offRoster).map(r => r.id))} onClose={n => { setAddCrew(false); void q.refetch(); if (n) toast.success(`Added ${n} ${n === 1 ? 'person' : 'people'} to ${day}`); }} />}
+    {addCrew && crew && <CrewAddToDayDialog projectId={projectId} locationId={locationId} timezone={tz} day={day} assignments={roster.filter(a => a.assignedOnDay)} excludeIds={new Set(rows.filter(r => r.stays.length).map(r => r.id))} onChooseProjectPerson={() => { setAddCrew(false); setAddPerson(true); }} onClose={n => { setAddCrew(false); void q.refetch(); if (n) toast.success(`Added ${n} ${n === 1 ? 'person' : 'people'} to ${day}`); }} />}
     {addPerson && <LogTimeDialog open addToDay onOpenChange={o => { if (!o) { setAddPerson(false); void q.refetch(); } }} projectId={projectId} locationId={locationId} defaultDate={day} />}
 
     <Dialog open={!!bulk} onOpenChange={o => !o && !busy && setBulk(null)}><DialogContent className="max-w-sm max-h-[90dvh] overflow-y-auto">
@@ -311,7 +311,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
         {late && <button type="button" disabled={!canWrite} onClick={() => setAck({ stay: late, preset: '', text: '' })}><Badge variant="outline" className={late.late_ack_reason ? 'text-warning' : 'text-destructive'} title={[late.late_reason, late.late_ack_reason].filter(Boolean).join(' · ') || 'Approve late'}>Late {late.late_minutes}m</Badge></button>}
         {r.stays.some(st => st.auto_closed_at) && <Badge variant="outline" className="text-warning" title="Forgot to clock out · auto-closed">Auto-closed</Badge>}
       </span>; } },
-    { key: 'actions', header: '', width: 56, noExport: true, sortable: false, filterable: false, render: r => <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${r.name}`}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
+    { key: 'actions', header: 'Actions', width: 105, noExport: true, sortable: false, filterable: false, render: r => <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="min-h-11 px-2" aria-label={`Actions for ${r.name}`}><MoreHorizontal className="h-4 w-4 mr-1" />Actions</Button></DropdownMenuTrigger><DropdownMenuContent align="end">
       <DropdownMenuItem onClick={() => crew.onText([r.id])}><MessageSquare className="h-4 w-4 mr-2" />Text punch link</DropdownMenuItem>
       {canWrite && r.stays.length > 0 && <DropdownMenuItem onClick={() => setEdit({ ids: r.stays.map(st => st.id), name: r.name, day })}>Edit times…</DropdownMenuItem>}
       {canWrite && <DropdownMenuItem onClick={() => setLog({ id: r.id, name: r.name })}>{r.stays.length ? 'Add another stay…' : 'Set arrival…'}</DropdownMenuItem>}
@@ -333,21 +333,24 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
     return <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1">
-          <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Previous day" onClick={() => shiftDay(-1)}><ChevronLeft className="h-4 w-4" /></Button>
-          <Input aria-label="Day" type="date" className="h-8 w-40" value={day} onChange={e => { if (e.target.value) { setDay(e.target.value); setSel(new Set()); } }} />
-          <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Next day" onClick={() => shiftDay(1)}><ChevronRight className="h-4 w-4" /></Button>
+          <Button variant="outline" size="sm" className="min-h-11 px-2" aria-label="Previous day" onClick={() => shiftDay(-1)}><ChevronLeft className="h-4 w-4 mr-1" />Prev</Button>
+          <Input aria-label="Day" type="date" className="h-11 w-36 min-w-0" value={day} onChange={e => { if (e.target.value) { setDay(e.target.value); setSel(new Set()); } }} />
+          <Button variant="outline" size="sm" className="min-h-11 px-2" aria-label="Next day" onClick={() => shiftDay(1)}><span className="mr-1">Next</span><ChevronRight className="h-4 w-4" /></Button>
           {day !== today && <Button variant="ghost" size="sm" className="h-8" onClick={() => { setDay(today); setSel(new Set()); }}>Today</Button>}
         </div>
         <p className="text-sm font-medium" aria-label="Crew summary">{dLabel} · {timedIds.length} on sheet{needIds.size > 0 && <> · <span className="text-warning">{needIds.size} need action</span></>}</p>
         {needIds.size === 0 && !resolutions.isLoading && <Badge variant="outline" className="text-success border-success/40">All accounted for</Badge>}
         <MissingSignatures compact locationId={locationId} day={day} zone={tz} rows={q.data?.sigRows ?? []} />
-        <div className="ml-auto flex items-center gap-1">{crew.header}{canWrite && <Button size="sm" variant="outline" className="h-8" onClick={() => setAddCrew(true)}><Plus className="h-4 w-4 mr-1" />Add crew</Button>}{canWrite && <Button size="sm" variant="outline" className="h-8" onClick={() => setAddPerson(true)}><Plus className="h-4 w-4 mr-1" />Add to day</Button>}</div>
+        <div className="ml-auto flex flex-wrap items-center gap-1">{crew.header}{canWrite && <DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" variant="outline" className="min-h-11"><Plus className="h-4 w-4 mr-1" />Add</Button></DropdownMenuTrigger><DropdownMenuContent align="end">
+          <DropdownMenuItem className="min-h-11" onSelect={crew.onAssign}>Assign to roster</DropdownMenuItem>
+          <DropdownMenuItem className="min-h-11" onSelect={() => setAddCrew(true)}>Add to this day (with times)</DropdownMenuItem>
+        </DropdownMenuContent></DropdownMenu>}</div>
       </div>
-      <details className="text-xs text-muted-foreground"><summary className="cursor-pointer w-fit">Details</summary><div className="mt-1 flex flex-wrap items-center gap-2"><span>{summaryText}</span>{isAdmin && <ExpectedHeadcountEdit locationId={locationId} day={day} value={expected.data ?? null} onSaved={() => expected.refetch()} />}{(mobe.data?.length ?? 0) > 0 && <span>+{mobe.data?.length} MOBE</span>}</div></details>
+      <details className="group text-xs text-muted-foreground"><summary className="cursor-pointer w-fit min-h-11 flex items-center gap-1"><ChevronRight className="h-3.5 w-3.5 group-open:rotate-90"/>Day details</summary><div className="mt-1 flex flex-wrap items-center gap-2"><span>{summaryText}</span>{(mobe.data?.length ?? 0) > 0 && <span>+{mobe.data?.length} MOBE</span>}</div></details>
       <NeedActionList locationId={locationId} day={day} tz={tz} people={needPeople} resolutions={resolved} linkEvents={linkEvents.data ?? []} canWrite={canWrite} names={Object.fromEntries(rows.map(r => [r.id, r.name]))} onWorked={markWorked} onDemob={id => { const r = rows.find(x => x.id === id); return r ? demob(r).then(() => resolutions.refetch()).then(() => undefined) : Promise.resolve(); }} />
       {(q.data?.presence?.length ?? 0) > 0 && <p className="text-xs text-muted-foreground">Signed — presence only, no times ({q.data!.presence.length}): {q.data!.presence.map(x => x.name).join(', ')}</p>}
       {stale.length > 0 && <p className="text-sm text-warning"><AlertTriangle className="inline h-4 w-4 mr-1" />{stale.length} open punch{stale.length === 1 ? '' : 'es'} from earlier days: {stale.map(s => <Button key={s.id} variant="link" size="sm" className="h-auto p-0 px-1" disabled={!canWrite} onClick={() => setEdit({ ids: [s.id], name: s.name })}>{s.name} ({dayLabel(s.in_at, tz)})</Button>)}</p>}
-      <DayStaffingBreakdown locationId={locationId} day={day} zone={tz} rows={rows} mobeCount={mobe.data?.filter(m=>m.kind!=='demobe').length ?? 0} demobeCount={(mobe.data?.filter(m=>m.kind==='demobe').length ?? 0) + rows.filter(r=>r.stays.some((st:any)=>st.demobe)).length} />
+      <DayStaffingBreakdown locationId={locationId} day={day} zone={tz} rows={rows} expected={expected.data} requiredEditor={source => canWrite && <ExpectedHeadcountEdit label={source === 'site' ? 'Customer headcount' : source === 'customer' ? 'Edit required' : 'Set required'} canSave={isAdmin} locationId={locationId} day={day} value={expected.data ?? null} onSaved={() => expected.refetch()} />} siteEditor={canWrite && <Button variant="ghost" size="sm" className="min-h-11 px-1 text-xs" onClick={crew.onRequirements}>Site requirements</Button>} mobeCount={mobe.data?.filter(m=>m.kind!=='demobe').length ?? 0} demobeCount={(mobe.data?.filter(m=>m.kind==='demobe').length ?? 0) + rows.filter(r=>r.stays.some((st:any)=>st.demobe)).length} />
       {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : q.error ? <p role="alert" className="text-sm text-destructive">Attendance could not be loaded.</p> :
         <EnhancedDataTable tableId={`crew:${locationId}`} data={rows} columns={crewColumns} selectable={canWrite} selectedIds={sel} onSelectionChange={setSel} exportName={`crew-${day}`} searchPlaceholder="Search crew…"
           attention={r => r.stays.some(st => !st.out_at) && localDay(r.stays[0].in_at, tz) < today ? 'Open punch' : null}
