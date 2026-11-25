@@ -21,10 +21,10 @@ export function useDayResolutions(locationId: string, day: string) {
 type Person = { id: string; name: string; role: string | null };
 const hhmm = (iso: string, tz: string) => localTime(iso, tz).replace(':', '');
 
-export function NeedActionList({ locationId, day, tz, people, resolutions, linkEvents, canWrite, onWorked, onDemob }: {
+export function NeedActionList({ locationId, day, tz, people, resolutions, linkEvents, canWrite, onWorked, onDemob, names = {} }: {
   locationId: string; day: string; tz: string; people: Person[]; resolutions: DayResolution[];
   linkEvents: { personnel_id: string; opened_at: string }[]; canWrite: boolean;
-  onWorked: (ids: string[]) => Promise<void>; onDemob: (id: string) => Promise<void>;
+  onWorked: (ids: string[]) => Promise<void>; onDemob: (id: string) => Promise<void>; names?: Record<string, string>;
 }) {
   const qc = useQueryClient();
   const [sel, setSel] = useState<string[]>([]), [busy, setBusy] = useState(false);
@@ -53,8 +53,8 @@ export function NeedActionList({ locationId, day, tz, people, resolutions, linkE
     const r = await supabase.from('location_day_resolutions').upsert(pids.map(personnel_id => ({ location_id: locationId, personnel_id, day, reason })), { onConflict: 'location_id,personnel_id,day' });
     if (r.error) throw r.error; setSel([]); await refresh();
   });
-  const undo = () => run(async () => {
-    const r = await supabase.from('location_day_resolutions').delete().eq('location_id', locationId).eq('day', day).in('id', resolutions.map(x => x.id));
+  const undo = (rid: string) => run(async () => {
+    const r = await supabase.from('location_day_resolutions').delete().eq('id', rid);
     if (r.error) throw r.error; await refresh();
   });
   const actions = (pids: string[], otherHint = false) => canWrite && <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
@@ -81,6 +81,8 @@ export function NeedActionList({ locationId, day, tz, people, resolutions, linkE
         {actions([p.id], h.kind === 'other_site')}
       </li>; })}</ul>
     </div>}
-    {resolutions.length > 0 && <p className="text-xs text-muted-foreground">Resolved today: {resolutions.length}{canWrite && <> · <Button variant="link" size="sm" className="h-auto p-0" disabled={busy} onClick={undo}>Undo</Button></>}</p>}
+    {resolutions.length > 0 && <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">Resolved today ({resolutions.length})</summary>
+      <ul className="mt-1 space-y-1">{resolutions.map(r => <li key={r.id}>{names[r.personnel_id] || 'Unnamed'} · {r.reason === 'day_off' ? 'Day off' : 'Other site'}{canWrite && <> · <Button variant="link" size="sm" className="h-auto p-0" disabled={busy} onClick={() => undo(r.id)}>Undo</Button></>}</li>)}</ul>
+    </details>}
   </section>;
 }
