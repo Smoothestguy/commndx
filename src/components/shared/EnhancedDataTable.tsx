@@ -79,6 +79,8 @@ interface EnhancedDataTableProps<T> {
   data: T[];
   columns: EnhancedColumn<T>[];
   onRowClick?: (item: T) => void;
+  /** Optional compact phone row body (replaces the default phone card fields). */
+  mobileCard?: (item: T) => React.ReactNode;
   rowHref?: (item: T) => string;
   selectable?: boolean;
   selectedIds?: Set<string>;
@@ -202,7 +204,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   tableId,
   data,
   columns,
-  onRowClick,
+  mobileCard, onRowClick,
   rowHref,
   selectable = true,
   selectedIds: controlledIds,
@@ -478,11 +480,13 @@ export function EnhancedDataTable<T extends { id: string | number }>({
       </DropdownMenuContent></DropdownMenu>}
 
       {mobile ? <div aria-label="Phone card list" className="divide-y min-w-0">
-        {pageRows.map(item => <article key={String(item.id)} onContextMenu={e=>contextRow(e,item)} onPointerDown={e=>holdStart(e,item)} onPointerMove={e=>{if(cancelCardHold(origin.current,e.clientX,e.clientY))cancelHold();}} onPointerUp={cancelHold} onPointerCancel={cancelHold} onClickCapture={e=>{if(suppressClick.current){e.preventDefault();e.stopPropagation();suppressClick.current=false;}}} className={cn("p-3 space-y-3 min-w-0 transition-colors", selectedIds.has(String(item.id)) && 'bg-primary/5', highlight===String(item.id) && 'bg-accent')}>
+        {pageRows.map(item => <article key={String(item.id)} onContextMenu={e=>contextRow(e,item)} onPointerDown={e=>holdStart(e,item)} onPointerMove={e=>{if(cancelCardHold(origin.current,e.clientX,e.clientY))cancelHold();}} onPointerUp={cancelHold} onPointerCancel={cancelHold} onClickCapture={e=>{if(suppressClick.current){e.preventDefault();e.stopPropagation();suppressClick.current=false;}}} className={cn(mobileCard ? "px-3 py-1.5 min-w-0 transition-colors" : "p-3 space-y-3 min-w-0 transition-colors", selectedIds.has(String(item.id)) && 'bg-primary/5', highlight===String(item.id) && 'bg-accent')}>
+          {mobileCard ? <div className="flex gap-3 items-center min-w-0">{selectable && <Checkbox className="h-5 w-5 shrink-0" aria-label="Select row" checked={selectedIds.has(String(item.id))} onCheckedChange={v=>handleSelectOne(String(item.id),!!v)}/>}<div className="min-w-0 flex-1">{mobileCard(item)}</div></div> : <>
           <div className="flex gap-3 items-start">{selectable && <Checkbox className="mt-1 h-5 w-5" aria-label="Select row" checked={selectedIds.has(String(item.id))} onCheckedChange={v=>handleSelectOne(String(item.id),!!v)}/>}<div className="min-w-0 flex-1">{visibleColumns.slice(0,1).map(c=><div key={String(c.key)} className="font-semibold break-words">{rowHref?<Link to={rowHref(item)}>{c.render?c.render(item):cellText(item,c)}</Link>:onRowClick?<Button variant="ghost" className="p-0 min-h-11 h-auto text-left whitespace-normal justify-start" onClick={()=>onRowClick(item)}>{c.render?c.render(item):cellText(item,c)}</Button>:c.render?c.render(item):cellText(item,c)}</div>)}{attention?.(item)&&<p className="text-xs text-warning">{attention(item)}</p>}</div></div>
           <dl className="grid grid-cols-2 gap-x-3 gap-y-2 min-w-0">{visibleColumns.slice(1,5).filter(c=>!c.noExport).map(c=><div key={String(c.key)} className="min-w-0"><dt className="text-xs text-muted-foreground">{c.header}</dt><dd className="text-sm break-words [&_*]:max-w-full">{c.render?c.render(item):cellText(item,c)||'—'}</dd></div>)}</dl>
           {visibleColumns.length>5&&<details><summary className="min-h-11 flex items-center text-sm text-primary cursor-pointer">More details</summary><dl className="space-y-2">{visibleColumns.slice(5).filter(c=>!c.noExport).map(c=><div key={String(c.key)} className="min-w-0"><dt className="text-xs text-muted-foreground">{c.header}</dt><dd className="text-sm break-words [&_*]:max-w-full">{c.render?c.render(item):cellText(item,c)||'—'}</dd></div>)}</dl></details>}
           <div className="flex flex-wrap gap-2 [&_button]:min-h-11 [&_button]:min-w-11">{visibleColumns.filter(c=>c.noExport).map(c=><div className="min-w-0 max-w-full" key={String(c.key)}>{c.render?.(item)}</div>)}</div>
+          </>}
         </article>)}
         {!pageRows.length&&<p className="p-6 text-sm text-muted-foreground">{emptyText}</p>}
       </div> : <div data-grid-scroll ref={scrollRef} onScroll={e => { try { sessionStorage.setItem(`${scope}:scroll`, JSON.stringify([e.currentTarget.scrollTop, e.currentTarget.scrollLeft])); } catch { /* unavailable storage */ } }} className={cn("overflow-auto min-h-0", fullscreen && "flex-1")} style={fullscreen ? undefined : { maxHeight }}>

@@ -206,10 +206,11 @@ const Projects = () => {
       filterable: true,
       getValue: (item) => item.name,
       render: (item) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <Link
             to={`/projects/${item.id}`}
-            className="text-primary hover:underline font-medium"
+            className="text-primary hover:underline font-medium truncate"
+            title={item.name}
             onClick={(e) => e.stopPropagation()}
           >
             {item.name}
@@ -218,12 +219,12 @@ const Projects = () => {
       ),
     },
     {
-      key: "flags", header: "Flags", width: 100, sortable: false,
+      key: "flags", header: "Flags", width: 80, sortable: false, hideBelow: "xl",
       getValue: (item) => isStale(item) ? "Stale" : "",
       render: (item) => isStale(item) ? <Badge variant="outline" title="No updates in 90+ days" className="rounded-full text-xs font-medium border-warning/40 bg-warning/10 text-warning">Stale</Badge> : null,
     },
     {
-      key: 'type', header: 'Type', sortable:true, filterable:true,
+      key: 'type', header: 'Type', width: 90, sortable:true, filterable:true,
       getValue:p=>types.data?.find(t=>t.id===p.type_id)?.code || '',
       render:p=><ProjectTypeChip type={types.data?.find(t=>t.id===p.type_id)}/>,
     },
@@ -235,10 +236,10 @@ const Projects = () => {
       getValue: customerNames,
       render: (item) => <EventCustomers rows={customersFor(item)} customers={customers}/>,
     },
-    {key:'locations',header:'Locations',sortable:true,getValue:p=>locationsFor(p.id).length,render:p=>locationsFor(p.id).length},
+    {key:'locations',header:'Locations',width:90,sortable:true,getValue:p=>locationsFor(p.id).length,render:p=>locationsFor(p.id).length},
     {
       key: "start_date",
-      header: "Start Date",
+      header: "Start Date", width: 110, hideBelow: "lg",
       sortable: true,
       filterable: false,
       getValue: (item) => item.start_date,
@@ -246,7 +247,7 @@ const Projects = () => {
     },
     {
       key: "end_date",
-      header: "End Date",
+      header: "End Date", width: 110, hideBelow: "xl",
       sortable: true,
       filterable: false,
       getValue: (item) => item.end_date || "",
@@ -254,7 +255,7 @@ const Projects = () => {
     },
     {
       key: "stage",
-      header: "Stage",
+      header: "Stage", width: 100, hideBelow: "lg",
       sortable: true,
       filterable: true,
       getValue: (item) => item.stage || "standby",
@@ -265,7 +266,7 @@ const Projects = () => {
     },
     {
       key: "status",
-      header: "Status",
+      header: "Status", width: 100,
       sortable: true,
       filterable: true,
       getValue: (item) => item.status,
@@ -273,7 +274,7 @@ const Projects = () => {
     },
     {
       key: "team",
-      header: "Team",
+      header: "Team", width: 70,
       sortable: true,
       filterable: false,
       getValue: (item) => assignmentCounts?.[item.id] ?? 0,
@@ -406,6 +407,13 @@ const Projects = () => {
       data={projectList}
       columns={columns}
       rowHref={(item) => `/projects/${item.id}`}
+      mobileCard={p => { const t = types.data?.find(x => x.id === p.type_id); const n = locationsFor(p.id).length; const crew = assignmentCounts?.[p.id] ?? 0; return <div className="flex items-center gap-1 min-w-0">
+        <Link to={`/projects/${p.id}`} className="flex-1 min-w-0 py-1">
+          <div className="flex items-center gap-1.5 min-w-0"><span className="font-medium text-sm truncate">{p.name}</span>{t?.code && <span className="text-[11px] text-muted-foreground shrink-0">{t.code}</span>}<span className="shrink-0 ml-auto"><StatusPill value={p.status} /></span></div>
+          <p className="text-xs text-muted-foreground truncate">{customerNames(p) || 'No customer'} · {n} {n === 1 ? 'location' : 'locations'} · {crew} crew{isStale(p) ? ' · Stale' : ''}</p>
+        </Link>
+        <div onClick={e => { e.preventDefault(); e.stopPropagation(); }}><ProjectRowActionsMenu project={p} onEdit={handleEdit} /></div>
+      </div>; }}
       selectable={canArchive}
       selectedIds={selectedIds}
       onSelectionChange={setSelectedIds}

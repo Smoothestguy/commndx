@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import QRCode from "qrcode";
+import { LinkRow } from "@/components/links/LinkList";
 import { buildApplyShareUrl } from "@/lib/applyLinks";
 
 import {
@@ -50,16 +50,6 @@ interface Props {
   projectId: string;
 }
 
-// --- Small QR component ---
-function QrCodeThumb({ value, size = 96 }: { value: string; size?: number }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    if (canvasRef.current && value) {
-      QRCode.toCanvas(canvasRef.current, value, { width: size, margin: 1 }).catch(() => {});
-    }
-  }, [value, size]);
-  return <canvas ref={canvasRef} width={size} height={size} className="rounded border bg-white" />;
-}
 
 function normPos(v: unknown): string {
   return typeof v === "string" ? v.trim().toLowerCase() : "";
@@ -212,13 +202,9 @@ function TaskOrderCard({
         {/* Apply link block */}
         {posting ? (
           <div className="rounded-md border bg-muted/30 p-3">
-            <div className="flex flex-wrap items-start gap-3">
-              <QrCodeThumb value={applyUrl} />
-              <div className="flex-1 min-w-0 space-y-2">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Apply link</Label>
-                  <div className="font-mono text-xs break-all">{applyUrl}</div>
-                </div>
+            <div className="space-y-2">
+              <LinkRow label="Apply link" meta={posting.is_open ? "Accepting applications" : "Closed"} url={applyUrl} qrTitle="Apply link" />
+              <div className="space-y-2">
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="outline" onClick={handleCopy}>
                     <Copy className="h-4 w-4 mr-1" />
