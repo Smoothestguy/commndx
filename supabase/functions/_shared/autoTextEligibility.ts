@@ -109,7 +109,7 @@ function pickAssignment(ctx: AutoTextContext, personnelId: string, locationId: s
   return rows.find(a => a.status === 'active' && (!a.unassigned_at || Date.parse(a.unassigned_at) > now)) || rows.find(a => a.status === 'active') || rows[0] || null;
 }
 export function checkEligibility(ctx: AutoTextContext, personnelId: string, locationId: string, now = Date.now()) {
-  const f = ctx.failed || {};
+  const f: { locations?: boolean; projects?: boolean; assignments?: boolean; people?: boolean } = ctx.failed || {};
   const l = ctx.locations.get(locationId) || (f.locations ? { status: 'active', project_id: '', timezone: null } : null);
   const p = l ? (ctx.projects.get(l.project_id) || (f.projects ? { status: 'active' } : null)) : null;
   const person = ctx.people.get(personnelId) || (f.people ? { status: 'active' } : null);
