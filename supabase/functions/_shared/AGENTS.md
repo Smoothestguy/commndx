@@ -1,3 +1,3 @@
 # Onboarding rules
 - Token replacement revokes only other unused/unrevoked links after successful email delivery or createOnly insertion; Share reuses a valid link to avoid unnecessary replacement.
-- Delivery alert candidates use filtered relationship anti-joins for missing event keys and live unopened tokens, preserving the retrieval window and provider pacing without changing database functions or cron authentication.
+- Delivery alert candidates use filtered relationship anti-joins for missing event keys and live unopened tokens, preserving the retrieval window and provider pacing without changing database functions or cron authentication.- Automatic sign-in texts pass the shared autoTextEligibility gate (settings, then site/project/assignment/person/opt-out rules) before sending; manual senders reuse it only to warn.

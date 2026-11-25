@@ -43,4 +43,3 @@
 - Never INSERT into personnel directly (SQL, scripts, edge functions, AI sessions). Always match with find_contact_matches first and attach to the existing person; the DB trigger will reject duplicates (SQLSTATE DP001; admin override only via create_personnel_override with a reason).
 
 - Location tabs: Task orders, Crew (one day grid, inline times via existing savers), Lodging, Assets, Documents (sheets, uploads, service logs if any); legacy ?tab redirects.
-- Automatic sign-in texts pass the single shared autoTextEligibility gate (settings in integration_settings 'auto_sign_in_texts', then active site/project/assignment/person/opt-out rules) before sending; manual senders reuse it only to warn, defaulting to skip.
