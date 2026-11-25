@@ -72,30 +72,34 @@ async function chunked(ids: string[], run: (part: string[]) => PromiseLike<{ dat
   for (let i = 0; i < ids.length; i += 200) { const { data, error } = await run(ids.slice(i, i + 200)); if (error) throw error; out.push(...(data || [])); }
   return out;
 }
+/** Fail-safe read: logs and returns null instead of throwing out of the whole job. */
+async function safe<T>(label: string, run: () => Promise<T>): Promise<T | null> {
+  try { return await run(); } catch (e) { console.error(`autoTextEligibility: ${label} read failed`, e); return null; }
+}
 export type AutoTextContext = Awaited<ReturnType<typeof loadAutoTextContext>>;
 /** One batched read for every location/person a sender is about to consider. */
 // deno-lint-ignore no-explicit-any
 export async function loadAutoTextContext(db: any, locationIds: string[], personnelIds: string[]) {
   const lids = [...new Set(locationIds)], pids = [...new Set(personnelIds)];
-  const setting = await db.from('integration_settings').select('setting_value').eq('setting_key', AUTO_TEXT_SETTING_KEY).maybeSingle();
-  if (setting.error) throw setting.error;
-  const locations = await chunked(lids, p => db.from('project_locations').select('id,project_id,status,mobe_date,demobe_date,timezone').in('id', p));
-  const projectIds = [...new Set(locations.map(l => l.project_id).filter(Boolean))] as string[];
+  const setting = await safe('settings', async () => { const r = await db.from('integration_settings').select('setting_value').eq('setting_key', AUTO_TEXT_SETTING_KEY).maybeSingle(); if (r.error) throw r.error; return r.data; });
+  const locations = await safe('locations', () => chunked(lids, p => db.from('project_locations').select('id,project_id,status,mobe_date,demobe_date,timezone').in('id', p)));
+  const projectIds = [...new Set((locations || []).map(l => l.project_id).filter(Boolean))] as string[];
   const [projects, assignments, people, statuses] = await Promise.all([
-    chunked(projectIds, p => db.from('projects').select('id,status,stage,deleted_at,timezone').in('id', p)),
-    chunked(pids, p => db.from('location_assignments').select('personnel_id,location_id,status,assigned_at,unassigned_at').in('personnel_id', p).in('location_id', lids.length ? lids : ['00000000-0000-0000-0000-000000000000'])),
-    chunked(pids, p => db.from('personnel').select('id,status,do_not_rehire,deleted_at,applicant_id').in('id', p)),
-    chunked(pids, p => db.from('personnel_status_log').select('personnel_id,status,project_id,effective_at').in('personnel_id', p).order('effective_at', { ascending: false })),
+    safe('projects', () => chunked(projectIds, p => db.from('projects').select('id,status,stage,deleted_at').in('id', p))),
+    safe('assignments', () => chunked(pids, p => db.from('location_assignments').select('personnel_id,location_id,status,assigned_at,unassigned_at').in('personnel_id', p).in('location_id', lids.length ? lids : ['00000000-0000-0000-0000-000000000000']))),
+    safe('personnel', () => chunked(pids, p => db.from('personnel').select('id,status,deleted_at,applicant_id').in('id', p))),
+    safe('status log', () => chunked(pids, p => db.from('personnel_status_log').select('personnel_id,status,project_id,effective_at').in('personnel_id', p).order('effective_at', { ascending: false }))),
   ]);
-  const applicantIds = people.map(p => p.applicant_id).filter(Boolean) as string[];
-  const applicants = await chunked(applicantIds, p => db.from('applicants').select('id,sms_opted_out').in('id', p));
+  const applicantIds = (people || []).map(p => p.applicant_id).filter(Boolean) as string[];
+  const applicants = await safe('applicants', () => chunked(applicantIds, p => db.from('applicants').select('id,sms_opted_out').in('id', p)));
   const latest = new Map<string, { status: string; project_id: string | null }>();
-  for (const s of statuses) if (!latest.has(s.personnel_id)) latest.set(s.personnel_id, s);
-  const opted = new Set(applicants.filter(a => a.sms_opted_out).map(a => a.id));
+  for (const s of statuses || []) if (!latest.has(s.personnel_id)) latest.set(s.personnel_id, s);
+  const opted = new Set((applicants || []).filter(a => a.sms_opted_out).map(a => a.id));
+  const failed = { locations: !locations, projects: !projects, assignments: !assignments, people: !people };
   return {
-    settings: parseAutoTextSettings(setting.data?.setting_value),
-    locations: new Map(locations.map(l => [l.id, l])), projects: new Map(projects.map(p => [p.id, p])),
-    assignments, people: new Map(people.map(p => [p.id, p])), latest, opted,
+    settings: parseAutoTextSettings(setting?.setting_value), failed,
+    locations: new Map((locations || []).map(l => [l.id, l])), projects: new Map((projects || []).map(p => [p.id, p])),
+    assignments: assignments || [], people: new Map((people || []).map(p => [p.id, p])), latest, opted,
   };
 }
 /** Best active assignment row (an active one beats ended history rows). */
@@ -104,17 +108,26 @@ function pickAssignment(ctx: AutoTextContext, personnelId: string, locationId: s
   return rows.find(a => a.status === 'active' && (!a.unassigned_at || Date.parse(a.unassigned_at) > now)) || rows.find(a => a.status === 'active') || rows[0] || null;
 }
 export function checkEligibility(ctx: AutoTextContext, personnelId: string, locationId: string, now = Date.now()) {
-  const l = ctx.locations.get(locationId), p = l ? ctx.projects.get(l.project_id) : null, person = ctx.people.get(personnelId);
+  const f = ctx.failed || {};
+  const l = ctx.locations.get(locationId) || (f.locations ? { status: 'active', project_id: '', timezone: null } : null);
+  const p = l ? (ctx.projects.get(l.project_id) || (f.projects ? { status: 'active' } : null)) : null;
+  const person = ctx.people.get(personnelId) || (f.people ? { status: 'active' } : null);
+  const assignment = pickAssignment(ctx, personnelId, locationId, now) || (f.assignments ? { status: 'active', assigned_at: new Date(0).toISOString(), unassigned_at: null } : null);
   return ineligibleReason({
-    now, day: localDay(now, l?.timezone || p?.timezone || 'America/Chicago'), location: l || null, project: p || null,
-    assignment: pickAssignment(ctx, personnelId, locationId, now), person: person || null,
+    now, day: localDay(now, l?.timezone || 'America/Chicago'), location: l || null, project: p || null,
+    assignment, person: person || null,
     latestStatus: ctx.latest.get(personnelId) || null, projectId: l?.project_id || '', optedOut: !!(person?.applicant_id && ctx.opted.has(person.applicant_id)),
   });
 }
 /** Automatic senders: settings first ('disabled'), then the hard rules. */
 export function autoTextDecision(ctx: AutoTextContext, kind: string, personnelId: string, locationId: string, now = Date.now()): { send: true } | { send: false; reason: string; disabled: boolean } {
-  const type = kindToType(kind);
-  if (type && !typeEnabled(ctx.settings, type, locationId)) return { send: false, reason: 'disabled', disabled: true };
-  const r = checkEligibility(ctx, personnelId, locationId, now);
-  return r ? { send: false, reason: r, disabled: false } : { send: true };
+  try {
+    const type = kindToType(kind);
+    if (type && !typeEnabled(ctx.settings, type, locationId)) return { send: false, reason: 'disabled', disabled: true };
+    const r = checkEligibility(ctx, personnelId, locationId, now);
+    return r ? { send: false, reason: r, disabled: false } : { send: true };
+  } catch (e) {
+    console.error('autoTextDecision failed; skipping person', personnelId, locationId, e);
+    return { send: false, reason: 'eligibility check error', disabled: false };
+  }
 }
