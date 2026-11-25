@@ -39,6 +39,7 @@ import { useSetStatus } from '@/integrations/supabase/hooks/usePersonnelStatus';
 import { useEndAssignment, type LocationAssignment } from '@/integrations/supabase/hooks/useLocationStaffing';
 import { crewDaySummary, headcountLine, presenceOnlyCount } from '@/lib/crewSummary';
 import { loadExpectedDay, expectedTotal } from '@/lib/locationExpected';
+import { isShortStay, pickExpected, resolveRole, overlappingStays } from '@/lib/staffingBreakdown';
 import { ExpectedHeadcountEdit } from './ExpectedHeadcountEdit';
 import { useUserRole } from '@/hooks/useUserRole';
 import { CrewAddToDayDialog } from './CrewAddToDayDialog';
@@ -128,6 +129,41 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
     for (const s of stays) { const p = people.get(s.personnel_id) ?? { id: s.personnel_id, name: s.name, role: null, stays: [], offRoster: true }; p.stays.push(s); people.set(s.personnel_id, p); }
     return [...people.values()].filter(p => !crew || p.stays.length || (!p.demobilized && crew.assignments.some(a => a.personnel_id === p.id))).map(p => ({ ...p, stays: p.stays.sort((a, b) => a.in_at.localeCompare(b.in_at)) })).sort((a, b) => (a.stays[0]?.in_at ?? 'z').localeCompare(b.stays[0]?.in_at ?? 'z') || a.name.localeCompare(b.name));
   }, [roster, q.data, crew]);
+  // Staffing accuracy (display only): carry-forward customer sheet, role fallback, short-stay and overlap checks.
+  const countable = (r: { stays: Stay[] }) => r.stays.filter(st => !isShortStay(st));
+  const presentIds = rows.filter(r => countable(r).length).map(r => r.id);
+  const carry = useQuery({ queryKey: ['location-day-expected-carry', locationId, day], queryFn: async () => {
+    const [loc, ex] = await Promise.all([
+      supabase.from('project_locations').select('mobe_date,demobe_date,closed_at').eq('id', locationId).maybeSingle(),
+      supabase.from('location_day_expected').select('day,supervisors,technicians,operators,source').eq('location_id', locationId).lte('day', day).order('day', { ascending: false }).limit(60),
+    ]);
+    if (ex.error) return null;
+    const end = loc.data?.demobe_date ?? (loc.data?.closed_at ? localDay(loc.data.closed_at, tz) : null);
+    return pickExpected(ex.data ?? [], day, { start: loc.data?.mobe_date ?? null, end });
+  } });
+  const noRoleIds = rows.filter(r => !r.role?.trim() && countable(r).length).map(r => r.id);
+  const roleHistory = useQuery({ queryKey: ['role-history', noRoleIds.join(',')], enabled: noRoleIds.length > 0, queryFn: async () => {
+    const res = await supabase.from('location_assignments').select('personnel_id,role_label,assigned_at').in('personnel_id', noRoleIds).not('role_label', 'is', null).limit(1000);
+    if (res.error) throw res.error; return res.data ?? [];
+  } });
+  const otherSites = useQuery({ queryKey: ['other-site-stays', locationId, day, presentIds.join(',')], enabled: presentIds.length > 0, queryFn: async () => {
+    const base = new Date(`${day}T12:00:00Z`).getTime();
+    const res = await supabase.from('personnel_location_trail').select('personnel_id,location_id,location_name,in_at,out_at').in('personnel_id', presentIds).neq('location_id', locationId).gte('in_at', new Date(base - 2 * 864e5).toISOString()).lte('in_at', new Date(base + 864e5).toISOString()).limit(2000);
+    if (res.error) throw res.error; return res.data ?? [];
+  } });
+  const overlaps = useMemo(() => {
+    const m = new Map<string, { id: string; name: string; sites: { name: string; range: string }[] }>();
+    for (const r of rows) { const mine = countable(r); if (!mine.length) continue;
+      const others = (otherSites.data ?? []).filter(o => o.personnel_id === r.id && o.in_at).map(o => ({ ...o, in_at: o.in_at as string }));
+      const hits = overlappingStays(mine, others); if (!hits.length) continue;
+      const sites = new Map<string, string>();
+      for (const h of hits) { const n = h.location_name || 'another site'; const range = `${localTime(h.in_at, tz).replace(':', '')}–${h.out_at ? localTime(h.out_at, tz).replace(':', '') : 'open'}`; sites.set(n, sites.has(n) ? `${sites.get(n)}, ${range}` : range); }
+      m.set(r.id, { id: r.id, name: r.name, sites: [...sites].map(([name, range]) => ({ name, range })) });
+    }
+    return m;
+  }, [rows, otherSites.data, tz]);
+  const staffRows = useMemo(() => rows.map(r => ({ ...r, role: resolveRole(r.role, (roleHistory.data ?? []).filter(h => h.personnel_id === r.id)), stays: countable(r) })), [rows, roleHistory.data]);
+  const ignoredShort = rows.filter(r => r.stays.length && !countable(r).length).map(r => r.name);
   const today = localDay(new Date().toISOString(), tz);
   const openedPeople=useQuery({queryKey:['punch-open-names',locationId,day,(linkEvents.data||[]).map(e=>e.personnel_id).join(',')],enabled:canWrite&&!!linkEvents.data?.length,queryFn:async()=>{const ids=[...new Set((linkEvents.data||[]).map(e=>e.personnel_id))];const result=await supabase.from('personnel_directory').select('id,first_name,last_name').in('id',ids);if(result.error)throw result.error;return result.data;}});
   const stale = (q.data?.openStays ?? []).filter(s => localDay(s.in_at, tz) < today);
@@ -297,7 +333,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   const presenceFor = (id: string) => !!q.data?.presence?.some(x => x.personnelId === id);
   const sigFor = (id: string) => { const rs = (q.data?.sigRows ?? []).filter(x => x.personnelId === id); return rs.length ? rs.some(x => x.signature) : null; };
   const crewColumns: EnhancedColumn<AttendanceRow>[] = crew ? [
-    { key: 'name', header: 'Name', width: 220, getValue: r => r.name, render: r => <span className="block truncate" title={r.name}>{r.name || 'Unnamed'}</span> },
+    { key: 'name', header: 'Name', width: 220, getValue: r => r.name, render: r => { const o = overlaps.get(r.id); return <span className="flex min-w-0 items-center gap-1"><span className="truncate" title={r.name}>{r.name || 'Unnamed'}</span>{o && <Badge variant="outline" className="shrink-0 text-warning" title={o.sites.map(x => `${x.name} ${x.range}`).join('; ')}>⚠ Also at {o.sites.map(x => x.name).join(', ')}</Badge>}</span>; } },
     { key: 'role', header: 'Role', width: 170, getValue: r => r.role ?? '' },
     { key: 'employer', header: 'Employer', width: 170, getValue: r => crew.agencies.employerName(r.id) || crew.agencies.agencyName(r.id) || 'FRG', render: r => { const n = crew.agencies.employerName(r.id) || crew.agencies.agencyName(r.id) || 'FRG'; const nb = crew.agencies.nonBillableByPerson[r.id]; return <span className="inline-flex max-w-full items-center gap-1.5"><Badge variant="outline" className="max-w-[10rem] truncate font-normal" title={n}>{n.replace(/ \(customer\)$/, '')}</Badge>{nb && <span className="h-2 w-2 shrink-0 rounded-full bg-warning" title="Non-billable" aria-label="Non-billable" />}</span>; } },
     { key: 'in', header: 'In', width: 90, getValue: r => pad(r.stays[0]?.in_at), render: r => <span title={punchTimeDetail(r.stays[0]?.actual_in_at, r.stays[0]?.in_at, tz)}><TimeCell label={`Time in for ${r.name}`} disabled={!canWrite} value={pad(r.stays[0]?.in_at) || drafts[r.id] || ''} onCommit={v => saveIn(r, v)} /></span> },
@@ -321,7 +357,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   ] : [];
   const shiftDay = (n: number) => { const d = new Date(`${day}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); setDay(d.toISOString().slice(0, 10)); setSel(new Set()); };
   if (crew) {
-    const timedIds = rows.filter(r => r.stays.length > 0).map(r => r.id);
+    const timedIds = presentIds;
     const presenceCount = presenceOnlyCount(timedIds, (q.data?.presence ?? []).map(x => x.personnelId));
     const rosterToday = rows.filter(r => !r.demobilized && crew.assignments.some(a => a.personnel_id === r.id));
     const resolved = resolutions.data ?? [];
@@ -350,7 +386,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
       <NeedActionList locationId={locationId} day={day} tz={tz} people={needPeople} resolutions={resolved} linkEvents={linkEvents.data ?? []} canWrite={canWrite} names={Object.fromEntries(rows.map(r => [r.id, r.name]))} onWorked={markWorked} onDemob={id => { const r = rows.find(x => x.id === id); return r ? demob(r).then(() => resolutions.refetch()).then(() => undefined) : Promise.resolve(); }} />
       {(q.data?.presence?.length ?? 0) > 0 && <p className="text-xs text-muted-foreground">Signed — presence only, no times ({q.data!.presence.length}): {q.data!.presence.map(x => x.name).join(', ')}</p>}
       {stale.length > 0 && <p className="text-sm text-warning"><AlertTriangle className="inline h-4 w-4 mr-1" />{stale.length} open punch{stale.length === 1 ? '' : 'es'} from earlier days: {stale.map(s => <Button key={s.id} variant="link" size="sm" className="h-auto p-0 px-1" disabled={!canWrite} onClick={() => setEdit({ ids: [s.id], name: s.name })}>{s.name} ({dayLabel(s.in_at, tz)})</Button>)}</p>}
-      <DayStaffingBreakdown locationId={locationId} day={day} zone={tz} rows={rows} expected={expected.data} requiredEditor={source => canWrite && <ExpectedHeadcountEdit label={source === 'site' ? 'Customer headcount' : source === 'customer' ? 'Edit required' : 'Set required'} canSave={isAdmin} locationId={locationId} day={day} value={expected.data ?? null} onSaved={() => expected.refetch()} />} siteEditor={canWrite && <Button variant="ghost" size="sm" className="min-h-11 px-1 text-xs" onClick={crew.onRequirements}>Site requirements</Button>} mobeCount={mobe.data?.filter(m=>m.kind!=='demobe').length ?? 0} demobeCount={(mobe.data?.filter(m=>m.kind==='demobe').length ?? 0) + rows.filter(r=>r.stays.some((st:any)=>st.demobe)).length} />
+      <DayStaffingBreakdown locationId={locationId} day={day} zone={tz} rows={staffRows} expected={expected.data ?? carry.data ?? null} expectedDay={expected.data ? day : carry.data?.day ?? null} ignoredShort={ignoredShort} overlaps={[...overlaps.values()]} requiredEditor={source => canWrite && <ExpectedHeadcountEdit label={source === 'site' ? 'Customer headcount' : source === 'customer' ? 'Edit required' : 'Set required'} canSave={isAdmin} locationId={locationId} day={day} value={expected.data ?? null} onSaved={() => expected.refetch()} />} siteEditor={canWrite && <Button variant="ghost" size="sm" className="min-h-11 px-1 text-xs" onClick={crew.onRequirements}>Site requirements</Button>} mobeCount={mobe.data?.filter(m=>m.kind!=='demobe').length ?? 0} demobeCount={(mobe.data?.filter(m=>m.kind==='demobe').length ?? 0) + rows.filter(r=>r.stays.some((st:any)=>st.demobe)).length} />
       {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : q.error ? <p role="alert" className="text-sm text-destructive">Attendance could not be loaded.</p> :
         <EnhancedDataTable tableId={`crew:${locationId}`} data={rows} columns={crewColumns} selectable={canWrite} selectedIds={sel} onSelectionChange={setSel} exportName={`crew-${day}`} searchPlaceholder="Search crew…"
           attention={r => r.stays.some(st => !st.out_at) && localDay(r.stays[0].in_at, tz) < today ? 'Open punch' : null}

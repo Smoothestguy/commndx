@@ -47,3 +47,34 @@ describe('daily customer-sheet fallback', () => {
     }
   });
 });
+
+import { pickExpected, resolveRole, isShortStay, overlappingStays } from './staffingBreakdown';
+describe('staffing accuracy', () => {
+  const e = (day, technicians) => ({ day, supervisors: 0, technicians, operators: 0 });
+  it('carry-forward picks the latest prior day, within window', () => {
+    const rows = [e('2026-11-18', 10), e('2026-11-20', 16), e('2026-11-26', 3)];
+    expect(pickExpected(rows, '2026-11-24')?.day).toBe('2026-11-20');
+    expect(pickExpected(rows, '2026-11-26')?.technicians).toBe(3);
+    expect(pickExpected(rows, '2026-11-17')).toBe(null);
+    expect(pickExpected(rows, '2026-11-24', { end: '2026-11-22' })).toBe(null);
+    expect(pickExpected(rows, '2026-11-19', { start: '2026-11-19' })).toBe(null);
+  });
+  it('role fallback: roster, then latest history, then none', () => {
+    const h = [{ role_label: 'Tech', assigned_at: '2026-11-01' }, { role_label: 'Supervisor', assigned_at: '2026-11-10' }, { role_label: null, assigned_at: '2026-11-20' }];
+    expect(resolveRole('Operator', h)).toBe('Operator');
+    expect(resolveRole(null, h)).toBe('Supervisor');
+    expect(resolveRole(' ', [])).toBe(null);
+  });
+  it('ignores stays under 5 minutes', () => {
+    expect(isShortStay({ in_at: '2026-11-24T21:08:17Z', out_at: '2026-11-24T21:08:18Z' })).toBe(true);
+    expect(isShortStay({ in_at: '2026-11-24T21:00:00Z', out_at: '2026-11-24T21:05:00Z' })).toBe(false);
+    expect(isShortStay({ in_at: '2026-11-24T21:00:00Z', out_at: null })).toBe(false);
+  });
+  it('flags >15 min overlap, not back-to-back', () => {
+    const mine = [{ in_at: '2026-11-23T12:00:00Z', out_at: '2026-11-24T00:00:00Z' }];
+    expect(overlappingStays(mine, [{ in_at: '2026-11-23T12:00:00Z', out_at: '2026-11-24T00:00:00Z' }]).length).toBe(1);
+    expect(overlappingStays(mine, [{ in_at: '2026-11-24T00:00:00Z', out_at: '2026-11-24T06:00:00Z' }]).length).toBe(0);
+    expect(overlappingStays(mine, [{ in_at: '2026-11-23T23:50:00Z', out_at: '2026-11-24T06:00:00Z' }]).length).toBe(0);
+    expect(overlappingStays(mine, [{ in_at: '2026-11-23T23:40:00Z', out_at: '2026-11-24T06:00:00Z' }]).length).toBe(1);
+  });
+});

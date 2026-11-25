@@ -30,3 +30,31 @@ export function dailyStaffingBreakdown(reqs: Requirement[], people: Person[], ex
   return { ...data, source, hasRequired: source !== null && data.total.required > 0 };
 }
 export const fmtDiff = (n: number) => n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0';
+
+/** Stays under five minutes (e.g. accidental double taps) are shown but never counted as present. */
+export const SHORT_STAY_MS = 5 * 60 * 1000;
+export const isShortStay = (s: { in_at: string; out_at: string | null }) => !!s.out_at && Date.parse(s.out_at) - Date.parse(s.in_at) < SHORT_STAY_MS;
+
+export type ExpectedRow = Expected & { day: string };
+/** Customer-sheet carry-forward: exact day, else latest earlier row; only within the location's active window when set. */
+export function pickExpected<T extends ExpectedRow>(rows: T[], day: string, window?: { start?: string | null; end?: string | null }): T | null {
+  const exact = rows.find(r => r.day === day);
+  if (exact) return exact;
+  if (window?.start && day < window.start) return null;
+  if (window?.end && day > window.end) return null;
+  return rows.filter(r => r.day < day && (!window?.start || r.day >= window.start)).sort((a, b) => b.day.localeCompare(a.day))[0] ?? null;
+}
+
+/** Roster role for the day, else most recent non-null role from any assignment, else null. */
+export function resolveRole(rosterRole: string | null | undefined, history: { role_label: string | null; assigned_at: string }[]) {
+  if (rosterRole?.trim()) return rosterRole;
+  return [...history].filter(h => h.role_label?.trim()).sort((a, b) => b.assigned_at.localeCompare(a.assigned_at))[0]?.role_label ?? null;
+}
+
+export const OVERLAP_MIN_MS = 15 * 60 * 1000;
+type Span = { in_at: string; out_at: string | null };
+const spanEnd = (s: Span, now: number) => s.out_at ? Date.parse(s.out_at) : now;
+/** Other-site stays overlapping any of these stays by more than 15 minutes; back-to-back never counts. */
+export function overlappingStays<T extends Span>(mine: Span[], others: T[], now = Date.now()) {
+  return others.filter(o => mine.some(m => Math.min(spanEnd(m, now), spanEnd(o, now)) - Math.max(Date.parse(m.in_at), Date.parse(o.in_at)) > OVERLAP_MIN_MS));
+}
