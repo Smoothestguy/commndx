@@ -4,8 +4,6 @@ import { useQuery,useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useMyDay } from '@/hooks/useMyDay';
-import { useHomeLocations } from '@/hooks/useHomeOperations';
-import { useMobileApprovals } from '@/hooks/useMobileApprovals';
 import { useProfile } from '@/integrations/supabase/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -13,16 +11,14 @@ import { Dialog,DialogContent,DialogHeader,DialogTitle } from '@/components/ui/d
 import { Activity,ArrowLeftRight,ChevronDown,ChevronRight,CheckCheck,MapPin,Clock,Users,Tent,Settings,FileSignature,MessageSquare,X,User } from 'lucide-react';
 import { localTime } from '@/lib/signinSheets';
 import { phoneDefaultSite } from '@/lib/mobileOperations';
+import { PhoneToday } from './PhoneToday';
 function clock(at:string,zone:string){return localTime(at,zone).replace(':','');}
 export function PhoneHome(){
  const {isAdmin,isManager,loading}=useUserRole();
  if(loading)return <p className="p-6">Loading your day…</p>;
  return isAdmin||isManager?<ManagerHome/>:<WorkerHome/>;
 }
-function ManagerHome(){
- const scope=useHomeLocations(),inbox=useMobileApprovals(),personal=useMyDay();
- return <HomeCards manager defaultSiteId={phoneDefaultSite(personal.data?.sites||[])} sites={(scope.data?.locations||[]).map(l=>({id:l.id,name:l.name,project:scope.data?.projects.find(p=>p.id===l.project_id)?.name||'',projectId:l.project_id}))} count={inbox.data?.count} updatedAt={Math.min(scope.dataUpdatedAt||Infinity,inbox.dataUpdatedAt||Infinity)} error={!!(scope.error||inbox.error)} context={inbox.data?.count?`Last alert: ${inbox.data.count} pending actions`:undefined}/>;
-}
+function ManagerHome(){return <PhoneToday/>;}
 function WorkerHome(){
  const q=useMyDay();
  const {user}=useAuth();
