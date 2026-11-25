@@ -59,7 +59,7 @@ export function useWeekTimesheet(projectId: string | undefined, weekStartDate: s
       }
       const demobe=new Set<string>();
       const stayIds=[...new Set(rows.map(r=>r.visit_personnel_id).filter(Boolean))];
-      for(let i=0;i<stayIds.length;i+=200){const r=await supabase.from('time_entries').select('visit_personnel_id').eq('project_id',projectId??'').eq('entry_source','demobe').in('visit_personnel_id',stayIds.slice(i,i+200));if(r.error)throw r.error;for(const e of r.data??[])if(e.visit_personnel_id)demobe.add(e.visit_personnel_id);}
+      for(let i=0;i<stayIds.length;i+=200){const r=await supabase.from('time_entries').select('visit_personnel_id').is('voided_at', null).eq('project_id',projectId??'').eq('entry_source','demobe').in('visit_personnel_id',stayIds.slice(i,i+200));if(r.error)throw r.error;for(const e of r.data??[])if(e.visit_personnel_id)demobe.add(e.visit_personnel_id);}
       return { rows, notes, demobe };
     },
   });

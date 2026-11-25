@@ -59,7 +59,7 @@ const OverheadAnalysis = () => {
           personnel_id,
           personnel:personnel_id (first_name, last_name),
           projects:project_id (name)
-        `)
+        `).is('voided_at', null)
         .gte("entry_date", startDate)
         .lte("entry_date", endDate);
       if (error) throw error;

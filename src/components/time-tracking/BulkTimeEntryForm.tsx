@@ -240,7 +240,7 @@ export function BulkTimeEntryForm({ open, onOpenChange }: BulkTimeEntryFormProps
           // Check for existing entry
           const { data: existingEntry } = await supabase
             .from("time_entries")
-            .select("id")
+            .select("id").is('voided_at', null)
             .eq("project_id", selectedProject)
             .eq("personnel_id", person.id)
             .eq("entry_date", entryDate)

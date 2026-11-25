@@ -93,7 +93,7 @@ export function StatWidget({ widget, theme, isEditMode }: StatWidgetProps) {
             const today = new Date().toISOString().split("T")[0];
             const { count } = await supabase
               .from("time_entries")
-              .select("personnel_id", { count: "exact", head: true })
+              .select("personnel_id", { count: "exact", head: true }).is('voided_at', null)
               .gte("clock_in", `${today}T00:00:00`)
               .is("clock_out", null);
             return { value: count ?? 0 };
@@ -126,7 +126,7 @@ export function StatWidget({ widget, theme, isEditMode }: StatWidgetProps) {
             const today = new Date().toISOString().split("T")[0];
             const { data } = await supabase
               .from("time_entries")
-              .select("hours")
+              .select("hours").is('voided_at', null)
               .gte("clock_in_at", `${today}T00:00:00`);
             const totalHours = data?.reduce((sum, entry) => sum + (entry.hours || 0), 0) ?? 0;
             return { value: `${totalHours.toFixed(1)}h` };

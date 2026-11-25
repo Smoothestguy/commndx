@@ -15,3 +15,10 @@ export function clockValue(value: string) {
   const digits = normalizeMilitary(value);
   return validMilitary(digits) ? `${digits.slice(0, 2)}:${digits.slice(2)}` : value;
 }
+/** Time out only: 2400 = end of day. */
+export function validMilitaryOut(value: string) {
+  return normalizeMilitary(value) === '2400' || validMilitary(value);
+}
+export function clockOutValue(value: string) {
+  return normalizeMilitary(value) === '2400' ? '24:00' : clockValue(value);
+}

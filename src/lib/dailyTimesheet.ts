@@ -1,4 +1,4 @@
-import { localTime, type SheetRow } from './signinSheets';
+import { displayClock, localTime, type SheetRow } from './signinSheets';
 import { formatLocalDate } from './dateUtils';
 import { fitSignatureInCell, stripWhiteBackground } from './signatureInk';
 
@@ -39,7 +39,7 @@ export async function generateDailyTimesheet(rows: SheetRow[], config: { day: st
     const chunk = people.slice(page * capacity, (page + 1) * capacity);
     for (let i = 0; i < capacity; i++) {
       const y = top + 26 + i * rowH, row = chunk[i]; x = left;
-      const values = row ? [row.name, '', row.position, localTime(row.inAt, config.zone), localTime(row.outAt, config.zone), row.hours == null ? '' : row.hours.toFixed(2), config.location] : headers.map(() => '');
+      const values = row ? [row.name, '', row.position, localTime(row.inAt, config.zone), displayClock(row.outAt, config.zone, row.inAt), row.hours == null ? '' : row.hours.toFixed(2), config.location] : headers.map(() => '');
       for (let c = 0; c < widths.length; c++) { pdf.rect(x, y, widths[c], rowH); text(values[c], x, y, widths[c]); if (c === 1 && row?.signature) await image(row.signature, x, y, widths[c], rowH); x += widths[c]; }
     }
     pdf.setFontSize(9); pdf.text('Customer approval', left, 697);

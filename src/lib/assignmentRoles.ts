@@ -32,3 +32,5 @@ export function todayStatus(input: { demobilized: boolean; stays: { in_at: strin
 
 /** Parse strict 24h HH:mm. */
 export const isHHmm = (v: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+/** Time out: also 24:00 (end of day). */
+export const isHHmmOut = (v: string) => v === '24:00' || isHHmm(v);

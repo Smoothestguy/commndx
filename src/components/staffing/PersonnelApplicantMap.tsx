@@ -131,7 +131,7 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
         is_on_lunch,
         personnel!inner(id, first_name, last_name, email, phone, photo_url),
         projects!inner(id, name)
-      `)
+      `).is('voided_at', null)
       .is('clock_out_at', null)
       .not('clock_in_at', 'is', null);
 

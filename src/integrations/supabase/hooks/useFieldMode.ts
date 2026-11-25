@@ -1,3 +1,4 @@
+import { friendlyTimeError, prepareStayDeletion } from '@/lib/stayDeletion';
 import { activeOverlapBypassUntil } from "@/hooks/useOverlapBypass";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -424,13 +425,17 @@ export function useDeleteVisit(projectId: string | undefined) {
     mutationFn: async ({ id, location_id }: { id: string; location_id: string }) => {
       const oldDates = await visitAttendanceDates(id);
       await ensureSheetsOpen([{ locationId: location_id, dates: oldDates }]);
+      // Deleting a visit cascades to its stays: clear the same sheet/accrual blockers first.
+      const stays = await db.from("visit_personnel").select("id").eq("visit_id", id);
+      if (stays.error) throw new Error(friendlyTimeError(stays.error));
+      const restore = await prepareStayDeletion(db, (stays.data ?? []).map((s: { id: string }) => s.id));
       const { error } = await db.from("location_visits").delete().eq("id", id);
-      if (error) throw error;
+      if (error) { await restore().catch(() => undefined); throw new Error(friendlyTimeError(error)); }
       await recomputeAttendanceFromVisits(location_id, oldDates);
       return location_id;
     },
     onSuccess: (lid) => { inv(lid); toast.success("Visit deleted"); },
-    onError: (e: any) => toast.error(e?.message ?? "Failed to delete visit"),
+    onError: (e: any) => toast.error(friendlyTimeError(e)),
   });
 }
 

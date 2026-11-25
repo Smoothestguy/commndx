@@ -34,7 +34,7 @@ export async function guardStayWeeks(projectId: string, stays: { id: string; old
   const ids = stays.map(s => s.id);
   const [closed, entries] = await Promise.all([
     supabase.from('week_closeouts').select('week_start').eq('project_id', projectId).in('week_start', weeks),
-    supabase.from('time_entries').select('id,is_locked,invoice_id').in('visit_personnel_id', ids),
+    supabase.from('time_entries').select('id,is_locked,invoice_id').is('voided_at', null).in('visit_personnel_id', ids),
   ]);
   if (closed.error) throw closed.error;
   if (entries.error) throw entries.error;
@@ -43,7 +43,7 @@ export async function guardStayWeeks(projectId: string, stays: { id: string; old
 }
 export async function guardTimeEntries(ids: string[], proposed?: { location_id?: string | null; entry_date?: string }) {
   if (!ids.length) return;
-  const { data, error } = await supabase.from('time_entries').select('location_id,entry_date,clock_in_at,clock_out_at,is_locked').in('id', ids); if (error) throw error;
+  const { data, error } = await supabase.from('time_entries').select('location_id,entry_date,clock_in_at,clock_out_at,is_locked').is('voided_at', null).in('id', ids); if (error) throw error;
   if (data?.some(r => r.is_locked)) throw new Error('Time entry is locked — the week cannot be edited');
   const locationIds = [...new Set((data || []).flatMap(r => r.location_id ? [r.location_id] : []))];
   const locations = locationIds.length ? await supabase.from('project_locations').select('id,timezone').in('id', locationIds) : { data: [], error: null }; if (locations.error) throw locations.error;

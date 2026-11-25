@@ -16,7 +16,7 @@ export const dayHeadcount = (onsite: number, mobe: number) => onsite + mobe;
 /** Hours-only projection of MOBE/DEMOBE time entries for one location + local date (no money columns). */
 export async function loadMobeRows(locationId: string, day: string): Promise<MobeRow[]> {
   const { data, error } = await supabase.from('time_entries')
-    .select('id,personnel_id,hours,description,entry_source,personnel:personnel_id(first_name,last_name)')
+    .select('id,personnel_id,hours,description,entry_source,personnel:personnel_id(first_name,last_name)').is('voided_at', null)
     .eq('location_id', locationId).eq('entry_date', day).in('entry_source', ['mobe', 'demobe']).limit(1000);
   if (error) throw error;
   return (data ?? []).map((r: any) => {

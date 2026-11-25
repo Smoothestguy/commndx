@@ -1,3 +1,4 @@
+import { friendlyTimeError } from '@/lib/stayDeletion';
 import { saveManualRequirements } from '@/lib/manualRequirementSave';
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -279,7 +280,7 @@ export function useEndAssignment() {
       return location_id;
     },
     onSuccess: (lid) => { inv(lid); toast.success("Removed from site"); },
-    onError: (e: any) => toast.error(e?.message ?? "Failed to remove from site"),
+    onError: (e: any) => toast.error(friendlyTimeError(e)),
   });
 }
 

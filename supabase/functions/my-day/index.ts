@@ -28,7 +28,7 @@ Deno.serve(async req => {
     const week = date.toISOString().slice(0,10); date.setUTCDate(date.getUTCDate()+7); const end = date.toISOString().slice(0,10);
     const scope = (q: any) => pid ? q.eq('personnel_id',pid) : q.eq('user_id',uid);
     const [entries, assignments, open, requests] = await Promise.all([
-      rows(o => scope(db.from('time_entries').select('id,entry_date,hours')).gte('entry_date',week).lt('entry_date',end).order('id').range(o,o+499)),
+      rows(o => scope(db.from('time_entries').select('id,entry_date,hours').is('voided_at', null)).gte('entry_date',week).lt('entry_date',end).order('id').range(o,o+499)),
       pid ? rows(o => db.from('location_assignments').select('location_id,assigned_at,unassigned_at,mission_day,mission_note').eq('personnel_id',pid).eq('status','active').order('id').range(o,o+499)) : [],
       pid ? rows(o => db.from('personnel_location_trail').select('location_id,in_at').eq('personnel_id',pid).is('out_at',null).order('visit_personnel_id').range(o,o+499)) : [],
       pid ? rows(o => db.from('timesheet_signature_requests').select('id,location_id,sheet_date,token').eq('personnel_id',pid).eq('status','pending').gt('expires_at',now.toISOString()).order('id').range(o,o+499)) : [],

@@ -13,7 +13,7 @@ export function useAttendanceRoster(projectId:string,locationId:string|undefined
   const [assignments,stays,entries]=await Promise.all([
    all(o=>supabase.from('location_assignments').select('personnel_id,role_label,assigned_at,unassigned_at').eq('location_id',locationId).lt('assigned_at',end).or(`unassigned_at.is.null,unassigned_at.gt.${start}`).order('id').range(o,o+499)),
    all(o=>supabase.from('personnel_location_trail').select('personnel_id').eq('project_id',projectId).eq('location_id',locationId).lt('in_at',end).or(`out_at.is.null,out_at.gt.${start}`).order('visit_personnel_id').range(o,o+499)),
-   all(o=>supabase.from('time_entries').select('personnel_id').eq('project_id',projectId).eq('location_id',locationId).eq('entry_date',day).order('id').range(o,o+499))
+   all(o=>supabase.from('time_entries').select('personnel_id').is('voided_at', null).eq('project_id',projectId).eq('location_id',locationId).eq('entry_date',day).order('id').range(o,o+499))
   ]);
   const ids=[...new Set([...assignments,...stays,...entries].flatMap(r=>r.personnel_id?[r.personnel_id]:[]))];
   const names=[];for(let o=0;o<ids.length;o+=200){const r=await supabase.from('personnel_directory').select('id,first_name,last_name').in('id',ids.slice(o,o+200));if(r.error)throw r.error;names.push(...r.data??[]);}

@@ -4,6 +4,7 @@ import { recomputeAttendanceFromVisits } from '@/integrations/supabase/hooks/use
 import { ensureSheetsOpen, guardStayWeeks } from '@/lib/sheetLocks';
 import { affectedStayDates } from '@/lib/stayEdits';
 import { toast } from 'sonner';
+import { friendlyTimeError, prepareStayDeletion } from '@/lib/stayDeletion';
 
 export type StayChange = { id: string; inAt: string; outAt: string | null; remove: boolean; note?: string };
 export function useEditedStayIds(ids: string[]) {
@@ -54,32 +55,23 @@ export function useEditStayTimes(projectId: string) {
         for (const s of prepared) {
           const before = { checked_in_at: s.oldIn, checked_out_at: s.oldOut, signature_url: s.stay.signature_url, signed_at: s.stay.signed_at, visit_id: s.stay.visit_id, personnel_id: s.stay.personnel_id };
           const after = s.remove ? { removed: true, ...(s.note ? { note: s.note } : {}) } : { checked_in_at: s.inAt, checked_out_at: s.outAt, ...(s.note ? { note: s.note } : {}) };
-          const { data: linkedEntries, error: linkedError } = await supabase.from('time_entries').select('id').eq('visit_personnel_id', s.id);
-          if (linkedError) throw linkedError;
           const { data: audit, error: ae } = await supabase.from('audit_logs').insert({ user_id: user.id, user_email: user.email || 'unknown', action_type: s.remove ? 'stay_delete' : 'stay_times_edit', resource_type: 'visit_personnel', resource_id: s.id, changes_before: before, changes_after: after, metadata: { project_id: projectId, location_id: s.locationId }, success: false }).select('id').single();
           if (ae) throw ae;
+          // Void linked accrual first so the detached row cannot collide with another same-day entry.
+          const restore = s.remove ? await prepareStayDeletion(supabase, [s.id]) : async () => undefined;
           let query = s.remove ? supabase.from('visit_personnel').delete() : supabase.from('visit_personnel').update({ checked_in_at: s.inAt, checked_out_at: s.outAt, manual_time_override: true });
           query = query.eq('id', s.id);
           query = s.stay.checked_in_at ? query.eq('checked_in_at', s.stay.checked_in_at) : query.is('checked_in_at', null);
           query = s.stay.checked_out_at ? query.eq('checked_out_at', s.stay.checked_out_at) : query.is('checked_out_at', null);
           const { data: written, error: we } = await query.select('id');
-          if (we) throw we;
-          if (!written?.length) throw new Error('Stay changed; refresh and retry');
+          if (we || !written?.length) { await restore().catch(() => undefined); throw we ?? new Error('Stay changed; refresh and retry'); }
           saved++;
           const { error: completeError } = await supabase.from('audit_logs').insert({ user_id: user.id, user_email: user.email || 'unknown', action_type: s.remove ? 'stay_delete' : 'stay_times_edit', resource_type: 'visit_personnel', resource_id: s.id, changes_before: before, changes_after: after, metadata: { project_id: projectId, location_id: s.locationId, attempt_id: audit.id }, success: true });
           if (completeError) throw completeError;
-          if (s.remove) {
-            // The live FK nullifies visit_personnel_id on deletion; preserve the financial row,
-            // but void its accrual instead of leaving detached billable hours behind.
-            if (linkedEntries?.length) {
-              const { error: te } = await supabase.from('time_entries').update({ status: 'approved', hours: 0, regular_hours: 0, overtime_hours: 0, billable: false, description: 'Removed site stay — history retained' }).in('id', linkedEntries.map(e => e.id)).or('is_locked.is.null,is_locked.eq.false').is('invoice_id', null);
-              if (te) throw te;
-            }
-          }
         }
       } catch (e) {
         for (const scope of prepared) await recomputeAttendanceFromVisits(scope.locationId, scope.dates).catch(() => undefined);
-        throw new Error(`${saved ? `${saved} stay(s) saved; remaining changes failed. ` : ''}${e && typeof e === 'object' && 'message' in e ? String(e.message) : 'Unable to save changes'}`);
+        throw new Error(`${saved ? `${saved} stay(s) saved; remaining changes failed. ` : ''}${friendlyTimeError(e)}`);
       }
       for (const locationId of new Set(prepared.map(s => s.locationId))) await recomputeAttendanceFromVisits(locationId, prepared.filter(s => s.locationId === locationId).flatMap(s => s.dates));
     },

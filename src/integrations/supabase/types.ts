@@ -11641,6 +11641,7 @@ export type Database = {
           user_id: string | null
           vendor_bill_id: string | null
           visit_personnel_id: string | null
+          voided_at: string | null
           week_closeout_id: string | null
         }
         Insert: {
@@ -11687,6 +11688,7 @@ export type Database = {
           user_id?: string | null
           vendor_bill_id?: string | null
           visit_personnel_id?: string | null
+          voided_at?: string | null
           week_closeout_id?: string | null
         }
         Update: {
@@ -11733,6 +11735,7 @@ export type Database = {
           user_id?: string | null
           vendor_bill_id?: string | null
           visit_personnel_id?: string | null
+          voided_at?: string | null
           week_closeout_id?: string | null
         }
         Relationships: [

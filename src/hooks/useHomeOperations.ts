@@ -28,7 +28,7 @@ export function useHomeDaily(locations: ProjectLocation[]) {
     const since = new Date(Date.now() - 2 * 86400000).toISOString();
     const [trail, entries, requests, roster] = await Promise.all([
       homeRows(o => supabase.from('personnel_location_trail').select('visit_personnel_id,personnel_id,location_id,in_at,out_at,signature_url').in('location_id', ids).or(`out_at.is.null,out_at.gte.${since}`).order('visit_personnel_id').range(o, o + 499)),
-      homeRows(o => supabase.from('time_entries').select('id,personnel_id,location_id,entry_date,hours,clock_in_at,clock_out_at,visit_personnel_id').in('location_id', ids).gte('entry_date', since.slice(0,10)).order('id').range(o, o + 499)),
+      homeRows(o => supabase.from('time_entries').select('id,personnel_id,location_id,entry_date,hours,clock_in_at,clock_out_at,visit_personnel_id').is('voided_at', null).in('location_id', ids).gte('entry_date', since.slice(0,10)).order('id').range(o, o + 499)),
       homeRows(o => supabase.from('location_requests').select('id,location_id,kind,label,qty,note,status,created_at').in('location_id', ids).in('status', ['open', 'accepted']).order('id').range(o, o + 499)),
       homeRows(o => supabase.from('location_assignments').select('location_id,personnel_id,assigned_at,unassigned_at').in('location_id', ids).eq('status','active').order('id').range(o,o+499)),
     ]);

@@ -64,7 +64,7 @@ export function usePersonnelTimeEntries(personnelId: string | undefined) {
         .select(`
           *,
           project:projects(id, name)
-        `)
+        `).is('voided_at', null)
         .eq("personnel_id", personnelId)
         .order("entry_date", { ascending: false });
       

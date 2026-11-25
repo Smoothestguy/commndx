@@ -60,7 +60,7 @@ serve(async (req: Request) => {
         is_on_lunch,
         lunch_duration_minutes,
         clock_blocked_until
-      `)
+      `).is('voided_at', null)
       .eq("id", time_entry_id)
       .single();
 

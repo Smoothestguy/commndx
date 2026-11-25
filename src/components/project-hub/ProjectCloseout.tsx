@@ -23,7 +23,7 @@ export function ProjectCloseout({ project }: { project: { id: string; name: stri
     queryFn: async () => {
       const rows: { entry_date: string; hours: number | null }[] = [];
       for (let o = 0; ; o += 1000) {
-        const { data, error } = await supabase.from('time_entries').select('entry_date,hours').eq('project_id', project.id).order('id').range(o, o + 999);
+        const { data, error } = await supabase.from('time_entries').select('entry_date,hours').is('voided_at', null).eq('project_id', project.id).order('id').range(o, o + 999);
         if (error) throw error; rows.push(...(data ?? [])); if ((data ?? []).length < 1000) break;
       }
       return projectSummary(locations, rows);

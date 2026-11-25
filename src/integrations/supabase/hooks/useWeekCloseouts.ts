@@ -89,7 +89,7 @@ export function useCloseWeek() {
           id,
           personnel_id,
           personnel:personnel_id (hourly_rate)
-        `)
+        `).is('voided_at', null)
         .eq('project_id', projectId)
         .gte('entry_date', format(weekStart, 'yyyy-MM-dd'))
         .lte('entry_date', format(weekEnd, 'yyyy-MM-dd'))

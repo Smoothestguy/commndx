@@ -435,7 +435,7 @@ function AttendanceGrid({ projectId, locations, crews, defaultHours, canManage }
               </div>
               {canManage && <div className="grid grid-cols-2 gap-2">
                 <div><Label htmlFor="attendance-in">Time in</Label><Time24Input id="attendance-in"  step={60} value={edit.timeIn} onChange={e => setEdit({ ...edit, timeIn: e.target.value })} /></div>
-                <div><Label htmlFor="attendance-out">Time out</Label><Time24Input id="attendance-out"  step={60} value={edit.timeOut} onChange={e => setEdit({ ...edit, timeOut: e.target.value })} /></div>
+                <div><Label htmlFor="attendance-out">Time out</Label><Time24Input allowEndOfDay id="attendance-out"  step={60} value={edit.timeOut} onChange={e => setEdit({ ...edit, timeOut: e.target.value })} /></div>
               </div>}
               {mode !== 'hours' && <p className="text-xs text-muted-foreground">{zone}</p>}
               {mode === 'incomplete' && <p role="alert" className="text-xs text-destructive">Enter both times, or leave both blank.</p>}

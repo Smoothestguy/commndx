@@ -1,14 +1,18 @@
-import { locationTimeIso } from './manualTime';
+import { isClockIn, locationTimeIso } from './manualTime';
 import { localDay, localTime } from './signinSheets';
 import { weekStart } from './shifts';
 import { locationDays } from './sheetApprovalRules';
 
 export type StayDraft = { id: string; inDate: string; inTime: string; outDate: string; outTime: string; removed: boolean };
 export function draftStay(id: string, inAt: string, outAt: string | null, zone: string, day?: string): StayDraft {
-  return { id, inDate: localDay(inAt, zone), inTime: localTime(inAt, zone), outDate: outAt ? localDay(outAt, zone) : day || localDay(inAt, zone), outTime: localTime(outAt, zone), removed: false };
+  const inDate = localDay(inAt, zone);
+  let outDate = outAt ? localDay(outAt, zone) : day || inDate, outTime = localTime(outAt, zone);
+  // A stay ending at next-day local midnight reads as 2400 on its last day.
+  if (outAt && outTime === '00:00' && outDate > inDate) { outDate = new Date(Date.parse(`${outDate}T12:00:00Z`) - 864e5).toISOString().slice(0, 10); outTime = '24:00'; }
+  return { id, inDate, inTime: localTime(inAt, zone), outDate, outTime, removed: false };
 }
 export function stayRange(draft: StayDraft, zone: string) {
-  const inAt = locationTimeIso(draft.inDate, draft.inTime, zone);
+  const inAt = isClockIn(draft.inTime) ? locationTimeIso(draft.inDate, draft.inTime, zone) : null;
   const outAt = draft.outTime ? locationTimeIso(draft.outDate, draft.outTime, zone) : null;
   if (!inAt || (draft.outTime && (!outAt || outAt <= inAt))) return null;
   return { inAt, outAt };

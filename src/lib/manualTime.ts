@@ -1,8 +1,14 @@
-import { localDay, localTime, nextDay } from './signinSheets';
+import { localDay, localTime, nextDay, displayClock } from './signinSheets';
+export { displayClock };
 import { resolveShifts, type ShiftStarts } from './shifts';
 
 /** Interpret the input as a location wall-clock time, never the browser's timezone. */
+export const isClockIn = (t: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(t);
+/** Time out also accepts 24:00 = 00:00 of the next local day. */
+export const isClockOut = (t: string) => t === '24:00' || isClockIn(t);
+export const END_OF_DAY_HINT = 'Use 0000–2400 (2400 = end of day)';
 export function locationTimeIso(day: string, time: string, zone: string): string | null {
+  if (time === '24:00' && /^\d{4}-\d{2}-\d{2}$/.test(day)) return locationTimeIso(nextDay(day), '00:00', zone);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return null;
   const target = Date.parse(`${day}T${time}:00Z`);
   if (!Number.isFinite(target)) return null;
@@ -18,6 +24,9 @@ export function locationTimeIso(day: string, time: string, zone: string): string
 }
 
 export function manualTimeRange(day: string, timeIn: string, timeOut: string, zone: string, outDay = day) {
+  if (!isClockIn(timeIn)) return null; // 24:00 is only valid as a time out
+  // 0000 out after a later in on the same day = end of that day.
+  if (timeOut === '00:00' && outDay === day && timeIn > '00:00') timeOut = '24:00';
   const inAt = locationTimeIso(day, timeIn, zone);
   const outAt = locationTimeIso(outDay, timeOut, zone);
   if (!inAt || !outAt || outAt <= inAt) return null;

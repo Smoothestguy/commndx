@@ -86,7 +86,7 @@ export function Generate1099Dialog({
       // Fetch time entries for this personnel
       const { data: timeEntries } = await supabase
         .from("time_entries")
-        .select("hours, regular_hours, overtime_hours")
+        .select("hours, regular_hours, overtime_hours").is('voided_at', null)
         .eq("personnel_id", personnelId)
         .gte("entry_date", startDate)
         .lte("entry_date", endDate);

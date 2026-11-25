@@ -13,7 +13,7 @@ export function ProjectUnbilledLabor({ projectId, totalInvoiced }: { projectId: 
     queryKey: ["project-unbilled-labor", projectId],
     queryFn: async () => {
       const [te, pa] = await Promise.all([
-        supabase.from("time_entries").select("hours, hourly_rate, personnel_id, is_overhead").eq("project_id", projectId),
+        supabase.from("time_entries").select("hours, hourly_rate, personnel_id, is_overhead").is('voided_at', null).eq("project_id", projectId),
         supabase.from("personnel_project_assignments").select("personnel_id, bill_rate, assigned_at").eq("project_id", projectId),
       ]);
       if (te.error) throw te.error;

@@ -41,7 +41,7 @@ export function ProjectLaborAllocation({ projectId }: ProjectLaborAllocationProp
             hourly_rate,
             title
           )
-        `)
+        `).is('voided_at', null)
         .eq("project_id", projectId)
         .not("personnel_id", "is", null);
 

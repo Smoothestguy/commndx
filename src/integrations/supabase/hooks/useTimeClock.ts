@@ -56,7 +56,7 @@ export function useOpenClockEntry(personnelId: string | undefined, projectId: st
           lunch_end_at,
           lunch_duration_minutes,
           is_on_lunch
-        `)
+        `).is('voided_at', null)
         .eq("personnel_id", personnelId)
         .eq("project_id", projectId)
         .not("clock_in_at", "is", null)
@@ -96,7 +96,7 @@ export function useAllOpenClockEntries(personnelId: string | undefined) {
           lunch_duration_minutes,
           is_on_lunch,
           project:projects(id, name, time_clock_enabled, require_clock_location)
-        `)
+        `).is('voided_at', null)
         .eq("personnel_id", personnelId)
         .not("clock_in_at", "is", null)
         .is("clock_out_at", null);
@@ -167,7 +167,7 @@ export function useClockHistory(personnelId: string | undefined, days: number = 
           lunch_duration_minutes,
           is_on_lunch,
           project:projects(id, name)
-        `)
+        `).is('voided_at', null)
         .eq("personnel_id", personnelId)
         .eq("entry_source", "clock")
         .gte("entry_date", startDate.toISOString().split("T")[0])

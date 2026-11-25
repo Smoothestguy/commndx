@@ -70,7 +70,7 @@ export async function generateSigninSheet(original: ArrayBuffer, fields: SignFie
       for (let i = 0; i < band.length; i++) {
         const row = band[i], yPct = field.y_pct + (row ? i * config.rowHeight : 0), hPct = fieldHeight(field);
         if (![field.x_pct, yPct, field.w_pct, hPct].every(Number.isFinite) || field.x_pct < 0 || field.w_pct <= 0 || hPct <= 0 || yPct < 0 || field.x_pct + field.w_pct > 1.00001 || yPct + hPct > 1.00001) throw new Error('Fields or row bands extend beyond the page');
-        const values: Record<string, string> = { date: config.day, project_name: config.project, customer_name: config.customer || '', mission_number: config.mission, location_name: config.location, location_address: config.address, employee_name: row?.name ?? '', name: row?.name ?? '', position: row?.position ?? '', time_in: row ? localTime(row.inAt, config.zone) : '', time_out: row ? localTime(row.outAt, config.zone) : '', total_hours: row?.hours == null ? '' : row.hours.toFixed(2) };
+        const values: Record<string, string> = { date: config.day, project_name: config.project, customer_name: config.customer || '', mission_number: config.mission, location_name: config.location, location_address: config.address, employee_name: row?.name ?? '', name: row?.name ?? '', position: row?.position ?? '', time_in: row ? localTime(row.inAt, config.zone) : '', time_out: row ? displayClock(row.outAt, config.zone, row.inAt) : '', total_hours: row?.hours == null ? '' : row.hours.toFixed(2) };
         page.pushOperators(pushGraphicsState(), concatTransformationMatrix(...matrix));
         const x = field.x_pct * width, bottom = height * (1 - yPct - hPct), w = field.w_pct * width, h = hPct * height;
         if ((field.binding || field.kind) === 'signature' && row?.signature) {
@@ -87,4 +87,11 @@ export async function generateSigninSheet(original: ArrayBuffer, fields: SignFie
     }
   }
   return output.save();
+}
+
+/** Clock for display: an out time at local midnight after the in-day shows as 24:00. */
+export function displayClock(iso: string | null | undefined, zone: string, inIso?: string | null): string {
+  if (!iso) return '';
+  const t = localTime(iso, zone);
+  return t === '00:00' && inIso && localDay(inIso, zone) < localDay(iso, zone) ? '24:00' : t;
 }

@@ -708,6 +708,13 @@
       "when": 1795575325445,
       "tag": "0100_location_day_resolutions",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1795580202889,
+      "tag": "0101_stay_delete_fixes",
+      "breakpoints": true
     }
   ]
 }

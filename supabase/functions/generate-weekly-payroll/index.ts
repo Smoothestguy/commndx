@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
         overtime_hours,
         personnel:personnel_id(id, first_name, last_name, hourly_rate, pay_rate),
         project:project_id(id, name)
-      `)
+      `).is('voided_at', null)
       .gte("entry_date", startDate)
       .lte("entry_date", endDate)
       .not("personnel_id", "is", null);

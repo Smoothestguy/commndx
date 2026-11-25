@@ -41,7 +41,7 @@ async function writable(db: any, projectId: string, locationId: string, s: any, 
   const [sheets, closed, entries] = await Promise.all([
     db.from('signin_sheet_days').select('id').eq('location_id', locationId).in('sheet_date', [...dates]).eq('status', 'locked'),
     db.from('week_closeouts').select('id').eq('project_id', projectId).in('week_start', [...new Set(weeks)]),
-    db.from('time_entries').select('is_locked,invoice_id').eq('visit_personnel_id', s.visit_personnel_id),
+    db.from('time_entries').select('is_locked,invoice_id').is('voided_at', null).eq('visit_personnel_id', s.visit_personnel_id),
   ]);
   for (const r of [sheets, closed, entries]) if (r.error) throw r.error;
   if (sheets.data?.length || closed.data?.length || entries.data?.some((e: any) => e.is_locked || e.invoice_id)) throw new Error('This day or week is locked. Ask a manager to reopen it.');

@@ -160,7 +160,7 @@ export function useBlockedTimeEntries(personnelId?: string) {
           clock_blocked_until,
           personnel:personnel(id, first_name, last_name),
           project:projects(id, name)
-        `)
+        `).is('voided_at', null)
         .gt("clock_blocked_until", now);
 
       if (personnelId) {

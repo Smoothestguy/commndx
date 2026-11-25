@@ -21,7 +21,7 @@ export function useProjectTimeEntryCosts(projectId: string | undefined, overtime
           hourly_rate,
           is_holiday,
           personnel:personnel_id (hourly_rate,non_billable)
-        `)
+        `).is('voided_at', null)
         .eq('project_id', projectId);
       
       if (error) throw error;
@@ -150,7 +150,7 @@ export function useWeeklyPersonnelSummary(projectId: string | undefined, weekSta
             last_name,
             hourly_rate
           )
-        `)
+        `).is('voided_at', null)
         .eq('project_id', projectId)
         .gte('entry_date', format(weekStart, 'yyyy-MM-dd'))
         .lte('entry_date', format(weekEnd, 'yyyy-MM-dd'));

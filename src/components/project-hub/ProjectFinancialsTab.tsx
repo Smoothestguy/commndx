@@ -76,7 +76,7 @@ export function ProjectFinancialsTab({ projectId, project, customer }: Props) {
         .from("time_entries")
         .select(
           `hours, hourly_rate, is_overhead, personnel:personnel_id (hourly_rate, title)`
-        )
+        ).is('voided_at', null)
         .eq("project_id", projectId)
         .not("personnel_id", "is", null);
       if (error) throw error;

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Loader2, Undo2, X } from 'lucide-react';
+import { END_OF_DAY_HINT, isClockIn, isClockOut } from '@/lib/manualTime';
 import { draftStay, stayRange, type StayDraft } from '@/lib/stayEdits';
 import { sourceFromNotes } from '@/integrations/supabase/hooks/useTimekeeping';
 import { useEditStayTimes } from '@/hooks/useEditStayTimes';
@@ -42,8 +43,8 @@ export function EditStayTimesDialog({ projectId, ids, personName, day, onClose }
       <div className="flex items-center gap-2"><span className="font-medium text-sm flex-1">{s.location_name}</span><Badge variant="outline">{s.source === 'Manual' ? 'manual' : s.source === 'Self check-in' ? 'self' : 'punch'}</Badge><Button variant="ghost" size="icon" className="h-8 w-8" aria-label={d.removed ? 'Restore stay' : `Delete stay at ${s.location_name}`} onClick={() => update(d.id, { removed: !d.removed })}>{d.removed ? <Undo2 className="h-4 w-4" /> : <X className="h-4 w-4" />}</Button></div>
       {d.removed ? <p className="text-sm text-destructive">Stay will be deleted when saved.</p> : <>
         {!s.outAt && !d.outTime && <div className="flex items-center justify-between"><span className="text-sm text-warning">Still running</span><Button variant="outline" size="sm" onClick={() => document.getElementById(`${d.id}-out`)?.focus()}><Clock className="h-4 w-4 mr-1" />Set time out</Button></div>}
-        <div className="grid grid-cols-2 gap-3"><div className="space-y-1"><Label htmlFor={`${d.id}-in`}>Time in</Label><Time24Input  step={60} id={`${d.id}-in`} value={d.inTime} onChange={e => update(d.id, { inTime: e.target.value })} /><Input aria-label="Time in date" type="date" value={d.inDate} onChange={e => update(d.id, { inDate: e.target.value })} /></div><div className="space-y-1"><Label htmlFor={`${d.id}-out`}>Time out</Label><Time24Input  step={60} id={`${d.id}-out`} value={d.outTime} onChange={e => update(d.id, { outTime: e.target.value })} /><Input aria-label="Time out date" type="date" value={d.outDate} onChange={e => update(d.id, { outDate: e.target.value })} /></div></div>
-        <p className="text-xs text-muted-foreground">{s.zone}</p>{!stayRange(eff(d), s.zone) && <p className="text-xs text-destructive">{[eff(d).inTime, eff(d).outTime].some(t => t && !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) ? 'Enter a valid military time from 0000 to 2359.' : 'Time out must be after time in.'}</p>}
+        <div className="grid grid-cols-2 gap-3"><div className="space-y-1"><Label htmlFor={`${d.id}-in`}>Time in</Label><Time24Input  step={60} id={`${d.id}-in`} value={d.inTime} onChange={e => update(d.id, { inTime: e.target.value })} /><Input aria-label="Time in date" type="date" value={d.inDate} onChange={e => update(d.id, { inDate: e.target.value })} /></div><div className="space-y-1"><Label htmlFor={`${d.id}-out`}>Time out</Label><Time24Input allowEndOfDay step={60} id={`${d.id}-out`} value={d.outTime} onChange={e => update(d.id, { outTime: e.target.value })} /><Input aria-label="Time out date" type="date" value={d.outDate} onChange={e => update(d.id, { outDate: e.target.value })} /></div></div>
+        <p className="text-xs text-muted-foreground">{s.zone}</p>{!stayRange(eff(d), s.zone) && <p className="text-xs text-destructive">{eff(d).inTime === '24:00' ? '2400 is only valid as a time out.' : (eff(d).inTime && !isClockIn(eff(d).inTime)) || (eff(d).outTime && !isClockOut(eff(d).outTime)) ? END_OF_DAY_HINT : 'Time out must be after time in.'}</p>}
       </>}
     </div>; })}</div>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}

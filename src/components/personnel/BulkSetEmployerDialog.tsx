@@ -28,7 +28,7 @@ export function BulkSetEmployerDialog({ open, onOpenChange, personnelIds, locati
       if (error) throw error;
       let retagged = 0, skipped = 0;
       if (retag && locationId) {
-        const { data: rows, error: re } = await supabase.from('time_entries').select('id, invoice_id, week_closeout_id').eq('location_id', locationId).in('personnel_id', personnelIds);
+        const { data: rows, error: re } = await supabase.from('time_entries').select('id, invoice_id, week_closeout_id').is('voided_at', null).eq('location_id', locationId).in('personnel_id', personnelIds);
         if (re) throw re;
         const ok = (rows || []).filter(r => !r.invoice_id && !r.week_closeout_id).map(r => r.id);
         skipped = (rows || []).length - ok.length;

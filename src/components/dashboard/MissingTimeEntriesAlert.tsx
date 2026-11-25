@@ -22,7 +22,7 @@ export function MissingTimeEntriesAlert() {
       // Get personnel who have logged time today
       const { data: entries, error: eError } = await supabase
         .from("time_entries")
-        .select("personnel_id")
+        .select("personnel_id").is('voided_at', null)
         .eq("entry_date", today)
         .not("personnel_id", "is", null);
       if (eError) throw eError;

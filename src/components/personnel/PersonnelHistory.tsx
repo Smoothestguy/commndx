@@ -24,7 +24,7 @@ export function PersonnelHistory({ personnelId, canEdit }: { personnelId: string
       if (la.error) throw la.error; if (ppa.error) throw ppa.error;
       const hours: Record<string, number> = {};
       for (let from = 0; ; from += 1000) {
-        const { data: te, error } = await supabase.from('time_entries').select('project_id, location_id, hours').eq('personnel_id', personnelId).range(from, from + 999);
+        const { data: te, error } = await supabase.from('time_entries').select('project_id, location_id, hours').is('voided_at', null).eq('personnel_id', personnelId).range(from, from + 999);
         if (error) throw error;
         for (const t of te ?? []) {
           const h = Number(t.hours) || 0;

@@ -23,8 +23,8 @@ import { useEditStayTimes, type StayChange } from '@/hooks/useEditStayTimes';
 import { EditStayTimesDialog } from '@/components/personnel/lifecycle/EditStayTimesDialog';
 import { LogTimeDialog } from '@/components/personnel/lifecycle/LogTimeDialog';
 import { localDay, localTime, midnight, nextDay } from '@/lib/signinSheets';
-import { locationTimeIso } from '@/lib/manualTime';
-import { isHHmm } from '@/lib/assignmentRoles';
+import { END_OF_DAY_HINT, displayClock, locationTimeIso } from '@/lib/manualTime';
+import { isHHmm, isHHmmOut } from '@/lib/assignmentRoles';
 import { LATE_ACK_PRESETS, lateAckText } from '@/lib/lateAck';
 import { punchTimeDetail } from '@/lib/punchTimes';
 import { cn } from '@/lib/utils';
@@ -55,7 +55,7 @@ export type CrewOptions = {
 };
 
 /** Inline military time cell: blank = not here; commits on blur/Enter. */
-function TimeCell({ value, disabled, label, onCommit }: { value: string; disabled?: boolean; label: string; onCommit: (v: string) => Promise<void> | void }) {
+function TimeCell({ value, disabled, label, onCommit, endOfDay }: { value: string; disabled?: boolean; label: string; onCommit: (v: string) => Promise<void> | void; endOfDay?: boolean }) {
   const [draft, setDraft] = useState(value.replace(':', ''));
   const [busy, setBusy] = useState(false);
   useEffect(() => setDraft(value.replace(':', '')), [value]);
@@ -65,7 +65,7 @@ function TimeCell({ value, disabled, label, onCommit }: { value: string; disable
     if (!v) { setDraft(value.replace(':', '')); return; }
     const d = v.replace(':', '').padStart(4, '0');
     const hhmm = `${d.slice(0, 2)}:${d.slice(2)}`;
-    if (!/^\d{4}$/.test(d) || !isHHmm(hhmm)) { toast.error('Use military time 0000–2359'); setDraft(value.replace(':', '')); return; }
+    if (!/^\d{4}$/.test(d) || !(endOfDay ? isHHmmOut(hhmm) : isHHmm(hhmm))) { toast.error(hhmm === '24:00' ? '2400 is only valid as a time out' : END_OF_DAY_HINT); setDraft(value.replace(':', '')); return; }
     setBusy(true); try { await onCommit(hhmm); } catch (e) { toast.error(e instanceof Error ? e.message : 'Save failed'); setDraft(value.replace(':', '')); } finally { setBusy(false); }
   };
   if (disabled) return <span className="tabular-nums">{value.replace(':', '') || '—'}</span>;
@@ -157,7 +157,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
       const others = (otherSites.data ?? []).filter(o => o.personnel_id === r.id && o.in_at).map(o => ({ ...o, in_at: o.in_at as string }));
       const hits = overlappingStays(mine, others); if (!hits.length) continue;
       const sites = new Map<string, string>();
-      for (const h of hits) { const n = h.location_name || 'another site'; const range = `${localTime(h.in_at, tz).replace(':', '')}–${h.out_at ? localTime(h.out_at, tz).replace(':', '') : 'open'}`; sites.set(n, sites.has(n) ? `${sites.get(n)}, ${range}` : range); }
+      for (const h of hits) { const n = h.location_name || 'another site'; const range = `${localTime(h.in_at, tz).replace(':', '')}–${h.out_at ? displayClock(h.out_at, tz, h.in_at).replace(':', '') : 'open'}`; sites.set(n, sites.has(n) ? `${sites.get(n)}, ${range}` : range); }
       m.set(r.id, { id: r.id, name: r.name, sites: [...sites].map(([name, range]) => ({ name, range })) });
     }
     return m;
@@ -216,7 +216,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
     { key: 'name', header: 'Person', width: 250, render: r => <span>{r.name || 'Unnamed'} {r.demobilized && <Badge variant="outline">Demobilized</Badge>}</span> },
     { key: 'role', header: 'Position' },
     { key: 'in', header: 'In', getValue: r => r.stays[0] ? hm(r.stays[0].in_at, tz) : '—', render: r => { const st=r.stays[0]; return <span title={punchTimeDetail(st?.actual_in_at,st?.in_at,tz)}>{st ? hm(st.in_at,tz) : '—'}</span>; } },
-    { key: 'out', header: 'Out', getValue: r => { const last = r.stays.at(-1); return last ? last.out_at ? hm(last.out_at, tz) : 'open' : '—'; }, render: r => { const st=r.stays.at(-1); return <span title={punchTimeDetail(st?.actual_out_at,st?.out_at,tz)}>{st ? st.out_at ? hm(st.out_at,tz) : 'open' : '—'}</span>; } },
+    { key: 'out', header: 'Out', getValue: r => { const last = r.stays.at(-1); return last ? last.out_at ? displayClock(last.out_at, tz, last.in_at) : 'open' : '—'; }, render: r => { const st=r.stays.at(-1); return <span title={punchTimeDetail(st?.actual_out_at,st?.out_at,tz)}>{st ? st.out_at ? displayClock(st.out_at,tz,st.in_at) : 'open' : '—'}</span>; } },
     { key: 'status', header: 'Status', width: 300,
       getValue: r => [r.demobilized ? 'Demobilized' : '', r.offRoster ? 'Not on roster this day' : '', !r.stays.length ? 'Not signed in' : r.stays.some(st => (st.late_minutes ?? 0) > 0) ? 'Late' : 'On time', r.stays.some(st => st.in_geofence === false || st.offsite_reason) ? 'Off-site' : ''].filter(Boolean).join(' · '),
       render: r => { const late = r.stays.find(st => (st.late_minutes ?? 0) > 0); return <span className="flex flex-wrap items-center gap-1">
@@ -249,13 +249,13 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
         <div><Label htmlFor="bulk-date">Date</Label><Input id="bulk-date" type="date" value={bulk.date} readOnly disabled aria-describedby="bulk-date-help" /><p id="bulk-date-help" className="text-xs text-muted-foreground mt-1">Change the day above to edit another date. Running punches from other days are never changed here.</p></div>
         <div className="grid grid-cols-2 gap-2">
           <div><Label htmlFor="bulk-in">Time in (24h)</Label><Time24Input id="bulk-in" value={bulk.inTime} onChange={e => setBulk({ ...bulk, inTime: e.target.value })} /></div>
-          <div><Label htmlFor="bulk-out">Time out (24h)</Label><Time24Input id="bulk-out" value={bulk.outTime} onChange={e => setBulk({ ...bulk, outTime: e.target.value })} /></div>
+          <div><Label htmlFor="bulk-out">Time out (24h)</Label><Time24Input allowEndOfDay id="bulk-out" value={bulk.outTime} onChange={e => setBulk({ ...bulk, outTime: e.target.value })} /></div>
         </div>
         <div><Label htmlFor="bulk-note">Note (optional)</Label><Textarea id="bulk-note" rows={2} maxLength={300} value={bulk.note} onChange={e => setBulk({ ...bulk, note: e.target.value })} /></div>
         <p className="text-xs text-muted-foreground">Leave a time blank to keep each person's existing value. People with no stay need both times. Every change is audited. {tz}</p>
       </div>}
       <DialogFooter><Button variant="outline" disabled={busy} onClick={() => setBulk(null)}>Cancel</Button>
-        <Button disabled={busy || !bulk || !bulk.date || (!bulk.inTime && !bulk.outTime) || (!!bulk.inTime && !isHHmm(bulk.inTime)) || (!!bulk.outTime && !isHHmm(bulk.outTime))} onClick={runBulk}>{busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Apply</Button></DialogFooter>
+        <Button disabled={busy || !bulk || !bulk.date || (!bulk.inTime && !bulk.outTime) || (!!bulk.inTime && !isHHmm(bulk.inTime)) || (!!bulk.outTime && !isHHmmOut(bulk.outTime))} onClick={runBulk}>{busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Apply</Button></DialogFooter>
     </DialogContent></Dialog>
 
     <Dialog open={!!ack} onOpenChange={o => !o && !busy && setAck(null)}><DialogContent className="max-w-sm">
@@ -337,7 +337,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
     { key: 'role', header: 'Role', width: 170, getValue: r => r.role ?? '' },
     { key: 'employer', header: 'Employer', width: 170, getValue: r => crew.agencies.employerName(r.id) || crew.agencies.agencyName(r.id) || 'FRG', render: r => { const n = crew.agencies.employerName(r.id) || crew.agencies.agencyName(r.id) || 'FRG'; const nb = crew.agencies.nonBillableByPerson[r.id]; return <span className="inline-flex max-w-full items-center gap-1.5"><Badge variant="outline" className="max-w-[10rem] truncate font-normal" title={n}>{n.replace(/ \(customer\)$/, '')}</Badge>{nb && <span className="h-2 w-2 shrink-0 rounded-full bg-warning" title="Non-billable" aria-label="Non-billable" />}</span>; } },
     { key: 'in', header: 'In', width: 90, getValue: r => pad(r.stays[0]?.in_at), render: r => <span title={punchTimeDetail(r.stays[0]?.actual_in_at, r.stays[0]?.in_at, tz)}><TimeCell label={`Time in for ${r.name}`} disabled={!canWrite} value={pad(r.stays[0]?.in_at) || drafts[r.id] || ''} onCommit={v => saveIn(r, v)} /></span> },
-    { key: 'out', header: 'Out', width: 90, getValue: r => pad(r.stays.at(-1)?.out_at), render: r => <span title={punchTimeDetail(r.stays.at(-1)?.actual_out_at, r.stays.at(-1)?.out_at, tz)}><TimeCell label={`Time out for ${r.name}`} disabled={!canWrite} value={pad(r.stays.at(-1)?.out_at)} onCommit={v => saveOut(r, v)} /></span> },
+    { key: 'out', header: 'Out', width: 90, getValue: r => displayClock(r.stays.at(-1)?.out_at, tz, r.stays.at(-1)?.in_at), render: r => <span title={punchTimeDetail(r.stays.at(-1)?.actual_out_at, r.stays.at(-1)?.out_at, tz)}><TimeCell endOfDay label={`Time out for ${r.name}`} disabled={!canWrite} value={displayClock(r.stays.at(-1)?.out_at, tz, r.stays.at(-1)?.in_at)} onCommit={v => saveOut(r, v)} /></span> },
     { key: 'hours', header: 'Hours', width: 70, getValue: r => r.stays.reduce((n, st) => n + (st.out_at ? Number(st.hours) || 0 : 0), 0), render: r => { const h = r.stays.reduce((n, st) => n + (st.out_at ? Number(st.hours) || 0 : 0), 0); return r.stays.length ? h.toFixed(2) : ''; } },
     { key: 'sig', header: 'Signature', width: 90, getValue: r => { const s = sigFor(r.id); return s ? 'Signed' : presenceFor(r.id) ? 'Presence only' : s == null ? '' : 'Missing'; }, render: r => { const s = sigFor(r.id); if (!s && presenceFor(r.id)) return <Badge variant="outline" className="text-info font-normal" title="Signed — presence only, no times">Presence only</Badge>; return s == null ? null : s ? <CheckCircle2 className="h-4 w-4 text-success" aria-label="Signed" /> : <span className="text-destructive text-xs font-medium">missing</span>; } },
     { key: 'tag', header: 'Day', width: 130, getValue: r => [mobe.data?.find(m => m.personnelId === r.id) ? (mobe.data.find(m => m.personnelId === r.id)?.kind === 'demobe' ? 'DEMOBE' : 'MOBE') : '', r.stays.some(st => st.demobe) ? 'DEMOBE' : '', r.stays.some(st => (st.late_minutes ?? 0) > 0) ? 'Late' : '', r.stays.some(st => st.auto_closed_at) ? 'Auto-closed' : ''].filter(Boolean).join(' · '),

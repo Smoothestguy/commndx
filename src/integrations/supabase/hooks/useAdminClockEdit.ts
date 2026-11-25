@@ -67,7 +67,7 @@ export const useAdminTimeEntries = (
           project:project_id (
             name
           )
-        `)
+        `).is('voided_at', null)
         .gte("entry_date", startDate)
         .lte("entry_date", endDate)
         .not("clock_in_at", "is", null)

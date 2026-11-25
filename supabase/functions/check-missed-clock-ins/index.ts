@@ -86,7 +86,7 @@ serve(async (req: Request) => {
       // Check if they clocked in today for this project
       const { data: clockEntry } = await supabase
         .from("time_entries")
-        .select("id, clock_in_at")
+        .select("id, clock_in_at").is('voided_at', null)
         .eq("personnel_id", schedule.personnel_id)
         .eq("project_id", schedule.project_id)
         .eq("entry_date", today)

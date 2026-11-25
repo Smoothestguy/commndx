@@ -171,7 +171,7 @@ export function WeeklyTimesheet({
 
       const { data } = await supabase
         .from("time_entries")
-        .select("entry_date")
+        .select("entry_date").is('voided_at', null)
         .eq("user_id", user.id)
         .order("entry_date", { ascending: false })
         .limit(1);

@@ -90,7 +90,7 @@ export function useExistingDailyHours(date: string, excludeEntryId?: string) {
 
       let query = supabase
         .from("time_entries")
-        .select("hours")
+        .select("hours").is('voided_at', null)
         .eq("user_id", user.id)
         .eq("entry_date", date);
       
@@ -126,7 +126,7 @@ export function useExistingWeeklyHours(date: string, excludeEntryId?: string) {
 
       let query = supabase
         .from("time_entries")
-        .select("hours")
+        .select("hours").is('voided_at', null)
         .eq("user_id", user.id)
         .gte("entry_date", startDateStr)
         .lte("entry_date", endDateStr);
@@ -176,7 +176,7 @@ export const useTimeEntries = () => {
 
       const { data, error } = await supabase
         .from("time_entries")
-        .select("*")
+        .select("*").is('voided_at', null)
         .eq("user_id", user.id)
         .order("entry_date", { ascending: false });
 
@@ -196,7 +196,7 @@ export const useTimeEntriesByDate = (date: string) => {
 
       const { data, error } = await supabase
         .from("time_entries")
-        .select("*")
+        .select("*").is('voided_at', null)
         .eq("user_id", user.id)
         .eq("entry_date", date)
         .order("created_at", { ascending: false });
@@ -224,7 +224,7 @@ export const useTimeEntriesByWeek = (weekStartDate: Date) => {
 
       const { data, error } = await supabase
         .from("time_entries")
-        .select("*")
+        .select("*").is('voided_at', null)
         .eq("user_id", user.id)
         .gte("entry_date", startDateStr)
         .lte("entry_date", endDateStr)
@@ -261,7 +261,7 @@ export const useAdminTimeEntriesByWeek = (
           *,
           personnel:personnel_id(non_billable, id, first_name, last_name, hourly_rate, photo_url, address, city, state, zip, ssn_last_four),
           projects:project_id(id, name)
-        `)
+        `).is('voided_at', null)
         .gte("entry_date", startDateStr)
         .lte("entry_date", endDateStr)
         .order("entry_date", { ascending: true });
@@ -320,7 +320,7 @@ export const usePersonnelTimeEntriesByWeek = (projectId: string, weekStartDate: 
     queryFn: async () => {
       const { data, error } = await supabase
         .from("time_entries")
-        .select("*")
+        .select("*").is('voided_at', null)
         .eq("project_id", projectId)
         .not("personnel_id", "is", null)
         .gte("entry_date", startDateStr)
@@ -397,7 +397,7 @@ export const useUpdateTimeEntry = () => {
       // Fetch current data for comparison
       const { data: before } = await supabase
         .from("time_entries")
-        .select("*")
+        .select("*").is('voided_at', null)
         .eq("id", id)
         .single();
 
@@ -454,7 +454,7 @@ export const useDeleteTimeEntry = () => {
       // Fetch current data for logging
       const { data: before } = await supabase
         .from("time_entries")
-        .select("*")
+        .select("*").is('voided_at', null)
         .eq("id", id)
         .single();
 
@@ -533,7 +533,7 @@ export const useAllTimeEntries = (
             customer_id,
             customers:customer_id(name)
           )
-        `)
+        `).is('voided_at', null)
         .order("entry_date", { ascending: false });
 
       if (projectFilter) {
@@ -561,7 +561,7 @@ export const useBulkAddTimeEntries = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
       for (const entry of entries) {
-        const { data, error } = await supabase.from('time_entries').select('id').eq('project_id', entry.project_id).eq('user_id', user.id).eq('entry_date', entry.entry_date);
+        const { data, error } = await supabase.from('time_entries').select('id').is('voided_at', null).eq('project_id', entry.project_id).eq('user_id', user.id).eq('entry_date', entry.entry_date);
         if (error) throw error; await guardTimeEntries((data || []).map(r => r.id));
       }
 
@@ -623,7 +623,7 @@ export const useBulkAddPersonnelTimeEntries = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
       for (const entry of entries) {
-        const { data, error } = await supabase.from('time_entries').select('id').eq('project_id', entry.project_id).eq('personnel_id', entry.personnel_id).eq('entry_date', entry.entry_date);
+        const { data, error } = await supabase.from('time_entries').select('id').is('voided_at', null).eq('project_id', entry.project_id).eq('personnel_id', entry.personnel_id).eq('entry_date', entry.entry_date);
         if (error) throw error; await guardTimeEntries((data || []).map(r => r.id));
       }
 
@@ -650,7 +650,7 @@ export const useBulkAddPersonnelTimeEntries = () => {
       // so match them explicitly; visit-backed stays are never overwritten here.
       const data: any[] = [];
       for (const entry of validEntries) {
-        const { data: found, error: fErr } = await supabase.from("time_entries").select("id")
+        const { data: found, error: fErr } = await supabase.from("time_entries").select("id").is('voided_at', null)
           .eq("personnel_id", entry.personnel_id).eq("project_id", entry.project_id).eq("entry_date", entry.entry_date)
           .is("visit_personnel_id", null).limit(1);
         if (fErr) throw fErr;

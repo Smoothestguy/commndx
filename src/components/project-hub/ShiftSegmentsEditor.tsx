@@ -17,7 +17,7 @@ export function ShiftSegmentsEditor({ idPrefix, day, mode, onModeChange, segment
       <div className="flex items-center justify-between"><span className="text-xs font-medium text-muted-foreground">Shift {i + 1}</span>{i > 0 && <Button type="button" size="icon" variant="ghost" className="h-6 w-6" aria-label={`Remove shift ${i + 1}`} disabled={disabled} onClick={() => onChange(segments.filter((_, j) => j !== i))}><X className="h-3 w-3" /></Button>}</div>
       <div className="grid grid-cols-2 gap-2">
         <div><Label htmlFor={`${idPrefix}-in-${i}`}>Time in (24h)</Label><Time24Input id={`${idPrefix}-in-${i}`} step={60} className="h-11" value={s.tin} disabled={disabled} onChange={e => set(i, { tin: e.target.value })} /></div>
-        <div><Label htmlFor={`${idPrefix}-out-${i}`}>Time out (24h)</Label><Time24Input id={`${idPrefix}-out-${i}`} step={60} className="h-11" value={s.tout} disabled={disabled} onChange={e => set(i, { tout: e.target.value })} /></div>
+        <div><Label htmlFor={`${idPrefix}-out-${i}`}>Time out (24h)</Label><Time24Input allowEndOfDay id={`${idPrefix}-out-${i}`} step={60} className="h-11" value={s.tout} disabled={disabled} onChange={e => set(i, { tout: e.target.value })} /></div>
       </div>
       <div><Label htmlFor={`${idPrefix}-outday-${i}`}>Time out date</Label><Input id={`${idPrefix}-outday-${i}`} type="date" min={day} value={s.outDay} disabled={disabled} onChange={e => set(i, { outDay: e.target.value })} /></div>
     </div>)}
