@@ -45,6 +45,7 @@ import { DataHygieneCard } from "@/components/settings/DataHygieneCard";
 import { InvitationDefaultsCard } from "@/components/settings/InvitationDefaultsCard";
 import { SigninProvidersCard } from "@/components/settings/SigninProvidersCard";
 import { ModulesCard } from '@/components/settings/ModulesCard';
+import { AutoTextsCard } from '@/components/settings/AutoTextsCard';
 
 
 import AppWalkthroughDownload from "@/components/AppWalkthroughDownload";
@@ -165,6 +166,7 @@ export default function Settings() {
       >
         <div className="space-y-6">
           {role==='admin'&&<ModulesCard/>}
+          {role==='admin'&&<AutoTextsCard/>}
           {(role === "admin" || role === "manager") && <ApplicationWatchdogCard />}
           {role === "admin" && <RecoverSmsPhotosCard />}
           {(role === "admin" || role === "manager") && <DataHygieneCard />}

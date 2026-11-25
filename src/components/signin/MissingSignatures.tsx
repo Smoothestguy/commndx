@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogFooter} from '@/components/ui/dialog';
 import {useLocationProjectId} from '@/integrations/supabase/hooks/useProjectVendors';
 import {CatchupLinkButton} from './CatchupLinkButton';
+import { confirmManualRecipients } from '@/lib/autoTexts';
 import {AddToProject} from '@/components/project-hub/ProjectPersonnelRoster';
 
 type Row = { personnelId: string; name: string; signature: string | null };
@@ -59,7 +60,9 @@ export function MissingSignatures({ locationId, day, zone, rows, compact = false
     else toast[failed ? 'warning' : 'success'](`${sent} text${sent === 1 ? '' : 's'} sent${failed ? ` · ${failed} failed` : ''}`);
     qc.invalidateQueries({ queryKey: ['timesheet-sig-requests', locationId] });
   };
-  const request = (personnelIds: string[]) => personnelIds.length ? call({ action: 'request', sheet_date: day, personnel_ids: personnelIds }) : undefined;
+  const names = Object.fromEntries(summary.missing.map(m => [m.personnelId, m.name]));
+  const request = async (personnelIds: string[]) => { if (!personnelIds.length) return; const ok = await confirmManualRecipients(locationId, personnelIds, names); if (ok?.length) await call({ action: 'request', sheet_date: day, personnel_ids: ok }); };
+  const resend = async (id: string) => { const ok = await confirmManualRecipients(locationId, [id], names); if (ok?.length) await call({ action: 'resend', personnel_id: id }); };
   return <>
     <div className={compact?'inline-flex flex-wrap items-center gap-2':'flex flex-wrap items-center justify-between gap-2 py-2 text-sm'} aria-label="Signature summary">
       {!compact&&<p className="font-medium">{summary.signed} of {summary.total} signed</p>}
@@ -70,7 +73,7 @@ export function MissingSignatures({ locationId, day, zone, rows, compact = false
       {(isAdmin||isManager)&&<CatchupLinkButton locationId={locationId}/>}
       {projectId&&<AddToProject projectId={projectId}/>}
       {isLoading&&<Loader2 className="h-4 w-4 animate-spin"/>}{loadError&&<p role="alert" className="text-sm text-destructive">Phone and request details could not be loaded.</p>}
-      <ul className="divide-y">{summary.missing.map(m=>{const p=pending(m.personnelId),dates=info(m.personnelId)?.dates??[],w=waitS(m.personnelId);return <li key={m.personnelId} className="flex flex-wrap items-center justify-between gap-2 py-3"><div className="min-w-0"><p className="font-medium break-words">{m.name}{dates.length>1&&<span className="text-muted-foreground font-normal"> — {dates.length} dates</span>}</p>{dates.length>1&&<p className="text-xs text-muted-foreground tabular-nums">{dates.map(md).join(', ')}</p>}<p className="text-xs text-muted-foreground">{p?`Requested ${md(new Intl.DateTimeFormat('en-CA',{timeZone:zone}).format(new Date(p.last_sent_at)))} ${localTime(p.last_sent_at,zone)} · sent ${p.send_count}× · ${p.sms_status}`:!data?'Checking phone…':textable(m.personnelId)?'Phone available':'No valid phone — cannot text'}</p></div>{(isAdmin||isManager)&&(p?<Button size="sm" variant="outline" aria-label={`Resend signature request to ${m.name}`} disabled={busy||!textable(m.personnelId)||w>0} onClick={()=>void call({action:'resend',personnel_id:m.personnelId})}><RotateCw className="h-3.5 w-3.5 mr-1"/>{w>0?`Resend in ${w}s`:'Resend'}</Button>:<Button size="sm" variant="outline" aria-label={`Request signature for ${m.name}`} disabled={busy||!data||!textable(m.personnelId)} onClick={()=>void request([m.personnelId])}><Send className="h-3.5 w-3.5 mr-1"/>{dates.length>1?`Request ${dates.length} dates`:'Request signature'}</Button>)}</li>;})}</ul>
+      <ul className="divide-y">{summary.missing.map(m=>{const p=pending(m.personnelId),dates=info(m.personnelId)?.dates??[],w=waitS(m.personnelId);return <li key={m.personnelId} className="flex flex-wrap items-center justify-between gap-2 py-3"><div className="min-w-0"><p className="font-medium break-words">{m.name}{dates.length>1&&<span className="text-muted-foreground font-normal"> — {dates.length} dates</span>}</p>{dates.length>1&&<p className="text-xs text-muted-foreground tabular-nums">{dates.map(md).join(', ')}</p>}<p className="text-xs text-muted-foreground">{p?`Requested ${md(new Intl.DateTimeFormat('en-CA',{timeZone:zone}).format(new Date(p.last_sent_at)))} ${localTime(p.last_sent_at,zone)} · sent ${p.send_count}× · ${p.sms_status}`:!data?'Checking phone…':textable(m.personnelId)?'Phone available':'No valid phone — cannot text'}</p></div>{(isAdmin||isManager)&&(p?<Button size="sm" variant="outline" aria-label={`Resend signature request to ${m.name}`} disabled={busy||!textable(m.personnelId)||w>0} onClick={()=>void resend(m.personnelId)}><RotateCw className="h-3.5 w-3.5 mr-1"/>{w>0?`Resend in ${w}s`:'Resend'}</Button>:<Button size="sm" variant="outline" aria-label={`Request signature for ${m.name}`} disabled={busy||!data||!textable(m.personnelId)} onClick={()=>void request([m.personnelId])}><Send className="h-3.5 w-3.5 mr-1"/>{dates.length>1?`Request ${dates.length} dates`:'Request signature'}</Button>)}</li>;})}</ul>
       <DialogFooter><Button variant="outline" disabled={busy} onClick={()=>setOpen(false)}>Close</Button>{(isAdmin||isManager)&&<Button disabled={busy||!toSend.length||!!loadError} onClick={()=>void request(toSend.map(m=>m.personnelId))}>{busy?<Loader2 className="h-4 w-4 animate-spin mr-1"/>:<Send className="h-4 w-4 mr-1"/>}Request all ({toSend.length})</Button>}</DialogFooter>
     </DialogContent></Dialog>
   </>;

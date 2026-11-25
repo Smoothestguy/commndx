@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { MapPin, Pencil, Phone, Plus, Trash2, Mail, Loader2 } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
+import { LocationAutoTextOverrides } from "@/components/settings/AutoTextsCard";
 import {
   ProjectLocation, useAddProjectLocation, useDeleteProjectLocation, useProjectLocations, useUpdateProjectLocation,
 } from "@/integrations/supabase/hooks/useProjectLocations";
@@ -422,6 +423,7 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
               {form.meals_provided && <div className="col-span-2"><Label>Meals notes</Label><Input {...f("meals_notes")} placeholder="e.g. Lunch on site" /></div>}
             </div>
             </fieldset>
+            {editing&&<LocationAutoTextOverrides locationId={editing.id}/>}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {setOpen(false);onEditClosed?.();}}>Cancel</Button>

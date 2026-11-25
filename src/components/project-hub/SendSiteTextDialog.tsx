@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertTriangle, Loader2, MessageSquare } from "lucide-react";
 
 import { locationTimeIso } from "@/lib/manualTime";
+import { manualTextIneligible } from "@/lib/autoTexts";
 import { localStamp, locationZone } from "../../../supabase/functions/_shared/locationTime";
 import { useProjectPersonnelRoster } from '@/integrations/supabase/hooks/useProjectPersonnelRoster';
 import { AddToProject } from './ProjectPersonnelRoster';
@@ -93,6 +94,11 @@ export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationI
   const rosterProjectId=projectId||loc?.project_id;
   const roster=useProjectPersonnelRoster(rosterProjectId,open);
   const locationRoster=useQuery({queryKey:['site-text-active-roster',locId,personnelIds],enabled:open&&!!locId,queryFn:async()=>{const now=new Date().toISOString();const r=await supabase.from('location_assignments').select('personnel_id').eq('location_id',locId??'').eq('status','active').lte('assigned_at',now).or(`unassigned_at.is.null,unassigned_at.gt.${now}`);if(r.error)throw r.error;return r.data;}});
+  const ineligible=useQuery({queryKey:['site-text-eligibility',locId,personnelIds],enabled:open&&!!locId&&personnelIds.length>0,queryFn:()=>manualTextIneligible(locId??'',personnelIds)});
+  const [skipBad,setSkipBad]=useState(true);
+  useEffect(()=>{if(open)setSkipBad(true);},[open,locId]);
+  const bad=ineligible.data??[];
+  const recipients=skipBad?personnelIds.filter(id=>!bad.some(b=>b.id===id)):personnelIds;
   const zone = locationZone(loc || {});
   const reportIso = reportAt ? locationTimeIso(reportAt.split('T')[0],reportAt.split('T')[1]||'',zone) : null;
   const hasPoc = !!(loc?.poc_name || loc?.poc_phone);
@@ -115,9 +121,9 @@ export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationI
 
   const send = useMutation({
     mutationFn: async () => {
-      if(!locationRoster.data||personnelIds.some(id=>!locationRoster.data.some(p=>p.personnel_id===id)))throw new Error('Recipients must be assigned to this location’s active roster');
+      if(!recipients.length)throw new Error('No eligible recipients');if(!locationRoster.data||recipients.some(id=>!locationRoster.data.some(p=>p.personnel_id===id)))throw new Error('Recipients must be assigned to this location’s active roster');
       const { data, error } = await supabase.functions.invoke("send-site-assignment-sms", {
-        body: { location_id: locId, personnel_ids: personnelIds, report_at: reportIso, include: inc, custom_note: note.trim() || undefined },
+        body: { location_id: locId, personnel_ids: recipients, report_at: reportIso, include: inc, custom_note: note.trim() || undefined },
       });
       if (error) throw new Error(error instanceof FunctionsHttpError ? await error.context.text() : error.message);
       return (data?.results ?? []) as { personnel_id: string; status: string; reason?: string }[];
@@ -164,7 +170,8 @@ export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationI
           {preview && <pre className="whitespace-pre-wrap text-xs rounded-md border bg-muted/40 p-3 font-sans">{preview}</pre>}
           <div className="space-y-1">
             <Label>Recipients ({personnelIds.length})</Label>
-            {locationRoster.data&&personnelIds.some(id=>!locationRoster.data.some(p=>p.personnel_id===id))&&<p role="alert" className="text-sm text-destructive">Assign recipients to this location’s active roster before texting.</p>}
+            {bad.length>0&&<div role="alert" className="rounded-md border border-warning/50 bg-warning/10 p-2 text-sm space-y-1"><p>{bad.length} of {personnelIds.length} are demobilized/unassigned or not eligible: {bad.map(b=>`${nameOf(b.id)} (${b.reason})`).join(', ')}</p><label className="flex items-center gap-2"><Checkbox checked={skipBad} onCheckedChange={v=>setSkipBad(v===true)}/>Skip them</label></div>}
+            {locationRoster.data&&recipients.some(id=>!locationRoster.data.some(p=>p.personnel_id===id))&&<p role="alert" className="text-sm text-destructive">Assign recipients to this location’s active roster before texting.</p>}
             <div className="flex flex-wrap gap-1">
               {personnelIds.map((id) => {
                 const p: any = people.find((x: any) => x.id === id);
@@ -180,8 +187,8 @@ export function SendSiteTextDialog({ open, onOpenChange, personnelIds, locationI
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Skip</Button>
-          <Button disabled={!locId || !locationRoster.data || personnelIds.some(id=>!locationRoster.data.some(p=>p.personnel_id===id)) || (inc.report_time && !!reportAt && !reportIso) || send.isPending} onClick={() => send.mutate()}>
-            {send.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Send
+          <Button disabled={!locId || !locationRoster.data || ineligible.isLoading || !recipients.length || recipients.some(id=>!locationRoster.data.some(p=>p.personnel_id===id)) || (inc.report_time && !!reportAt && !reportIso) || send.isPending} onClick={() => send.mutate()}>
+            {send.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Send{recipients.length!==personnelIds.length?` (${recipients.length})`:''}
           </Button>
         </DialogFooter>
       </DialogContent>

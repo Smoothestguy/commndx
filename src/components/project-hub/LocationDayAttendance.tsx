@@ -298,7 +298,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
     await setStatus.mutateAsync({ personnelIds: [r.id], status: 'demobilized', project_id: projectId, note: `Demobilized from crew grid · last day ${day}` });
     await endAssignment.mutateAsync({ id: a.id, location_id: locationId, endAt: new Date(midnight(nextDay(day), tz)).toISOString() });
   };
-  const markWorked = async (ids: string[]) => {
+  const markWorked = async (ids: string[], sendSignature = true) => {
     const plan = scheduledShift(day, 'day', projLocations?.find(l => l.id === locationId) as any, projectRow as any);
     const range = manualTimeRange(day, plan.timeIn, plan.timeOut, tz, plan.outDay);
     if (!range) throw new Error('Set this location\'s day shift times first');
@@ -311,6 +311,7 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
     void q.refetch();
     const span = `${plan.timeIn.replace(':', '')}–${plan.timeOut.replace(':', '')}`;
     const who = added.length === 1 ? added[0].name : `${added.length} people`;
+    if (!sendSignature) { toast.success(`Added ${who} ${span}. No signature link sent.`); return; }
     // Reuse the existing signature-request sender (same as Missing signatures).
     const failed: string[] = [];
     try {

@@ -24,10 +24,10 @@ const hhmm = (iso: string, tz: string) => localTime(iso, tz).replace(':', '');
 export function NeedActionList({ locationId, day, tz, people, resolutions, linkEvents, canWrite, onWorked, onDemob, names = {} }: {
   locationId: string; day: string; tz: string; people: Person[]; resolutions: DayResolution[];
   linkEvents: { personnel_id: string; opened_at: string }[]; canWrite: boolean;
-  onWorked: (ids: string[]) => Promise<void>; onDemob: (id: string) => Promise<void>; names?: Record<string, string>;
+  onWorked: (ids: string[], sendSignature: boolean) => Promise<void>; onDemob: (id: string) => Promise<void>; names?: Record<string, string>;
 }) {
   const qc = useQueryClient();
-  const [sel, setSel] = useState<string[]>([]), [busy, setBusy] = useState(false);
+  const [sel, setSel] = useState<string[]>([]), [busy, setBusy] = useState(false), [sendSig, setSendSig] = useState(true);
   const ids = people.map(p => p.id);
   const hints = useQuery({ queryKey: ['need-action-hints', locationId, day, ids.join(',')], enabled: ids.length > 0, queryFn: async () => {
     const base = Date.parse(`${day}T12:00:00Z`), end = new Date(midnight(nextDay(day), tz)).toISOString();
@@ -58,7 +58,7 @@ export function NeedActionList({ locationId, day, tz, people, resolutions, linkE
     if (r.error) throw r.error; await refresh();
   });
   const actions = (pids: string[], otherHint = false) => canWrite && <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
-    <Button size="sm" className="h-10" disabled={busy} onClick={() => run(() => onWorked(pids))}>Worked</Button>
+    <div className="col-span-2 flex flex-wrap items-center gap-2"><Button size="sm" className="h-10" disabled={busy} onClick={() => run(() => onWorked(pids, sendSig))}>Worked</Button><label className="flex items-center gap-1.5 text-xs min-h-10"><Checkbox checked={sendSig} onCheckedChange={v => setSendSig(v === true)} aria-label="Send signature link" />Send signature link</label></div>
     <Button size="sm" variant="outline" className="h-10" disabled={busy} onClick={() => resolve(pids, 'day_off')}>Day off</Button>
     <Button size="sm" variant={otherHint ? 'secondary' : 'outline'} className={cn('h-10', otherHint && 'ring-2 ring-primary')} disabled={busy} onClick={() => resolve(pids, 'other_site')}>Other site</Button>
     <Button size="sm" variant="outline" className="h-10 text-destructive" disabled={busy} onClick={() => run(async () => { for (const id of pids) await onDemob(id); })}>Demobilize</Button>
