@@ -5556,6 +5556,61 @@ export type Database = {
           },
         ]
       }
+      location_day_resolutions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          day: string
+          id: string
+          location_id: string
+          note: string | null
+          personnel_id: string
+          reason: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          day: string
+          id?: string
+          location_id: string
+          note?: string | null
+          personnel_id: string
+          reason: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          day?: string
+          id?: string
+          location_id?: string
+          note?: string | null
+          personnel_id?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_day_resolutions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_day_resolutions_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_day_resolutions_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       location_requests: {
         Row: {
           acted_at: string | null

@@ -701,6 +701,13 @@
       "when": 1795452003568,
       "tag": "0099_location_day_expected",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1795575325445,
+      "tag": "0100_location_day_resolutions",
+      "breakpoints": true
     }
   ]
 }

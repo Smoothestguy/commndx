@@ -42,6 +42,11 @@ import { loadExpectedDay, expectedTotal } from '@/lib/locationExpected';
 import { ExpectedHeadcountEdit } from './ExpectedHeadcountEdit';
 import { useUserRole } from '@/hooks/useUserRole';
 import { CrewAddToDayDialog } from './CrewAddToDayDialog';
+import { NeedActionList, useDayResolutions } from './NeedActionList';
+import { needActionIds } from '@/lib/needAction';
+import { scheduledShift, manualTimeRange } from '@/lib/manualTime';
+import { useProject } from '@/integrations/supabase/hooks/useProjects';
+import { useProjectLocations } from '@/integrations/supabase/hooks/useProjectLocations';
 
 export type CrewOptions = {
   agencies: { agencyName: (id: string) => string | null | undefined; employerName: (id: string) => string | null | undefined; nonBillableByPerson: Record<string, boolean | undefined> };
@@ -229,6 +234,9 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   </>;
   const mobe = useMobeRows(locationId, day, !!crew);
   const setStatus = useSetStatus();
+  const resolutions = useDayResolutions(locationId, day);
+  const { data: projectRow } = useProject(crew ? projectId : '');
+  const { data: projLocations } = useProjectLocations(crew ? projectId : '');
   const endAssignment = useEndAssignment();
   const pad = (iso: string | null | undefined) => iso ? hm(iso, tz) : '';
   const saveIn = async (r: AttendanceRow, v: string) => {
@@ -253,6 +261,20 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
     if (!a || !window.confirm(`Demobilize ${r.name} with ${day} as their last day here? Worked days stay editable.`)) return;
     await setStatus.mutateAsync({ personnelIds: [r.id], status: 'demobilized', project_id: projectId, note: `Demobilized from crew grid · last day ${day}` });
     await endAssignment.mutateAsync({ id: a.id, location_id: locationId, endAt: new Date(midnight(nextDay(day), tz)).toISOString() });
+  };
+  const markWorked = async (ids: string[]) => {
+    const plan = scheduledShift(day, 'day', projLocations?.find(l => l.id === locationId) as any, projectRow as any);
+    const range = manualTimeRange(day, plan.timeIn, plan.timeOut, tz, plan.outDay);
+    if (!range) throw new Error('Set this location\'s day shift times first');
+    const added: string[] = [];
+    for (const id of ids) {
+      const r = rows.find(x => x.id === id);
+      await logTime.mutateAsync({ personnel_id: id, location_id: locationId, day, in_at: range.inAt, out_at: range.outAt, note: 'Need action: worked (shift default)' });
+      added.push(r?.name ?? 'person');
+    }
+    void q.refetch();
+    crew?.onText(ids);
+    toast.success(`Added ${added.length === 1 ? added[0] : `${added.length} people`} ${plan.timeIn.replace(':', '')}–${plan.timeOut.replace(':', '')}. Send the signature link in the text window.`);
   };
   const presenceFor = (id: string) => !!q.data?.presence?.some(x => x.personnelId === id);
   const sigFor = (id: string) => { const rs = (q.data?.sigRows ?? []).filter(x => x.personnelId === id); return rs.length ? rs.some(x => x.signature) : null; };
@@ -283,6 +305,11 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
   if (crew) {
     const timedIds = rows.filter(r => r.stays.length > 0).map(r => r.id);
     const presenceCount = presenceOnlyCount(timedIds, (q.data?.presence ?? []).map(x => x.personnelId));
+    const rosterToday = rows.filter(r => !r.demobilized && crew.assignments.some(a => a.personnel_id === r.id));
+    const resolved = resolutions.data ?? [];
+    const needIds = new Set(needActionIds(rosterToday.map(r => r.id), timedIds, resolved.map(x => x.personnel_id)));
+    const needPeople = rosterToday.filter(r => needIds.has(r.id));
+    const dLabel = `${new Date(`${day}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })} ${day.slice(5, 7)}/${day.slice(8, 10)}`;
     const summaryText = crewDaySummary(day, rows.map(r => ({ present: r.stays.length > 0, role: r.role, onRoster: !r.demobilized && crew.assignments.some(a => a.personnel_id === r.id) })), headcountLine(timedIds.length, presenceCount, expectedTotal(expected.data)));
     const selectedPeople = rows.filter(r => sel.has(r.id)).map(r => { const [first, ...rest] = r.name.split(' '); return { id: r.id, first_name: first ?? '', last_name: rest.join(' '), phone: crew.phones[r.id] ?? null }; });
     return <div className="space-y-3">
@@ -293,12 +320,13 @@ export function LocationDayAttendance({ projectId, locationId, timezone, canWrit
           <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Next day" onClick={() => shiftDay(1)}><ChevronRight className="h-4 w-4" /></Button>
           {day !== today && <Button variant="ghost" size="sm" className="h-8" onClick={() => { setDay(today); setSel(new Set()); }}>Today</Button>}
         </div>
-        <p className="text-sm font-medium" aria-label="Crew summary">{summaryText}</p>
-        {isAdmin && <ExpectedHeadcountEdit locationId={locationId} day={day} value={expected.data ?? null} onSaved={() => expected.refetch()} />}
-        {(mobe.data?.length ?? 0) > 0 && <span className="text-xs text-muted-foreground">+{mobe.data?.length} MOBE</span>}
+        <p className="text-sm font-medium" aria-label="Crew summary">{dLabel} · {timedIds.length} on sheet{needIds.size > 0 && <> · <span className="text-warning">{needIds.size} need action</span></>}</p>
+        {needIds.size === 0 && !resolutions.isLoading && <Badge variant="outline" className="text-success border-success/40">All accounted for</Badge>}
         <MissingSignatures compact locationId={locationId} day={day} zone={tz} rows={q.data?.sigRows ?? []} />
         <div className="ml-auto flex items-center gap-1">{crew.header}{canWrite && <Button size="sm" variant="outline" className="h-8" onClick={() => setAddCrew(true)}><Plus className="h-4 w-4 mr-1" />Add crew</Button>}{canWrite && <Button size="sm" variant="outline" className="h-8" onClick={() => setAddPerson(true)}><Plus className="h-4 w-4 mr-1" />Add to day</Button>}</div>
       </div>
+      <details className="text-xs text-muted-foreground"><summary className="cursor-pointer w-fit">Details</summary><div className="mt-1 flex flex-wrap items-center gap-2"><span>{summaryText}</span>{isAdmin && <ExpectedHeadcountEdit locationId={locationId} day={day} value={expected.data ?? null} onSaved={() => expected.refetch()} />}{(mobe.data?.length ?? 0) > 0 && <span>+{mobe.data?.length} MOBE</span>}</div></details>
+      <NeedActionList locationId={locationId} day={day} tz={tz} people={needPeople} resolutions={resolved} linkEvents={linkEvents.data ?? []} canWrite={canWrite} onWorked={markWorked} onDemob={id => { const r = rows.find(x => x.id === id); return r ? demob(r).then(() => resolutions.refetch()).then(() => undefined) : Promise.resolve(); }} />
       {(q.data?.presence?.length ?? 0) > 0 && <p className="text-xs text-muted-foreground">Signed — presence only, no times ({q.data!.presence.length}): {q.data!.presence.map(x => x.name).join(', ')}</p>}
       {stale.length > 0 && <p className="text-sm text-warning"><AlertTriangle className="inline h-4 w-4 mr-1" />{stale.length} open punch{stale.length === 1 ? '' : 'es'} from earlier days: {stale.map(s => <Button key={s.id} variant="link" size="sm" className="h-auto p-0 px-1" disabled={!canWrite} onClick={() => setEdit({ ids: [s.id], name: s.name })}>{s.name} ({dayLabel(s.in_at, tz)})</Button>)}</p>}
       <DayStaffingBreakdown locationId={locationId} day={day} zone={tz} rows={rows} mobeCount={mobe.data?.filter(m=>m.kind!=='demobe').length ?? 0} demobeCount={(mobe.data?.filter(m=>m.kind==='demobe').length ?? 0) + rows.filter(r=>r.stays.some((st:any)=>st.demobe)).length} />
