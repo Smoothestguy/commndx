@@ -17,6 +17,12 @@ import { ShiftExtensionRequest } from '@/components/signin/ShiftExtensionRequest
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { agencyLogo } from '@/lib/agencyPortal';
 import { LangSwitcher, usePublicLang } from '@/lib/publicLang';
+import { createSitePunchDemo, type SitePunchDemo } from '@/lib/sitePunchDemo';
+
+export function SitePunchDemoPage() {
+  const [adapter] = useState(() => createSitePunchDemo());
+  return <SitePunch demo={adapter} />;
+}
 
 type Info = { valid: boolean; reason?: string; first_name?: string; location_name?: string; address?: string | null; report_at?: string | null; on_site_since?: string | null; timezone?: string; shift_start?: string; shift_end?: string; timezone_missing?: boolean; agency_name?: string | null; agency_logo_url?: string | null };
 type Done = { action: "in" | "out"; at: string; geo: boolean; offsite: boolean; early?: boolean; lateMinutes?: number } | null;
@@ -39,17 +45,17 @@ function getPos(): Promise<{ lat: number; lng: number; accuracy: number } | null
   });
 }
 
-export default function SitePunch() {
+export default function SitePunch({ demo }: { demo?: SitePunchDemo } = {}) {
   const { token } = useParams<{ token: string }>();
   const [search]=useSearchParams();
   const openedToken=useRef<string|null>(null);
-  useEffect(()=>{if(!token||openedToken.current===token)return;openedToken.current=token;const id=crypto.randomUUID();void getPos().then(pos=>supabase.rpc('record_punch_link_open',{p_token:token,p_id:id,p_lat:pos?.lat??undefined,p_lng:pos?.lng??undefined,p_accuracy:pos?.accuracy??undefined})).catch(()=>{});},[token]);
+  useEffect(()=>{if(demo||!token||openedToken.current===token)return;openedToken.current=token;const id=crypto.randomUUID();void getPos().then(pos=>supabase.rpc('record_punch_link_open',{p_token:token,p_id:id,p_lat:pos?.lat??undefined,p_lng:pos?.lng??undefined,p_accuracy:pos?.accuracy??undefined})).catch(()=>{});},[token,demo]);
   const { tr } = usePublicLang();
   const trRef = useRef(tr); trRef.current = tr;
-  const [info, setInfo] = useState<Info | null>(() => token ? cachedInfo(token) : null);
+  const [info, setInfo] = useState<Info | null>(() => demo ? demo.info : token ? cachedInfo(token) : null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<Done>(null);
-  const [pending, setPending] = useState<PunchIntent | null>(() => token ? readPunch(token) : null);
+  const [pending, setPending] = useState<PunchIntent | null>(() => !demo && token ? readPunch(token) : null);
   const [error, setError] = useState<string | null>(null);
   const [logoFailed,setLogoFailed]=useState(false);
   const tapping = useRef(false);
@@ -62,28 +68,28 @@ export default function SitePunch() {
   const runSigSave=useCallback((c:{token:string;at:string;signatureBase64?:string})=>saveCommittedSignature({online:()=>navigator.onLine,
     isSigned:async()=>{const {data,error}=await supabase.functions.invoke('punch-signature',{body:{action:'status',token:c.token,at:c.at}});if(error)throw error;return !!data?.signed;},
     save:async()=>{const {data,error}=await supabase.functions.invoke('punch-signature',{body:{action:'save',token:c.token,at:c.at,signature_png_base64:c.signatureBase64}});if(error)throw error;return !!data?.ok;}}),[]);
-  useEffect(()=>{if(!token)return;let stop=false;const retry=async()=>{let item:{token:string;at:string;signatureBase64?:string}|null=null;try{item=JSON.parse(localStorage.getItem(sigKey(token))??'null');}catch{item=null;}if(!item){setSigNote(false);return;}setSigNote(true);if(await runSigSave(item)==='signed'&&!stop){localStorage.removeItem(sigKey(token));setSigNote(false);}};void retry();const id=setInterval(()=>{void retry();},30_000);return()=>{stop=true;clearInterval(id);};},[token,runSigSave]);
+  useEffect(()=>{if(demo||!token)return;let stop=false;const retry=async()=>{let item:{token:string;at:string;signatureBase64?:string}|null=null;try{item=JSON.parse(localStorage.getItem(sigKey(token))??'null');}catch{item=null;}if(!item){setSigNote(false);return;}setSigNote(true);if(await runSigSave(item)==='signed'&&!stop){localStorage.removeItem(sigKey(token));setSigNote(false);}};void retry();const id=setInterval(()=>{void retry();},30_000);return()=>{stop=true;clearInterval(id);};},[token,runSigSave,demo]);
   const prepare=async(intent:PunchIntent)=>{if(!navigator.onLine){setSigning(intent);return false;}const {data,error}=await supabase.functions.invoke('punch-signature',{body:{action:'prepare',token:intent.token,at:intent.at,lat:intent.lat,lng:intent.lng,override_reason:intent.overrideReason}});if(error)throw new Error(error instanceof FunctionsHttpError?await error.context.text():error.message);if(!data.ok){savePunch(intent);setPending(intent);setRejection(data);blocked.current=true;return false;}if(!data.has_signature&&!intent.signatureBase64){setSigning(intent);return false;}return true;};
 
   const updateInfo = useCallback((value: Info) => {
     setInfo(value);
-    if (token) { try { localStorage.setItem(infoKey(token), JSON.stringify(value)); } catch { /* Punch storage errors are handled separately. */ } }
-  }, [token]);
+    if (!demo && token) { try { localStorage.setItem(infoKey(token), JSON.stringify(value)); } catch { /* Punch storage errors are handled separately. */ } }
+  }, [token,demo]);
 
   const confirm = useCallback((intent: PunchIntent, action: "in" | "out") => {
-    clearPunch(intent.token);
+    if (!demo) clearPunch(intent.token);
     setPending(null); setError(null);
     setRejection(null);
     setDone({ action, at: intent.effectiveAt || intent.at, geo: intent.lat != null && intent.lng != null, offsite: !!intent.overrideReason, early: intent.earlyFlagged, lateMinutes: intent.lateMinutes });
     setInfo((i) => {
       const next = i ? { ...i, on_site_since: action === "in" ? intent.effectiveAt || intent.at : null } : i;
-      if (next) { try { localStorage.setItem(infoKey(intent.token), JSON.stringify(next)); } catch { /* Best effort info cache. */ } }
+      if (!demo && next) { try { localStorage.setItem(infoKey(intent.token), JSON.stringify(next)); } catch { /* Best effort info cache. */ } }
       return next;
     });
-  }, []);
+  }, [demo]);
 
   const flush = useCallback(async () => {
-    if (!token || !navigator.onLine || blocked.current) return;
+    if (demo || !token || !navigator.onLine || blocked.current) return;
     await withPunchLock(token, async () => {
       const intent = readPunch(token);
       if (!intent) { setPending(null); return; }
@@ -140,9 +146,10 @@ export default function SitePunch() {
         if (!isNetworkError(e)) setError(trRef.current("Could not send the saved punch.", "No se pudo enviar el registro guardado."));
       } finally { setBusy(false); }
     });
-  }, [token, confirm]);
+  }, [token, confirm, demo]);
 
   useEffect(() => {
+    if (demo) return;
     void registerPunchOffline().catch(() => {});
     blocked.current = false;
     if (!token) { setInfo({ valid: false }); return; }
@@ -162,9 +169,17 @@ export default function SitePunch() {
     window.addEventListener("storage", storage);
     const interval = setInterval(() => { void flush(); }, 60_000);
     return () => { active = false; clearInterval(interval); window.removeEventListener("online", online); window.removeEventListener("storage", storage); };
-  }, [token, flush, updateInfo]);
+  }, [token, flush, updateInfo, demo]);
 
   const punch = async () => {
+    if (demo) {
+      if (busy || tapping.current) return;
+      const intent = demo.intent(info?.on_site_since ? 'out' : 'in');
+      if (intent.action === 'out') confirm(intent, 'out');
+      else if (search.get('late') === '1' || search.get('early') === '1') setRejection(demo.rejection(search.get('late') === '1' ? 'late' : 'early'));
+      else setSigning(intent);
+      return;
+    }
     if (!token || busy || tapping.current || readPunch(token)) return;
     tapping.current = true; setBusy(true); setError(null);
     const at = new Date().toISOString(); // Tap time, before GPS wait or any network work.
@@ -193,7 +208,8 @@ export default function SitePunch() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-5">
       <ForceDarkTheme /><LangSwitcher />
-      {signing ? <div className="w-full max-w-md landscape:max-w-none min-h-[85dvh]"><SignaturePad name={info?.first_name||'You'} required description={tr("Sign to check in", "Firma para registrar tu entrada")} saving={busy} onSkip={()=>{}} onSave={async blob=>{const intent=signing;setBusy(true);try{const base64=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob);});savePunch({...intent,signatureBase64:base64});setSigning(null);setPending(readPunch(intent.token));blocked.current=false;await flush();}catch{setError(tr('Could not save your signature. Please try again.', 'No se pudo guardar tu firma. Intenta otra vez.'));}finally{setBusy(false);}}}/></div> : <div className="w-full max-w-md text-center space-y-6">
+      {demo && <p className="absolute top-4 left-5 text-xs text-muted-foreground max-w-[calc(100%-8rem)]">{tr('DEMO — nothing is saved', 'DEMO — no se guarda nada')}</p>}
+      {signing ? <div className="w-full max-w-md landscape:max-w-none min-h-[85dvh]"><SignaturePad name={info?.first_name||'You'} required description={tr("Sign to check in", "Firma para registrar tu entrada")} saving={busy} onSkip={()=>{}} onSave={async blob=>{const intent=signing;if(demo){setSigning(null);confirm(intent,'in');return;}setBusy(true);try{const base64=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob);});savePunch({...intent,signatureBase64:base64});setSigning(null);setPending(readPunch(intent.token));blocked.current=false;await flush();}catch{setError(tr('Could not save your signature. Please try again.', 'No se pudo guardar tu firma. Intenta otra vez.'));}finally{setBusy(false);}}}/></div> : <div className="w-full max-w-md text-center space-y-6">
         {info?.valid&&info.agency_name?<div className="space-y-2">{agencyLogo.parse(info.agency_logo_url)&&!logoFailed?<img src={agencyLogo.parse(info.agency_logo_url)||undefined} alt={`${info.agency_name} logo`} referrerPolicy="no-referrer" onError={()=>setLogoFailed(true)} className="max-h-12 max-w-56 object-contain mx-auto"/>:<p className="text-xl font-semibold">{info.agency_name}</p>}<p className="text-xs text-muted-foreground">{tr("for Fairfield Response Group", "para Fairfield Response Group")}</p></div>:<p className="text-sm uppercase tracking-widest text-muted-foreground">Fairfield Response Group</p>}
         {pending && !rejection && <div role="status" className="border-2 border-warning bg-warning/15 text-warning rounded-md p-5 space-y-3">
           {(!navigator.onLine||error)?<WifiOff className="h-12 w-12 mx-auto" />:<Loader2 className="h-12 w-12 mx-auto animate-spin" />}
@@ -228,9 +244,9 @@ export default function SitePunch() {
           {(!done || done.action === "in") && <Button onClick={punch} disabled={busy} className={`w-full h-28 text-2xl font-bold ${onSite ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : "bg-success text-success-foreground hover:bg-success/90"}`}>
             {busy ? <Loader2 className="h-8 w-8 animate-spin" /> : onSite ? tr("CHECK OUT", "REGISTRAR SALIDA") : tr("I'M HERE — CHECK IN", "YA LLEGUÉ — REGISTRAR ENTRADA")}
           </Button>}
-          {token && <ShiftExtensionRequest token={token} initialOpen={search.get('extension')==='1'} />}
+          {(token || demo) && <ShiftExtensionRequest token={token || 'demo'} demoInfo={demo ? { timezone: demo.info.timezone, shift_end: demo.info.shift_end } : undefined} initialOpen={search.get('extension')==='1'} />}
         </>}
-        {rejection?.reason === 'late' ? <LateCheckIn rejection={rejection} timezone={rejection.timezone||info?.timezone} busy={busy} onSubmit={async reason => { if (!token || busy) return; const intent=readPunch(token); if (!intent) return; savePunch({...intent,lateReason:reason,tries:0});setRejection(null);blocked.current=false;await flush(); }} /> : rejection?.reason === 'before_shift' ? <EarlyCheckIn rejection={rejection} timezone={rejection.timezone||info?.timezone} busy={busy} onSubmit={async reason => { if (!token || busy) return; const intent=readPunch(token); if (!intent) return; savePunch({...intent,earlyReason:reason,tries:0});setRejection(null);blocked.current=false;await flush(); }} /> : rejection && <div role="status" className={`rounded-md border-2 p-5 space-y-4 ${rejection.reason === 'already_signed_today' ? 'border-success text-success' : 'border-warning text-warning'}`}>
+        {rejection?.reason === 'late' ? <LateCheckIn rejection={rejection} timezone={rejection.timezone||info?.timezone} busy={busy} onSubmit={async reason => { if(demo){setRejection(null);setSigning({...demo.intent('in'),lateReason:reason,lateMinutes:15});return;}if (!token || busy) return; const intent=readPunch(token); if (!intent) return; savePunch({...intent,lateReason:reason,tries:0});setRejection(null);blocked.current=false;await flush(); }} /> : rejection?.reason === 'before_shift' ? <EarlyCheckIn rejection={rejection} timezone={rejection.timezone||info?.timezone} busy={busy} onSubmit={async reason => { if(demo){setRejection(null);setSigning({...demo.intent('in'),earlyReason:reason,earlyFlagged:true});return;}if (!token || busy) return; const intent=readPunch(token); if (!intent) return; savePunch({...intent,earlyReason:reason,tries:0});setRejection(null);blocked.current=false;await flush(); }} /> : rejection && <div role="status" className={`rounded-md border-2 p-5 space-y-4 ${rejection.reason === 'already_signed_today' ? 'border-success text-success' : 'border-warning text-warning'}`}>
           <h1 className="text-2xl font-bold">{rejection.reason === 'out_of_range' ? tr(`You're ${Math.round(rejection.distance_m ?? 0)}m from ${info?.location_name || 'the site'} (allowed ${rejection.radius_m ?? 300}m)`, `Estás a ${Math.round(rejection.distance_m ?? 0)} m de ${info?.location_name || 'el sitio'} (permitido ${rejection.radius_m ?? 300} m)`) : rejection.reason === 'no_gps' ? tr("Couldn't get your location", "No se pudo obtener tu ubicación") : tr('Already signed in today at this site', 'Ya registraste tu entrada hoy en este sitio')}</h1>
           {rejection.reason === 'already_signed_today' ? <p>{rejection.in_at && `${tr('In','Entrada')} ${t(rejection.in_at)}`} {rejection.out_at && `${tr('Out','Salida')} ${t(rejection.out_at)}`}</p> : overriding ? <>
             <Textarea aria-label={tr("Off-site reason", "Motivo fuera del sitio")} placeholder={tr("Reason (required)", "Motivo (obligatorio)")} value={overrideReason} maxLength={1000} onChange={e => setOverrideReason(e.target.value)} />

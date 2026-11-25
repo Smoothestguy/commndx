@@ -1,4 +1,5 @@
 # Architecture rules
+- Punch demo injects an in-memory adapter into SitePunch and bypasses authenticated app providers; it must never call the backend, GPS or punch storage. Demo SMS uses the existing admin-checked sender without tokens or operational writes.
 - Public intake uses service-only transactional contact/application reuse; retry only transport failures with a stable payload, and keep token-scoped 24-hour session drafts including private upload references.
 - Project writes strip legacy customer fields; billing resolves customers from each entry's location and fails closed for inaccessible locations, preventing cross-customer invoices.
 - Phone Home uses scoped light tokens and shared self-only My Day/guarded manager actions; explicit linked field users may access only mobile Home while other portal restrictions and desktop rendering remain unchanged.

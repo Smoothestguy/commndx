@@ -1,4 +1,6 @@
 # Sign-in template grid cleanup
+## Worker punch demo
+- [x] Shared in-memory /punch/demo, late/early and EN/ES, simulated GPS and admin-only demo SMS branch. Browser in/out/reasons verified zero backend calls/punch storage; owner Settings send intercepted (no real SMS), desktop/phone checked. Typecheck and 574 tests passed; SMS branch deployed, no data writes or publishing.
 ## Location Crew cleanup — iPhone
 - [x] Fix daily staffing source fallback and cover role mapping with tests.
 - [x] Merge Crew add actions, label remaining controls, and collapse task-order allocation without removing features.

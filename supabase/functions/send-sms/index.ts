@@ -1,9 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.86.0';
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { sendDemoSms } from './demo.ts';
 
 interface SMSRequest {
   recipientType: 'customer' | 'personnel' | 'applicant';
@@ -61,7 +58,14 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { recipientType, recipientId, recipientName, recipientPhone, content }: SMSRequest = await req.json();
+    const body = await req.json();
+    if (body?.action === 'send_punch_demo') {
+      const result = await sendDemoSms(body, roleData.role, {
+        accountSid: Deno.env.get('TWILIO_ACCOUNT_SID'), authToken: Deno.env.get('TWILIO_AUTH_TOKEN'), from: Deno.env.get('TWILIO_PHONE_NUMBER'), siteUrl: Deno.env.get('SITE_URL') || 'https://fairfieldrg.com',
+      });
+      return new Response(JSON.stringify(result.body), { status: result.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const { recipientType, recipientId, recipientName, recipientPhone, content }: SMSRequest = body;
 
     // Validate required fields
     if (!recipientType || !recipientId || !recipientName || !recipientPhone || !content) {

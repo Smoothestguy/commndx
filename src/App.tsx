@@ -9,6 +9,7 @@ import {
   Routes,
   Route,
   Navigate,
+  BrowserRouter,
 } from "react-router-dom";
 
 // Detect if running in Electron - HashRouter is required for file:// protocol
@@ -159,6 +160,7 @@ const JobPostingEntries = lazy(() => import("./pages/JobPostingEntries"));
 const PublicApplicationForm = lazy(() => import("./pages/PublicApplicationForm"));
 const PhotoRequest = lazy(() => import("./pages/PhotoRequest"));
 const SitePunch = lazy(() => import("./pages/SitePunch"));
+const SitePunchDemo = lazy(() => import('./pages/SitePunch').then(m => ({ default: m.SitePunchDemoPage })));
 const Kiosk = lazy(() => import("./pages/Kiosk"));
 import { SheetReopenDialog } from '@/components/signin/SheetReopenDialog';
 const DocumentSign = lazy(() => import("./pages/DocumentSign"));
@@ -212,6 +214,8 @@ const NativeStatusBarManager = () => {
 };
 
 const App = () => {
+  // No authenticated providers or background reads/writes on the standalone demo.
+  if (window.location.pathname === '/punch/demo') return <ThemeProvider><TooltipProvider><BrowserRouter><Suspense fallback={<RouteSkeleton />}><Routes><Route path="/punch/demo" element={<SitePunchDemo />} /></Routes></Suspense></BrowserRouter></TooltipProvider></ThemeProvider>;
   return (
 
     <QueryClientProvider client={queryClient}>

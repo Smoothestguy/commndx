@@ -3,14 +3,38 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { AUTO_TEXT_TYPES } from '@/lib/autoTexts';
 import { useAutoTextSettings, useAutoTextSentCounts } from '@/hooks/useAutoTextSettings';
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Send, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 
 /** Admin-only switches for automatic sign-in texts. Supervisor in-app alerts are not affected. */
 export function AutoTextsCard() {
-  const { settings, isLoading, error, save } = useAutoTextSettings();
+  const { settings, isLoading, error, save, isAdmin } = useAutoTextSettings();
+  const [phone, setPhone] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sendStatus, setSendStatus] = useState('');
+  const sendDemo = async () => {
+    if (!isAdmin || sending) return;
+    setSending(true); setSendStatus('');
+    try {
+      const { data, error } = await supabase.functions.invoke('send-sms', { body: { action: 'send_punch_demo', recipientPhone: phone } });
+      if (error) {
+        const details = error instanceof FunctionsHttpError ? await error.context.json().catch(() => null) : null;
+        throw new Error(details?.error || 'Unable to send demo link. Please try again.');
+      }
+      if (!data?.success) throw new Error(data?.error || 'Text not sent');
+      setSendStatus('Demo link sent.');
+    } catch (e) { setSendStatus(e instanceof Error ? e.message : 'Text not sent'); }
+    finally { setSending(false); }
+  };
   const counts = useAutoTextSentCounts();
   const busy = isLoading || save.isPending || !!error || !settings;
   return <Card><CardHeader><CardTitle className="text-base">Sign-in texts</CardTitle><CardDescription>Automatic texts only. Manual texts and supervisor in-app alerts are not affected. Each site can override these in its Edit location screen.</CardDescription></CardHeader>
     <CardContent className="divide-y">
+      {isAdmin && <div className="py-3 space-y-2"><Label htmlFor="punch-demo-phone">Demo phone number</Label><div className="flex flex-wrap gap-2"><Input id="punch-demo-phone" type="tel" autoComplete="tel" placeholder="(281) 555-0123" value={phone} onChange={e => setPhone(e.target.value)} disabled={sending} className="flex-1 min-w-40" /><Button onClick={sendDemo} disabled={sending || !phone.trim()}>{sending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}Send demo link</Button></div>{sendStatus && <p role="status" className="text-sm text-muted-foreground">{sendStatus}</p>}</div>}
       <div className="flex items-center justify-between gap-3 py-3"><Label htmlFor="auto-text-paused" className="font-semibold">Pause all automatic sign-in texts</Label><Switch id="auto-text-paused" checked={!!settings?.paused} disabled={busy} onCheckedChange={v => save.mutate(s => ({ ...s, paused: v }))} /></div>
       {AUTO_TEXT_TYPES.map(t => <div key={t.key} className="flex items-center justify-between gap-3 py-3">
         <div className="min-w-0"><Label htmlFor={`auto-text-${t.key}`}>{t.label}</Label><p className="text-xs text-muted-foreground">Sent last 7 days: {counts.data ? counts.data[t.key] : '…'}{settings?.paused ? ' · paused' : ''}</p></div>
