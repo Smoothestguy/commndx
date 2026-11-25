@@ -91,15 +91,16 @@ export async function loadAutoTextContext(db: any, locationIds: string[], person
     safe('status log', () => chunked(pids, p => db.from('personnel_status_log').select('personnel_id,status,project_id,effective_at').in('personnel_id', p).order('effective_at', { ascending: false }))),
   ]);
   const applicantIds = (people || []).map(p => p.applicant_id).filter(Boolean) as string[];
-  const applicants = await safe('applicants', () => chunked(applicantIds, p => db.from('applicants').select('id,sms_opted_out').in('id', p)));
+  const applicants = await safe('applicants', () => chunked(applicantIds, p => db.from('applicants').select('id,sms_opted_out,do_not_rehire').in('id', p)));
   const latest = new Map<string, { status: string; project_id: string | null }>();
   for (const s of statuses || []) if (!latest.has(s.personnel_id)) latest.set(s.personnel_id, s);
   const opted = new Set((applicants || []).filter(a => a.sms_opted_out).map(a => a.id));
+  const dnr = new Set((applicants || []).filter(a => a.do_not_rehire).map(a => a.id));
   const failed = { locations: !locations, projects: !projects, assignments: !assignments, people: !people };
   return {
     settings: parseAutoTextSettings(setting?.setting_value), failed,
     locations: new Map((locations || []).map(l => [l.id, l])), projects: new Map((projects || []).map(p => [p.id, p])),
-    assignments: assignments || [], people: new Map((people || []).map(p => [p.id, p])), latest, opted,
+    dnr, assignments: assignments || [], people: new Map((people || []).map(p => [p.id, p])), latest, opted,
   };
 }
 /** Best active assignment row (an active one beats ended history rows). */
@@ -115,7 +116,7 @@ export function checkEligibility(ctx: AutoTextContext, personnelId: string, loca
   const assignment = pickAssignment(ctx, personnelId, locationId, now) || (f.assignments ? { status: 'active', assigned_at: new Date(0).toISOString(), unassigned_at: null } : null);
   return ineligibleReason({
     now, day: localDay(now, l?.timezone || 'America/Chicago'), location: l || null, project: p || null,
-    assignment, person: person || null,
+    assignment, person: person ? { ...person, do_not_rehire: !!(person.applicant_id && ctx.dnr?.has(person.applicant_id)) } : null,
     latestStatus: ctx.latest.get(personnelId) || null, projectId: l?.project_id || '', optedOut: !!(person?.applicant_id && ctx.opted.has(person.applicant_id)),
   });
 }
