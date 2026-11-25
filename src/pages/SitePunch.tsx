@@ -5,6 +5,7 @@ import { localStamp } from "../../supabase/functions/_shared/locationTime";
 import { supabase } from "@/integrations/supabase/client";
 import { ForceDarkTheme } from "@/components/ForceDarkTheme";
 import { Button } from "@/components/ui/button";
+import { saveCommittedSignature } from "@/lib/punchSignatureSave";
 import { AlertCircle, CheckCircle2, Loader2, MapPin, WifiOff } from "lucide-react";
 import { clearPunch, isNetworkError, readPunch, savePunch, withPunchLock, type PunchIntent } from "@/lib/punchQueue";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +22,7 @@ type Info = { valid: boolean; reason?: string; first_name?: string; location_nam
 type Done = { action: "in" | "out"; at: string; geo: boolean; offsite: boolean; early?: boolean; lateMinutes?: number } | null;
 type Rejection = { reason: string; distance_m?: number; radius_m?: number; in_at?: string; out_at?: string; timezone?: string; shift_start?: string; early_minutes?: number; minutes_late?: number; grace_minutes?: number };
 const OFFICE_PHONE = "(281) 748-3832";
+const sigKey = (token: string) => `site-punch-sig:${token}`;
 const infoKey = (token: string) => `site-punch-info:${token}`;
 function cachedInfo(token: string): Info | null {
   try { return JSON.parse(localStorage.getItem(infoKey(token)) ?? "null"); } catch { return null; }
@@ -56,6 +58,11 @@ export default function SitePunch() {
   const [overriding, setOverriding] = useState(false);
   const [overrideReason, setOverrideReason] = useState('');
   const [signing,setSigning]=useState<PunchIntent|null>(null);
+  const [sigNote,setSigNote]=useState(false);
+  const runSigSave=useCallback((c:{token:string;at:string;signatureBase64?:string})=>saveCommittedSignature({online:()=>navigator.onLine,
+    isSigned:async()=>{const {data,error}=await supabase.functions.invoke('punch-signature',{body:{action:'status',token:c.token,at:c.at}});if(error)throw error;return !!data?.signed;},
+    save:async()=>{const {data,error}=await supabase.functions.invoke('punch-signature',{body:{action:'save',token:c.token,at:c.at,signature_png_base64:c.signatureBase64}});if(error)throw error;return !!data?.ok;}}),[]);
+  useEffect(()=>{if(!token)return;let stop=false;const retry=async()=>{let item:{token:string;at:string;signatureBase64?:string}|null=null;try{item=JSON.parse(localStorage.getItem(sigKey(token))??'null');}catch{item=null;}if(!item){setSigNote(false);return;}setSigNote(true);if(await runSigSave(item)==='signed'&&!stop){localStorage.removeItem(sigKey(token));setSigNote(false);}};void retry();const id=setInterval(()=>{void retry();},30_000);return()=>{stop=true;clearInterval(id);};},[token,runSigSave]);
   const prepare=async(intent:PunchIntent)=>{if(!navigator.onLine){setSigning(intent);return false;}const {data,error}=await supabase.functions.invoke('punch-signature',{body:{action:'prepare',token:intent.token,at:intent.at,lat:intent.lat,lng:intent.lng,override_reason:intent.overrideReason}});if(error)throw new Error(error instanceof FunctionsHttpError?await error.context.text():error.message);if(!data.ok){savePunch(intent);setPending(intent);setRejection(data);blocked.current=true;return false;}if(!data.has_signature&&!intent.signatureBase64){setSigning(intent);return false;}return true;};
 
   const updateInfo = useCallback((value: Info) => {
@@ -82,7 +89,7 @@ export default function SitePunch() {
       if (!intent) { setPending(null); return; }
       setBusy(true);
       try {
-        const finish=async(current:PunchIntent)=>{if(current.action==='in'){const committed={...current,committed:true};savePunch(committed);setPending(committed);const {data,error}=await supabase.functions.invoke('punch-signature',{body:{action:'save',token:current.token,at:current.at,signature_png_base64:current.signatureBase64}});if(error||!data?.ok){setError('Check-in recorded; signature still needs saving. Keep this page open to retry.');return;} }confirm(current,current.action);};
+        const finish=async(current:PunchIntent)=>{if(current.action==='in'){const committed={...current,committed:true};savePunch(committed);setPending(committed);const outcome=await runSigSave(current);if(outcome==='offline')return;if(outcome==='uploading'){try{localStorage.setItem(sigKey(current.token),JSON.stringify({token:current.token,at:current.at,signatureBase64:current.signatureBase64}));}catch{/* best effort */}setSigNote(true);}else setSigNote(false);}confirm(current,current.action);};
         if(intent.committed){await finish(intent);return;}
         // A response can be lost after the toggle committed. Check server state before retrying.
         if (intent.tries > 0) {
@@ -189,9 +196,9 @@ export default function SitePunch() {
       {signing ? <div className="w-full max-w-md landscape:max-w-none min-h-[85dvh]"><SignaturePad name={info?.first_name||'You'} required description={tr("Sign to check in", "Firma para registrar tu entrada")} saving={busy} onSkip={()=>{}} onSave={async blob=>{const intent=signing;setBusy(true);try{const base64=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob);});savePunch({...intent,signatureBase64:base64});setSigning(null);setPending(readPunch(intent.token));blocked.current=false;await flush();}catch{setError(tr('Could not save your signature. Please try again.', 'No se pudo guardar tu firma. Intenta otra vez.'));}finally{setBusy(false);}}}/></div> : <div className="w-full max-w-md text-center space-y-6">
         {info?.valid&&info.agency_name?<div className="space-y-2">{agencyLogo.parse(info.agency_logo_url)&&!logoFailed?<img src={agencyLogo.parse(info.agency_logo_url)||undefined} alt={`${info.agency_name} logo`} referrerPolicy="no-referrer" onError={()=>setLogoFailed(true)} className="max-h-12 max-w-56 object-contain mx-auto"/>:<p className="text-xl font-semibold">{info.agency_name}</p>}<p className="text-xs text-muted-foreground">{tr("for Fairfield Response Group", "para Fairfield Response Group")}</p></div>:<p className="text-sm uppercase tracking-widest text-muted-foreground">Fairfield Response Group</p>}
         {pending && !rejection && <div role="status" className="border-2 border-warning bg-warning/15 text-warning rounded-md p-5 space-y-3">
-          <WifiOff className="h-12 w-12 mx-auto" />
-          <h1 className="text-2xl font-bold">{pending.committed?tr('Signature pending — check-in recorded','Firma pendiente — entrada registrada'):error?tr('Punch not accepted — saved for review','Registro no aceptado — guardado para revisión'):navigator.onLine?tr('Sending saved punch','Enviando registro guardado'):tr('No signal — punch saved','Sin señal — registro guardado')} {t(pending.at)}</h1>
-          <p className="text-lg">{error?tr('Keep this page open and call the office.','Mantén esta página abierta y llama a la oficina.'):tr("It will send automatically when you're back in coverage. Keep this page open or revisit the link.","Se enviará al volver la señal. Mantén esta página abierta o vuelve a abrir el enlace.")}</p>
+          {(!navigator.onLine||error)?<WifiOff className="h-12 w-12 mx-auto" />:<Loader2 className="h-12 w-12 mx-auto animate-spin" />}
+          <h1 className="text-2xl font-bold">{error&&!pending.committed?tr('Punch not accepted — saved for review','Registro no aceptado — guardado para revisión'):navigator.onLine?tr('Saving…','Guardando…'):tr('No signal — punch saved','Sin señal — registro guardado')} {t(pending.at)}</h1>
+          <p className="text-lg">{error?tr('Keep this page open and call the office.','Mantén esta página abierta y llama a la oficina.'):navigator.onLine?tr('Keep this page open for a moment.','Mantén esta página abierta un momento.'):tr("It will send automatically when you're back in coverage. Keep this page open or revisit the link.","Se enviará al volver la señal. Mantén esta página abierta o vuelve a abrir el enlace.")}</p>
           {busy && <Loader2 className="h-5 w-5 animate-spin mx-auto" />}
         </div>}
         {!info && !pending && <><Loader2 className="h-10 w-10 animate-spin mx-auto" /><p className="text-muted-foreground">{tr('Waiting for signal…', 'Esperando señal…')}</p></>}
