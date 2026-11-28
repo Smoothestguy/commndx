@@ -10,48 +10,84 @@ export interface TablePreferences {
 
 interface UseTablePreferencesOptions {
   tableId: string;
+  /** Every column key, in display order. Always drives columnOrder and the Columns menu. */
   defaultColumns: string[];
+  /** Keys shown on first load. Defaults to defaultColumns; keeps default-hidden columns out of view. */
+  defaultVisible?: string[];
   defaultSortKey?: string;
   defaultSortDirection?: 'asc' | 'desc';
 }
 
 const getStorageKey = (tableId: string) => `table-prefs-${tableId}`;
 
+export interface ResolvedTablePreferencesInput {
+  /** Raw localStorage value for the table, or null when none has been saved yet. */
+  stored: string | null;
+  defaultColumns: string[];
+  defaultVisible?: string[];
+  defaultSortKey?: string | null;
+  defaultSortDirection?: 'asc' | 'desc';
+}
+
+/**
+ * Pure merge of a saved layout with the current column set.
+ * columnOrder always carries every column (so the Columns menu and drag-order stay complete),
+ * while a column added after the layout was saved only becomes visible when it is not default-hidden.
+ */
+export function resolveTablePreferences({
+  stored,
+  defaultColumns,
+  defaultVisible,
+  defaultSortKey = null,
+  defaultSortDirection = 'asc',
+}: ResolvedTablePreferencesInput): TablePreferences {
+  const initialVisible = defaultVisible ?? defaultColumns;
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      // Ensure all default columns are included in case new columns were added
+      const storedOrder: string[] = parsed.columnOrder || defaultColumns;
+      const added = defaultColumns.filter(k => !storedOrder.includes(k));
+      // A newly-added column only shows if it is not default-hidden.
+      const visibleColumns = [...(parsed.visibleColumns || initialVisible), ...added.filter(k => initialVisible.includes(k))];
+      const columnOrder = [...storedOrder, ...added];
+      return {
+        visibleColumns,
+        columnOrder,
+        sortKey: parsed.sortKey ?? defaultSortKey,
+        sortDirection: parsed.sortDirection || defaultSortDirection,
+        columnFilters: parsed.columnFilters || {},
+      };
+    } catch {
+      // Invalid stored data, use defaults
+    }
+  }
+  return {
+    visibleColumns: initialVisible,
+    columnOrder: defaultColumns,
+    sortKey: defaultSortKey,
+    sortDirection: defaultSortDirection,
+    columnFilters: {},
+  };
+}
+
 export function useTablePreferences({
   tableId,
   defaultColumns,
+  defaultVisible,
   defaultSortKey = null,
   defaultSortDirection = 'asc',
 }: UseTablePreferencesOptions) {
-  const [preferences, setPreferences] = useState<TablePreferences>(() => {
-    const stored = localStorage.getItem(getStorageKey(tableId));
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        // Ensure all default columns are included in case new columns were added
-        const storedOrder: string[] = parsed.columnOrder || defaultColumns;
-        const added = defaultColumns.filter(k => !storedOrder.includes(k));
-        const visibleColumns = [...(parsed.visibleColumns || defaultColumns), ...added];
-        const columnOrder = [...storedOrder, ...added];
-        return {
-          visibleColumns,
-          columnOrder,
-          sortKey: parsed.sortKey ?? defaultSortKey,
-          sortDirection: parsed.sortDirection || defaultSortDirection,
-          columnFilters: parsed.columnFilters || {},
-        };
-      } catch {
-        // Invalid stored data, use defaults
-      }
-    }
-    return {
-      visibleColumns: defaultColumns,
-      columnOrder: defaultColumns,
-      sortKey: defaultSortKey,
-      sortDirection: defaultSortDirection,
-      columnFilters: {},
-    };
-  });
+  const initialVisible = defaultVisible ?? defaultColumns;
+  const [preferences, setPreferences] = useState<TablePreferences>(() =>
+    resolveTablePreferences({
+      stored: localStorage.getItem(getStorageKey(tableId)),
+      defaultColumns,
+      defaultVisible,
+      defaultSortKey,
+      defaultSortDirection,
+    }),
+  );
 
   // Persist to localStorage whenever preferences change
   useEffect(() => {
@@ -109,13 +145,13 @@ export function useTablePreferences({
 
   const resetToDefaults = useCallback(() => {
     setPreferences({
-      visibleColumns: defaultColumns,
+      visibleColumns: initialVisible,
       columnOrder: defaultColumns,
       sortKey: defaultSortKey,
       sortDirection: defaultSortDirection,
       columnFilters: {},
     });
-  }, [defaultColumns, defaultSortKey, defaultSortDirection]);
+  }, [defaultColumns, defaultVisible, defaultSortKey, defaultSortDirection]);
 
   const hasActiveFilters = Object.values(preferences.columnFilters).some(v => v.length > 0);
 

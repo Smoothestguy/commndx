@@ -167,18 +167,18 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
   type LocationRow = typeof rows[number] & { id: string };
   const columns: EnhancedColumn<LocationRow>[] = [
     { key: 'name', header: 'Location', width: 240, render: r => <NameCell r={r} /> },
-    {key:'perDiem',header:'Per diem',width:260,getValue:r=>perDiemText(r.l,canWrite,perDiemCounts[r.l.id],true),render:r=><span className="text-sm">{perDiemText(r.l,canWrite,perDiemCounts[r.l.id],true)}</span>},
-    { key: 'project_number', header: 'Project #', width: 120, getValue: r => r.l.project_number ?? '' },
-    { key: 'status', header: 'Status', width: 110, getValue: r => r.l.status, render: r => <StatusPill value={r.l.status === 'active' ? 'active' : r.l.status === 'closed' ? 'closed' : 'inactive'} /> },
-    { key: 'geofence', header: 'Geofence', width: 110, getValue: r => r.l.lat != null && r.l.lng != null ? 'Yes' : 'No', render: r => r.l.lat != null && r.l.lng != null ? <span className="inline-flex items-center gap-1 text-success"><MapPin className="h-3.5 w-3.5" />Yes</span> : <span className="inline-flex items-center gap-1 text-muted-foreground"><MapPinOff className="h-3.5 w-3.5" />No</span> },
-    { key: 'staffed', header: 'Staffed', getValue: r => r.actual, render: r => <StaffCell r={r} /> },
+    {key:'perDiem',header:'Per diem',width:260,defaultHidden:true,getValue:r=>perDiemText(r.l,canWrite,perDiemCounts[r.l.id],true),render:r=><span className="text-sm">{perDiemText(r.l,canWrite,perDiemCounts[r.l.id],true)}</span>},
+    { key: 'project_number', header: 'Project #', width: 120, defaultHidden: true, getValue: r => r.l.project_number ?? '' },
+    { key: 'status', header: 'Status', width: 110, defaultHidden: true, getValue: r => r.l.status, render: r => <StatusPill value={r.l.status === 'active' ? 'active' : r.l.status === 'closed' ? 'closed' : 'inactive'} /> },
+    { key: 'geofence', header: 'Geofence', width: 110, defaultHidden: true, getValue: r => r.l.lat != null && r.l.lng != null ? 'Yes' : 'No', render: r => r.l.lat != null && r.l.lng != null ? <span className="inline-flex items-center gap-1 text-success"><MapPin className="h-3.5 w-3.5" />Yes</span> : <span className="inline-flex items-center gap-1 text-muted-foreground"><MapPinOff className="h-3.5 w-3.5" />No</span> },
+    { key: 'staffed', header: 'Present / Auth', width: 150, getValue: r => r.actual, render: r => <StaffCell r={r} /> },
     { key: 'today', header: 'Today', getValue: r => r.o?.onSite ?? 0, render: r => <TodayCell r={r} /> },
     { key: 'assets', header: 'Assets', getValue: r => r.a?.actualAssets ?? 0, render: r => <AssetCell r={r} /> },
     { key: 'open', header: 'Open items', getValue: r => r.openReqs.length + (r.o?.joinPending ?? 0) + (r.o?.openPunches ?? 0) + (r.o?.pendingTOs ?? 0) + (r.o?.extPending ?? 0), render: r => <OpenItems r={r} /> },
     { key: 'upcoming', header: 'Upcoming', getValue: r => r.o?.next?.date ?? '', render: r => <NextCell r={r} /> },
-    { key: 'dates', header: 'Mobe → Demobe', getValue: r => [r.l.mobe_date, r.l.demobe_date].filter(Boolean).join(' → '), render: r => <Dates l={r.l} /> },
-    { key: 'poc', header: 'POC', getValue: r => [r.l.poc_name, r.l.poc_phone].filter(Boolean).join(' · ') },
-    { key: 'activity', header: 'Last activity', getValue: r => r.o?.lastActivity ?? '', render: r => <Last r={r} /> },
+    { key: 'dates', header: 'Mobe → Demobe', defaultHidden: true, getValue: r => [r.l.mobe_date, r.l.demobe_date].filter(Boolean).join(' → '), render: r => <Dates l={r.l} /> },
+    { key: 'poc', header: 'POC', defaultHidden: true, getValue: r => [r.l.poc_name, r.l.poc_phone].filter(Boolean).join(' · ') },
+    { key: 'activity', header: 'Last activity', defaultHidden: true, getValue: r => r.o?.lastActivity ?? '', render: r => <Last r={r} /> },
     { key: 'actions', header: 'Actions', noExport: true, sortable: false, filterable: false, render: r => <ReqButton r={r} /> },
   ];
 
@@ -188,7 +188,7 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
       <div className="space-y-3 min-[1180px]:space-y-2">
         <div className="min-[1180px]:flex min-[1180px]:items-center min-[1180px]:gap-3">
         <div className="rounded-lg border bg-card p-2.5 space-y-2 min-[1180px]:rounded-none min-[1180px]:border-x-0 min-[1180px]:p-2 min-[1180px]:min-w-0 min-[1180px]:flex-1" aria-label="Needs across locations">
-          <div className="flex flex-wrap items-center gap-1.5 min-[1180px]:flex-nowrap min-[1180px]:overflow-x-auto min-[1180px]:whitespace-nowrap">
+          <div className="flex flex-wrap items-center gap-1.5">
             <span className="inline-flex items-center gap-1 text-xs font-semibold mr-1"><Users className="h-3.5 w-3.5 text-primary" />{totals.crew} crew · {pl(live.length, 'location')}</span>
             {chips.filter(c => c.n > 0).map(c => (
               <button key={c.key} type="button" onClick={() => toggle(c.key)} aria-pressed={filter === c.key}
@@ -219,7 +219,7 @@ export function LocationsCommandCenter({ projectId, locations, staffing, canWrit
         </div>
 
         </div>
-        <EnhancedDataTable fillViewport tableId={`locations-command:${projectId}`} data={visible.map(r => ({ ...r, id: r.l.id }))} columns={columns}
+        <EnhancedDataTable fillViewport tableId={`locations-command2:${projectId}`} data={visible.map(r => ({ ...r, id: r.l.id }))} columns={columns}
           quickFilters={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }, { value: 'all', label: 'All' }]} quickFilter={status} onQuickFilterChange={v => setStatus(v as typeof status)}
           rowHref={r => locationHref(projectId, r.l.id)} exportName="locations" attention={r => r.severity !== 'ok' ? 'Needs attention' : null} emptyText="No locations match." />
 

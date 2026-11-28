@@ -66,6 +66,8 @@ export interface EnhancedColumn<T> {
   frozen?: boolean;
   /** Initial width in px; columns are resizable from the header edge. */
   width?: number;
+  /** Off on first load; still listed in the Columns menu so users can turn it on. */
+  defaultHidden?: boolean;
 }
 
 interface EnhancedDataTableProps<T> {
@@ -239,8 +241,9 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   const cancelHold = () => { if (hold.current) clearTimeout(hold.current); hold.current = null; };
   useEffect(() => { window.addEventListener('scroll', cancelHold, true); return () => { cancelHold(); window.removeEventListener('scroll', cancelHold, true); }; }, []);
   const defaultColumnKeys = columns.map(col => String(col.key));
+  const defaultVisibleKeys = columns.filter(col => !col.defaultHidden).map(col => String(col.key));
   const { preferences, setSort, toggleColumnVisibility, setColumnOrder, setColumnFilter } = useTablePreferences({
-    tableId, defaultColumns: defaultColumnKeys, defaultSortKey, defaultSortDirection,
+    tableId, defaultColumns: defaultColumnKeys, defaultVisible: defaultVisibleKeys, defaultSortKey, defaultSortDirection,
   });
   useEffect(() => { if (latestSortKey) setSort(latestSortKey, 'desc'); }, [latestSortKey, setSort]);
 
